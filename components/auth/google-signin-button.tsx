@@ -26,6 +26,7 @@ export function GoogleSignInButton({ disabled = false }: { disabled?: boolean })
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const buttonRef = useRef<HTMLDivElement | null>(null);
+  const googleInitializedRef = useRef(false);
   const { loginWithGoogleCredential, clearError } = useAuthStore();
 
   useEffect(() => {
@@ -59,9 +60,11 @@ export function GoogleSignInButton({ disabled = false }: { disabled?: boolean })
   }, []);
 
   useEffect(() => {
-    if (!isGoogleReady || !window.google?.accounts?.id || !buttonRef.current) {
+    if (!isGoogleReady || !window.google?.accounts?.id || !buttonRef.current || googleInitializedRef.current) {
       return;
     }
+
+    googleInitializedRef.current = true;
 
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,

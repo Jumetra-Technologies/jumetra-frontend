@@ -27,6 +27,24 @@ import type {
 import type { WorkspaceNode, WorkspaceState } from "./workspace-types";
 import { coerceWorkspaceState } from "./workspace-snapshot";
 
+function getStoredAuthSessionSafe(): { access_token?: string } | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem("hhip-auth-session");
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as { access_token?: string } | null;
+    return parsed && parsed.access_token ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 const DEFAULT_API_BASE =
   process.env.NODE_ENV === "production"
     ? "https://jumetra-backend-1.onrender.com"
@@ -44,10 +62,17 @@ function buildQuery(params: Record<string, string | number | undefined | null>):
 }
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers: HeadersInit = {
-    ...(init?.method && init.method !== "GET" ? { "Content-Type": "application/json" } : {}),
-    ...(init?.headers ?? {}),
-  };
+  const session = typeof window !== "undefined" ? getStoredAuthSessionSafe() : null;
+  const headers = new Headers(init?.headers ?? undefined);
+
+  if (session?.access_token) {
+    headers.set("Authorization", `Bearer ${session.access_token}`);
+  }
+
+  if (init?.method && init.method !== "GET" && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const fetchInit: RequestInit = { ...init, headers };
   // Next.js cache hints are server-only; omit in the browser to avoid fetch failures.
   if (typeof window === "undefined" && !init?.method) {

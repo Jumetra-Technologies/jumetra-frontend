@@ -47,6 +47,43 @@ describe("WebSocket client", () => {
   });
 });
 
+describe("Auth session persistence", () => {
+  it("stores and restores a bearer token session", async () => {
+    const {
+      AUTH_STORAGE_KEY,
+      clearStoredAuthSession,
+      getStoredAuthSession,
+      setStoredAuthSession,
+    } = await import("@/lib/auth-session");
+
+    const session = {
+      access_token: "demo-token",
+      token_type: "bearer",
+      user: {
+        id: "u-1",
+        email: "person@example.com",
+        display_name: "Person Example",
+        google_sub: "google-123",
+        picture_url: "https://example.com/avatar.png",
+      },
+    };
+
+    clearStoredAuthSession();
+    setStoredAuthSession(session);
+
+    expect(localStorage.getItem(AUTH_STORAGE_KEY)).toBeTruthy();
+    expect(getStoredAuthSession()).toEqual(session);
+
+    clearStoredAuthSession();
+    expect(getStoredAuthSession()).toBeNull();
+  });
+
+  it("builds authorization headers for API calls", async () => {
+    const { buildAuthHeaders } = await import("@/lib/auth-session");
+    expect(buildAuthHeaders("jwt-token")).toEqual({ Authorization: "Bearer jwt-token" });
+  });
+});
+
 describe("Live panel exports", () => {
   it("exports LiveOperationsPanel", async () => {
     const mod = await import("@/components/live/live-panel");

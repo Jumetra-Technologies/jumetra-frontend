@@ -9,10 +9,15 @@ declare global {
   interface Window {
     google?: {
       accounts: {
-        id: {
+        id?: {
           initialize: (config: Record<string, unknown>) => void;
           renderButton: (element: Element | null, options: Record<string, unknown>) => void;
           prompt: (callback?: (notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => void) => void;
+        };
+        oauth2?: {
+          initCodeClient: (config: Record<string, unknown>) => {
+            requestCode: () => void;
+          };
         };
       };
     };
@@ -25,9 +30,8 @@ export function GoogleSignInButton({ disabled = false }: { disabled?: boolean })
   const [isGoogleReady, setIsGoogleReady] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const buttonRef = useRef<HTMLDivElement | null>(null);
-  const googleInitializedRef = useRef(false);
-  const { loginWithGoogleCredential, clearError } = useAuthStore();
+  const codeClientRef = useRef<{ requestCode: () => void } | null>(null);
+  const { loginWithGoogleCode, clearError } = useAuthStore();
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) {
@@ -37,7 +41,7 @@ export function GoogleSignInButton({ disabled = false }: { disabled?: boolean })
 
     const existingScript = document.getElementById("google-identity-script");
     if (existingScript) {
-      if (window.google?.accounts?.id) {
+      if (window.google?.accounts?.oauth2) {
         setIsGoogleReady(true);
       }
       return;
@@ -49,57 +53,42 @@ export function GoogleSignInButton({ disabled = false }: { disabled?: boolean })
     script.async = true;
     script.defer = true;
     script.onload = () => {
-      if (!window.google?.accounts?.id) {
-        setError("Google Identity Services did not load correctly.");
+      if (!window.google?.accounts?.oauth2) {
+        setError("Google OAuth did not load correctly.");
         return;
       }
+
+      const client = window.google.accounts.oauth2.initCodeClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: "openid email profile",
+        ux_mode: "popup",
+        callback: async (response: { code?: string }) => {
+          if (!response.code) {
+            setError("Missing Google auth code.");
+            return;
+          }
+
+          setIsSubmitting(true);
+          setError(null);
+          clearError();
+
+          try {
+            await loginWithGoogleCode(response.code);
+          } catch (loginError) {
+            const message = loginError instanceof Error ? loginError.message : "Google sign-in failed";
+            setError(message);
+          } finally {
+            setIsSubmitting(false);
+          }
+        },
+      });
+
+      codeClientRef.current = client;
       setIsGoogleReady(true);
     };
     script.onerror = () => setError("Unable to load Google Sign-In.");
     document.body.appendChild(script);
-  }, []);
-
-  useEffect(() => {
-    if (!isGoogleReady || !window.google?.accounts?.id || !buttonRef.current || googleInitializedRef.current) {
-      return;
-    }
-
-    googleInitializedRef.current = true;
-
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: async (response: { credential?: string }) => {
-        if (!response.credential) {
-          setError("No Google credential returned.");
-          return;
-        }
-
-        setIsSubmitting(true);
-        setError(null);
-        clearError();
-
-        try {
-          await loginWithGoogleCredential(response.credential);
-        } catch (loginError) {
-          const message = loginError instanceof Error ? loginError.message : "Google sign-in failed";
-          setError(message);
-        } finally {
-          setIsSubmitting(false);
-        }
-      },
-      auto_select: false,
-      cancel_on_tap_outside: true,
-    });
-
-    window.google.accounts.id.renderButton(buttonRef.current, {
-      type: "standard",
-      theme: "outline",
-      size: "large",
-      text: "continue_with",
-      shape: "pill",
-      logo_alignment: "left",
-    });
-  }, [clearError, isGoogleReady, loginWithGoogleCredential]);
+  }, [clearError, loginWithGoogleCode]);
 
   return (
     <div className="space-y-3">
@@ -108,7 +97,22 @@ export function GoogleSignInButton({ disabled = false }: { disabled?: boolean })
           {error}
         </div>
       ) : null}
-      <div ref={buttonRef} className={disabled || isSubmitting ? "pointer-events-none opacity-60" : ""} />
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full justify-center gap-2 rounded-full border border-blue-500 text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/40"
+        disabled={disabled || isSubmitting || !isGoogleReady}
+        onClick={() => {
+          if (!codeClientRef.current) {
+            setError("Google sign-in is still loading. Please try again.");
+            return;
+          }
+          codeClientRef.current.requestCode();
+        }}
+      >
+        <span className="flex size-5 items-center justify-center rounded-full bg-white text-sm font-bold text-blue-600">G</span>
+        {isSubmitting ? "Connecting to HHIP…" : "Continue with Google"}
+      </Button>
       {isSubmitting ? (
         <div className="flex items-center justify-center gap-2 text-xs text-muted">
           <LoaderCircle className="size-4 animate-spin" />

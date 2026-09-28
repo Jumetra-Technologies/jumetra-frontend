@@ -15,7 +15,7 @@ type AuthStore = AuthState & {
   setSession: (session: AuthSession | null) => void;
   logout: () => void;
   refreshSession: () => Promise<void>;
-  loginWithGoogleCredential: (credential: string) => Promise<AuthSession>;
+  loginWithGoogleCode: (code: string) => Promise<AuthSession>;
   setLoading: (loading: boolean) => void;
   clearError: () => void;
 };
@@ -92,11 +92,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       set({ user: null, accessToken: null, isAuthenticated: false, error: "Your session expired. Please sign in again.", isLoading: false });
     }
   },
-  loginWithGoogleCredential: async (credential) => {
+  loginWithGoogleCode: async (code) => {
     set({ isLoading: true, error: null });
 
     try {
-      const response = await fetch(`${API_BASE}/auth/google/callback?credential=${encodeURIComponent(credential)}`, {
+      const response = await fetch(`${API_BASE}/auth/google/callback?code=${encodeURIComponent(code)}`, {
         method: "GET",
         headers: { Accept: "application/json" },
       });

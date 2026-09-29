@@ -42,3 +42,4 @@ NEXT_PUBLIC_WS_URL=wss://jumetra-backend-1.onrender.com
 The Render backend must allow requests from the Vercel deployment's origin through CORS. `NEXT_PUBLIC_*` values are embedded at build time, so redeploy after changing them.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# updated UI

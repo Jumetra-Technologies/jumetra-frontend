@@ -16,16 +16,15 @@ export default function HomePage() {
       <div className="max-w-4xl">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">HHIP</p>
         <h2 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
-          Hybrid Hardware Integration Platform
+          Universal Hybrid Hardware Simulation System
         </h2>
         <p className="mt-3 text-base leading-relaxed text-muted">
-          A modern engineering workspace for physical, virtual, and simulated hardware — in one
-          product.
+          Plan robotics projects, explore hardware, test virtual systems, and keep experiment records together.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href="/laboratory/workspace">
-            <Button size="lg">Open Laboratory ★</Button>
+            <Button size="lg">Open Engineering Lab</Button>
           </Link>
           <Link href="/workspace">
             <Button size="lg" variant="secondary">
@@ -34,7 +33,7 @@ export default function HomePage() {
           </Link>
           <Link href="/dashboard">
             <Button size="lg" variant="ghost">
-              Research Dashboard
+              System Diagnostics
             </Button>
           </Link>
         </div>

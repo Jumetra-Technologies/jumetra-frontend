@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DashboardShell } from "@/components/layout/sidebar";
 import { MetricTiles } from "@/components/charts/charts";
+import { RoboticsDashboard } from "@/components/dashboard/RoboticsDashboard";
 import { LiveOperationsPanel } from "@/components/live/live-panel";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -18,13 +19,14 @@ export default async function DashboardPage() {
   if (!overview) {
     return (
       <DashboardShell activePath="/dashboard">
-        <h2 className="text-2xl font-bold">Dashboard Overview</h2>
-        <p className="mt-4 text-muted">
-          Unable to load data. Start the API:{" "}
-          <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">
-            uvicorn api.main:app --reload
-          </code>
-        </p>
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold">System diagnostics</h2>
+          <p className="mt-1 text-sm text-muted">Connected device and simulation metrics.</p>
+        </div>
+        <RoboticsDashboard />
+        <Card>
+          <p className="text-sm text-muted">Connected diagnostics are unavailable. Check the API connection in Settings.</p>
+        </Card>
       </DashboardShell>
     );
   }
@@ -32,8 +34,15 @@ export default async function DashboardPage() {
   return (
     <DashboardShell activePath="/dashboard">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold">Dashboard Overview</h2>
-        <p className="mt-1 text-muted">HHIP hybrid hardware research metrics at a glance</p>
+        <h2 className="text-2xl font-bold">System diagnostics</h2>
+        <p className="mt-1 text-muted">Robotics projects first; connected system metrics below.</p>
+      </div>
+
+      <RoboticsDashboard />
+
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold">Connected system diagnostics</h3>
+        <p className="mt-1 text-sm text-muted">Synchronization and device health metrics from the connected API.</p>
       </div>
 
       <MetricTiles
@@ -84,7 +93,7 @@ export default async function DashboardPage() {
         </Card>
 
         <Card>
-          <h3 className="mb-4 text-sm font-medium text-muted">Recent Experiments</h3>
+          <h3 className="mb-4 text-sm font-medium text-muted">Recent connected runs</h3>
           <ul className="space-y-3">
             {overview.recent_experiments.map((exp) => (
               <li

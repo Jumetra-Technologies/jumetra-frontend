@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { DashboardShell } from "@/components/layout/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { LocalProjectDetail } from "@/components/projects/LocalProjectDetail";
 import { api } from "@/lib/api-client";
 import type { ProjectDetail } from "@/lib/types";
 
@@ -12,6 +13,14 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  if (id.startsWith("local-project-")) {
+    return (
+      <DashboardShell activePath="/workspace">
+        <LocalProjectDetail projectId={id} />
+      </DashboardShell>
+    );
+  }
+
   let project: ProjectDetail | null = null;
   try {
     project = await api.getProject(id);

@@ -4,13 +4,10 @@ import { DashboardShell } from "@/components/layout/sidebar";
 export default function MarketplacePage() {
   return (
     <DashboardShell activePath="/marketplace">
-      <h2 className="text-2xl font-bold">Component Marketplace</h2>
-      <p className="mt-2 text-muted">
-        Browse and install hardware models, simulator adapters, and firmware plugins.
-        Full marketplace commerce ships in a later sprint.
-      </p>
-      <Link href="/laboratory/workspace" className="mt-6 inline-block text-primary underline">
-        Open Laboratory Workspace →
+      <h2 className="text-2xl font-bold">Hardware catalog</h2>
+      <p className="mt-2 text-muted">The component catalog is the supported place to find hardware profiles and controller compatibility.</p>
+      <Link href="/components" className="mt-6 inline-block text-primary underline">
+        Open hardware catalog →
       </Link>
     </DashboardShell>
   );

@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ExperimentJournal } from "@/components/experiments/ExperimentJournal";
+import { LocalProjectDetail } from "@/components/projects/LocalProjectDetail";
 import { ProjectHub } from "@/components/projects/ProjectHub";
 import {
   createProjectRecord,
@@ -8,6 +9,10 @@ import {
   ROBOTICS_DATA_KEY,
   writeRoboticsData,
 } from "@/lib/robotics-data";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 afterEach(() => {
   cleanup();
@@ -82,5 +87,43 @@ describe("robotics project workflows", () => {
       results: "Calibration needed",
       hardware: ["Wheel encoders", "ruler"],
     });
+  });
+
+  it("opens the linked experiment form in-place from project detail", () => {
+    const project = createProjectRecord({
+      name: "Fast rover",
+      description: "",
+      objectives: "",
+      contributors: "",
+      category: "robotics",
+      hardware: [],
+    });
+    writeRoboticsData({ projects: [project], experiments: [] });
+    render(<LocalProjectDetail projectId={project.id} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Record experiment/ }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeVisible();
+    expect(within(dialog).getByLabelText("Project")).toHaveValue(project.id);
+  });
+
+  it("opens the linked experiment form in-place from project detail", () => {
+    const project = createProjectRecord({
+      name: "Fast rover",
+      description: "",
+      objectives: "",
+      contributors: "",
+      category: "robotics",
+      hardware: [],
+    });
+    writeRoboticsData({ projects: [project], experiments: [] });
+    render(<LocalProjectDetail projectId={project.id} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Record experiment/ }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeVisible();
+    expect(within(dialog).getByLabelText("Project")).toHaveValue(project.id);
   });
 });

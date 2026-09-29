@@ -33,6 +33,10 @@ type BuildInfo = {
   build_id?: string;
 };
 
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
 export function FirmwareStudio() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [project, setProject] = useState<Project | null>(null);
@@ -40,6 +44,7 @@ export function FirmwareStudio() {
   const [content, setContent] = useState("");
   const [dirty, setDirty] = useState(false);
   const [build, setBuild] = useState<BuildInfo | null>(null);
+  const [buildBusy, setBuildBusy] = useState(false);
   const [uploadPct, setUploadPct] = useState(0);
   const [uploadMsg, setUploadMsg] = useState("");
   const [uploadDone, setUploadDone] = useState(false);
@@ -77,14 +82,16 @@ export function FirmwareStudio() {
     }
   }, []);
 
-  const bootStudio = useCallback(async () => {
-    setLoading(true);
-    setApiError("");
-    try {
-      const [projectsRes, templatesRes] = await Promise.all([
+  const loadStudioData = useCallback(async () => {
+    return Promise.all([
         api.listFirmwareProjects(),
         api.listFirmwareTemplates(),
       ]);
+  }, []);
+
+  const bootStudio = useCallback(async () => {
+    try {
+      const [projectsRes, templatesRes] = await loadStudioData();
       setProjects((projectsRes.projects as Project[]) || []);
       setTemplates((templatesRes.templates as Array<{ id: string; name: string }>) || []);
     } catch (err) {
@@ -92,11 +99,23 @@ export function FirmwareStudio() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadStudioData]);
 
   useEffect(() => {
-    void bootStudio();
-  }, [bootStudio]);
+    let active = true;
+    loadStudioData().then(([projectsRes, templatesRes]) => {
+      if (!active) return;
+      setProjects((projectsRes.projects as Project[]) || []);
+      setTemplates((templatesRes.templates as Array<{ id: string; name: string }>) || []);
+    }).catch((err) => {
+      if (active) setApiError(err instanceof Error ? err.message : "Cannot reach HHIP API");
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [loadStudioData]);
 
   useEffect(() => {
     let ws: WebSocket | null = null;
@@ -166,15 +185,40 @@ export function FirmwareStudio() {
   }
 
   async function compile() {
-    if (!project) return;
+    if (!project || buildBusy) return;
+    setBuildBusy(true);
+    setRightTab("build");
+    setBuild({ logs: ["Submitting build job…"] });
+    setError("");
     try {
       if (dirty) await saveFile();
-      setRightTab("build");
-      const res = (await api.buildFirmware({ project_id: project.project_id, use_cache: false })) as BuildInfo;
-      setBuild(res);
-      setError("");
+      const queued = await api.queueFirmwareBuild({ project_id: project.project_id, use_cache: false });
+      const deadline = Date.now() + 10 * 60 * 1000;
+      let job = queued;
+      setBuild({ logs: [`Build ${job.status} · ${job.job_id}`] });
+
+      while (job.status === "queued" || job.status === "running") {
+        if (Date.now() >= deadline) {
+          throw new Error("Build is still running. Check the job again shortly.");
+        }
+        await wait(500);
+        job = await api.getBackgroundJob(queued.job_id);
+        if (job.status === "queued" || job.status === "running") {
+          setBuild({ logs: [`Build ${job.status} · ${job.job_id}`] });
+        }
+      }
+
+      if (job.status === "succeeded") {
+        setBuild(job.result as BuildInfo);
+      } else {
+        const message = job.error || "Firmware build failed";
+        setBuild({ success: false, errors: [message] });
+        setError(message);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Compile failed");
+    } finally {
+      setBuildBusy(false);
     }
   }
 
@@ -219,7 +263,14 @@ export function FirmwareStudio() {
       <div className="flex h-full flex-col items-center justify-center gap-2 bg-background px-4 text-center text-sm">
         <p className="max-w-md text-danger">{apiError}</p>
         <p className="text-muted">Ensure the HHIP API is running on port 8000, then retry.</p>
-        <Button size="sm" onClick={() => void bootStudio()}>
+        <Button
+          size="sm"
+          onClick={() => {
+            setLoading(true);
+            setApiError("");
+            void bootStudio();
+          }}
+        >
           Retry connection
         </Button>
       </div>
@@ -231,8 +282,8 @@ export function FirmwareStudio() {
       <header className="flex shrink-0 items-center gap-3 border-b border-border bg-surface px-3 py-2">
         <span className="text-sm font-semibold">Embedded Studio</span>
         <div className="ml-auto flex flex-wrap items-center gap-1">
-          <Button size="sm" className="h-7 text-[11px]" disabled={!project} onClick={() => void compile()}>
-            Compile
+          <Button size="sm" className="h-7 text-[11px]" disabled={!project || buildBusy} onClick={() => void compile()}>
+            {buildBusy ? "Building…" : "Compile"}
           </Button>
           <Button size="sm" variant="secondary" className="h-7 text-[11px]" disabled={!project} onClick={() => void upload()}>
             Upload

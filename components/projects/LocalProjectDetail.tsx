@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, FilePlus2, Trash2 } from "lucide-react";
+import { ExperimentRecordDialog } from "@/components/experiments/ExperimentRecordDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -28,6 +29,7 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
   const [hardwareText, setHardwareText] = useState("");
   const [draft, setDraft] = useState<RoboticsProject | null>(null);
   const [editing, setEditing] = useState(false);
+  const [creatingRecord, setCreatingRecord] = useState(false);
   const [error, setError] = useState("");
 
   if (!data) {
@@ -151,9 +153,9 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
             <h3 id="project-records-heading" className="text-lg font-semibold">Experiment records</h3>
             <p className="text-sm text-muted">{records.length} recorded for this project</p>
           </div>
-          <Link href={`/experiments?project=${encodeURIComponent(project.id)}`}>
-            <Button><FilePlus2 className="size-4" aria-hidden /> Record experiment</Button>
-          </Link>
+          <Button onClick={() => setCreatingRecord(true)}>
+            <FilePlus2 className="size-4" aria-hidden /> Record experiment
+          </Button>
         </div>
         {records.length === 0 ? (
           <Card><p className="text-sm text-muted">Procedures, observations, and results will appear here after you record an experiment.</p></Card>
@@ -168,6 +170,14 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
           </div>
         )}
       </section>
+      {creatingRecord ? (
+        <ExperimentRecordDialog
+          open
+          projectId={project.id}
+          projects={data.projects}
+          onClose={() => setCreatingRecord(false)}
+        />
+      ) : null}
     </div>
   );
 }

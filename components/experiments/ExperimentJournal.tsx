@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { FilePlus2, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog } from "@/components/ui/dialog";
-import { Input, Select } from "@/components/ui/input";
+import { Select } from "@/components/ui/input";
+import { ExperimentRecordDialog } from "@/components/experiments/ExperimentRecordDialog";
+import { api } from "@/lib/api-client";
 import {
-  createExperimentRecord,
   getServerRoboticsDataSnapshot,
   readRoboticsData,
   subscribeToRoboticsData,
@@ -17,21 +17,6 @@ import {
   type ExperimentRecord,
 } from "@/lib/robotics-data";
 import type { ExperimentSummary } from "@/lib/types";
-
-type ExperimentDraft = Omit<ExperimentRecord, "id" | "createdAt" | "updatedAt">;
-
-function emptyDraft(projectId = ""): ExperimentDraft {
-  return {
-    projectId,
-    title: "",
-    objective: "",
-    hardware: [],
-    procedure: "",
-    observations: "",
-    results: "",
-    notes: "",
-  };
-}
 
 export function ExperimentJournal({
   initialProjectId,
@@ -48,11 +33,19 @@ export function ExperimentJournal({
     getServerRoboticsDataSnapshot,
   );
   const [creating, setCreating] = useState(Boolean(initialProjectId));
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState(() => emptyDraft(initialProjectId));
-  const [hardwareText, setHardwareText] = useState("");
+  const [editingRecord, setEditingRecord] = useState<ExperimentRecord | null>(null);
+  const [connectedRuns, setConnectedRuns] = useState(simulationRuns);
   const [filterProjectId, setFilterProjectId] = useState(initialProjectId ?? "all");
-  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    api.getExperiments().then((runs) => {
+      if (active) setConnectedRuns(runs);
+    }).catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const projects = data?.projects ?? [];
   const records = (data?.experiments ?? []).filter(
@@ -60,54 +53,18 @@ export function ExperimentJournal({
   );
 
   function startCreate() {
-    setDraft(emptyDraft(initialProjectId ?? projects[0]?.id ?? ""));
-    setHardwareText("");
-    setEditingId(null);
-    setError("");
+    setEditingRecord(null);
     setCreating(true);
   }
 
   function startEdit(record: ExperimentRecord) {
-    setDraft({
-      projectId: record.projectId,
-      title: record.title,
-      objective: record.objective,
-      hardware: record.hardware,
-      procedure: record.procedure,
-      observations: record.observations,
-      results: record.results,
-      notes: record.notes,
-    });
-    setHardwareText(record.hardware.join(", "));
-    setEditingId(record.id);
-    setError("");
+    setEditingRecord(record);
     setCreating(true);
   }
 
-  function saveRecord(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const current = readRoboticsData();
-    const hardware = hardwareText.split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
-    if (editingId) {
-      const next = {
-        ...current,
-        experiments: current.experiments.map((record) => record.id === editingId
-          ? { ...record, ...draft, hardware, updatedAt: new Date().toISOString() }
-          : record),
-      };
-      if (!writeRoboticsData(next)) {
-        setError("Could not save to browser storage.");
-        return;
-      }
-    } else {
-      const record = createExperimentRecord({ ...draft, hardware });
-      if (!writeRoboticsData({ ...current, experiments: [record, ...current.experiments] })) {
-        setError("Could not save to browser storage.");
-        return;
-      }
-    }
+  function closeEditor() {
     setCreating(false);
-    setEditingId(null);
+    setEditingRecord(null);
   }
 
   function deleteRecord(record: ExperimentRecord) {
@@ -203,11 +160,11 @@ export function ExperimentJournal({
           <h3 id="simulation-runs-heading" className="text-lg font-semibold">Simulation runs</h3>
           <p className="text-sm text-muted">Live and synchronization runs supplied by the connected API.</p>
         </div>
-        {simulationRuns.length === 0 ? (
+        {connectedRuns.length === 0 ? (
           <p className="border-y border-border py-4 text-sm text-muted">No connected simulation runs available.</p>
         ) : (
           <div className="divide-y divide-border border-y border-border">
-            {simulationRuns.map((run) => (
+            {connectedRuns.map((run) => (
               <Link key={run.experiment_id} href={`/experiments/${run.experiment_id}`} className="flex flex-wrap items-center justify-between gap-3 py-3 hover:text-primary">
                 <span><span className="block text-sm font-medium">{run.name}</span><span className="text-xs text-muted">{run.device_count} devices · {run.status}</span></span>
                 <span className="text-xs text-muted">Sync error {run.average_sync_error.toFixed(2)} ms</span>
@@ -217,23 +174,16 @@ export function ExperimentJournal({
         )}
       </section>
 
-      <Dialog open={creating} onClose={() => setCreating(false)} title={editingId ? "Edit experiment record" : "Record an experiment"} className="max-h-[90svh] overflow-y-auto">
-        <form className="space-y-4" onSubmit={saveRecord}>
-          <label className="block text-sm font-medium">Title<Input required autoFocus value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} className="mt-1.5" placeholder="e.g. Wheel encoder repeatability" /></label>
-          <label className="block text-sm font-medium">Project<Select value={draft.projectId} onChange={(event) => setDraft({ ...draft, projectId: event.target.value })} className="mt-1.5"><option value="">Unassigned</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</Select></label>
-          <label className="block text-sm font-medium">Objective<textarea required value={draft.objective} onChange={(event) => setDraft({ ...draft, objective: event.target.value })} className="mt-1.5 min-h-16 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm" /></label>
-          <label className="block text-sm font-medium">Hardware<textarea value={hardwareText} onChange={(event) => setHardwareText(event.target.value)} className="mt-1.5 min-h-14 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm" placeholder="List parts separated by commas or lines" /></label>
-          <label className="block text-sm font-medium">Procedure<textarea required value={draft.procedure} onChange={(event) => setDraft({ ...draft, procedure: event.target.value })} className="mt-1.5 min-h-20 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm" /></label>
-          <label className="block text-sm font-medium">Observations<textarea value={draft.observations} onChange={(event) => setDraft({ ...draft, observations: event.target.value })} className="mt-1.5 min-h-20 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm" /></label>
-          <label className="block text-sm font-medium">Results<textarea value={draft.results} onChange={(event) => setDraft({ ...draft, results: event.target.value })} className="mt-1.5 min-h-16 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm" /></label>
-          <label className="block text-sm font-medium">Notes<textarea value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} className="mt-1.5 min-h-14 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm" /></label>
-          {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
-          <div className="flex justify-end gap-2 border-t border-border pt-4">
-            <Button type="button" variant="ghost" onClick={() => setCreating(false)}>Cancel</Button>
-            <Button type="submit">{editingId ? "Save record" : "Save experiment"}</Button>
-          </div>
-        </form>
-      </Dialog>
+      {creating ? (
+        <ExperimentRecordDialog
+          key={editingRecord?.id ?? `new-${initialProjectId ?? "unassigned"}`}
+          open
+          projectId={initialProjectId ?? projects[0]?.id ?? ""}
+          projects={projects}
+          record={editingRecord ?? undefined}
+          onClose={closeEditor}
+        />
+      ) : null}
     </>
   );
 }

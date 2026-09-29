@@ -548,6 +548,25 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  queueFirmwareBuild: (body: { project_id: string; use_cache?: boolean }) =>
+    fetchJson<{
+      job_id: string;
+      job_type: string;
+      status: "queued" | "running" | "succeeded" | "failed";
+      result?: unknown;
+      error?: string | null;
+    }>("/firmware/build/jobs", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  getBackgroundJob: (jobId: string) =>
+    fetchJson<{
+      job_id: string;
+      job_type: string;
+      status: "queued" | "running" | "succeeded" | "failed";
+      result?: unknown;
+      error?: string | null;
+    }>(`/jobs/${encodeURIComponent(jobId)}`),
   uploadFirmware: (body: { project_id: string; port?: string; build_id?: string }) =>
     fetchJson<Record<string, unknown>>("/firmware/upload", {
       method: "POST",

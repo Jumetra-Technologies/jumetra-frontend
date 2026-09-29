@@ -35,6 +35,7 @@ export function ProjectHub({ serverProjects }: { serverProjects: ProjectSummary[
   );
   const projects = data?.projects ?? [];
   const [creating, setCreating] = useState(false);
+  const [includeContributor, setIncludeContributor] = useState(false);
   const [draft, setDraft] = useState(emptyDraft);
   const [error, setError] = useState("");
 
@@ -44,7 +45,7 @@ export function ProjectHub({ serverProjects }: { serverProjects: ProjectSummary[
       name: draft.name.trim(),
       description: draft.description.trim(),
       objectives: draft.objectives.trim(),
-      contributors: draft.contributors.trim(),
+      contributors: includeContributor ? draft.contributors.trim() : "",
       category: draft.category,
       hardware: draft.hardware.split(/[\n,]/).map((item) => item.trim()).filter(Boolean),
     });
@@ -54,8 +55,15 @@ export function ProjectHub({ serverProjects }: { serverProjects: ProjectSummary[
       return;
     }
     setDraft(emptyDraft);
+    setIncludeContributor(false);
     setError("");
     setCreating(false);
+  }
+
+  function closeCreate() {
+    setCreating(false);
+    setIncludeContributor(false);
+    setDraft((current) => ({ ...current, contributors: "" }));
   }
 
   return (
@@ -152,7 +160,7 @@ export function ProjectHub({ serverProjects }: { serverProjects: ProjectSummary[
         </section>
       ) : null}
 
-      <Dialog open={creating} onClose={() => setCreating(false)} title="Create robotics project" className="max-h-[90svh] overflow-y-auto">
+      <Dialog open={creating} onClose={closeCreate} title="Create robotics project" className="max-h-[90svh] overflow-y-auto">
         <form className="space-y-4" onSubmit={onCreate}>
           <label className="block text-sm font-medium">
             Project name
@@ -176,17 +184,45 @@ export function ProjectHub({ serverProjects }: { serverProjects: ProjectSummary[
             Objectives
             <textarea value={draft.objectives} onChange={(event) => setDraft({ ...draft, objectives: event.target.value })} className="mt-1.5 min-h-20 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]" placeholder="What should the robot or system achieve?" />
           </label>
-          <label className="block text-sm font-medium">
-            Contributors
-            <Input value={draft.contributors} onChange={(event) => setDraft({ ...draft, contributors: event.target.value })} className="mt-1.5" placeholder="Names or team" />
-          </label>
+          <div className="flex items-center justify-between gap-4 border-y border-border py-3">
+            <span id="include-teammate-label" className="text-sm font-medium">Add a teammate</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={includeContributor}
+              aria-labelledby="include-teammate-label"
+              onClick={() => {
+                setIncludeContributor((enabled) => !enabled);
+                if (includeContributor) setDraft({ ...draft, contributors: "" });
+              }}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 ${includeContributor ? "border-primary bg-primary" : "border-border bg-muted-bg"}`}
+            >
+              <span
+                aria-hidden="true"
+                className={`size-4 rounded-full bg-white shadow-sm transition-transform ${includeContributor ? "translate-x-5" : "translate-x-1"}`}
+              />
+            </button>
+          </div>
+          {includeContributor ? (
+            <label className="block text-sm font-medium">
+              Teammate name or email
+              <Input
+                required
+                autoFocus
+                value={draft.contributors}
+                onChange={(event) => setDraft({ ...draft, contributors: event.target.value })}
+                className="mt-1.5"
+                placeholder="Name or email address"
+              />
+            </label>
+          ) : null}
           <label className="block text-sm font-medium">
             Hardware
             <textarea value={draft.hardware} onChange={(event) => setDraft({ ...draft, hardware: event.target.value })} className="mt-1.5 min-h-16 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]" placeholder="ESP32, motor driver, encoders" />
           </label>
           {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
           <div className="flex justify-end gap-2 border-t border-border pt-4">
-            <Button type="button" variant="ghost" onClick={() => setCreating(false)}>Cancel</Button>
+            <Button type="button" variant="ghost" onClick={closeCreate}>Cancel</Button>
             <Button type="submit">Create project</Button>
           </div>
         </form>

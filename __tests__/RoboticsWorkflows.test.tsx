@@ -27,7 +27,27 @@ describe("robotics project workflows", () => {
 
     expect(screen.getByRole("heading", { name: "Inspection rover" })).toBeInTheDocument();
     expect(readRoboticsData().projects[0].hardware).toEqual(["ESP32", "wheel encoders"]);
+    expect(readRoboticsData().projects[0].contributors).toBe("");
     expect(window.localStorage.getItem(ROBOTICS_DATA_KEY)).toContain("Inspect indoor aisles");
+  });
+
+  it("requires a teammate name or email only when the switch is on", () => {
+    render(<ProjectHub serverProjects={[]} />);
+    fireEvent.click(screen.getByRole("button", { name: "New project" }));
+
+    const dialog = screen.getByRole("dialog");
+    const teammateSwitch = within(dialog).getByRole("switch", { name: "Add a teammate" });
+    expect(teammateSwitch).toHaveAttribute("aria-checked", "false");
+    expect(within(dialog).queryByLabelText("Teammate name or email")).not.toBeInTheDocument();
+
+    fireEvent.click(teammateSwitch);
+    const teammateInput = within(dialog).getByLabelText("Teammate name or email");
+    expect(teammateInput).toBeRequired();
+    fireEvent.change(within(dialog).getByLabelText("Project name"), { target: { value: "Assistive rover" } });
+    fireEvent.change(teammateInput, { target: { value: "robotics@example.com" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create project" }));
+
+    expect(readRoboticsData().projects[0].contributors).toBe("robotics@example.com");
   });
 
   it("records a structured experiment linked to a robotics project", () => {

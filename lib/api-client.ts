@@ -50,6 +50,7 @@ const DEFAULT_API_BASE =
     ? "https://jumetra-backend-1.onrender.com"
     : "http://127.0.0.1:8000";
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_BASE).replace(/\/+$/, "");
+const ENGINEERING_WORKSPACE_REQUEST_TIMEOUT_MS = 15_000;
 
 function buildQuery(params: Record<string, string | number | undefined | null>): string {
   const qs = new URLSearchParams();
@@ -61,7 +62,7 @@ function buildQuery(params: Record<string, string | number | undefined | null>):
   return query ? `?${query}` : "";
 }
 
-async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+async function fetchJson<T>(path: string, init?: RequestInit, timeoutMs?: number): Promise<T> {
   const session = typeof window !== "undefined" ? getStoredAuthSessionSafe() : null;
   const headers = new Headers(init?.headers ?? undefined);
 
@@ -73,30 +74,52 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set("Content-Type", "application/json");
   }
 
-  const fetchInit: RequestInit = { ...init, headers };
+  const controller = timeoutMs ? new AbortController() : undefined;
+  const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
+  const fetchInit: RequestInit = {
+    ...init,
+    headers,
+    ...(controller ? { signal: controller.signal } : {}),
+  };
   // Next.js cache hints are server-only; omit in the browser to avoid fetch failures.
   if (typeof window === "undefined" && !init?.method) {
     (fetchInit as RequestInit & { next?: { revalidate: number } }).next = { revalidate: 10 };
   }
-  let res: Response;
   try {
-    res = await fetch(`${API_BASE}${path}`, fetchInit);
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}${path}`, fetchInit);
+    } catch (err) {
+      if (controller?.signal.aborted) {
+        throw new Error(`API ${path} timed out after ${timeoutMs} ms.`);
+      }
+      const hint =
+        typeof window !== "undefined"
+          ? `Cannot reach the Jumetra API at ${API_BASE}. Check that the backend is running and that NEXT_PUBLIC_API_URL is correct.`
+          : "";
+      const message = err instanceof Error ? err.message : "Network error";
+      throw new Error(hint ? `${message}. ${hint}` : message);
+    }
+    if (!res.ok) {
+      throw new Error(`API ${path} failed: ${res.status}`);
+    }
+    return (await res.json()) as T;
   } catch (err) {
-    const hint =
-      typeof window !== "undefined"
-        ? `Cannot reach the Jumetra API at ${API_BASE}. Check that the backend is running and that NEXT_PUBLIC_API_URL is correct.`
-        : "";
-    const message = err instanceof Error ? err.message : "Network error";
-    throw new Error(hint ? `${message}. ${hint}` : message);
+    if (controller?.signal.aborted) {
+      throw new Error(`API ${path} timed out after ${timeoutMs} ms.`);
+    }
+    throw err;
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
-  if (!res.ok) {
-    throw new Error(`API ${path} failed: ${res.status}`);
-  }
-  return res.json() as Promise<T>;
 }
 
-async function fetchWorkspaceState(path: string, init?: RequestInit): Promise<WorkspaceState> {
-  const raw = await fetchJson<unknown>(path, init);
+async function fetchWorkspaceState(
+  path: string,
+  init?: RequestInit,
+  timeoutMs?: number,
+): Promise<WorkspaceState> {
+  const raw = await fetchJson<unknown>(path, init, timeoutMs);
   return coerceWorkspaceState(raw);
 }
 
@@ -348,11 +371,15 @@ export const api = {
     fetchJson<{ workspace_id: string; name: string; status: string }>("/engineering/workspace", {
       method: "POST",
       body: JSON.stringify(body),
-    }),
+    }, ENGINEERING_WORKSPACE_REQUEST_TIMEOUT_MS),
   getEngineeringWorkspaceState: (id: string) =>
     fetchWorkspaceState(`/engineering/workspace/${id}/state`),
   connectEngineeringWorkspace: (id: string) =>
-    fetchWorkspaceState(`/engineering/workspace/${id}/connect`, { method: "POST" }),
+    fetchWorkspaceState(
+      `/engineering/workspace/${id}/connect`,
+      { method: "POST" },
+      ENGINEERING_WORKSPACE_REQUEST_TIMEOUT_MS,
+    ),
   disconnectEngineeringWorkspace: (id: string) =>
     fetchWorkspaceState(`/engineering/workspace/${id}/disconnect`, { method: "POST" }),
   runEngineeringWorkspace: (id: string, speed = "1x") =>

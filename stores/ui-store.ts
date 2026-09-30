@@ -28,9 +28,9 @@ interface UIStore {
 }
 
 export const useUIStore = create<UIStore>((set) => ({
-  leftOpen: true,
-  rightOpen: true,
-  bottomOpen: true,
+  leftOpen: false,
+  rightOpen: false,
+  bottomOpen: false,
   bottomHeight: 220,
   activeBottomTab: "console",
   wireToolActive: false,

@@ -37,7 +37,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/", label: "Home", icon: Home },
       { href: "/workspace", label: "Projects", icon: Boxes },
       { href: "/laboratory/workspace", label: "Engineering Lab", icon: Beaker, primary: true },
-      { href: "/components", label: "Hardware Catalog", icon: CircuitBoard },
+      { href: "/components", label: "Component library", icon: CircuitBoard },
       { href: "/firmware", label: "Firmware", icon: Cpu },
     ],
   },

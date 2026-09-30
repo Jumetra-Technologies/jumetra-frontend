@@ -27,10 +27,11 @@ export default async function ComponentsPage({
 
   return (
     <DashboardShell activePath="/components">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold">Component Catalog</h2>
-        <p className="mt-1 text-zinc-500">
-          Search hardware components, view specifications, and check microcontroller compatibility
+      <div className="mb-8 max-w-3xl">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Hardware library</p>
+        <h2 className="mt-2 text-3xl font-bold tracking-tight">Component library</h2>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          Find the right board, sensor, or actuator for your next build. Start with a search or browse the most-used parts first.
         </p>
       </div>
       <ComponentSearchPanel

@@ -7,6 +7,7 @@ import {
   Cpu,
   FileText,
   FlaskConical,
+  GraduationCap,
   Home,
   LayoutDashboard,
   Map,
@@ -55,6 +56,7 @@ export const NAV_SECTIONS: NavSection[] = [
     id: "knowledge",
     label: "Knowledge",
     items: [
+      { href: "/learn", label: "Learning Center", icon: GraduationCap },
       { href: "/docs", label: "Documentation", icon: BookOpen },
       { href: "/architecture", label: "Architecture", icon: Network },
       { href: "/roadmap", label: "Roadmap", icon: Map },

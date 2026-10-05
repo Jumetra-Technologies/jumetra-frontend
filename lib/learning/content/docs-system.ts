@@ -93,8 +93,8 @@ export const SYSTEM_OVERVIEW_ARTICLES: DocArticle[] = [
       {
         type: "link-card",
         href: "/architecture",
-        title: "Architecture overview",
-        text: "See the system layers and the project data flow.",
+        title: "Architecture explorer",
+        text: "Select a layer to see what it connects to, or follow data from the browser to a real board.",
       },
     ],
   },

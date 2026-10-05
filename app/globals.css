@@ -316,3 +316,20 @@ pre {
   background: var(--scrollbar);
   border-radius: 8px;
 }
+
+/* Architecture Explorer: data pulse travelling along a board trace */
+@keyframes arch-signal {
+  to {
+    stroke-dashoffset: -26;
+  }
+}
+
+.arch-signal {
+  animation: arch-signal 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arch-signal {
+    animation: none;
+  }
+}

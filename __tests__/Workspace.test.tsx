@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SimulationToolbar } from "@/components/workspace/Toolbar/SimulationToolbar";
 import { PropertyInspector } from "@/components/workspace/Inspector/PropertyInspector";
@@ -8,7 +8,6 @@ import { LogicAnalyzer } from "@/components/workspace/Monitors/LogicAnalyzer";
 import { WireEditor } from "@/components/workspace/Wire/WireEditor";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useSelectionStore } from "@/stores/selection-store";
-import { useSimulationStore } from "@/stores/simulation-store";
 
 vi.mock("@/lib/api-client", () => ({
   api: {
@@ -37,14 +36,12 @@ beforeEach(() => {
 });
 
 describe("SimulationToolbar", () => {
-  it("keeps primary simulation control visible and advanced controls in Tools", () => {
+  it("renders run pause step controls", () => {
     render(<SimulationToolbar workspaceId="WS1" />);
     expect(screen.getByRole("button", { name: "Run" })).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Tools"));
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Step" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Wire Tool" })).toBeInTheDocument();
-    act(() => useSimulationStore.setState({ status: "running" }));
-    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
   });
 });
 

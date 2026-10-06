@@ -1,0 +1,21 @@
+# Frontend talks to Cloud Functions / Cloud Run (not Render).
+# Browser calls /backend/* (same origin); App Hosting proxies to JUMETRA_BACKEND_URL.
+runConfig:
+  minInstances: 0
+
+env:
+  - variable: JUMETRA_BACKEND_URL
+    value: https://api-aoxa3kagvq-ez.a.run.app
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_API_URL
+    value: /backend
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_WS_URL
+    value: wss://api-aoxa3kagvq-ez.a.run.app
+    availability:
+      - BUILD
+      - RUNTIME

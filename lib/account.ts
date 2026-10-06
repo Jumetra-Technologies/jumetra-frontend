@@ -1,41 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const ACCOUNT_KEY = "hhip-account";
+import { getMe, type AuthUser } from "@/lib/auth";
 
 export type AccountProfile = {
   name: string;
   email?: string;
 };
 
-function readAccount(): AccountProfile | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(ACCOUNT_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<AccountProfile>;
-    if (!parsed.name?.trim()) return null;
-    return {
-      name: parsed.name.trim(),
-      email: parsed.email?.trim() || undefined,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/** Current signed-in account, or null until the user signs up. */
 export function useAccount(): AccountProfile | null {
   const [account, setAccount] = useState<AccountProfile | null>(null);
 
   useEffect(() => {
-    setAccount(readAccount());
-    function onStorage(event: StorageEvent) {
-      if (event.key === ACCOUNT_KEY) setAccount(readAccount());
-    }
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    getMe()
+      .then((user: AuthUser) => {
+        setAccount({ name: user.name, email: user.email });
+      })
+      .catch(() => setAccount(null));
   }, []);
 
   return account;

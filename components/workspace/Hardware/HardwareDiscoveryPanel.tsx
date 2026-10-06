@@ -5,6 +5,7 @@ import { Cpu, Plug, Plus, RefreshCw, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { api, getDiscoveryWsUrl } from "@/lib/api-client";
+import { openAuthenticatedWebSocket } from "@/lib/ws-client";
 import {
   statusBadgeVariant,
   useDiscoveryStore,
@@ -203,11 +204,18 @@ export function HardwareDiscoveryPanel({
       });
 
     let ws: WebSocket | null = null;
-    try {
-      ws = new WebSocket(getDiscoveryWsUrl());
-      ws.onopen = () => setConnected(true);
-      ws.onclose = () => setConnected(false);
-      ws.onmessage = (ev) => {
+    let cancelled = false;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    void openAuthenticatedWebSocket(getDiscoveryWsUrl())
+      .then((socket) => {
+        if (cancelled) {
+          socket.close();
+          return;
+        }
+        ws = socket;
+        socket.onopen = () => setConnected(true);
+        socket.onclose = () => setConnected(false);
+        socket.onmessage = (ev) => {
         try {
           const msg = JSON.parse(ev.data);
           if (msg.type === "discovery_update" && Array.isArray(msg.devices)) {
@@ -216,17 +224,17 @@ export function HardwareDiscoveryPanel({
         } catch {
           /* ignore */
         }
-      };
-      const interval = setInterval(() => {
-        if (ws?.readyState === WebSocket.OPEN) ws.send("ping");
-      }, 10000);
-      return () => {
-        clearInterval(interval);
-        ws?.close();
-      };
-    } catch {
-      return;
-    }
+        };
+        interval = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) ws.send("ping");
+        }, 10000);
+      })
+      .catch(() => setConnected(false));
+    return () => {
+      cancelled = true;
+      if (interval) clearInterval(interval);
+      ws?.close();
+    };
   }, [setDevices, setConnected]);
 
   const active = devices.filter((d) => d.status !== "disconnected");

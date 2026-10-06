@@ -26,31 +26,19 @@ import type {
 } from "./types";
 import type { WorkspaceNode, WorkspaceState } from "./workspace-types";
 import { coerceWorkspaceState } from "./workspace-snapshot";
+import { authHeaders } from "@/lib/session-tokens";
 
-function getStoredAuthSessionSafe(): { access_token?: string } | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const raw = window.localStorage.getItem("hhip-auth-session");
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(raw) as { access_token?: string } | null;
-    return parsed && parsed.access_token ? parsed : null;
-  } catch {
-    return null;
-  }
-}
+const CLOUD_API =
+  process.env.JUMETRA_BACKEND_URL ??
+  "https://api-aoxa3kagvq-ez.a.run.app";
 
 const DEFAULT_API_BASE =
-  process.env.NODE_ENV === "production"
-    ? "https://jumetra-backend-1.onrender.com"
-    : "http://127.0.0.1:8000";
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_BASE).replace(/\/+$/, "");
-const ENGINEERING_WORKSPACE_REQUEST_TIMEOUT_MS = 15_000;
+  process.env.NODE_ENV === "production" ? "/backend" : "http://localhost:8000";
+const API_BASE = (
+  process.env.NODE_ENV === "production" && typeof window === "undefined"
+    ? CLOUD_API
+    : process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_BASE
+).replace(/\/+$/, "");
 
 function buildQuery(params: Record<string, string | number | undefined | null>): string {
   const qs = new URLSearchParams();
@@ -62,64 +50,39 @@ function buildQuery(params: Record<string, string | number | undefined | null>):
   return query ? `?${query}` : "";
 }
 
-async function fetchJson<T>(path: string, init?: RequestInit, timeoutMs?: number): Promise<T> {
-  const session = typeof window !== "undefined" ? getStoredAuthSessionSafe() : null;
-  const headers = new Headers(init?.headers ?? undefined);
-
-  if (session?.access_token) {
-    headers.set("Authorization", `Bearer ${session.access_token}`);
+async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+  if (typeof window === "undefined") {
+    const { connection } = await import("next/server");
+    await connection();
   }
-
-  if (init?.method && init.method !== "GET" && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  const controller = timeoutMs ? new AbortController() : undefined;
-  const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
-  const fetchInit: RequestInit = {
-    ...init,
-    headers,
-    ...(controller ? { signal: controller.signal } : {}),
+  const headers: HeadersInit = {
+    ...(init?.method && init.method !== "GET" ? { "Content-Type": "application/json" } : {}),
+    ...authHeaders(init?.headers),
   };
+  const fetchInit: RequestInit = { ...init, headers, credentials: "include" };
   // Next.js cache hints are server-only; omit in the browser to avoid fetch failures.
   if (typeof window === "undefined" && !init?.method) {
     (fetchInit as RequestInit & { next?: { revalidate: number } }).next = { revalidate: 10 };
   }
+  let res: Response;
   try {
-    let res: Response;
-    try {
-      res = await fetch(`${API_BASE}${path}`, fetchInit);
-    } catch (err) {
-      if (controller?.signal.aborted) {
-        throw new Error(`API ${path} timed out after ${timeoutMs} ms.`);
-      }
-      const hint =
-        typeof window !== "undefined"
-          ? `Cannot reach the Jumetra API at ${API_BASE}. Check that the backend is running and that NEXT_PUBLIC_API_URL is correct.`
-          : "";
-      const message = err instanceof Error ? err.message : "Network error";
-      throw new Error(hint ? `${message}. ${hint}` : message);
-    }
-    if (!res.ok) {
-      throw new Error(`API ${path} failed: ${res.status}`);
-    }
-    return (await res.json()) as T;
+    res = await fetch(`${API_BASE}${path}`, fetchInit);
   } catch (err) {
-    if (controller?.signal.aborted) {
-      throw new Error(`API ${path} timed out after ${timeoutMs} ms.`);
-    }
-    throw err;
-  } finally {
-    if (timeout) clearTimeout(timeout);
+    const hint =
+      typeof window !== "undefined"
+        ? `Cannot reach the Jumetra API at ${API_BASE}. Check that the backend is running and that NEXT_PUBLIC_API_URL is correct.`
+        : "";
+    const message = err instanceof Error ? err.message : "Network error";
+    throw new Error(hint ? `${message}. ${hint}` : message);
   }
+  if (!res.ok) {
+    throw new Error(`API ${path} failed: ${res.status}`);
+  }
+  return res.json() as Promise<T>;
 }
 
-async function fetchWorkspaceState(
-  path: string,
-  init?: RequestInit,
-  timeoutMs?: number,
-): Promise<WorkspaceState> {
-  const raw = await fetchJson<unknown>(path, init, timeoutMs);
+async function fetchWorkspaceState(path: string, init?: RequestInit): Promise<WorkspaceState> {
+  const raw = await fetchJson<unknown>(path, init);
   return coerceWorkspaceState(raw);
 }
 
@@ -170,16 +133,13 @@ export const api = {
   getComparison: () => fetchJson<ComparisonResult>("/analytics/comparison"),
   getProjects: () => fetchJson<ProjectSummary[]>("/workspace/projects"),
   getProject: (id: string) => fetchJson<ProjectDetail>(`/workspace/projects/${id}`),
-  searchComponents: (
-    params: {
-      q?: string;
-      category?: string;
-      interface?: string;
-      controller_id?: string;
-      limit?: number;
-    },
-    timeoutMs?: number,
-  ) =>
+  searchComponents: (params: {
+    q?: string;
+    category?: string;
+    interface?: string;
+    controller_id?: string;
+    limit?: number;
+  }) =>
     fetchJson<ComponentSearchHit[]>(
       `/components/search${buildQuery({
         q: params.q,
@@ -188,8 +148,6 @@ export const api = {
         controller_id: params.controller_id,
         limit: params.limit,
       })}`,
-      undefined,
-      timeoutMs,
     ),
   debugComponents: () =>
     fetchJson<{
@@ -376,15 +334,11 @@ export const api = {
     fetchJson<{ workspace_id: string; name: string; status: string }>("/engineering/workspace", {
       method: "POST",
       body: JSON.stringify(body),
-    }, ENGINEERING_WORKSPACE_REQUEST_TIMEOUT_MS),
+    }),
   getEngineeringWorkspaceState: (id: string) =>
     fetchWorkspaceState(`/engineering/workspace/${id}/state`),
   connectEngineeringWorkspace: (id: string) =>
-    fetchWorkspaceState(
-      `/engineering/workspace/${id}/connect`,
-      { method: "POST" },
-      ENGINEERING_WORKSPACE_REQUEST_TIMEOUT_MS,
-    ),
+    fetchWorkspaceState(`/engineering/workspace/${id}/connect`, { method: "POST" }),
   disconnectEngineeringWorkspace: (id: string) =>
     fetchWorkspaceState(`/engineering/workspace/${id}/disconnect`, { method: "POST" }),
   runEngineeringWorkspace: (id: string, speed = "1x") =>
@@ -580,25 +534,6 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  queueFirmwareBuild: (body: { project_id: string; use_cache?: boolean }) =>
-    fetchJson<{
-      job_id: string;
-      job_type: string;
-      status: "queued" | "running" | "succeeded" | "failed";
-      result?: unknown;
-      error?: string | null;
-    }>("/firmware/build/jobs", {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-  getBackgroundJob: (jobId: string) =>
-    fetchJson<{
-      job_id: string;
-      job_type: string;
-      status: "queued" | "running" | "succeeded" | "failed";
-      result?: unknown;
-      error?: string | null;
-    }>(`/jobs/${encodeURIComponent(jobId)}`),
   uploadFirmware: (body: { project_id: string; port?: string; build_id?: string }) =>
     fetchJson<Record<string, unknown>>("/firmware/upload", {
       method: "POST",
@@ -620,7 +555,12 @@ export const api = {
 };
 
 function wsBase(): string {
-  return process.env.NEXT_PUBLIC_WS_URL ?? API_BASE.replace(/^http/, "ws");
+  return (
+    process.env.NEXT_PUBLIC_WS_URL ??
+    (process.env.NODE_ENV === "production"
+      ? "wss://europe-west4-hhipsystemv0.cloudfunctions.net/api"
+      : API_BASE.replace(/^http/, "ws"))
+  );
 }
 
 export function wsUrl(path: string): string {

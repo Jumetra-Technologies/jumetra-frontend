@@ -84,10 +84,9 @@ export function BottomDock({ workspaceId }: { workspaceId: string }) {
         type="button"
         className="flex items-center gap-2 border-t border-border bg-surface px-4 py-2 text-xs font-medium text-muted hover:text-foreground"
         onClick={() => setOpen(true)}
-        aria-label="Open output panel"
       >
         <ChevronUp className="h-3.5 w-3.5" />
-        Output
+        Show Terminal · Serial · Events · Logic · Scope
       </button>
     );
   }

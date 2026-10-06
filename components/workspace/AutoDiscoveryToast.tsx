@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { getHardwareWsUrl } from "@/lib/api-client";
+import { openAuthenticatedWebSocket } from "@/lib/ws-client";
 
 type Toast = { id: string; title: string; detail: string };
 
@@ -11,9 +12,15 @@ export function AutoDiscoveryToast() {
 
   useEffect(() => {
     let ws: WebSocket | null = null;
-    try {
-      ws = new WebSocket(getHardwareWsUrl());
-      ws.onmessage = (ev) => {
+    let cancelled = false;
+    void openAuthenticatedWebSocket(getHardwareWsUrl())
+      .then((socket) => {
+        if (cancelled) {
+          socket.close();
+          return;
+        }
+        ws = socket;
+        socket.onmessage = (ev) => {
         try {
           const msg = JSON.parse(ev.data);
           const type = msg.type || msg.event;
@@ -43,11 +50,13 @@ export function AutoDiscoveryToast() {
         } catch {
           /* ignore */
         }
-      };
-    } catch {
-      return;
-    }
-    return () => ws?.close();
+        };
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      ws?.close();
+    };
   }, []);
 
   useEffect(() => {

@@ -76,8 +76,6 @@ export function CodeEditor({ value, language, path, onChange, readOnly }: Props)
         tabSize: 2,
         scrollBeyondLastLine: false,
         wordWrap: "on",
-        // Monaco scrolls virtually and draws its own bars; match HHIP's 6px bar.
-        scrollbar: { verticalScrollbarSize: 6, horizontalScrollbarSize: 6, useShadows: false },
       }}
       onChange={(v) => onChange?.(v ?? "")}
       loading={<div className="p-3 text-xs text-slate-400">Loading Monaco…</div>}

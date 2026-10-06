@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { AuthBootstrap } from "@/components/auth/auth-bootstrap";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { ElasticScrollbars } from "@/components/ui/ElasticScrollbars";
 import "./globals.css";
 
 const inter = Inter({
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full bg-background font-sans text-foreground">
         <ThemeProvider>
           <AuthBootstrap />
+          <ElasticScrollbars />
           {children}
         </ThemeProvider>
       </body>

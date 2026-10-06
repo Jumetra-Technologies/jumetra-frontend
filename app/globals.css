@@ -362,34 +362,138 @@ pre {
   }
 }
 
-/* Component library views: moving current in the flow view, glowing LEDs in the top view. */
-@keyframes hhip-flow-dash {
-  to {
-    stroke-dashoffset: -28;
+/*
+ * Elastic scrollbars (lib/ui/elastic-scrollbars.ts), HHIP's standard for every
+ * scrolling area. Once the engine is running, each managed element hides its
+ * native bar and gets a drawn 6px bar with small arrows that squashes when
+ * scrolled past an end and springs back on release. Until then (or with
+ * data-native-scrollbar) the slim native bar above is used.
+ */
+.hhip-elastic-ready .hhip-elastic-managed {
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+.hhip-elastic-ready .hhip-elastic-managed::-webkit-scrollbar {
+  display: none;
+}
+
+.hhip-elastic-track {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+.hhip-elastic-track[data-axis="x"] {
+  flex-direction: row;
+}
+.hhip-elastic-track[data-scrollable="false"] {
+  display: none;
+}
+.hhip-elastic-track > * {
+  pointer-events: auto;
+}
+
+.hhip-elastic-rail {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.hhip-elastic-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--scrollbar);
+  will-change: transform;
+  touch-action: none;
+  transition: background-color 150ms ease;
+}
+.hhip-elastic-thumb:hover,
+.hhip-elastic-thumb[data-dragging] {
+  background: var(--muted);
+}
+/* Let go: spring back to rest, overshooting slightly before settling. */
+.hhip-elastic-thumb[data-releasing] {
+  transition:
+    transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 150ms ease;
+}
+
+.hhip-elastic-arrow {
+  flex: none;
+  width: 6px;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-size: 3px 3px;
+  cursor: default;
+  --arrow: var(--scrollbar);
+}
+.hhip-elastic-track[data-axis="x"] .hhip-elastic-arrow {
+  width: 10px;
+  height: 6px;
+}
+.hhip-elastic-arrow:hover {
+  --arrow: var(--muted);
+}
+.hhip-elastic-arrow[data-direction="up"] {
+  background-image:
+    linear-gradient(to top left, var(--arrow) 50%, transparent 50%),
+    linear-gradient(to top right, var(--arrow) 50%, transparent 50%);
+  background-position: 0 4px, 3px 4px;
+}
+.hhip-elastic-arrow[data-direction="down"] {
+  background-image:
+    linear-gradient(to bottom left, var(--arrow) 50%, transparent 50%),
+    linear-gradient(to bottom right, var(--arrow) 50%, transparent 50%);
+  background-position: 0 3px, 3px 3px;
+}
+.hhip-elastic-arrow[data-direction="left"] {
+  background-image:
+    linear-gradient(to top left, var(--arrow) 50%, transparent 50%),
+    linear-gradient(to bottom left, var(--arrow) 50%, transparent 50%);
+  background-position: 4px 0, 4px 3px;
+}
+.hhip-elastic-arrow[data-direction="right"] {
+  background-image:
+    linear-gradient(to top right, var(--arrow) 50%, transparent 50%),
+    linear-gradient(to bottom right, var(--arrow) 50%, transparent 50%);
+  background-position: 3px 0, 3px 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hhip-elastic-thumb[data-releasing] {
+    transition: background-color 150ms ease;
   }
 }
-.hhip-flow-dash {
-  animation: hhip-flow-dash 0.9s linear infinite;
-}
-@keyframes hhip-plan-glow {
-  0%,
-  100% {
-    opacity: 0.25;
-  }
-  50% {
-    opacity: 0.75;
+
+/* Modal dialogs: the page dims in and the panel rises into place. */
+@keyframes hhip-dialog-fade {
+  from {
+    opacity: 0;
   }
 }
-.hhip-plan-glow {
-  animation: hhip-plan-glow 1.2s ease-in-out infinite;
-  filter: blur(0.6px);
+@keyframes hhip-dialog-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+.hhip-dialog-backdrop {
+  animation: hhip-dialog-fade 160ms ease-out;
+}
+.hhip-dialog-panel {
+  animation: hhip-dialog-pop 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 @media (prefers-reduced-motion: reduce) {
-  .hhip-flow-dash {
+  .hhip-dialog-backdrop,
+  .hhip-dialog-panel {
     animation: none;
-  }
-  .hhip-plan-glow {
-    animation: none;
-    opacity: 0.6;
   }
 }

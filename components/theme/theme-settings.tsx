@@ -4,11 +4,11 @@ import { THEME_OPTIONS } from "@/components/theme/theme-options";
 import { useTheme } from "@/components/theme/theme-provider";
 import { cn } from "@/lib/utils";
 
-export function ThemeSettings() {
+export function ThemeSettings({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Appearance theme">
+    <div className={cn("grid gap-2 sm:grid-cols-2", className)} role="radiogroup" aria-label="Appearance theme">
       {THEME_OPTIONS.map((option) => {
         const selected = theme === option.id;
         return (

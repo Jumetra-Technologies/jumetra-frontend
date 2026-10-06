@@ -361,3 +361,35 @@ pre {
     animation: none;
   }
 }
+
+/* Component library views: moving current in the flow view, glowing LEDs in the top view. */
+@keyframes hhip-flow-dash {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+.hhip-flow-dash {
+  animation: hhip-flow-dash 0.9s linear infinite;
+}
+@keyframes hhip-plan-glow {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+.hhip-plan-glow {
+  animation: hhip-plan-glow 1.2s ease-in-out infinite;
+  filter: blur(0.6px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hhip-flow-dash {
+    animation: none;
+  }
+  .hhip-plan-glow {
+    animation: none;
+    opacity: 0.6;
+  }
+}

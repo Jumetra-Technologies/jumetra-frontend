@@ -1,0 +1,208 @@
+/*
+ * Generic CSS 3D renderer for part models. Every solid becomes a few faces
+ * positioned by inline custom properties; the whole stage turns on a
+ * turntable (see lib/ui/use-turntable.ts).
+ */
+.scene {
+  --spin: -20deg;
+  --tilt: 55deg;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  perspective: 1400px;
+  perspective-origin: 50% 42%;
+  user-select: none;
+  touch-action: none;
+  cursor: grab;
+  outline: none;
+}
+.scene:active {
+  cursor: grabbing;
+}
+.scene:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ring);
+  border-radius: 14px;
+}
+
+.stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-style: preserve-3d;
+  transform: translate(-50%, -50%) rotateX(var(--tilt)) rotateZ(var(--spin));
+}
+
+.shadow {
+  position: absolute;
+  inset: -6%;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  filter: blur(16px);
+  transform: translateZ(-14px);
+}
+
+.face {
+  position: absolute;
+  backface-visibility: hidden;
+}
+
+/* Box: sized by --bw --bh --bz (px); wrapper centred at the box's mid height. */
+.box {
+  position: absolute;
+  width: var(--bw);
+  height: var(--bh);
+  transform-style: preserve-3d;
+}
+.box .face {
+  background: var(--side);
+}
+.boxTop {
+  inset: 0;
+  background: var(--top);
+  transform: translateZ(calc(var(--bz) / 2));
+  border-radius: var(--br, 2px);
+  overflow: hidden;
+}
+.boxRight,
+.boxLeft {
+  top: 0;
+  left: calc(50% - var(--bz) / 2);
+  width: var(--bz);
+  height: 100%;
+}
+.boxRight {
+  transform: rotateY(90deg) translateZ(calc(var(--bw) / 2));
+}
+.boxLeft {
+  transform: rotateY(-90deg) translateZ(calc(var(--bw) / 2));
+  filter: brightness(0.85);
+}
+.boxFront,
+.boxBack {
+  left: 0;
+  top: calc(50% - var(--bz) / 2);
+  width: 100%;
+  height: var(--bz);
+}
+.boxFront {
+  transform: rotateX(-90deg) translateZ(calc(var(--bh) / 2));
+  filter: brightness(1.1);
+}
+.boxBack {
+  transform: rotateX(90deg) translateZ(calc(var(--bh) / 2));
+  filter: brightness(0.7);
+}
+
+/* Header holes on a box top. */
+.holes {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.holes i {
+  display: block;
+  width: 38%;
+  height: 38%;
+  background: #3b3d42;
+  box-shadow: inset 0 0 0 1px #000;
+}
+
+.boxLabel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  white-space: pre-line;
+  pointer-events: none;
+}
+
+/* Cylinder: wrapper centred on the axis; N side faces and a top disc. */
+.cyl {
+  position: absolute;
+  width: var(--cw);
+  height: var(--cw);
+  transform-style: preserve-3d;
+}
+.cylSide {
+  left: calc(50% - var(--fw) / 2);
+  top: calc(50% - var(--ch) / 2);
+  width: var(--fw);
+  height: var(--ch);
+  background: var(--side);
+  transform: translateZ(calc(var(--ch) / 2)) rotateZ(var(--a)) translateY(calc(var(--ap) * -1)) rotateX(90deg);
+}
+.cylTop {
+  inset: 0;
+  border-radius: 50%;
+  background: var(--top);
+  transform: translateZ(var(--ch));
+}
+
+/* Pins: two crossed quads each. */
+.pin {
+  position: absolute;
+  width: var(--pw);
+  height: var(--pl);
+  background: var(--pc);
+  backface-visibility: visible;
+  left: calc(var(--px) - var(--pw) / 2);
+  top: calc(var(--py) - var(--pl) / 2);
+}
+.pinA {
+  transform: translateZ(var(--pz)) rotateX(90deg);
+}
+.pinB {
+  transform: translateZ(var(--pz)) rotateZ(90deg) rotateX(90deg);
+}
+
+/* Flat surface layer: silkscreen, traces, pads. */
+.surface {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Powered: glows and motion. */
+.lit .boxTop,
+.lit .cylTop {
+  box-shadow: 0 0 calc(var(--glowSize, 14px)) calc(var(--glowSize, 14px) / 3) var(--glow);
+}
+.lit .domeDisc {
+  box-shadow: 0 0 calc(var(--glowSize, 14px)) calc(var(--glowSize, 14px) / 4) var(--glow);
+}
+.spin {
+  animation: part-spin 1.6s linear infinite;
+}
+.sweep {
+  animation: part-sweep 2.4s ease-in-out infinite alternate;
+}
+@keyframes part-spin {
+  to {
+    transform: var(--base) rotateZ(360deg);
+  }
+}
+@keyframes part-sweep {
+  from {
+    transform: var(--base) rotateZ(-60deg);
+  }
+  to {
+    transform: var(--base) rotateZ(60deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin,
+  .sweep {
+    animation: none;
+  }
+}
+
+.domeDisc {
+  position: absolute;
+  border-radius: 50%;
+}

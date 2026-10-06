@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Menu, PanelLeftClose, PanelLeftOpen, Settings, Star, User, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   NAV_SECTIONS,
   isNavItemActive,
@@ -206,40 +205,58 @@ function AccountPlaceholder({
   );
 }
 
+function Brand() {
+  return (
+    <Link href="/" className="flex min-w-0 items-baseline gap-2 rounded-md" aria-label="HHIP Engineering Platform, home">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">HHIP</span>
+      <span className="truncate text-[13px] font-semibold text-sidebar-foreground">Engineering Platform</span>
+    </Link>
+  );
+}
+
+const sidebarIconButton =
+  "inline-flex size-8 shrink-0 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-[var(--sidebar-hover)] hover:text-sidebar-foreground";
+
 export function Sidebar({
   activePath,
   collapsed = false,
   onNavigate,
+  onToggleCollapse,
+  onClose,
 }: {
   activePath: string;
   collapsed?: boolean;
   onNavigate?: () => void;
+  /** Desktop: collapse or expand the sidebar. */
+  onToggleCollapse?: () => void;
+  /** Mobile drawer: close it. */
+  onClose?: () => void;
 }) {
   return (
     <aside
       className={cn(
         "flex h-full shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground",
-        collapsed ? "w-[4.5rem]" : "w-60",
+        collapsed ? "w-[4.5rem]" : "w-64",
       )}
       style={{ borderColor: "var(--sidebar-border)" }}
     >
-      <div
-        className={cn(
-          "flex shrink-0 items-center border-b",
-          collapsed ? "justify-center px-2 py-4" : "gap-3 px-4 py-4",
-        )}
-        style={{ borderColor: "var(--sidebar-border)" }}
-      >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-sm)]">
-          H
-        </span>
-        {!collapsed ? (
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">HHIP</p>
-            <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-sidebar-muted">
-              Engineering Platform
-            </p>
-          </div>
+      <div className={cn("flex h-14 shrink-0 items-center", collapsed ? "justify-center px-2" : "gap-2 px-3")}>
+        {onToggleCollapse ? (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className={sidebarIconButton}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <PanelLeftOpen className="size-[18px]" aria-hidden /> : <PanelLeftClose className="size-[18px]" aria-hidden />}
+          </button>
+        ) : null}
+        {!collapsed ? <Brand /> : null}
+        {onClose ? (
+          <button type="button" onClick={onClose} className={cn(sidebarIconButton, "ml-auto")} aria-label="Close menu">
+            <X className="size-4" aria-hidden />
+          </button>
         ) : null}
       </div>
       <NavLinks activePath={activePath} collapsed={collapsed} onNavigate={onNavigate} />
@@ -285,75 +302,49 @@ export function DashboardShell({
   }, [collapsed, ready]);
 
   return (
-    <div className="flex h-svh flex-col overflow-hidden bg-background">
-      <header
-        className="flex h-16 shrink-0 items-center gap-3 border-b bg-header px-4 text-header-foreground shadow-[var(--shadow-sm)] sm:px-6"
-        style={{ borderColor: "var(--sidebar-border)" }}
-      >
-        <Button
-          size="icon"
-          variant="ghost"
-          className="text-header-foreground hover:bg-[var(--sidebar-hover)] hover:text-header-foreground lg:hidden"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open navigation"
-        >
-          <Menu className="size-5" />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="hidden text-header-foreground hover:bg-[var(--sidebar-hover)] hover:text-header-foreground lg:inline-flex"
-          onClick={() => setCollapsed((c) => !c)}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
-        </Button>
-        <div className="flex min-w-0 items-baseline gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
-            HHIP
-          </span>
-          <span className="hidden truncate text-sm font-semibold text-header-foreground sm:inline">
-            Engineering Platform
-          </span>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          {!fullBleed ? (
-            <Link href="/laboratory/workspace">
-              <Button size="sm">Open Laboratory</Button>
-            </Link>
-          ) : null}
-        </div>
-      </header>
+    <div className="flex h-svh overflow-hidden bg-background">
+      <div className="hidden h-full shrink-0 lg:flex">
+        <Sidebar
+          activePath={activePath}
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed((c) => !c)}
+        />
+      </div>
 
-      <div className="flex min-h-0 flex-1">
-        <div className="hidden h-full shrink-0 lg:flex">
-          <Sidebar activePath={activePath} collapsed={collapsed} />
-        </div>
-
-        {mobileOpen ? (
-          <div className="fixed inset-0 z-40 flex lg:hidden" role="dialog" aria-modal="true">
-            <button
-              type="button"
-              className="absolute inset-0 bg-black/40"
-              aria-label="Close navigation"
-              onClick={() => setMobileOpen(false)}
+      {mobileOpen ? (
+        <div className="fixed inset-0 z-40 flex lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40"
+            aria-label="Close navigation"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="relative z-10 flex h-full shadow-[var(--shadow-md)]">
+            <Sidebar
+              activePath={activePath}
+              onNavigate={() => setMobileOpen(false)}
+              onClose={() => setMobileOpen(false)}
             />
-            <div className="relative z-10 flex h-full shadow-[var(--shadow-md)]">
-              <div className="absolute right-2 top-2 z-20">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="text-sidebar-foreground hover:bg-[var(--sidebar-hover)]"
-                  onClick={() => setMobileOpen(false)}
-                  aria-label="Close menu"
-                >
-                  <X className="size-4" />
-                </Button>
-              </div>
-              <Sidebar activePath={activePath} onNavigate={() => setMobileOpen(false)} />
-            </div>
           </div>
-        ) : null}
+        </div>
+      ) : null}
+
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {/* Phones and tablets only: the sidebar is a drawer, so something has to open it. */}
+        <div
+          className="flex h-14 shrink-0 items-center gap-2 border-b bg-sidebar px-3 text-sidebar-foreground lg:hidden"
+          style={{ borderColor: "var(--sidebar-border)" }}
+        >
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className={sidebarIconButton}
+            aria-label="Open navigation"
+          >
+            <Menu className="size-5" aria-hidden />
+          </button>
+          <Brand />
+        </div>
 
         <main
           className={cn(

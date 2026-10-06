@@ -7,7 +7,7 @@ export const DEVELOPER_ARTICLES: DocArticle[] = [
     title: "Frontend structure",
     summary:
       "The technology stack, how the repository is organised, where client state lives, and the everyday commands.",
-    tags: ["frontend", "nextjs", "react", "typescript", "tailwind", "zustand", "structure", "stack", "testing"],
+    tags: ["frontend", "nextjs", "react", "typescript", "tailwind", "zustand", "structure", "stack", "testing", "scrollbar", "ui"],
     related: ["technical-guides/run-locally", "developer-resources/contributing-docs"],
     blocks: [
       { type: "h2", text: "Technology stack" },
@@ -48,6 +48,25 @@ export const DEVELOPER_ARTICLES: DocArticle[] = [
       {
         type: "p",
         text: "Projects and experiment journals are saved in the browser under the local storage key `hhip-robotics-workspace:v1`. Other keys hold the sign-in session, theme choice, sidebar state, and the active workspace id. Hardware, simulation, and firmware features talk to the backend through the shared API client in `lib/api-client.ts`.",
+      },
+      { type: "h2", text: "Scrollbars" },
+      {
+        type: "p",
+        text: "Every scrolling area in HHIP uses the same slim, elastic scrollbar: a 6px bar with small arrows that squashes against the end when you scroll past the top or bottom (or left and right) and springs back when you let go. It is applied automatically by `<ElasticScrollbars />` in `app/layout.tsx`, which finds anything with `overflow: auto` or `scroll`, and textareas, including panels and modals that appear later.",
+      },
+      {
+        type: "ul",
+        items: [
+          "To make something scroll, use the usual Tailwind classes (`overflow-y-auto`, `overflow-x-auto`). Do not add your own scrollbar CSS or wrapper.",
+          "To keep a native scrollbar for a subtree, add the `data-native-scrollbar` attribute.",
+          "The engine lives in `lib/ui/elastic-scrollbars.ts`, the curve in `lib/ui/elastic-scroll.ts`, and the look in the `.hhip-elastic-*` rules in `app/globals.css`.",
+          "The Monaco code editor draws its own virtual scrollbars, so it only matches the 6px size and does not stretch.",
+        ],
+      },
+      {
+        type: "callout",
+        tone: "note",
+        text: "With **Reduce motion** turned on in the operating system, the bar keeps its look but does not stretch.",
       },
       { type: "h2", text: "Everyday commands" },
       {

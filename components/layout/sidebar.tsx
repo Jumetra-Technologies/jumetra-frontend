@@ -8,7 +8,9 @@ import {
   isNavItemActive,
   type NavItem,
 } from "@/components/layout/nav-items";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { accountInitials, useAccount } from "@/lib/account";
+import { SETTINGS_QUERY_FLAG, openSettings } from "@/lib/settings-dialog";
 import { cn } from "@/lib/utils";
 
 const COLLAPSE_KEY = "hhip-sidebar-collapsed";
@@ -133,10 +135,14 @@ function AccountPlaceholder({
 
   if (collapsed) {
     return (
-      <Link
-        href="/settings"
-        onClick={onNavigate}
-        title={signedIn ? account!.name : "Account"}
+      <button
+        type="button"
+        onClick={() => {
+          onNavigate?.();
+          openSettings();
+        }}
+        title={signedIn ? account!.name : "Account and settings"}
+        aria-haspopup="dialog"
         className="flex size-10 items-center justify-center rounded-lg hover:bg-[var(--sidebar-hover)]"
       >
         {signedIn ? (
@@ -154,8 +160,8 @@ function AccountPlaceholder({
             <User className="size-3.5" />
           </span>
         )}
-        <span className="sr-only">{signedIn ? account!.name : "Account — sign up to personalize"}</span>
-      </Link>
+        <span className="sr-only">{signedIn ? `${account!.name}, open settings` : "Open settings"}</span>
+      </button>
     );
   }
 
@@ -193,14 +199,19 @@ function AccountPlaceholder({
           </>
         )}
       </div>
-      <Link
-        href="/settings"
-        onClick={onNavigate}
+      <button
+        type="button"
+        onClick={() => {
+          onNavigate?.();
+          openSettings();
+        }}
         aria-label="Open settings"
+        aria-haspopup="dialog"
+        title="Settings"
         className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-sidebar-muted hover:bg-[var(--sidebar-hover)] hover:text-sidebar-foreground"
       >
         <Settings className="size-3.5" aria-hidden />
-      </Link>
+      </button>
     </div>
   );
 }
@@ -293,6 +304,14 @@ export function DashboardShell({
   }, []);
 
   useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has(SETTINGS_QUERY_FLAG)) return;
+    url.searchParams.delete(SETTINGS_QUERY_FLAG);
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    openSettings();
+  }, []);
+
+  useEffect(() => {
     if (!ready) return;
     try {
       window.localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0");
@@ -359,6 +378,7 @@ export function DashboardShell({
           )}
         </main>
       </div>
+      <SettingsDialog />
     </div>
   );
 }

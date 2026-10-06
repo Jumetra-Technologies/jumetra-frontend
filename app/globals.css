@@ -363,37 +363,40 @@ pre {
 }
 
 /*
- * Elastic scrollbar (components/ui/elastic-scroll-area.tsx).
- * The native bar is hidden inside these areas and redrawn so it can stretch
- * when the user scrolls past either end. Sizes match the 6px bar above.
+ * Elastic scrollbars (lib/ui/elastic-scrollbars.ts), HHIP's standard for every
+ * scrolling area. Once the engine is running, each managed element hides its
+ * native bar and gets a drawn 6px bar with small arrows that squashes when
+ * scrolled past an end and springs back on release. Until then (or with
+ * data-native-scrollbar) the slim native bar above is used.
  */
-.hhip-scroll-viewport {
+.hhip-elastic-ready .hhip-elastic-managed {
   scrollbar-width: none;
-  overscroll-behavior-y: contain;
+  overscroll-behavior: contain;
 }
-.hhip-scroll-viewport::-webkit-scrollbar {
+.hhip-elastic-ready .hhip-elastic-managed::-webkit-scrollbar {
   display: none;
 }
 
 .hhip-elastic-track {
-  position: absolute;
-  top: 2px;
-  right: 1px;
-  bottom: 2px;
-  z-index: 20;
+  position: fixed;
   display: flex;
-  width: 6px;
   flex-direction: column;
-}
-/* Hidden but still laid out, so the rail can be measured. */
-.hhip-elastic-track[data-scrollable="false"] {
-  visibility: hidden;
   pointer-events: none;
+}
+.hhip-elastic-track[data-axis="x"] {
+  flex-direction: row;
+}
+.hhip-elastic-track[data-scrollable="false"] {
+  display: none;
+}
+.hhip-elastic-track > * {
+  pointer-events: auto;
 }
 
 .hhip-elastic-rail {
   position: relative;
   flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -402,6 +405,7 @@ pre {
   top: 0;
   left: 0;
   width: 6px;
+  height: 6px;
   border-radius: 999px;
   background: var(--scrollbar);
   will-change: transform;
@@ -431,6 +435,10 @@ pre {
   cursor: default;
   --arrow: var(--scrollbar);
 }
+.hhip-elastic-track[data-axis="x"] .hhip-elastic-arrow {
+  width: 10px;
+  height: 6px;
+}
 .hhip-elastic-arrow:hover {
   --arrow: var(--muted);
 }
@@ -445,6 +453,18 @@ pre {
     linear-gradient(to bottom left, var(--arrow) 50%, transparent 50%),
     linear-gradient(to bottom right, var(--arrow) 50%, transparent 50%);
   background-position: 0 3px, 3px 3px;
+}
+.hhip-elastic-arrow[data-direction="left"] {
+  background-image:
+    linear-gradient(to top left, var(--arrow) 50%, transparent 50%),
+    linear-gradient(to bottom left, var(--arrow) 50%, transparent 50%);
+  background-position: 4px 0, 4px 3px;
+}
+.hhip-elastic-arrow[data-direction="right"] {
+  background-image:
+    linear-gradient(to top right, var(--arrow) 50%, transparent 50%),
+    linear-gradient(to bottom right, var(--arrow) 50%, transparent 50%);
+  background-position: 3px 0, 3px 3px;
 }
 
 @media (prefers-reduced-motion: reduce) {

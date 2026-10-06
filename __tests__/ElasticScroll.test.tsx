@@ -1,7 +1,6 @@
-import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { ElasticScrollArea } from "@/components/ui/elastic-scroll-area";
+import { fireEvent } from "@testing-library/react";
+import { MANAGED_CLASS, startElasticScrollbars } from "@/lib/ui/elastic-scrollbars";
 import { ELASTIC, rubberBand, squash, thumbMetrics, wheelDeltaPx } from "@/lib/ui/elastic-scroll";
 
 describe("elastic scroll maths", () => {
@@ -42,7 +41,9 @@ describe("elastic scroll maths", () => {
   });
 });
 
-describe("ElasticScrollArea", () => {
+describe("app-wide elastic scrollbars", () => {
+  let stop: (() => void) | undefined;
+
   beforeEach(() => {
     vi.useFakeTimers();
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
@@ -51,104 +52,176 @@ describe("ElasticScrollArea", () => {
     });
   });
   afterEach(() => {
+    stop?.();
+    stop = undefined;
+    document.body.innerHTML = "";
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
-  function setup() {
-    const { container } = render(
-      <ElasticScrollArea>
-        <div>content</div>
-      </ElasticScrollArea>,
-    );
-    const viewport = container.querySelector(".hhip-scroll-viewport") as HTMLDivElement;
-    const rail = container.querySelector(".hhip-elastic-rail") as HTMLDivElement;
-    const track = container.querySelector(".hhip-elastic-track") as HTMLDivElement;
-    const size = (el: Element, prop: string, value: number) =>
-      Object.defineProperty(el, prop, { configurable: true, get: () => value });
-    size(viewport, "clientHeight", 500);
-    size(viewport, "scrollHeight", 1000);
-    size(rail, "clientHeight", 480);
-    act(() => {
-      window.dispatchEvent(new Event("resize"));
-    });
-    return { viewport, track, thumb: screen.getByTestId("elastic-thumb") };
+  /** A scroll container with fixed layout numbers, since jsdom has no layout. */
+  function scroller(style: string, dims: { ch?: number; sh?: number; cw?: number; sw?: number } = {}, tag = "div") {
+    const el = document.createElement(tag);
+    el.setAttribute("style", style);
+    const set = (prop: string, value: number) => Object.defineProperty(el, prop, { configurable: true, get: () => value });
+    set("clientHeight", dims.ch ?? 500);
+    set("scrollHeight", dims.sh ?? 1000);
+    set("clientWidth", dims.cw ?? 300);
+    set("scrollWidth", dims.sw ?? 300);
+    el.getBoundingClientRect = () => new DOMRect(0, 0, dims.cw ?? 300, dims.ch ?? 500);
+    const child = document.createElement("p");
+    child.textContent = "content";
+    el.append(child);
+    document.body.append(el);
+    return { el, child };
   }
 
-  const stretchOf = (thumb: HTMLElement) => Number(thumb.dataset.stretch);
+  function start() {
+    stop = startElasticScrollbars();
+    vi.advanceTimersByTime(100);
+  }
 
-  it("shows the bar only when the content scrolls", () => {
-    const { track, thumb } = setup();
-    expect(track).toHaveAttribute("data-scrollable", "true");
-    expect(thumb.style.height).toBe("240px");
+  const track = (axis: "x" | "y", index = 0) =>
+    document.querySelectorAll<HTMLElement>(`.hhip-elastic-track[data-axis="${axis}"]`)[index];
+  const thumb = (axis: "x" | "y", index = 0) => track(axis, index).querySelector<HTMLElement>(".hhip-elastic-thumb")!;
+  const stretchOf = (el: HTMLElement) => Number(el.dataset.stretch);
+
+  it("finds scroll containers and textareas on its own and hides their native bar", () => {
+    const { el } = scroller("overflow-y: auto");
+    const { el: area } = scroller("", {}, "textarea");
+    start();
+    expect(el).toHaveClass(MANAGED_CLASS);
+    expect(area).toHaveClass(MANAGED_CLASS);
+    expect(track("y")).toHaveAttribute("data-scrollable", "true");
+    expect(document.documentElement).toHaveClass("hhip-elastic-ready");
   });
 
-  it("squashes against the top when scrolling up past the start, then springs back", () => {
-    const { viewport, thumb } = setup();
-    for (let i = 0; i < 4; i++) fireEvent.wheel(viewport, { deltaY: -100 });
-    expect(stretchOf(thumb)).toBeGreaterThan(0.5);
-    expect(thumb.style.transformOrigin).toBe("50% 0%");
-    expect(thumb.style.transform).toMatch(/scale\(1\.\d+, 0\.\d+\)/);
-
-    act(() => {
-      vi.advanceTimersByTime(ELASTIC.releaseDelay + 10);
-    });
-    expect(stretchOf(thumb)).toBe(0);
-    expect(thumb).toHaveAttribute("data-releasing");
-    act(() => {
-      vi.advanceTimersByTime(ELASTIC.springMs + 100);
-    });
-    expect(thumb).not.toHaveAttribute("data-releasing");
+  it("leaves non-scrolling and opted-out elements alone", () => {
+    const { el } = scroller("overflow: hidden");
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("data-native-scrollbar", "");
+    document.body.append(wrapper);
+    const { el: native } = scroller("overflow-y: auto");
+    wrapper.append(native);
+    start();
+    expect(el).not.toHaveClass(MANAGED_CLASS);
+    expect(native).not.toHaveClass(MANAGED_CLASS);
   });
 
-  it("squashes against the bottom when scrolling down past the end", () => {
-    const { viewport, thumb } = setup();
-    viewport.scrollTop = 500;
-    fireEvent.scroll(viewport);
-    fireEvent.wheel(viewport, { deltaY: 150 });
-    expect(stretchOf(thumb)).toBeGreaterThan(0);
-    expect(thumb.style.transformOrigin).toBe("50% 100%");
+  it("picks up scroll areas added later, such as a modal opening", async () => {
+    start();
+    expect(document.querySelectorAll(".hhip-elastic-track")).toHaveLength(0);
+    const { el } = scroller("overflow-y: auto");
+    await vi.advanceTimersByTimeAsync(100);
+    expect(el).toHaveClass(MANAGED_CLASS);
+  });
+
+  it("squashes against the top past the start, then springs back", () => {
+    const { child } = scroller("overflow-y: auto");
+    start();
+    for (let i = 0; i < 4; i++) fireEvent.wheel(child, { deltaY: -100 });
+    expect(stretchOf(thumb("y"))).toBeGreaterThan(0.5);
+    expect(thumb("y").style.transformOrigin).toBe("50% 0%");
+    vi.advanceTimersByTime(200);
+    expect(stretchOf(thumb("y"))).toBe(0);
+    expect(thumb("y")).toHaveAttribute("data-releasing");
+  });
+
+  it("squashes against the bottom past the end", () => {
+    const { el, child } = scroller("overflow-y: auto");
+    start();
+    el.scrollTop = 500;
+    fireEvent.wheel(child, { deltaY: 120 });
+    expect(stretchOf(thumb("y"))).toBeGreaterThan(0);
+    expect(thumb("y").style.transformOrigin).toBe("50% 100%");
   });
 
   it("does not stretch during ordinary scrolling", () => {
-    const { viewport, thumb } = setup();
-    viewport.scrollTop = 200;
-    fireEvent.scroll(viewport);
-    fireEvent.wheel(viewport, { deltaY: 100 });
-    fireEvent.wheel(viewport, { deltaY: -100 });
-    expect(stretchOf(thumb)).toBe(0);
+    const { el, child } = scroller("overflow-y: auto");
+    start();
+    el.scrollTop = 200;
+    fireEvent.wheel(child, { deltaY: 100 });
+    expect(stretchOf(thumb("y"))).toBe(0);
   });
 
-  it("stretches with touch past the end and releases when the finger lifts", () => {
-    const { viewport, thumb } = setup();
-    fireEvent.touchStart(viewport, { touches: [{ clientY: 100 }] });
-    fireEvent.touchMove(viewport, { touches: [{ clientY: 260 }] });
-    expect(stretchOf(thumb)).toBeGreaterThan(0.4);
-    fireEvent.touchEnd(viewport);
-    expect(stretchOf(thumb)).toBe(0);
-    expect(thumb).toHaveAttribute("data-releasing");
+  it("works sideways too", () => {
+    const { child } = scroller("overflow-x: auto", { ch: 200, sh: 200, cw: 300, sw: 900 });
+    start();
+    expect(track("x")).toHaveAttribute("data-scrollable", "true");
+    fireEvent.wheel(child, { deltaX: -150 });
+    expect(stretchOf(thumb("x"))).toBeGreaterThan(0);
+    expect(thumb("x").style.transformOrigin).toBe("0% 50%");
+  });
+
+  it("stretches only the innermost scroll area under the pointer", () => {
+    const { el: outer } = scroller("overflow-y: auto");
+    const { el: inner, child } = scroller("overflow-y: auto");
+    outer.append(inner);
+    start();
+    fireEvent.wheel(child, { deltaY: -200 });
+    const innerThumb = [...document.querySelectorAll<HTMLElement>(".hhip-elastic-thumb")].find(
+      (t) => Number(t.dataset.stretch) > 0,
+    );
+    expect(innerThumb).toBeDefined();
+    expect(document.querySelectorAll('.hhip-elastic-thumb[data-stretch]:not([data-stretch="0.000"])')).toHaveLength(1);
+  });
+
+  it("stretches with touch and releases when the finger lifts", () => {
+    const { child } = scroller("overflow-y: auto");
+    start();
+    fireEvent.touchStart(child, { touches: [{ clientX: 10, clientY: 100 }] });
+    fireEvent.touchMove(child, { touches: [{ clientX: 10, clientY: 260 }] });
+    expect(stretchOf(thumb("y"))).toBeGreaterThan(0.4);
+    fireEvent.touchEnd(child);
+    expect(stretchOf(thumb("y"))).toBe(0);
   });
 
   it("gives an elastic bump when an arrow is pressed at the end", () => {
-    const { thumb } = setup();
-    const up = document.querySelector('.hhip-elastic-arrow[data-direction="up"]') as HTMLElement;
+    scroller("overflow-y: auto");
+    start();
+    const up = track("y").querySelector<HTMLElement>('[data-direction="up"]')!;
     fireEvent.pointerDown(up, { button: 0 });
-    expect(stretchOf(thumb)).toBeGreaterThan(0);
-    act(() => {
-      vi.advanceTimersByTime(200);
-    });
-    expect(stretchOf(thumb)).toBe(0);
+    expect(stretchOf(thumb("y"))).toBeGreaterThan(0);
+    vi.advanceTimersByTime(200);
+    expect(stretchOf(thumb("y"))).toBe(0);
+  });
+
+  it("removes a bar when its scroll area leaves the page", async () => {
+    const { el } = scroller("overflow-y: auto");
+    start();
+    expect(document.querySelectorAll(".hhip-elastic-track")).toHaveLength(2);
+    el.remove();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(document.querySelectorAll(".hhip-elastic-track")).toHaveLength(0);
   });
 
   it("stays still for people who prefer reduced motion", () => {
-    // jsdom has no matchMedia; provide one that reports reduced motion.
     window.matchMedia = ((query: string) => ({ matches: query.includes("reduce"), media: query })) as typeof window.matchMedia;
     try {
-      const { viewport, thumb } = setup();
-      for (let i = 0; i < 4; i++) fireEvent.wheel(viewport, { deltaY: -100 });
-      expect(stretchOf(thumb)).toBe(0);
+      const { child } = scroller("overflow-y: auto");
+      start();
+      for (let i = 0; i < 4; i++) fireEvent.wheel(child, { deltaY: -100 });
+      expect(stretchOf(thumb("y"))).toBe(0);
     } finally {
       delete (window as { matchMedia?: unknown }).matchMedia;
     }
+  });
+
+  it("cleans everything up when stopped", () => {
+    const { el } = scroller("overflow-y: auto");
+    start();
+    stop?.();
+    stop = undefined;
+    expect(el).not.toHaveClass(MANAGED_CLASS);
+    expect(document.querySelectorAll(".hhip-elastic-track")).toHaveLength(0);
+    expect(document.documentElement).not.toHaveClass("hhip-elastic-ready");
+  });
+});
+
+describe("the standard is wired in", () => {
+  it("mounts the elastic scrollbars once, in the root layout", async () => {
+    const { readFileSync } = await import("node:fs");
+    const layout = readFileSync("app/layout.tsx", "utf8");
+    expect(layout).toMatch(/<ElasticScrollbars \/>/);
   });
 });

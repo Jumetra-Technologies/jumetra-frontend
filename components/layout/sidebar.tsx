@@ -9,7 +9,6 @@ import {
   type NavItem,
 } from "@/components/layout/nav-items";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
-import { ElasticScrollArea } from "@/components/ui/elastic-scroll-area";
 import { accountInitials, useAccount } from "@/lib/account";
 import { SETTINGS_QUERY_FLAG, openSettings } from "@/lib/settings-dialog";
 import { cn } from "@/lib/utils";
@@ -90,39 +89,37 @@ function NavLinks({
   collapsed?: boolean;
 }) {
   return (
-    <ElasticScrollArea className="flex-1">
-      <nav
-        className={cn(
-          "flex flex-col",
-          collapsed ? "items-center gap-4 px-2 py-4" : "gap-5 px-3 py-4",
-        )}
-        aria-label="Primary"
-      >
-        {NAV_SECTIONS.map((section) => (
-          <div
-            key={section.id}
-            className={cn("flex flex-col", collapsed ? "items-center gap-1" : "gap-1")}
-          >
-            {collapsed ? (
-              <span className="sr-only">{section.label}</span>
-            ) : (
-              <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-muted/70">
-                {section.label}
-              </p>
-            )}
-            {section.items.map((item) => (
-              <NavLink
-                key={item.href}
-                item={item}
-                activePath={activePath}
-                collapsed={collapsed}
-                onNavigate={onNavigate}
-              />
-            ))}
-          </div>
-        ))}
-      </nav>
-    </ElasticScrollArea>
+    <nav
+      className={cn(
+        "flex min-h-0 flex-1 flex-col overflow-y-auto",
+        collapsed ? "items-center gap-4 px-2 py-4" : "gap-5 px-3 py-4",
+      )}
+      aria-label="Primary"
+    >
+      {NAV_SECTIONS.map((section) => (
+        <div
+          key={section.id}
+          className={cn("flex flex-col", collapsed ? "items-center gap-1" : "gap-1")}
+        >
+          {collapsed ? (
+            <span className="sr-only">{section.label}</span>
+          ) : (
+            <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-muted/70">
+              {section.label}
+            </p>
+          )}
+          {section.items.map((item) => (
+            <NavLink
+              key={item.href}
+              item={item}
+              activePath={activePath}
+              collapsed={collapsed}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
+      ))}
+    </nav>
   );
 }
 
@@ -368,13 +365,16 @@ export function DashboardShell({
           <Brand />
         </div>
 
-        <main className={cn("flex min-h-0 min-w-0 flex-1 flex-col bg-canvas", fullBleed && "overflow-hidden")}>
+        <main
+          className={cn(
+            "min-h-0 min-w-0 flex-1 bg-canvas",
+            fullBleed ? "flex flex-col overflow-hidden" : "overflow-y-auto",
+          )}
+        >
           {fullBleed ? (
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
           ) : (
-            <ElasticScrollArea className="flex-1">
-              <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">{children}</div>
-            </ElasticScrollArea>
+            <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">{children}</div>
           )}
         </main>
       </div>

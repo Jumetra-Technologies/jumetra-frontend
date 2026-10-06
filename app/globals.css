@@ -310,7 +310,7 @@ pre {
 
 /*
  * Slim, theme-coloured scrollbars everywhere (sidebar, panels, page):
- * a 6px rounded thumb on a transparent track, with no arrow buttons.
+ * a 6px rounded thumb on a transparent track, with small matching arrows.
  *
  * Chromium (Chrome, Edge) and Safari use the ::-webkit-scrollbar rules.
  * The standard properties are applied only where those pseudo-elements are
@@ -339,10 +339,54 @@ pre {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
+/*
+ * Small arrow buttons sized to the 6px bar. The triangles are drawn with
+ * two half-gradients so they use the theme's colour variables.
+ */
 ::-webkit-scrollbar-button {
   display: none;
-  width: 0;
-  height: 0;
+}
+::-webkit-scrollbar-button:single-button {
+  display: block;
+  width: 6px;
+  height: 10px;
+  background-repeat: no-repeat;
+  --arrow: var(--scrollbar);
+}
+::-webkit-scrollbar-button:single-button:horizontal {
+  width: 10px;
+  height: 6px;
+}
+::-webkit-scrollbar-button:single-button:hover {
+  --arrow: var(--muted);
+}
+::-webkit-scrollbar-button:single-button:vertical:decrement {
+  background-image:
+    linear-gradient(to top left, var(--arrow) 50%, transparent 50%),
+    linear-gradient(to top right, var(--arrow) 50%, transparent 50%);
+  background-size: 3px 3px;
+  background-position: 0 4px, 3px 4px;
+}
+::-webkit-scrollbar-button:single-button:vertical:increment {
+  background-image:
+    linear-gradient(to bottom left, var(--arrow) 50%, transparent 50%),
+    linear-gradient(to bottom right, var(--arrow) 50%, transparent 50%);
+  background-size: 3px 3px;
+  background-position: 0 3px, 3px 3px;
+}
+::-webkit-scrollbar-button:single-button:horizontal:decrement {
+  background-image:
+    linear-gradient(to top left, var(--arrow) 50%, transparent 50%),
+    linear-gradient(to bottom left, var(--arrow) 50%, transparent 50%);
+  background-size: 3px 3px;
+  background-position: 4px 0, 4px 3px;
+}
+::-webkit-scrollbar-button:single-button:horizontal:increment {
+  background-image:
+    linear-gradient(to top right, var(--arrow) 50%, transparent 50%),
+    linear-gradient(to bottom right, var(--arrow) 50%, transparent 50%);
+  background-size: 3px 3px;
+  background-position: 3px 0, 3px 3px;
 }
 
 /* Architecture Explorer: data pulse travelling along a board trace */

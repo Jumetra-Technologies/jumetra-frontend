@@ -1,0 +1,299 @@
+/*
+ * The hero board: an original Uno-layout development board drawn as a real
+ * slab in CSS 3D. The PCB top is an SVG; every raised part is a small box with
+ * its own sides so the board reads as solid from any angle. The material
+ * colours are fixed (a board looks the same in every theme).
+ */
+.scene {
+  --pcb: #1f6b57;
+  --pcb-dark: #16503f;
+  --pcb-edge: #0f3a2e;
+  --copper: #d9b05c;
+  --silk: #e9f1ec;
+  --ic: #1b1c1f;
+  --ic-side: #0d0e10;
+  --header: #141517;
+  --header-side: #090a0b;
+  --steel: #c9ccd1;
+  --steel-side: #8f949b;
+  --jack: #26272b;
+  --jack-side: #111214;
+  --w: 340px;
+  --h: 264px;
+  --d: 7px;
+  --s: 1;
+  --tilt: 52deg;
+  --spin: 0deg;
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  aspect-ratio: 1 / 0.86;
+  perspective: 1300px;
+  perspective-origin: 50% 40%;
+  user-select: none;
+  touch-action: none;
+  cursor: grab;
+  outline: none;
+}
+.scene:active {
+  cursor: grabbing;
+}
+.scene:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 20px;
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.stage {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: var(--w);
+  height: var(--h);
+  margin-left: calc(var(--w) / -2);
+  margin-top: calc(var(--h) / -2);
+  transform-style: preserve-3d;
+  transform: scale(var(--s)) rotateX(var(--tilt)) rotateZ(var(--spin));
+}
+@media (max-width: 1180px) {
+  .scene {
+    --s: 0.86;
+  }
+}
+@media (max-width: 420px) {
+  .scene {
+    --s: 0.74;
+  }
+}
+
+/* Floor shadow, drawn flat under the slab so it turns with it. */
+.shadow {
+  position: absolute;
+  inset: -6px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.42);
+  filter: blur(14px);
+  transform: translateZ(-22px);
+}
+
+.face {
+  position: absolute;
+  backface-visibility: hidden;
+}
+
+/* The slab: six faces around the stage's centre. */
+.slabTop {
+  inset: 0;
+  transform: translateZ(calc(var(--d) / 2));
+  border-radius: 9px;
+  overflow: hidden;
+}
+.slabTop svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.slabBottom {
+  inset: 0;
+  transform: rotateY(180deg) translateZ(calc(var(--d) / 2));
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(217, 176, 92, 0.25) 0 2px, transparent 3px) 0 0 / 22px 22px,
+    linear-gradient(135deg, var(--pcb-dark), var(--pcb-edge));
+}
+.slabRight,
+.slabLeft {
+  top: 0;
+  left: calc(50% - var(--d) / 2);
+  width: var(--d);
+  height: 100%;
+  background: var(--pcb-edge);
+}
+.slabRight {
+  transform: rotateY(90deg) translateZ(calc(var(--w) / 2));
+}
+.slabLeft {
+  transform: rotateY(-90deg) translateZ(calc(var(--w) / 2));
+}
+.slabFront,
+.slabBack {
+  left: 0;
+  top: calc(50% - var(--d) / 2);
+  width: 100%;
+  height: var(--d);
+  background: var(--pcb-edge);
+}
+.slabFront {
+  transform: rotateX(-90deg) translateZ(calc(var(--h) / 2));
+  background: #1a5444;
+}
+.slabBack {
+  transform: rotateX(90deg) translateZ(calc(var(--h) / 2));
+}
+
+/* A raised part. Sized by inline custom properties --bw --bh --bz. */
+.part {
+  position: absolute;
+  width: var(--bw);
+  height: var(--bh);
+  transform-style: preserve-3d;
+  transform: translateZ(calc(var(--d) / 2 + var(--bz) / 2));
+}
+.part .face {
+  background: var(--side);
+}
+.partTop {
+  inset: 0;
+  background: var(--top);
+  transform: translateZ(calc(var(--bz) / 2));
+  border-radius: var(--br, 2px);
+}
+.partRight,
+.partLeft {
+  top: 0;
+  left: calc(50% - var(--bz) / 2);
+  width: var(--bz);
+  height: 100%;
+}
+.partRight {
+  transform: rotateY(90deg) translateZ(calc(var(--bw) / 2));
+}
+.partLeft {
+  transform: rotateY(-90deg) translateZ(calc(var(--bw) / 2));
+  filter: brightness(0.85);
+}
+.partFront,
+.partBack {
+  left: 0;
+  top: calc(50% - var(--bz) / 2);
+  width: 100%;
+  height: var(--bz);
+}
+.partFront {
+  transform: rotateX(-90deg) translateZ(calc(var(--bh) / 2));
+  filter: brightness(1.12);
+}
+.partBack {
+  transform: rotateX(90deg) translateZ(calc(var(--bh) / 2));
+  filter: brightness(0.7);
+}
+
+/* The opening of a socket, drawn on the face that meets the board edge. */
+.socket {
+  position: absolute;
+  inset: 22% 14%;
+  border-radius: 2px;
+  background: #0b0c0e;
+  box-shadow: inset 0 0 0 1.5px #3a3d42;
+}
+
+/* Female header: a row of square holes punched in the top. */
+.pins {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  padding: 0 1px;
+}
+.pins i {
+  display: block;
+  width: 4px;
+  height: 4px;
+  background: #3b3d42;
+  box-shadow: inset 0 0 0 1px #000;
+}
+
+/* The DIP chip's legs, drawn as a strip along the long edges. */
+.legs {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 5px;
+  background: repeating-linear-gradient(90deg, var(--steel) 0 6px, transparent 6px 12.6px);
+}
+.legsTop {
+  top: -5px;
+}
+.legsBottom {
+  bottom: -5px;
+}
+.chipLabel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 14px;
+  color: #a3a7ad;
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  font-size: 7px;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+}
+.notch {
+  position: absolute;
+  left: 3px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: #2c2e33;
+}
+
+/* LEDs. */
+.led {
+  position: absolute;
+  width: 10px;
+  height: 6px;
+  border-radius: 2px;
+  background: #5a5f66;
+  transform: translateZ(calc(var(--d) / 2 + 1px));
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+  transition: background-color 120ms ease;
+}
+.ledPower {
+  background: #3ddc84;
+  box-shadow:
+    0 0 8px 2px rgba(61, 220, 132, 0.75),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+}
+.ledUser {
+  cursor: pointer;
+}
+/* A bigger target than the LED itself. */
+.ledUser::before {
+  content: "";
+  position: absolute;
+  inset: -8px -6px;
+}
+.ledUser[data-on] {
+  animation: blink 1s steps(1, end) infinite;
+}
+@keyframes blink {
+  0%,
+  49% {
+    background: #ffb020;
+    box-shadow:
+      0 0 10px 3px rgba(255, 176, 32, 0.8),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+  }
+  50%,
+  100% {
+    background: #5a5f66;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ledUser[data-on] {
+    animation: none;
+    background: #ffb020;
+    box-shadow:
+      0 0 10px 3px rgba(255, 176, 32, 0.8),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+  }
+}

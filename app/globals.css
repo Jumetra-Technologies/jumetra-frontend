@@ -452,3 +452,28 @@ pre {
     transition: background-color 150ms ease;
   }
 }
+
+/* Modal dialogs: the page dims in and the panel rises into place. */
+@keyframes hhip-dialog-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes hhip-dialog-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+.hhip-dialog-backdrop {
+  animation: hhip-dialog-fade 160ms ease-out;
+}
+.hhip-dialog-panel {
+  animation: hhip-dialog-pop 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hhip-dialog-backdrop,
+  .hhip-dialog-panel {
+    animation: none;
+  }
+}

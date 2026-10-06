@@ -210,10 +210,13 @@ export function Sidebar({
   activePath,
   collapsed = false,
   onNavigate,
+  header,
 }: {
   activePath: string;
   collapsed?: boolean;
   onNavigate?: () => void;
+  /** Optional top row; only the mobile drawer uses it, since it covers the app header. */
+  header?: React.ReactNode;
 }) {
   return (
     <aside
@@ -223,25 +226,14 @@ export function Sidebar({
       )}
       style={{ borderColor: "var(--sidebar-border)" }}
     >
-      <div
-        className={cn(
-          "flex shrink-0 items-center border-b",
-          collapsed ? "justify-center px-2 py-4" : "gap-3 px-4 py-4",
-        )}
-        style={{ borderColor: "var(--sidebar-border)" }}
-      >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-sm)]">
-          H
-        </span>
-        {!collapsed ? (
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">HHIP</p>
-            <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-sidebar-muted">
-              Engineering Platform
-            </p>
-          </div>
-        ) : null}
-      </div>
+      {header ? (
+        <div
+          className="flex h-14 shrink-0 items-center justify-between border-b pl-5 pr-2"
+          style={{ borderColor: "var(--sidebar-border)" }}
+        >
+          {header}
+        </div>
+      ) : null}
       <NavLinks activePath={activePath} collapsed={collapsed} onNavigate={onNavigate} />
       <div
         className={cn("mt-auto shrink-0 border-t", collapsed ? "p-2" : "p-3")}
@@ -339,18 +331,24 @@ export function DashboardShell({
               onClick={() => setMobileOpen(false)}
             />
             <div className="relative z-10 flex h-full shadow-[var(--shadow-md)]">
-              <div className="absolute right-2 top-2 z-20">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="text-sidebar-foreground hover:bg-[var(--sidebar-hover)]"
-                  onClick={() => setMobileOpen(false)}
-                  aria-label="Close menu"
-                >
-                  <X className="size-4" />
-                </Button>
-              </div>
-              <Sidebar activePath={activePath} onNavigate={() => setMobileOpen(false)} />
+              <Sidebar
+                activePath={activePath}
+                onNavigate={() => setMobileOpen(false)}
+                header={
+                  <>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">HHIP</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-sidebar-foreground hover:bg-[var(--sidebar-hover)]"
+                      onClick={() => setMobileOpen(false)}
+                      aria-label="Close menu"
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </>
+                }
+              />
             </div>
           </div>
         ) : null}

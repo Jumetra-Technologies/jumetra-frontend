@@ -308,13 +308,35 @@ pre {
   box-shadow: var(--shadow-sm) !important;
 }
 
-.hhip-scroll::-webkit-scrollbar {
+/*
+ * Thin, theme-coloured scrollbars everywhere (sidebar, panels, page).
+ * Chrome 121+, Edge and Firefox use the standard properties and draw a slim
+ * bar with small arrows; the transparent track blends into each surface.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+
+/* Older WebKit/Blink (e.g. Safari) ignore the standard properties. */
+::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
-.hhip-scroll::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
   background: var(--scrollbar);
   border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted);
+}
+::-webkit-scrollbar-button {
+  display: none;
 }
 
 /* Architecture Explorer: data pulse travelling along a board trace */

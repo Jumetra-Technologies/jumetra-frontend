@@ -170,13 +170,16 @@ export const api = {
   getComparison: () => fetchJson<ComparisonResult>("/analytics/comparison"),
   getProjects: () => fetchJson<ProjectSummary[]>("/workspace/projects"),
   getProject: (id: string) => fetchJson<ProjectDetail>(`/workspace/projects/${id}`),
-  searchComponents: (params: {
-    q?: string;
-    category?: string;
-    interface?: string;
-    controller_id?: string;
-    limit?: number;
-  }) =>
+  searchComponents: (
+    params: {
+      q?: string;
+      category?: string;
+      interface?: string;
+      controller_id?: string;
+      limit?: number;
+    },
+    timeoutMs?: number,
+  ) =>
     fetchJson<ComponentSearchHit[]>(
       `/components/search${buildQuery({
         q: params.q,
@@ -185,6 +188,8 @@ export const api = {
         controller_id: params.controller_id,
         limit: params.limit,
       })}`,
+      undefined,
+      timeoutMs,
     ),
   debugComponents: () =>
     fetchJson<{

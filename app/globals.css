@@ -361,3 +361,94 @@ pre {
     animation: none;
   }
 }
+
+/*
+ * Elastic scrollbar (components/ui/elastic-scroll-area.tsx).
+ * The native bar is hidden inside these areas and redrawn so it can stretch
+ * when the user scrolls past either end. Sizes match the 6px bar above.
+ */
+.hhip-scroll-viewport {
+  scrollbar-width: none;
+  overscroll-behavior-y: contain;
+}
+.hhip-scroll-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.hhip-elastic-track {
+  position: absolute;
+  top: 2px;
+  right: 1px;
+  bottom: 2px;
+  z-index: 20;
+  display: flex;
+  width: 6px;
+  flex-direction: column;
+}
+/* Hidden but still laid out, so the rail can be measured. */
+.hhip-elastic-track[data-scrollable="false"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.hhip-elastic-rail {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.hhip-elastic-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  border-radius: 999px;
+  background: var(--scrollbar);
+  will-change: transform;
+  touch-action: none;
+  transition: background-color 150ms ease;
+}
+.hhip-elastic-thumb:hover,
+.hhip-elastic-thumb[data-dragging] {
+  background: var(--muted);
+}
+/* Let go: spring back to rest, overshooting slightly before settling. */
+.hhip-elastic-thumb[data-releasing] {
+  transition:
+    transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 150ms ease;
+}
+
+.hhip-elastic-arrow {
+  flex: none;
+  width: 6px;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-size: 3px 3px;
+  cursor: default;
+  --arrow: var(--scrollbar);
+}
+.hhip-elastic-arrow:hover {
+  --arrow: var(--muted);
+}
+.hhip-elastic-arrow[data-direction="up"] {
+  background-image:
+    linear-gradient(to top left, var(--arrow) 50%, transparent 50%),
+    linear-gradient(to top right, var(--arrow) 50%, transparent 50%);
+  background-position: 0 4px, 3px 4px;
+}
+.hhip-elastic-arrow[data-direction="down"] {
+  background-image:
+    linear-gradient(to bottom left, var(--arrow) 50%, transparent 50%),
+    linear-gradient(to bottom right, var(--arrow) 50%, transparent 50%);
+  background-position: 0 3px, 3px 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hhip-elastic-thumb[data-releasing] {
+    transition: background-color 150ms ease;
+  }
+}

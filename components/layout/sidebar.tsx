@@ -9,7 +9,8 @@ import {
   type NavItem,
 } from "@/components/layout/nav-items";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
-import { accountInitials, useAccount } from "@/lib/account";
+import { accountInitials } from "@/lib/account";
+import { useAuthStore } from "@/lib/auth-store";
 import { SETTINGS_QUERY_FLAG, openSettings } from "@/lib/settings-dialog";
 import { cn } from "@/lib/utils";
 
@@ -130,8 +131,10 @@ function AccountPlaceholder({
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
-  const account = useAccount();
-  const signedIn = Boolean(account?.name);
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const signedIn = isAuthenticated && Boolean(user);
+  const displayName = user?.display_name ?? "";
 
   if (collapsed) {
     return (
@@ -141,7 +144,7 @@ function AccountPlaceholder({
           onNavigate?.();
           openSettings();
         }}
-        title={signedIn ? account!.name : "Account and settings"}
+        title={signedIn ? displayName : "Account and settings"}
         aria-haspopup="dialog"
         className="flex size-10 items-center justify-center rounded-lg hover:bg-[var(--sidebar-hover)]"
       >
@@ -150,7 +153,7 @@ function AccountPlaceholder({
             className="flex size-8 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground"
             aria-hidden
           >
-            {accountInitials(account!.name)}
+            {accountInitials(displayName)}
           </span>
         ) : (
           <span
@@ -160,7 +163,7 @@ function AccountPlaceholder({
             <User className="size-3.5" />
           </span>
         )}
-        <span className="sr-only">{signedIn ? `${account!.name}, open settings` : "Open settings"}</span>
+        <span className="sr-only">{signedIn ? `${displayName}, open settings` : "Open settings"}</span>
       </button>
     );
   }
@@ -172,7 +175,7 @@ function AccountPlaceholder({
           className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground"
           aria-hidden
         >
-          {accountInitials(account!.name)}
+          {accountInitials(displayName)}
         </span>
       ) : (
         <span
@@ -185,12 +188,8 @@ function AccountPlaceholder({
       <div className="min-w-0 flex-1">
         {signedIn ? (
           <>
-            <p className="truncate text-xs font-semibold text-sidebar-foreground">{account!.name}</p>
-            {account!.email ? (
-              <p className="truncate text-[10px] text-sidebar-muted">{account!.email}</p>
-            ) : (
-              <p className="truncate text-[10px] text-sidebar-muted">Signed in</p>
-            )}
+            <p className="truncate text-xs font-semibold text-sidebar-foreground">{displayName}</p>
+            <p className="truncate text-[10px] text-sidebar-muted">{user?.email}</p>
           </>
         ) : (
           <>

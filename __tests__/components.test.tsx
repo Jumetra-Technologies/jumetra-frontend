@@ -2,6 +2,28 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Badge } from "@/components/ui/badge";
 import { MetricTiles } from "@/components/charts/charts";
+import { Sidebar } from "@/components/layout/sidebar";
+import { useAuthStore } from "@/lib/auth-store";
+
+describe("Sidebar account", () => {
+  it("shows the signed-in user's name and email", () => {
+    useAuthStore.setState({
+      user: {
+        id: "u-1",
+        email: "person@example.com",
+        display_name: "Person Example",
+      },
+      isAuthenticated: true,
+    });
+
+    render(<Sidebar activePath="/" />);
+
+    expect(screen.getByText("Person Example")).toBeInTheDocument();
+    expect(screen.getByText("person@example.com")).toBeInTheDocument();
+
+    useAuthStore.setState({ user: null, isAuthenticated: false });
+  });
+});
 
 describe("Badge", () => {
   it("renders label", () => {
@@ -85,32 +107,42 @@ describe("Auth session persistence", () => {
 });
 
 describe("Google auth code flow", () => {
-  it("sends the backend authorization code instead of the Google ID token credential", async () => {
+  it("sends a Firebase ID token to the backend and stores the returned session", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         access_token: "jwt-token",
-        token_type: "bearer",
-        user: {
-          id: "u-1",
-          email: "person@example.com",
-          display_name: "Person Example",
-          google_sub: "google-123",
-          picture_url: "https://example.com/avatar.png",
-        },
+        refresh_token: "refresh-token",
+        token_type: "Bearer",
+        id: "u-1",
+        email: "person@example.com",
+        name: "Person Example",
+        firebase_uid: "firebase-123",
+        photo_url: "https://example.com/avatar.png",
       }),
     });
 
     vi.stubGlobal("fetch", fetchMock);
 
     const { useAuthStore } = await import("@/lib/auth-store");
-    const session = await useAuthStore.getState().loginWithGoogleCode("auth-code-123");
+    const session = await useAuthStore.getState().loginWithGoogleToken("firebase-id-token");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/auth/google/callback?code=auth-code-123",
-      expect.objectContaining({ method: "GET" }),
+      "http://127.0.0.1:8000/auth/google",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ id_token: "firebase-id-token" }),
+      }),
     );
     expect(session.access_token).toBe("jwt-token");
+    expect(session.refresh_token).toBe("refresh-token");
+    expect(session.user).toMatchObject({
+      id: "u-1",
+      email: "person@example.com",
+      display_name: "Person Example",
+      google_sub: "firebase-123",
+      picture_url: "https://example.com/avatar.png",
+    });
 
     vi.unstubAllGlobals();
   });

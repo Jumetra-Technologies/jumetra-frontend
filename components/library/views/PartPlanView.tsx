@@ -37,7 +37,7 @@ function surfaceOf(model: PartModel): number {
   return board && board.kind === "box" ? (board.z ?? 0) + board.d : 0;
 }
 
-function SolidShape({ solid, powered, lit, index }: { solid: Solid; powered: boolean; lit: Set<string>; index: number }) {
+function SolidShape({ solid, powered, lit, index, uid = "plan" }: { solid: Solid; powered: boolean; lit: Set<string>; index: number; uid?: string }) {
   const glowing = powered && (("id" in solid && solid.id && lit.has(solid.id)) || false);
   switch (solid.kind) {
     case "box": {
@@ -88,7 +88,7 @@ function SolidShape({ solid, powered, lit, index }: { solid: Solid; powered: boo
       );
     }
     case "dome": {
-      const id = `dome-${index}`;
+      const id = `${uid}-dome-${index}`;
       return (
         <g key={index}>
           <defs>
@@ -271,7 +271,7 @@ export function PartPlanView({ model, powered, activeFeature, onFeature, classNa
         </g>
 
         {sorted.map(({ solid, index }) =>
-          front ? <FrontShape key={index} solid={solid} size={model.size} powered={powered} lit={lit} index={index} /> : <SolidShape key={index} solid={solid} powered={powered} lit={lit} index={index} />,
+          front ? <FrontShape key={index} solid={solid} size={model.size} powered={powered} lit={lit} index={index} /> : <SolidShape key={index} solid={solid} powered={powered} lit={lit} index={index} uid={uid} />,
         )}
 
         {/* Features: hover or focus to see what each is. Big ones first, so small ones stay reachable on top. */}
@@ -342,6 +342,50 @@ export function PartPlanView({ model, powered, activeFeature, onFeature, classNa
         ) : null}
       </svg>
     </div>
+  );
+}
+
+/**
+ * Just the part, drawn from above (or from the front for standing parts):
+ * no grid, dimensions or feature outlines. For small renders such as lab
+ * canvas nodes. `rotate` turns a landscape part upright to fit a tall slot.
+ */
+export function PartPlanGraphic({ model, powered, lit: litOverride, rotate = false, className }: { model: PartModel; powered: boolean; lit?: string[]; rotate?: boolean; className?: string }) {
+  const uid = useId().replace(/:/g, "");
+  const front = model.plan === "front";
+  const pinDrop = front ? Math.max(0, ...model.solids.map((s) => (s.kind === "pins" && s.len < 0 ? -(s.z ?? 0) - s.len : 0))) : 0;
+  const w = model.size.w;
+  const h = front ? model.size.d + pinDrop : model.size.h;
+  const extent = (solid: Solid) => {
+    if (solid.kind === "box") return { x1: solid.x, y1: solid.y, x2: solid.x + solid.w, y2: solid.y + solid.h };
+    if (solid.kind === "cyl" || solid.kind === "dome") return { x1: solid.cx - solid.r, y1: solid.cy - solid.r, x2: solid.cx + solid.r, y2: solid.cy + solid.r };
+    return null;
+  };
+  const extents = front ? [] : model.solids.map(extent).filter((e): e is NonNullable<typeof e> => e !== null);
+  const minX = Math.min(0, ...extents.map((e) => e.x1));
+  const minY = Math.min(0, ...extents.map((e) => e.y1));
+  const maxX = Math.max(w, ...extents.map((e) => e.x2));
+  const maxY = front ? h : Math.max(h, ...extents.map((e) => e.y2));
+  const pad = Math.max(w, h) * 0.04;
+  const vx = minX - pad;
+  const vy = minY - pad;
+  const vw = maxX - minX + pad * 2;
+  const vh = maxY - minY + pad * 2;
+  const lit = new Set(litOverride ?? model.animate?.lit ?? []);
+  const surface = surfaceOf(model);
+  const sorted = front
+    ? model.solids.map((solid, index) => ({ solid, index }))
+    : model.solids.map((solid, index) => ({ solid, index })).sort((a, b) => zOf(a.solid, surface) - zOf(b.solid, surface) || a.index - b.index);
+  const turned = rotate && vw > vh * 1.15;
+  const box = turned ? `${vy} ${-(vx + vw)} ${vh} ${vw}` : `${vx} ${vy} ${vw} ${vh}`;
+  return (
+    <svg viewBox={box} className={className} role="img" aria-label={`${model.name}, ${front ? "front" : "top"} view`} preserveAspectRatio="xMidYMid meet">
+      <g transform={turned ? "rotate(-90)" : undefined}>
+        {sorted.map(({ solid, index }) =>
+          front ? <FrontShape key={index} solid={solid} size={model.size} powered={powered} lit={lit} index={index} /> : <SolidShape key={index} solid={solid} powered={powered} lit={lit} index={index} uid={uid} />,
+        )}
+      </g>
+    </svg>
   );
 }
 

@@ -238,7 +238,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
           ["`hhip-auth-session`", "Your sign-in token and profile after you sign in with Google", "Until you sign out or clear site data"],
           ["`hhip-account`", "Your display name and email, for the sidebar", "Until you sign out or clear site data"],
           ["`hhip-robotics-workspace:v1`", "Your projects, experiment records and reports", "Until you delete them or clear site data"],
-          ["`hhip.workspaceId`", "The Engineering Lab workspace you had open", "Until you clear site data"],
+          ["`hhip.lab:v1`", "Your Engineering Lab sessions: the parts, wires and activity log of each, and which one you had open", "Until you delete them or clear site data"],
           ["`hhip-learning-progress:v1`", "Which learning modules you have marked complete", "Until you clear site data"],
           ["`hhip-theme`", "Your chosen theme", "Until you change it or clear site data"],
           ["`hhip-sidebar-collapsed`", "Whether the sidebar is collapsed", "Until you change it or clear site data"],

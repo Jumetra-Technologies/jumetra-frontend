@@ -3,7 +3,11 @@
 import { useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, FilePlus2, Trash2 } from "lucide-react";
+import { ArrowLeft, FilePlus2, FlaskConical, Trash2 } from "lucide-react";
+import { labHref } from "@/components/projects/LabSessionCard";
+import { ProjectDetailSkeleton } from "@/components/projects/ProjectsSkeleton";
+import { labHardware, ProjectLabActivity, useProjectSessions } from "@/components/projects/ProjectLabActivity";
+import { useLab } from "@/lib/lab/store";
 import { ExperimentRecordDialog } from "@/components/experiments/ExperimentRecordDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,9 +35,10 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
   const [editing, setEditing] = useState(false);
   const [creatingRecord, setCreatingRecord] = useState(false);
   const [error, setError] = useState("");
+  const lab = useProjectSessions(projectId);
 
-  if (!data) {
-    return <Card><p className="text-sm text-muted">Loading project…</p></Card>;
+  if (!data || !lab.ready) {
+    return <ProjectDetailSkeleton />;
   }
   if (!project) {
     return (
@@ -90,6 +95,8 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
       setError("Could not delete this project from browser storage.");
       return;
     }
+    // Its lab sessions stay, unlinked.
+    for (const session of lab.sessions) useLab.getState().linkProject(session.id, null);
     router.push("/workspace");
   }
 
@@ -106,7 +113,10 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
           </div>
           <p className="mt-1 text-sm text-muted">Saved in this browser · Updated {new Date(project.updatedAt).toLocaleDateString()}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link href={lab.sessions[0] ? labHref(lab.sessions[0].id) : `/laboratory/workspace?project=${encodeURIComponent(project.id)}`} className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90" data-testid="project-open-lab">
+            <FlaskConical className="size-4" aria-hidden /> {lab.sessions[0] ? "Open in lab" : "Start in the lab"}
+          </Link>
           <Button variant="secondary" onClick={() => editing ? setEditing(false) : startEditing()}>{editing ? "Cancel edit" : "Edit project"}</Button>
           <Button variant="ghost" onClick={deleteProject} aria-label="Delete project">
             <Trash2 className="size-4" aria-hidden /> Delete
@@ -140,12 +150,24 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
           {project.hardware.length ? (
             <ul className="mt-2 space-y-1 text-sm text-muted">{project.hardware.map((item) => <li key={item}>{item}</li>)}</ul>
           ) : <p className="mt-2 text-sm text-muted">No hardware recorded.</p>}
+          {labHardware(lab.sessions).length ? (
+            <div className="mt-3 border-t border-border pt-3">
+              <p className="text-xs font-medium text-muted">Used in the lab</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5" data-testid="lab-hardware">
+                {labHardware(lab.sessions).map((name) => (
+                  <span key={name} className="rounded-full bg-muted-bg px-2 py-0.5 text-xs text-foreground">{name}</span>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </Card>
         <Card>
           <h3 className="text-sm font-semibold">Contributors</h3>
           <p className="mt-2 whitespace-pre-wrap text-sm text-muted">{project.contributors || "No contributors listed."}</p>
         </Card>
       </div>
+
+      <ProjectLabActivity project={project} projects={data.projects} />
 
       <section aria-labelledby="project-records-heading">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

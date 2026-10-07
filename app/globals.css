@@ -497,3 +497,130 @@ pre {
     animation: none;
   }
 }
+
+/*
+ * Component library views: moving current in the flow view, glowing LEDs in
+ * the top view. (Restored: the merge of PR #8 dropped this block.)
+ */
+@keyframes hhip-flow-dash {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+.hhip-flow-dash {
+  animation: hhip-flow-dash 0.9s linear infinite;
+}
+@keyframes hhip-plan-glow {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+.hhip-plan-glow {
+  animation: hhip-plan-glow 1.2s ease-in-out infinite;
+  filter: blur(0.6px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hhip-flow-dash {
+    animation: none;
+  }
+  .hhip-plan-glow {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/* Menus and popovers. */
+@keyframes hhip-menu-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+.hhip-menu-pop {
+  animation: hhip-menu-pop 120ms ease-out;
+  transform-origin: top left;
+}
+
+/* Skeleton loading: a soft sheen that runs across placeholder blocks. */
+@keyframes hhip-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+.hhip-skeleton {
+  background-color: var(--muted-bg);
+  background-image: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--surface) 70%, transparent) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: hhip-shimmer 1.4s ease-in-out infinite;
+}
+
+/* Engineering Lab: wire and pin colours, shared by the canvas, inspector and dock. */
+.hhip-lab {
+  --lab-power: #ef4444;
+  --lab-ground: #64748b;
+  --lab-digital: #3b82f6;
+  --lab-analog: #10b981;
+  --lab-pwm: #f59e0b;
+  --lab-bus: #8b5cf6;
+  --lab-muted: #cbd5e1;
+  --lab-fault: #dc2626;
+}
+[data-theme="dark"] .hhip-lab,
+[data-theme="dark-contrast"] .hhip-lab {
+  --lab-muted: #525252;
+}
+.hhip-lab-canvas .react-flow__handle {
+  min-width: 0;
+  min-height: 0;
+}
+.hhip-lab-canvas .react-flow__edge-path {
+  transition: stroke 160ms ease, opacity 160ms ease, stroke-width 160ms ease;
+}
+@keyframes hhip-fault-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.hhip-fault-pulse {
+  animation: hhip-fault-pulse 1s ease-in-out infinite;
+}
+@keyframes hhip-live-dash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+.hhip-live-dash {
+  animation: hhip-live-dash 0.8s linear infinite;
+}
+@keyframes hhip-glow-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.hhip-glow-breathe {
+  animation: hhip-glow-breathe 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hhip-menu-pop,
+  .hhip-skeleton,
+  .hhip-fault-pulse,
+  .hhip-live-dash,
+  .hhip-glow-breathe {
+    animation: none;
+  }
+}

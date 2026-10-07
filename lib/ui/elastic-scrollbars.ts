@@ -438,14 +438,33 @@ export function startElasticScrollbars(root: Document = document): () => void {
     scrollers.delete(scroller.el);
   }
 
+  // Streamed pages arrive as server HTML before React hydrates them. Tagging
+  // those elements early would make React's hydration see a class it didn't
+  // render, so wait until React has claimed an element, and look again soon.
+  const reactApp = () => Object.keys(root).some((key) => key.startsWith("__reactContainer"));
+  const hydrated = (el: Element) => !reactApp() || Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+  let retryTimer: number | undefined;
+
   const scan = () => {
     scanTimer = undefined;
     for (const [el, scroller] of scrollers) {
       if (!el.isConnected || !isScrollContainer(el)) destroy(scroller);
       else scroller.z = stackingZ(el);
     }
+    let waiting = false;
     for (const node of root.querySelectorAll(CANDIDATE_SELECTOR)) {
-      if (!scrollers.has(node as HTMLElement) && isScrollContainer(node)) manage(node);
+      if (scrollers.has(node as HTMLElement) || !isScrollContainer(node)) continue;
+      if (!hydrated(node)) {
+        waiting = true;
+        continue;
+      }
+      manage(node);
+    }
+    if (waiting && retryTimer === undefined) {
+      retryTimer = window.setTimeout(() => {
+        retryTimer = undefined;
+        scan();
+      }, 250);
     }
     schedule();
   };
@@ -482,6 +501,7 @@ export function startElasticScrollbars(root: Document = document): () => void {
   return () => {
     window.cancelAnimationFrame(frame);
     window.clearTimeout(scanTimer);
+    window.clearTimeout(retryTimer);
     mutations.disconnect();
     root.removeEventListener("scroll", schedule, { capture: true });
     root.removeEventListener("wheel", onWheel, { capture: true });

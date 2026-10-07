@@ -299,10 +299,24 @@ function Surface({ model, s, z, flats }: { model: PartModel; s: number; z: numbe
   );
 }
 
-export function PartModel3D({ model, powered, className }: { model: PartModel; powered: boolean; className?: string }) {
+export function PartModel3D({
+  model,
+  powered,
+  className,
+  still,
+  lit: litOverride,
+}: {
+  model: PartModel;
+  powered: boolean;
+  className?: string;
+  /** A fixed three-quarter view with no turntable, for small renders such as lab nodes. */
+  still?: { spin: number; tilt: number };
+  /** Light only these solids (overrides the model's own list while powered). */
+  lit?: string[];
+}) {
   const sceneRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(() => fitScale(520, 360, model));
-  useTurntable(sceneRef, { spin: -24, tilt: TILT, speed: 9 });
+  useTurntable(sceneRef, { spin: -24, tilt: TILT, speed: 9, enabled: !still });
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -317,7 +331,7 @@ export function PartModel3D({ model, powered, className }: { model: PartModel; p
 
   const s = scale;
   const surface = surfaceHeight(model);
-  const lit = new Set(powered ? model.animate?.lit ?? [] : []);
+  const lit = new Set(powered ? (litOverride ?? model.animate?.lit ?? []) : []);
   const spin = new Set(powered ? model.animate?.spin ?? [] : []);
   const sweep = new Set(powered ? model.animate?.sweep ?? [] : []);
   const motionFor = (id?: string) => (id && spin.has(id) ? "spin" : id && sweep.has(id) ? "sweep" : undefined);
@@ -327,11 +341,11 @@ export function PartModel3D({ model, powered, className }: { model: PartModel; p
   return (
     <div
       ref={sceneRef}
-      className={cn(styles.scene, className)}
-      role="group"
-      aria-roledescription="interactive 3D model"
-      aria-label={`${model.name}, turning slowly. Drag or use the arrow keys to turn it.`}
-      tabIndex={0}
+      className={cn(styles.scene, still && styles.still, className)}
+      style={still ? ({ "--spin": `${still.spin}deg`, "--tilt": `${still.tilt}deg` } as CSSProperties) : undefined}
+      {...(still
+        ? { role: "img", "aria-label": `${model.name}, 3D view` }
+        : { role: "group", "aria-roledescription": "interactive 3D model", "aria-label": `${model.name}, turning slowly. Drag or use the arrow keys to turn it.`, tabIndex: 0 })}
       data-testid="part-3d"
     >
       <div className={styles.stage} style={{ width: model.size.w * s, height: model.size.h * s, top: `calc(50% + ${lift.toFixed(1)}px)` }}>

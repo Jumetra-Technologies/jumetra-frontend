@@ -19,14 +19,16 @@ export interface TurntableOptions {
   maxTilt?: number;
   /** Elements that must not start a drag when pressed, as a selector. */
   ignore?: string;
+  /** Turn the behaviour off (for still renders). */
+  enabled?: boolean;
 }
 
 export function useTurntable(ref: RefObject<HTMLElement | null>, options: TurntableOptions = {}) {
-  const { spin: initialSpin = -20, tilt: initialTilt = 55, speed = 10, minTilt = 14, maxTilt = 82, ignore = '[role="switch"], button, a' } = options;
+  const { spin: initialSpin = -20, tilt: initialTilt = 55, speed = 10, minTilt = 14, maxTilt = 82, ignore = '[role="switch"], button, a', enabled = true } = options;
 
   useEffect(() => {
     const scene = ref.current;
-    if (!scene) return;
+    if (!scene || !enabled) return;
 
     const reduce = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const state = { spin: initialSpin, tilt: initialTilt, velocity: 0, dragging: false, hovering: false, visible: true, resumeAt: 0, lastX: 0, lastY: 0 };
@@ -143,5 +145,5 @@ export function useTurntable(ref: RefObject<HTMLElement | null>, options: Turnta
       scene.removeEventListener("lostpointercapture", onUp);
       scene.removeEventListener("keydown", onKey);
     };
-  }, [ref, initialSpin, initialTilt, speed, minTilt, maxTilt, ignore]);
+  }, [ref, initialSpin, initialTilt, speed, minTilt, maxTilt, ignore, enabled]);
 }

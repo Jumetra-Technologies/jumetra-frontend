@@ -30,7 +30,7 @@ export default async function LaboratoryPage() {
           href="/laboratory/workspace"
           className="rounded-[10px] bg-primary px-4 py-2 text-sm font-medium text-white"
         >
-          Open Engineering Workspace →
+          Open the Engineering Lab →
         </Link>
         <Link
           href="/laboratory/hybrid"

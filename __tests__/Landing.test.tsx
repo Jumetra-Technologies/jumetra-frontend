@@ -111,7 +111,7 @@ describe("legal documents", () => {
     const cookies = getLegalDocument("cookies")!;
     const table = cookies.blocks.find((block) => block.type === "table");
     const keys = table && table.type === "table" ? table.rows.map((row) => row[0]) : [];
-    for (const key of ["hhip-auth-session", "hhip-account", "hhip-robotics-workspace:v1", "hhip.workspaceId", "hhip-learning-progress:v1", "hhip-theme", "hhip-sidebar-collapsed"]) {
+    for (const key of ["hhip-auth-session", "hhip-account", "hhip-robotics-workspace:v1", "hhip.lab:v1", "hhip-learning-progress:v1", "hhip-theme", "hhip-sidebar-collapsed"]) {
       expect(keys.some((cell) => cell.includes(key)), key).toBe(true);
     }
   });

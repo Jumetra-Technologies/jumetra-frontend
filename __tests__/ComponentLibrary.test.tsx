@@ -1,8 +1,9 @@
-import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { ComponentLibrary } from "@/components/library/ComponentLibrary";
 import { PartDetail } from "@/components/library/PartDetail";
+import { analyze } from "@/lib/lab/circuit";
+import { LAB_STORAGE_KEY, useLab } from "@/lib/lab/store";
 import { StartExperimentButton } from "@/components/library/StartExperimentButton";
 import { PartFlowView } from "@/components/library/views/PartFlowView";
 import { PartModel3D } from "@/components/library/views/PartModel3D";
@@ -258,42 +259,33 @@ describe("PartDetail", () => {
 
 describe("StartExperimentButton", () => {
   beforeEach(() => {
-    createEngineeringWorkspace.mockResolvedValue({ workspace_id: "ws-42" });
-    addWorkspaceNode.mockImplementation(async (_id: string, body: { component_id: string }) => ({ id: `node-${body.component_id}` }));
-    createComponentV2Binding.mockResolvedValue({});
+    window.localStorage.clear();
+    useLab.setState({ hydrated: false, sessions: [], activeId: null, past: [], future: [] });
   });
 
-  it("creates a workspace with an Uno and the part, remembers it and opens the lab", async () => {
+  it("opens a new lab session with an Uno wired to the part, without the backend", () => {
     render(<StartExperimentButton part={getPart("hc-sr04")!} />);
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("start-experiment"));
-    });
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/laboratory/workspace"));
-    expect(createEngineeringWorkspace).toHaveBeenCalledWith({ name: "HC-SR04 ultrasonic distance: Parking sensor" });
-    expect(addWorkspaceNode.mock.calls.map((call) => call[1].component_id)).toEqual(["arduino-uno", "hc-sr04"]);
-    expect(addWorkspaceNode.mock.calls[0][1]).toMatchObject({ device_mode: "virtual", position: { x: 80, y: 150 } });
-    expect(window.localStorage.getItem("hhip.workspaceId")).toBe("ws-42");
+    fireEvent.click(screen.getByTestId("start-experiment"));
+    const { sessions, activeId } = useLab.getState();
+    expect(sessions).toHaveLength(1);
+    const session = sessions[0];
+    expect(activeId).toBe(session.id);
+    expect(session.name).toBe("HC-SR04 ultrasonic distance: Parking sensor");
+    expect(session.nodes.map((n) => n.partId)).toEqual(["arduino-uno", "hc-sr04"]);
+    // VCC, Trig, Echo and GND, all landing on the Uno.
+    expect(session.wires).toHaveLength(4);
+    const analysis = analyze(session.nodes, session.wires);
+    expect(analysis.nodes[session.nodes[1].id].status).toBe("ready");
+    expect(push).toHaveBeenCalledWith(`/laboratory/workspace?session=${session.id}`);
+    expect(createEngineeringWorkspace).not.toHaveBeenCalled();
+    expect(JSON.parse(window.localStorage.getItem(LAB_STORAGE_KEY)!).sessions).toHaveLength(1);
   });
 
-  it("puts a board on its own, and keeps going when bindings fail", async () => {
-    createComponentV2Binding.mockRejectedValue(new Error("no v2"));
+  it("puts a board on its own", () => {
     render(<StartExperimentButton part={getPart("esp32")!} />);
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("start-experiment"));
-    });
-    await waitFor(() => expect(push).toHaveBeenCalled());
-    expect(addWorkspaceNode.mock.calls.map((call) => call[1].component_id)).toEqual(["esp32"]);
-  });
-
-  it("explains how to run the backend when it is unreachable", async () => {
-    createEngineeringWorkspace.mockRejectedValue(new Error("offline"));
-    render(<StartExperimentButton part={getPart("led")!} />);
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("start-experiment"));
-    });
-    expect(await screen.findByRole("alert")).toHaveTextContent(/backend/);
-    expect(screen.getByRole("link", { name: /run it locally/i })).toHaveAttribute("href", "/docs/technical-guides/run-locally");
-    expect(push).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("start-experiment"));
+    expect(useLab.getState().sessions[0].nodes.map((n) => n.partId)).toEqual(["esp32"]);
+    expect(addWorkspaceNode).not.toHaveBeenCalled();
   });
 });
 

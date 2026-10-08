@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
-import { ArrowUpRight, FolderKanban, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowUpRight, FlaskConical, FolderKanban, Plus } from "lucide-react";
+import { LabSessionCard, labHref } from "@/components/projects/LabSessionCard";
+import { ProjectsSkeleton } from "@/components/projects/ProjectsSkeleton";
+import { useLab } from "@/lib/lab/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,14 +31,21 @@ const emptyDraft = {
   hardware: "",
 };
 
-export function ProjectHub({ serverProjects }: { serverProjects: ProjectSummary[] }) {
+export function ProjectHub({ serverProjects, startCreating = false }: { serverProjects: ProjectSummary[]; startCreating?: boolean }) {
+  const router = useRouter();
   const data = useSyncExternalStore(
     subscribeToRoboticsData,
     readRoboticsData,
     getServerRoboticsDataSnapshot,
   );
   const projects = data?.projects ?? [];
-  const [creating, setCreating] = useState(false);
+  const labReady = useLab((s) => s.hydrated);
+  const sessions = useLab((s) => s.sessions);
+  useEffect(() => {
+    if (!useLab.getState().hydrated) useLab.getState().hydrate();
+  }, []);
+  const recentSessions = [...sessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const [creating, setCreating] = useState(startCreating);
   const [includeContributor, setIncludeContributor] = useState(false);
   const [draft, setDraft] = useState(emptyDraft);
   const [error, setError] = useState("");
@@ -58,10 +69,19 @@ export function ProjectHub({ serverProjects }: { serverProjects: ProjectSummary[
     setIncludeContributor(false);
     setError("");
     setCreating(false);
+    if (startCreating) router.replace("/workspace");
   }
+
+  function newLabSession() {
+    const session = useLab.getState().createSession({ name: "Untitled lab" });
+    router.push(labHref(session.id));
+  }
+
+  if (!data || !labReady) return <ProjectsSkeleton />;
 
   function closeCreate() {
     setCreating(false);
+    if (startCreating) router.replace("/workspace");
     setIncludeContributor(false);
     setDraft((current) => ({ ...current, contributors: "" }));
   }
@@ -76,20 +96,50 @@ export function ProjectHub({ serverProjects }: { serverProjects: ProjectSummary[
             Organize project objectives, hardware, and experiment records in one place.
           </p>
         </div>
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="size-4" aria-hidden />
-          New project
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={newLabSession} data-testid="new-lab-session">
+            <FlaskConical className="size-4" aria-hidden />
+            New lab session
+          </Button>
+          <Button onClick={() => setCreating(true)}>
+            <Plus className="size-4" aria-hidden />
+            New project
+          </Button>
+        </div>
       </div>
+
+      <section aria-labelledby="lab-sessions-heading" className="mb-10">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 id="lab-sessions-heading" className="text-sm font-semibold">Lab sessions</h3>
+          <span className="text-xs text-muted">Saved in this browser · open any to pick up where you left off</span>
+        </div>
+        {recentSessions.length === 0 ? (
+          <Card className="flex flex-col items-start gap-3 py-8">
+            <FlaskConical className="size-5 text-muted" aria-hidden />
+            <div>
+              <p className="font-medium">No lab sessions yet</p>
+              <p className="mt-1 text-sm text-muted">Build a circuit in the Engineering Lab; it is saved here automatically, with a log of what happened.</p>
+            </div>
+            <Button variant="secondary" onClick={newLabSession}>
+              <FlaskConical className="size-4" aria-hidden /> Open the lab
+            </Button>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {recentSessions.slice(0, 6).map((session) => (
+              <LabSessionCard key={session.id} session={session} projects={projects} />
+            ))}
+          </div>
+        )}
+        {recentSessions.length > 6 ? <p className="mt-3 text-xs text-muted">{recentSessions.length - 6} older sessions are in the lab&apos;s session menu.</p> : null}
+      </section>
 
       <section aria-labelledby="robotics-projects-heading">
         <div className="mb-3 flex items-center justify-between">
           <h3 id="robotics-projects-heading" className="text-sm font-semibold">Your robotics projects</h3>
           <span className="text-xs text-muted">Saved in this browser</span>
         </div>
-        {!data ? (
-          <p className="text-sm text-muted">Loading projects…</p>
-        ) : projects.length === 0 ? (
+        {projects.length === 0 ? (
           <Card className="flex flex-col items-start gap-3 py-8">
             <FolderKanban className="size-5 text-muted" aria-hidden />
             <div>
@@ -106,6 +156,7 @@ export function ProjectHub({ serverProjects }: { serverProjects: ProjectSummary[
               const experimentCount = (data?.experiments ?? []).filter(
                 (experiment) => experiment.projectId === project.id,
               ).length;
+              const linked = recentSessions.filter((session) => session.projectId === project.id);
               return (
                 <Link key={project.id} href={`/workspace/projects/${project.id}`} className="group">
                   <Card className="h-full transition-colors group-hover:border-primary/50">
@@ -122,7 +173,13 @@ export function ProjectHub({ serverProjects }: { serverProjects: ProjectSummary[
                       <Badge variant="info">{project.category}</Badge>
                       <span className="text-xs text-muted">{project.hardware.length} hardware items</span>
                       <span className="text-xs text-muted">{experimentCount} records</span>
+                      <span className="text-xs text-muted">{linked.length} lab session{linked.length === 1 ? "" : "s"}</span>
                     </div>
+                    {linked[0] ? (
+                      <p className="mt-3 line-clamp-1 text-xs text-muted">
+                        <span className="font-medium text-foreground">Latest in the lab</span> {[...linked[0].log].reverse().find((e) => e.kind !== "session")?.text ?? linked[0].name}
+                      </p>
+                    ) : null}
                     {project.objectives ? (
                       <p className="mt-4 border-t border-border pt-3 text-xs leading-relaxed text-muted">
                         <span className="font-medium text-foreground">Objective</span> {project.objectives}

@@ -32,12 +32,14 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy on Vercel
 
+The app is hosted at [https://jumetra-frontendv0.vercel.app/](https://jumetra-frontendv0.vercel.app/). Production talks to the Firebase Python API:
+
 ```text
-NEXT_PUBLIC_API_URL=https://jumetra-backend-1.onrender.com
-NEXT_PUBLIC_WS_URL=wss://jumetra-backend-1.onrender.com
+NEXT_PUBLIC_API_URL=https://europe-west4-hhipsystemv0.cloudfunctions.net/api
+NEXT_PUBLIC_WS_URL=wss://api-aoxa3kagvq-ez.a.run.app
 ```
 
-The Render backend must allow requests from the Vercel deployment's origin through CORS. `NEXT_PUBLIC_*` values are embedded at build time, so redeploy after changing them.
+HTTP requests use the Firebase HTTPS Function. WebSocket requests use the Cloud Run host because the HTTPS Function wrapper does not proxy WebSocket upgrades. Add `https://jumetra-frontendv0.vercel.app` as an authorized domain in Firebase Authentication. `NEXT_PUBLIC_*` values are embedded at build time, so redeploy after changing them.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 # updated UI

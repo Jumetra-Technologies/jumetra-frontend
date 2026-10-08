@@ -2,12 +2,7 @@
 
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, type Auth } from "firebase/auth";
-
-const DEFAULT_API_BASE =
-  process.env.NODE_ENV === "production"
-    ? "https://jumetra-backend-1.onrender.com"
-    : "http://127.0.0.1:8000";
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_BASE).replace(/\/+$/, "");
+import { API_BASE } from "@/lib/api-client";
 
 type FirebaseWebConfig = {
   apiKey: string;

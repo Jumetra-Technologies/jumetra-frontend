@@ -45,10 +45,11 @@ function getStoredAuthSessionSafe(): { access_token?: string } | null {
   }
 }
 
+export const FIREBASE_API_URL = "https://europe-west4-hhipsystemv0.cloudfunctions.net/api";
+export const FIREBASE_WS_URL = "wss://api-aoxa3kagvq-ez.a.run.app";
+
 const DEFAULT_API_BASE =
-  process.env.NODE_ENV === "production"
-    ? "https://jumetra-backend-1.onrender.com"
-    : "http://127.0.0.1:8000";
+  process.env.NODE_ENV === "production" ? FIREBASE_API_URL : "http://127.0.0.1:8000";
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_BASE).replace(/\/+$/, "");
 const ENGINEERING_WORKSPACE_REQUEST_TIMEOUT_MS = 15_000;
 
@@ -620,7 +621,13 @@ export const api = {
 };
 
 function wsBase(): string {
-  return process.env.NEXT_PUBLIC_WS_URL ?? API_BASE.replace(/^http/, "ws");
+  if (process.env.NEXT_PUBLIC_WS_URL) {
+    return process.env.NEXT_PUBLIC_WS_URL.replace(/\/+$/, "");
+  }
+  if (process.env.NODE_ENV === "production") {
+    return FIREBASE_WS_URL;
+  }
+  return API_BASE.replace(/^http/, "ws");
 }
 
 export function wsUrl(path: string): string {

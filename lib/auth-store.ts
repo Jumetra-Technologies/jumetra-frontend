@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { API_BASE } from "@/lib/api-client";
 import { buildAuthHeaders, clearStoredAuthSession, getStoredAuthSession, setStoredAuthSession, type AuthSession, type AuthUser } from "@/lib/auth-session";
+import { withDeviceProfile } from "@/lib/profile";
 
 export type AuthState = {
   user: AuthUser | null;
@@ -16,7 +17,10 @@ type AuthStore = AuthState & {
   setSession: (session: AuthSession | null) => void;
   logout: () => void;
   refreshSession: () => Promise<void>;
-  loginWithGoogleToken: (idToken: string) => Promise<AuthSession>;
+  /** `photoURL` is the Google photo from Firebase, used when the backend returns none. */
+  loginWithGoogleToken: (idToken: string, photoURL?: string | null) => Promise<AuthSession>;
+  /** Replace the signed-in user (after a profile save) and persist it. */
+  updateUser: (user: AuthUser) => void;
   setLoading: (loading: boolean) => void;
   clearError: () => void;
 };
@@ -30,6 +34,10 @@ type BackendUser = {
   picture_url?: string | null;
   google_sub?: string;
   firebase_uid?: string | null;
+  role?: string | null;
+  organization?: string | null;
+  location?: string | null;
+  bio?: string | null;
 };
 
 type BackendSession = {
@@ -43,28 +51,29 @@ async function responseError(response: Response, fallback: string): Promise<Erro
   return new Error(payload?.detail ?? fallback);
 }
 
-function normalizeSession(payload: BackendSession): AuthSession {
+function normalizeUser(payload: BackendUser | (BackendSession & { user?: BackendUser }), previous?: AuthUser | null): AuthUser {
+  // Some backends nest the user under `user`, others flatten it into the session.
+  const u: BackendUser = "user" in payload && payload.user ? payload.user : payload;
+  return withDeviceProfile({
+    id: u.id,
+    email: u.email,
+    display_name: u.name ?? u.display_name ?? u.email,
+    google_sub: u.google_sub ?? u.firebase_uid ?? undefined,
+    // Keep the photo we already have if this response leaves it out.
+    picture_url: u.photo_url ?? u.picture_url ?? previous?.picture_url ?? null,
+    role: u.role ?? null,
+    organization: u.organization ?? null,
+    location: u.location ?? null,
+    bio: u.bio ?? null,
+  });
+}
+
+function normalizeSession(payload: BackendSession & { user?: BackendUser }, previous?: AuthUser | null): AuthSession {
   return {
     access_token: payload.access_token,
     token_type: payload.token_type ?? "Bearer",
     ...(payload.refresh_token ? { refresh_token: payload.refresh_token } : {}),
-    user: {
-      id: payload.id,
-      email: payload.email,
-      display_name: payload.name ?? payload.display_name ?? payload.email,
-      google_sub: payload.google_sub ?? payload.firebase_uid ?? undefined,
-      picture_url: payload.photo_url ?? payload.picture_url ?? null,
-    },
-  };
-}
-
-function normalizeUser(payload: BackendUser): AuthUser {
-  return {
-    id: payload.id,
-    email: payload.email,
-    display_name: payload.name ?? payload.display_name ?? payload.email,
-    google_sub: payload.google_sub ?? payload.firebase_uid ?? undefined,
-    picture_url: payload.photo_url ?? payload.picture_url ?? null,
+    user: normalizeUser(payload, previous),
   };
 }
 
@@ -126,8 +135,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
       const payload = (await response.json()) as BackendSession | BackendUser;
       const nextSession = "access_token" in payload
-        ? normalizeSession(payload)
-        : { ...session, user: normalizeUser(payload) };
+        ? normalizeSession(payload, session.user)
+        : { ...session, user: normalizeUser(payload, session.user) };
 
       setStoredAuthSession(nextSession);
       set({
@@ -143,7 +152,12 @@ export const useAuthStore = create<AuthStore>((set) => ({
       set({ user: null, accessToken: null, isAuthenticated: false, error: message, isLoading: false });
     }
   },
-  loginWithGoogleToken: async (idToken) => {
+  updateUser: (user) => {
+    const session = getStoredAuthSession();
+    if (session) setStoredAuthSession({ ...session, user });
+    set({ user });
+  },
+  loginWithGoogleToken: async (idToken, photoURL) => {
     set({ isLoading: true, error: null });
 
     try {
@@ -157,7 +171,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
         throw await responseError(response, "Google sign-in failed");
       }
 
-      const session = normalizeSession((await response.json()) as BackendSession);
+      const session = normalizeSession((await response.json()) as BackendSession, photoURL ? ({ picture_url: photoURL } as AuthUser) : null);
       setStoredAuthSession(session);
       set({
         user: session.user,
@@ -183,7 +197,7 @@ export function hydrateAuthStore(): void {
     return;
   }
 
-  useAuthStore.setState({ user: session.user, accessToken: session.access_token, isAuthenticated: true, isLoading: false, error: null });
+  useAuthStore.setState({ user: withDeviceProfile(session.user), accessToken: session.access_token, isAuthenticated: true, isLoading: false, error: null });
 }
 
 export function useAuthSession(): AuthState {

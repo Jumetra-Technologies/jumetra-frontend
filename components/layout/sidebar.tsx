@@ -10,7 +10,9 @@ import {
   type NavItem,
 } from "@/components/layout/nav-items";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
-import { accountInitials } from "@/lib/account";
+import { Avatar } from "@/components/account/Avatar";
+import { AccountDialogs } from "@/components/account/AccountDialogs";
+import { openAuth, openProfile } from "@/lib/account-dialogs";
 import { useAuthStore } from "@/lib/auth-store";
 import { SETTINGS_QUERY_FLAG, openSettings } from "@/lib/settings-dialog";
 import { cn } from "@/lib/utils";
@@ -125,7 +127,11 @@ function NavLinks({
   );
 }
 
-function AccountPlaceholder({
+/**
+ * The account row at the foot of the sidebar. The avatar and name open the
+ * profile (or the sign-in modal when signed out); the gear opens Settings.
+ */
+function AccountRow({
   collapsed = false,
   onNavigate,
 }: {
@@ -136,82 +142,85 @@ function AccountPlaceholder({
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const signedIn = isAuthenticated && Boolean(user);
   const displayName = user?.display_name ?? "";
+  const openAccount = () => {
+    onNavigate?.();
+    if (signedIn) openProfile();
+    else openAuth("login");
+  };
+  const gear = (
+    <button
+      type="button"
+      onClick={() => {
+        onNavigate?.();
+        openSettings();
+      }}
+      aria-label="Open settings"
+      aria-haspopup="dialog"
+      title="Settings"
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center rounded-md text-sidebar-muted hover:bg-[var(--sidebar-hover)] hover:text-sidebar-foreground",
+        collapsed ? "size-10" : "size-7",
+      )}
+    >
+      <Settings className={collapsed ? "size-4" : "size-3.5"} aria-hidden />
+    </button>
+  );
+  const avatar = signedIn ? (
+    <Avatar name={displayName} src={user?.picture_url} size={32} />
+  ) : (
+    <span
+      className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[var(--sidebar-border)] bg-[var(--sidebar-hover)] text-sidebar-muted"
+      aria-hidden
+    >
+      <User className="size-3.5" />
+    </span>
+  );
 
   if (collapsed) {
     return (
-      <button
-        type="button"
-        onClick={() => {
-          onNavigate?.();
-          openSettings();
-        }}
-        title={signedIn ? displayName : "Account and settings"}
-        aria-haspopup="dialog"
-        className="flex size-10 items-center justify-center rounded-lg hover:bg-[var(--sidebar-hover)]"
-      >
-        {signedIn ? (
-          <span
-            className="flex size-8 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground"
-            aria-hidden
-          >
-            {accountInitials(displayName)}
-          </span>
-        ) : (
-          <span
-            className="flex size-8 items-center justify-center rounded-full border border-[var(--sidebar-border)] bg-[var(--sidebar-hover)] text-sidebar-muted"
-            aria-hidden
-          >
-            <User className="size-3.5" />
-          </span>
-        )}
-        <span className="sr-only">{signedIn ? `${displayName}, open settings` : "Open settings"}</span>
-      </button>
+      <div className="flex flex-col items-center gap-1">
+        <button
+          type="button"
+          onClick={openAccount}
+          title={signedIn ? `${displayName} · Profile` : "Log in"}
+          aria-haspopup="dialog"
+          data-testid="sidebar-account"
+          className="flex size-10 items-center justify-center rounded-lg hover:bg-[var(--sidebar-hover)]"
+        >
+          {avatar}
+          <span className="sr-only">{signedIn ? `${displayName}, open profile` : "Log in"}</span>
+        </button>
+        {gear}
+      </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-lg px-1 py-1">
-      {signedIn ? (
-        <span
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground"
-          aria-hidden
-        >
-          {accountInitials(displayName)}
-        </span>
-      ) : (
-        <span
-          className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[var(--sidebar-border)] bg-[var(--sidebar-hover)] text-sidebar-muted"
-          aria-hidden
-        >
-          <User className="size-3.5" />
-        </span>
-      )}
-      <div className="min-w-0 flex-1">
-        {signedIn ? (
-          <>
-            <p className="truncate text-xs font-semibold text-sidebar-foreground">{displayName}</p>
-            <p className="truncate text-[10px] text-sidebar-muted">{user?.email}</p>
-          </>
-        ) : (
-          <>
-            <p className="truncate text-xs font-semibold text-sidebar-foreground">Account</p>
-            <p className="truncate text-[10px] text-sidebar-muted">Sign up to personalize</p>
-          </>
-        )}
-      </div>
+    <div className="flex items-center gap-1">
       <button
         type="button"
-        onClick={() => {
-          onNavigate?.();
-          openSettings();
-        }}
-        aria-label="Open settings"
+        onClick={openAccount}
         aria-haspopup="dialog"
-        title="Settings"
-        className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-sidebar-muted hover:bg-[var(--sidebar-hover)] hover:text-sidebar-foreground"
+        data-testid="sidebar-account"
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left transition-colors hover:bg-[var(--sidebar-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
       >
-        <Settings className="size-3.5" aria-hidden />
+        {avatar}
+        <span className="min-w-0 flex-1">
+          {signedIn ? (
+            <>
+              <span className="block truncate text-xs font-semibold text-sidebar-foreground">{displayName}</span>
+              <span className="block truncate text-[10px] text-sidebar-muted">{user?.email}</span>
+            </>
+          ) : (
+            <>
+              <span className="block truncate text-xs font-semibold text-sidebar-foreground">Log in</span>
+              <span className="block truncate text-[10px] text-sidebar-muted">Keep your work on every device</span>
+            </>
+          )}
+        </span>
+        <span className="sr-only">{signedIn ? "Open profile" : "Open sign-in"}</span>
       </button>
+      {gear}
     </div>
   );
 }
@@ -282,7 +291,7 @@ export function Sidebar({
         className={cn("mt-auto shrink-0 border-t", collapsed ? "p-2" : "p-3")}
         style={{ borderColor: "var(--sidebar-border)" }}
       >
-        <AccountPlaceholder collapsed={collapsed} onNavigate={onNavigate} />
+        <AccountRow collapsed={collapsed} onNavigate={onNavigate} />
       </div>
     </aside>
   );
@@ -386,6 +395,7 @@ export function DashboardShell({
         </main>
       </div>
       <SettingsDialog />
+      <AccountDialogs />
     </div>
   );
 }

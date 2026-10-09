@@ -56,7 +56,7 @@ export default async function ProjectDetailPage({
                   {exp.external_id ? (
                     <Link
                       href={`/experiments/${exp.external_id}`}
-                      className="text-xs text-blue-600 hover:underline"
+                      className="text-xs text-primary hover:underline"
                     >
                       View
                     </Link>

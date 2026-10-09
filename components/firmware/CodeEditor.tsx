@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import { KiungoLoader } from "@/components/brand/KiungoMark";
 
 type Props = {
   value: string;
@@ -14,8 +15,8 @@ type Props = {
 const Monaco = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full items-center justify-center bg-[#1e1e1e] text-xs text-slate-400">
-      Loading editor…
+    <div className="dark flex h-full items-center justify-center bg-[#1e1e1e]" data-theme="dark">
+      <KiungoLoader label="Loading the editor" />
     </div>
   ),
 });
@@ -76,11 +77,15 @@ export function CodeEditor({ value, language, path, onChange, readOnly }: Props)
         tabSize: 2,
         scrollBeyondLastLine: false,
         wordWrap: "on",
-        // Monaco scrolls virtually and draws its own bars; match HHIP's 6px bar.
+        // Monaco scrolls virtually and draws its own bars; match Kiungo's 6px bar.
         scrollbar: { verticalScrollbarSize: 6, horizontalScrollbarSize: 6, useShadows: false },
       }}
       onChange={(v) => onChange?.(v ?? "")}
-      loading={<div className="p-3 text-xs text-slate-400">Loading Monaco…</div>}
+      loading={
+        <div className="flex h-full items-center justify-center bg-[#1e1e1e]" data-theme="dark">
+          <KiungoLoader label="Loading the editor" />
+        </div>
+      }
     />
   );
 }

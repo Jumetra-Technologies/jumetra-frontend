@@ -2,19 +2,25 @@ import type { DocArticle } from "../types";
 
 export const SYSTEM_OVERVIEW_ARTICLES: DocArticle[] = [
   {
-    slug: "what-is-hhip",
+    slug: "what-is-kiungo",
     category: "system-overview",
-    title: "What is HHIP?",
+    title: "What is Kiungo?",
     summary:
-      "HHIP lets students, technicians, instructors, and clubs design, simulate, and document robotics and IoT projects with or without every physical part.",
+      "Kiungo lets students, technicians, instructors, and clubs design, simulate, and document robotics and IoT projects with or without every physical part.",
     tags: ["introduction", "vision", "hybrid", "robotics", "iot"],
-    related: ["system-overview/how-hhip-works", "technical-guides/device-modes"],
+    related: ["system-overview/how-kiungo-works", "technical-guides/device-modes"],
     blocks: [
       {
         type: "p",
-        text: "The Universal Hybrid Hardware Simulation System (HHIP) is a platform for building hardware projects when you do not have every component in front of you. You can design a system, test its behavior in simulation, connect real devices when they are available, and keep a record of what you tried.",
+        text: "Kiungo (formerly HHIP, the Universal Hybrid Hardware Simulation System) is a platform for building hardware projects when you do not have every component in front of you. You can design a system, test its behavior in simulation, connect real devices when they are available, and keep a record of what you tried.",
       },
-      { type: "h2", text: "The problem HHIP addresses" },
+      {
+        type: "callout",
+        tone: "note",
+        title: "Why “Kiungo”",
+        text: "Kiungo is Swahili for a link or a joint. The logo shows it: two interlocking links join the navy stem, the hardware, to the teal arms, the circuit, which is what the platform does between real devices and virtual ones.",
+      },
+      { type: "h2", text: "The problem Kiungo addresses" },
       {
         type: "p",
         text: "Hardware work is usually split across disconnected tools: one for choosing parts, another for simulation, another for programming, a physical bench for the real build, and notes kept somewhere else entirely. Moving from a simulation result to real hardware is rarely smooth, and experiments are often too poorly documented for someone else to reproduce.",
@@ -23,7 +29,7 @@ export const SYSTEM_OVERVIEW_ARTICLES: DocArticle[] = [
         type: "p",
         text: "Learners feel this most. Understanding a single sensor reading means knowing electronics, embedded programming, communication protocols, and debugging at the same time.",
       },
-      { type: "h2", text: "What HHIP gives you" },
+      { type: "h2", text: "What Kiungo gives you" },
       {
         type: "ul",
         items: [
@@ -42,14 +48,14 @@ export const SYSTEM_OVERVIEW_ARTICLES: DocArticle[] = [
         type: "callout",
         tone: "tip",
         title: "New here?",
-        text: "Start with the [Learning Center](/learn) and the first module, Getting started with HHIP.",
+        text: "Start with the [Learning Center](/learn) and the first module, Getting started with Kiungo.",
       },
     ],
   },
   {
-    slug: "how-hhip-works",
+    slug: "how-kiungo-works",
     category: "system-overview",
-    title: "How HHIP works",
+    title: "How Kiungo works",
     summary:
       "The end-to-end workflow, from defining a project to recording results, and which part of the app handles each step.",
     tags: ["workflow", "architecture", "projects", "laboratory", "experiments", "layers"],
@@ -57,7 +63,7 @@ export const SYSTEM_OVERVIEW_ARTICLES: DocArticle[] = [
     blocks: [
       {
         type: "p",
-        text: "A typical HHIP project moves through four steps. Each step has a home in the app.",
+        text: "A typical Kiungo project moves through four steps. Each step has a home in the app.",
       },
       {
         type: "table",
@@ -73,7 +79,7 @@ export const SYSTEM_OVERVIEW_ARTICLES: DocArticle[] = [
       { type: "h2", text: "The layers underneath" },
       {
         type: "p",
-        text: "HHIP is built in layers so that each concern can grow independently.",
+        text: "Kiungo is built in layers so that each concern can grow independently.",
       },
       {
         type: "ol",
@@ -105,16 +111,16 @@ export const SYSTEM_OVERVIEW_ARTICLES: DocArticle[] = [
     summary:
       "What Phase One (the web platform) covers, what is deliberately left for Phase Two (the desktop application), and what is already prototyped.",
     tags: ["roadmap", "phase one", "phase two", "desktop", "scope", "poc"],
-    related: ["system-overview/how-hhip-works"],
+    related: ["system-overview/how-kiungo-works"],
     blocks: [
       {
         type: "p",
-        text: "HHIP is being built in phases. The first phase establishes the knowledge and organization layer; later phases add the heavy hardware capabilities.",
+        text: "Kiungo is being built in phases. The first phase establishes the knowledge and organization layer; later phases add the heavy hardware capabilities.",
       },
       { type: "h2", text: "Phase One: web platform (proof of concept)" },
       {
         type: "p",
-        text: "Phase One is a web-based proof of concept. It introduces the HHIP ecosystem, demonstrates the intended workflow, and lays the foundation for the desktop application.",
+        text: "Phase One is a web-based proof of concept. It introduces the Kiungo ecosystem, demonstrates the intended workflow, and lays the foundation for the desktop application.",
       },
       {
         type: "ul",
@@ -141,7 +147,7 @@ export const SYSTEM_OVERVIEW_ARTICLES: DocArticle[] = [
       { type: "h2", text: "Phase Two: desktop application" },
       {
         type: "p",
-        text: "The desktop application turns HHIP from a documentation and organization platform into an operational hybrid hardware environment.",
+        text: "The desktop application turns Kiungo from a documentation and organization platform into an operational hybrid hardware environment.",
       },
       {
         type: "ul",
@@ -174,7 +180,7 @@ export const TECHNICAL_GUIDE_ARTICLES: DocArticle[] = [
   {
     slug: "run-locally",
     category: "technical-guides",
-    title: "Run HHIP locally",
+    title: "Run Kiungo locally",
     summary:
       "Start the backend API and the web frontend on your own machine with two terminals.",
     tags: ["setup", "install", "localhost", "npm", "python", "uvicorn", "development"],
@@ -182,7 +188,7 @@ export const TECHNICAL_GUIDE_ARTICLES: DocArticle[] = [
     blocks: [
       {
         type: "p",
-        text: "HHIP is two repositories: a Next.js frontend and a FastAPI backend. Run both for the full experience. Tested with Python 3.13 and Node.js 22.",
+        text: "Kiungo is two repositories: a Next.js frontend and a FastAPI backend. Run both for the full experience. Tested with Python 3.13 and Node.js 22.",
       },
       { type: "h2", text: "1. Start the backend" },
       {
@@ -331,13 +337,13 @@ npm run dev                      # http://localhost:3000`,
     category: "technical-guides",
     title: "Device modes and simulation limits",
     summary:
-      "What physical, virtual, simulator, and hybrid devices mean in HHIP, and what the current simulation does not do.",
+      "What physical, virtual, simulator, and hybrid devices mean in Kiungo, and what the current simulation does not do.",
     tags: ["hybrid", "physical", "virtual", "simulator", "modes", "limitations", "simulation", "wokwi"],
     related: ["system-overview/development-phases", "hardware-knowledge/esp32-devkit"],
     blocks: [
       {
         type: "p",
-        text: "Every component in the engineering laboratory runs in one of four modes. Mixing modes in a single system is what makes HHIP a hybrid platform. New components start as virtual, and you change a component's mode by selecting it and using the mode dropdown in the Inspector.",
+        text: "Every component in the engineering laboratory runs in one of four modes. Mixing modes in a single system is what makes Kiungo a hybrid platform. New components start as virtual, and you change a component's mode by selecting it and using the mode dropdown in the Inspector.",
       },
       {
         type: "table",

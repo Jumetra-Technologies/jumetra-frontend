@@ -440,11 +440,11 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
   const errors = analysis.faults.filter((f) => f.severity === "error").length;
 
   const exportJson = () => {
-    const blob = new Blob([JSON.stringify({ format: "hhip-lab-session", version: 1, session }, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ format: "kiungo-lab-session", version: 1, session }, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${session.name.replace(/[^\w-]+/g, "-").toLowerCase() || "lab"}.hhip.json`;
+    a.download = `${session.name.replace(/[^\w-]+/g, "-").toLowerCase() || "lab"}.kiungo.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -524,9 +524,9 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
 
   const runtimePill =
     runtime === "online" || runtime === "syncing"
-      ? { icon: <Server className="size-3.5" aria-hidden />, text: runtime === "syncing" ? "Syncing runtime" : "Runtime connected", tone: "text-success", title: "Mirrored to the HHIP backend for hybrid hardware" }
+      ? { icon: <Server className="size-3.5" aria-hidden />, text: runtime === "syncing" ? "Syncing runtime" : "Runtime connected", tone: "text-success", title: "Mirrored to the Kiungo backend for hybrid hardware" }
       : runtime === "checking"
-        ? { icon: <Server className="size-3.5" aria-hidden />, text: "Checking runtime", tone: "text-muted", title: "Looking for the HHIP backend" }
+        ? { icon: <Server className="size-3.5" aria-hidden />, text: "Checking runtime", tone: "text-muted", title: "Looking for the Kiungo backend" }
         : { icon: <CloudOff className="size-3.5" aria-hidden />, text: "Offline mode", tone: "text-muted", title: "The backend isn't reachable. Everything works and is saved in this browser; hybrid hardware needs the backend." };
 
   const panelLeft = (

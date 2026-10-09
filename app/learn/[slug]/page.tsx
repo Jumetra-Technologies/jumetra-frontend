@@ -30,8 +30,8 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: ModulePageProps): Promise<Metadata> {
   const { slug } = await params;
   const lesson = getModule(slug);
-  if (!lesson) return { title: "Not found · HHIP" };
-  return { title: `${lesson.title} · HHIP Learning Center`, description: lesson.summary };
+  if (!lesson) return { title: "Not found" };
+  return { title: `${lesson.title} · Learning Center`, description: lesson.summary };
 }
 
 export default async function LearningModulePage({ params }: ModulePageProps) {

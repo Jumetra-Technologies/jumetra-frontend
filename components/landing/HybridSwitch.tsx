@@ -14,7 +14,7 @@ const MODES: Array<{ id: Mode; label: string; board: boolean; sensor: boolean; t
     sensor: false,
     text: "Your real board on the bench reads a simulated sensor. Swap in the real one when it arrives.",
   },
-  { id: "physical", label: "Physical", board: true, sensor: true, text: "All real. HHIP still records every reading and every change." },
+  { id: "physical", label: "Physical", board: true, sensor: true, text: "All real. Kiungo still records every reading and every change." },
 ];
 
 function Device({ real, label, x }: { real: boolean; label: string; x: number }) {

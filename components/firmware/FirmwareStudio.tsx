@@ -12,6 +12,7 @@ import { ToolchainManagerPanel } from "./ToolchainManager";
 import { UploadProgress } from "./UploadProgress";
 import { MemoryUsagePanel } from "./MemoryUsagePanel";
 import { cn } from "@/lib/utils";
+import { KiungoLoader } from "@/components/brand/KiungoMark";
 
 type Project = {
   project_id: string;
@@ -95,7 +96,7 @@ export function FirmwareStudio() {
       setProjects((projectsRes.projects as Project[]) || []);
       setTemplates((templatesRes.templates as Array<{ id: string; name: string }>) || []);
     } catch (err) {
-      setApiError(err instanceof Error ? err.message : "Cannot reach HHIP API");
+      setApiError(err instanceof Error ? err.message : "Cannot reach Kiungo API");
     } finally {
       setLoading(false);
     }
@@ -108,7 +109,7 @@ export function FirmwareStudio() {
       setProjects((projectsRes.projects as Project[]) || []);
       setTemplates((templatesRes.templates as Array<{ id: string; name: string }>) || []);
     }).catch((err) => {
-      if (active) setApiError(err instanceof Error ? err.message : "Cannot reach HHIP API");
+      if (active) setApiError(err instanceof Error ? err.message : "Cannot reach Kiungo API");
     }).finally(() => {
       if (active) setLoading(false);
     });
@@ -252,8 +253,8 @@ export function FirmwareStudio() {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center bg-background text-sm text-muted">
-        Loading Embedded Studio…
+      <div className="flex h-full items-center justify-center bg-background">
+        <KiungoLoader label="Loading Embedded Studio" size="lg" />
       </div>
     );
   }
@@ -262,7 +263,7 @@ export function FirmwareStudio() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 bg-background px-4 text-center text-sm">
         <p className="max-w-md text-danger">{apiError}</p>
-        <p className="text-muted">Ensure the HHIP API is running on port 8000, then retry.</p>
+        <p className="text-muted">Ensure the Kiungo API is running on port 8000, then retry.</p>
         <Button
           size="sm"
           onClick={() => {

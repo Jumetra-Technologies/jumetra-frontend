@@ -6,7 +6,7 @@ import { SEO, structuredData } from "@/lib/landing/content";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
 export const metadata: Metadata = {
-  title: SEO.title,
+  title: { absolute: SEO.title },
   description: SEO.description,
   ...(siteUrl ? { metadataBase: new URL(siteUrl), alternates: { canonical: "/" } } : {}),
   openGraph: {

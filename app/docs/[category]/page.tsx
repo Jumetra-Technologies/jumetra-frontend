@@ -25,8 +25,8 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
   const { category } = await params;
   const found = getCategory(category);
-  if (!found) return { title: "Not found · HHIP" };
-  return { title: `${found.title} · HHIP Documentation`, description: found.description };
+  if (!found) return { title: "Not found" };
+  return { title: `${found.title} · Kiungo Documentation`, description: found.description };
 }
 
 export default async function DocsCategoryPage({ params }: CategoryPageProps) {

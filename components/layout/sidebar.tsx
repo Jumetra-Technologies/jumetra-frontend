@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { KiungoLogo, KiungoMark } from "@/components/brand/KiungoMark";
 import { useEffect, useState } from "react";
 import { Menu, PanelLeftClose, PanelLeftOpen, Settings, Star, User, X } from "lucide-react";
 import {
@@ -217,9 +218,8 @@ function AccountPlaceholder({
 
 function Brand() {
   return (
-    <Link href="/" className="flex min-w-0 items-baseline gap-2 rounded-md" aria-label="HHIP Engineering Platform, home">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">HHIP</span>
-      <span className="truncate text-[13px] font-semibold text-sidebar-foreground">Engineering Platform</span>
+    <Link href="/" className="flex min-w-0 items-center rounded-md" aria-label="Kiungo, home" data-testid="brand">
+      <KiungoLogo variant="full" markClassName="size-8" />
     </Link>
   );
 }
@@ -255,11 +255,19 @@ export function Sidebar({
           <button
             type="button"
             onClick={onToggleCollapse}
-            className={sidebarIconButton}
+            className={cn(sidebarIconButton, collapsed && "group/brand size-10")}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {collapsed ? <PanelLeftOpen className="size-[18px]" aria-hidden /> : <PanelLeftClose className="size-[18px]" aria-hidden />}
+            {collapsed ? (
+              <>
+                {/* Collapsed, the mark stands for the app; hovering shows what the button does. */}
+                <KiungoMark className="size-7 group-hover/brand:hidden group-focus-visible/brand:hidden" />
+                <PanelLeftOpen className="hidden size-[18px] group-hover/brand:block group-focus-visible/brand:block" aria-hidden />
+              </>
+            ) : (
+              <PanelLeftClose className="size-[18px]" aria-hidden />
+            )}
           </button>
         ) : null}
         {!collapsed ? <Brand /> : null}

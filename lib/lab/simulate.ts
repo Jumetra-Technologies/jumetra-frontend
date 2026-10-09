@@ -246,7 +246,7 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
       }
       default: {
         if (DISPLAYS.has(node.partId)) {
-          const lines = go ? (firstReading.length ? firstReading.slice(0, 2) : ["Hello, HHIP!", `Up ${fmt(t, 0)} s`]) : [];
+          const lines = go ? (firstReading.length ? firstReading.slice(0, 2) : ["Hello, Kiungo!", `Up ${fmt(t, 0)} s`]) : [];
           setLinks(() => (go ? 0.5 : 0));
           live[node.id] = { on: go, level: go ? 1 : 0, text: lines, readings: go ? [{ label: "Showing", value: lines.join(" · ") }] : [], badge: go ? "Showing" : "Blank" };
         } else if (RADIOS.has(node.partId)) {

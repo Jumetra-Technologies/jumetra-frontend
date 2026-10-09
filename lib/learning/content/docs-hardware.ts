@@ -17,7 +17,7 @@ export const HARDWARE_ARTICLES: DocArticle[] = [
     blocks: [
       {
         type: "p",
-        text: "The Arduino Uno R3 is the usual first board for learners. It is simple, forgiving, and supported by an enormous amount of example code. In the HHIP component library it appears as `arduino-uno`.",
+        text: "The Arduino Uno R3 is the usual first board for learners. It is simple, forgiving, and supported by an enormous amount of example code. In the Kiungo component library it appears as `arduino-uno`.",
       },
       {
         type: "table",
@@ -71,7 +71,7 @@ export const HARDWARE_ARTICLES: DocArticle[] = [
     blocks: [
       {
         type: "p",
-        text: "The ESP32 DevKit is a low-cost board with a dual-core processor, WiFi, and Bluetooth. It is the natural choice when a project needs wireless connectivity. In the HHIP library it appears as `esp32`.",
+        text: "The ESP32 DevKit is a low-cost board with a dual-core processor, WiFi, and Bluetooth. It is the natural choice when a project needs wireless connectivity. In the Kiungo library it appears as `esp32`.",
       },
       {
         type: "table",
@@ -126,7 +126,7 @@ export const HARDWARE_ARTICLES: DocArticle[] = [
     blocks: [
       {
         type: "p",
-        text: "The DHT11 measures air temperature and relative humidity and reports them over a single data wire. It is a good teaching sensor: easy to wire and read, but coarse. In the HHIP library it appears as `dht11`.",
+        text: "The DHT11 measures air temperature and relative humidity and reports them over a single data wire. It is a good teaching sensor: easy to wire and read, but coarse. In the Kiungo library it appears as `dht11`.",
       },
       {
         type: "table",
@@ -174,7 +174,7 @@ export const HARDWARE_ARTICLES: DocArticle[] = [
     blocks: [
       {
         type: "p",
-        text: "The HC-SR04 sends a burst of ultrasound and times how long the echo takes to return. Distance follows from the speed of sound. In the HHIP library it appears as `hc-sr04`.",
+        text: "The HC-SR04 sends a burst of ultrasound and times how long the echo takes to return. Distance follows from the speed of sound. In the Kiungo library it appears as `hc-sr04`.",
       },
       {
         type: "table",
@@ -227,7 +227,7 @@ export const HARDWARE_ARTICLES: DocArticle[] = [
     blocks: [
       {
         type: "p",
-        text: "A passive infrared (PIR) sensor reports changes in the infrared radiation in its view, which happens when a warm body such as a person moves across its field. In the HHIP library it appears as `pir`.",
+        text: "A passive infrared (PIR) sensor reports changes in the infrared radiation in its view, which happens when a warm body such as a person moves across its field. In the Kiungo library it appears as `pir`.",
       },
       {
         type: "table",
@@ -268,7 +268,7 @@ export const HARDWARE_ARTICLES: DocArticle[] = [
     blocks: [
       {
         type: "p",
-        text: "A hobby servo (such as the common SG90) turns to an angle set by the width of a repeating control pulse. It is a staple of robot arms and steering. In the HHIP library it appears as `servo`.",
+        text: "A hobby servo (such as the common SG90) turns to an angle set by the width of a repeating control pulse. It is a staple of robot arms and steering. In the Kiungo library it appears as `servo`.",
       },
       {
         type: "table",

@@ -17,6 +17,7 @@ import {
   type ExperimentRecord,
 } from "@/lib/robotics-data";
 import type { ExperimentSummary } from "@/lib/types";
+import { KiungoLoader } from "@/components/brand/KiungoMark";
 
 export function ExperimentJournal({
   initialProjectId,
@@ -103,7 +104,7 @@ export function ExperimentJournal({
       </div>
 
       {!data ? (
-        <p className="text-sm text-muted">Loading experiment records…</p>
+        <KiungoLoader label="Loading experiment records" className="py-12" />
       ) : records.length === 0 ? (
         <Card className="py-8">
           <h3 className="font-medium">No experiment records yet</h3>

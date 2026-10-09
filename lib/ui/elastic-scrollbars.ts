@@ -1,5 +1,5 @@
 /**
- * HHIP's standard scrollbar, applied app-wide.
+ * Kiungo's standard scrollbar, applied app-wide.
  *
  * Every element that scrolls (overflow auto/scroll, textareas) is found
  * automatically, including ones that appear later. Its native bar is hidden

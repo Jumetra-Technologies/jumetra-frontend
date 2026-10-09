@@ -6,8 +6,8 @@ import { Breadcrumbs } from "@/components/learning/Navigation";
 import { DRAFT_NOTICE, LEGAL_DOCUMENTS } from "@/lib/legal/content";
 
 export const metadata: Metadata = {
-  title: "Legal · HHIP",
-  description: "HHIP's terms of service, user agreement, acceptable use policy, privacy policy and cookie policy.",
+  title: "Legal",
+  description: "Kiungo's terms of service, user agreement, acceptable use policy, privacy policy and cookie policy.",
 };
 
 export default function LegalIndexPage() {
@@ -17,7 +17,7 @@ export default function LegalIndexPage() {
       <div className="max-w-3xl">
         <h2 className="text-3xl font-bold tracking-tight">Legal</h2>
         <p className="mt-3 text-base leading-7 text-muted">
-          Five short documents in plain words. Together they say what HHIP is, what it keeps, and what we ask of you.
+          Five short documents in plain words. Together they say what Kiungo is, what it keeps, and what we ask of you.
         </p>
         <p className="mt-4 text-sm leading-6 text-muted">{DRAFT_NOTICE}</p>
         <ul className="mt-8 space-y-3">

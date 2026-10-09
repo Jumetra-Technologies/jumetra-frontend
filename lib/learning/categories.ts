@@ -5,13 +5,13 @@ export const DOC_CATEGORIES: DocCategory[] = [
   {
     id: "system-overview",
     title: "System Overview",
-    description: "What HHIP is, how the pieces fit together, and where the platform is heading.",
+    description: "What Kiungo is, how the pieces fit together, and where the platform is heading.",
     icon: "layers",
   },
   {
     id: "technical-guides",
     title: "Technical Guides",
-    description: "Run HHIP locally, connect the web app to its API, and understand device modes.",
+    description: "Run Kiungo locally, connect the web app to its API, and understand device modes.",
     icon: "wrench",
   },
   {

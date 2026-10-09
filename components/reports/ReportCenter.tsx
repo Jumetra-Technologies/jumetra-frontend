@@ -11,6 +11,7 @@ import {
   readRoboticsData,
   subscribeToRoboticsData,
 } from "@/lib/robotics-data";
+import { KiungoLoader } from "@/components/brand/KiungoMark";
 
 function downloadMarkdown(filename: string, content: string) {
   const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
@@ -23,7 +24,7 @@ function downloadMarkdown(filename: string, content: string) {
 }
 
 function safeFilename(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "hhip-report";
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "kiungo-report";
 }
 
 export function ReportCenter() {
@@ -86,7 +87,7 @@ export function ReportCenter() {
       </div>
 
       {!data ? (
-        <p className="text-sm text-muted">Loading report records…</p>
+        <KiungoLoader label="Loading report records" className="py-12" />
       ) : records.length === 0 ? (
         <Card>
           <h3 className="font-medium">No reportable experiment records</h3>

@@ -113,7 +113,7 @@ function PcbTop() {
       {/* Silkscreen */}
       <g fill="#e9f1ec" fontFamily="var(--font-jetbrains), ui-monospace, monospace">
         <text x="186" y="118" fontSize="30" fontWeight="800" letterSpacing="1" fontFamily="var(--font-inter), ui-sans-serif, sans-serif">
-          HHIP
+          Kiungo
         </text>
         <text x="187" y="134" fontSize="7.5" letterSpacing="1.5">
           DEV BOARD

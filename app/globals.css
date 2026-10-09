@@ -518,6 +518,86 @@ pre {
 }
 
 /*
+ * "Continue with Google", to Google's sign-in branding: a neutral pill with
+ * the four-colour G. Not themed on purpose: it must look like Google's
+ * button on every palette.
+ */
+.kiungo-gbtn {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 16px;
+  border-radius: 9999px;
+  border: 1px solid #747775;
+  background: #ffffff;
+  color: #1f1f1f;
+  font-family: Roboto, var(--font-sans), system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.0125em;
+  transition:
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+  cursor: pointer;
+}
+.kiungo-gbtn:hover:not(:disabled) {
+  background: #f8f9fa;
+  box-shadow:
+    0 1px 2px rgb(60 64 67 / 0.3),
+    0 1px 3px 1px rgb(60 64 67 / 0.15);
+}
+.kiungo-gbtn:active:not(:disabled) {
+  background: #eef0f1;
+}
+.kiungo-gbtn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.kiungo-gbtn:disabled {
+  cursor: default;
+  border-color: rgb(31 31 31 / 0.12);
+  background: rgb(255 255 255 / 0.61);
+  color: rgb(31 31 31 / 0.38);
+}
+.kiungo-gbtn[aria-busy] {
+  cursor: progress;
+  color: #1f1f1f;
+  background: #ffffff;
+  border-color: #747775;
+}
+.kiungo-gbtn__icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+}
+.dark .kiungo-gbtn {
+  border-color: #8e918f;
+  background: #131314;
+  color: #e3e3e3;
+}
+.dark .kiungo-gbtn:hover:not(:disabled) {
+  background: #1f2021;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+}
+.dark .kiungo-gbtn:active:not(:disabled) {
+  background: #2a2b2c;
+}
+.dark .kiungo-gbtn:disabled {
+  border-color: rgb(142 145 143 / 0.12);
+  background: rgb(19 19 20 / 0.38);
+  color: rgb(227 227 227 / 0.38);
+}
+.dark .kiungo-gbtn[aria-busy] {
+  border-color: #8e918f;
+  background: #131314;
+  color: #e3e3e3;
+}
+
+/*
  * Component library views: moving current in the flow view, glowing LEDs in
  * the top view. (Restored: the merge of PR #8 dropped this block.)
  */

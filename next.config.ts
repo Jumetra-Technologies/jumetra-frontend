@@ -1,7 +1,12 @@
-/** @type {import('next').NextConfig} */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+// The app version, from package.json (see CHANGELOG.md for how it's bumped).
+const APP_VERSION = (JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as { version: string }).version;
 const FIREBASE_API_URL = "https://europe-west4-hhipsystemv0.cloudfunctions.net/api";
 const FIREBASE_WS_URL = "wss://api-aoxa3kagvq-ez.a.run.app";
 
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   // Pages renamed in the Kiungo rebrand keep their old addresses working.
   async redirects() {
@@ -12,6 +17,7 @@ const nextConfig = {
     ];
   },
   env: {
+    NEXT_PUBLIC_APP_VERSION: APP_VERSION,
     NEXT_PUBLIC_API_URL:
       process.env.NODE_ENV === "production"
         ? FIREBASE_API_URL

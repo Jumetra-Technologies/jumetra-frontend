@@ -4,6 +4,10 @@ export type AuthUser = {
   display_name: string;
   google_sub?: string;
   picture_url?: string | null;
+  role?: string | null;
+  organization?: string | null;
+  location?: string | null;
+  bio?: string | null;
 };
 
 export type AuthSession = {

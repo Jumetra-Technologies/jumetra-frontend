@@ -1,69 +1,78 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LoaderCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { GoogleLogo } from "@/components/auth/google-logo";
 import { useAuthStore } from "@/lib/auth-store";
-import { prepareGoogleSignIn, signInWithGoogle } from "@/lib/firebase-auth";
+import { describeSignInError, prepareGoogleSignIn, signInWithGoogle } from "@/lib/firebase-auth";
+import { cn } from "@/lib/utils";
 
-export function GoogleSignInButton({ disabled = false }: { disabled?: boolean }) {
-  const [isGoogleReady, setIsGoogleReady] = useState(false);
+/**
+ * "Continue with Google", drawn to Google's branding rules (neutral pill,
+ * four-colour G) so it reads clearly on every theme.
+ *
+ * Firebase is set up ahead of time so the Google window opens straight from
+ * the click (browsers block pop-ups opened later). The button stays at full
+ * strength while that happens; a click before it's ready simply waits.
+ */
+export function GoogleSignInButton({
+  disabled = false,
+  label = "Continue with Google",
+  onSignedIn,
+  className,
+}: {
+  disabled?: boolean;
+  label?: string;
+  onSignedIn?: () => void;
+  className?: string;
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loginWithGoogleToken = useAuthStore((state) => state.loginWithGoogleToken);
+  const mounted = useRef(true);
 
   useEffect(() => {
-    let isMounted = true;
-    void prepareGoogleSignIn()
-      .then(() => {
-        if (isMounted) setIsGoogleReady(true);
-      })
-      .catch((loadError: unknown) => {
-        if (isMounted) {
-          setError(loadError instanceof Error ? loadError.message : "Unable to load Google sign-in.");
-          setIsGoogleReady(true);
-        }
-      });
-
+    mounted.current = true;
+    // Warm up quietly; a failure here is reported only if they click.
+    void prepareGoogleSignIn().catch(() => undefined);
     return () => {
-      isMounted = false;
+      mounted.current = false;
     };
   }, []);
 
+  async function start() {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const { idToken, photoURL } = await signInWithGoogle();
+      await loginWithGoogleToken(idToken, photoURL);
+      onSignedIn?.();
+    } catch (signInError) {
+      if (mounted.current) setError(describeSignInError(signInError));
+    } finally {
+      if (mounted.current) setIsSubmitting(false);
+    }
+  }
+
   return (
-    <div className="space-y-3">
-      {error ? (
-        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
-          {error}
-        </div>
-      ) : null}
-      <Button
+    <div className={cn("space-y-3", className)}>
+      <button
         type="button"
-        variant="outline"
-        className="w-full justify-center gap-2 rounded-full border border-blue-500 text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/40"
-        disabled={disabled || isSubmitting || !isGoogleReady}
-        onClick={async () => {
-          setIsSubmitting(true);
-          setError(null);
-          try {
-            const idToken = await signInWithGoogle();
-            await loginWithGoogleToken(idToken);
-          } catch (loginError) {
-            const message = loginError instanceof Error ? loginError.message : "Google sign-in failed";
-            setError(message);
-          } finally {
-            setIsSubmitting(false);
-          }
-        }}
+        onClick={start}
+        disabled={disabled || isSubmitting}
+        aria-busy={isSubmitting || undefined}
+        data-testid="google-signin"
+        className="kiungo-gbtn"
       >
-        <span className="flex size-5 items-center justify-center rounded-full bg-white text-sm font-bold text-blue-600">G</span>
-        {isSubmitting ? "Connecting to Kiungo…" : "Continue with Google"}
-      </Button>
-      {isSubmitting ? (
-        <div className="flex items-center justify-center gap-2 text-xs text-muted">
-          <LoaderCircle className="size-4 animate-spin" />
-          Connecting to Kiungo…
-        </div>
+        <span className="kiungo-gbtn__icon" aria-hidden>
+          {isSubmitting ? <LoaderCircle className="size-[18px] animate-spin text-[#5f6368]" /> : <GoogleLogo />}
+        </span>
+        <span className="kiungo-gbtn__label">{isSubmitting ? "Signing in…" : label}</span>
+      </button>
+      {error ? (
+        <p role="alert" className="rounded-[10px] border border-danger/30 bg-danger/10 px-3 py-2 text-xs leading-5 text-danger">
+          {error}
+        </p>
       ) : null}
     </div>
   );

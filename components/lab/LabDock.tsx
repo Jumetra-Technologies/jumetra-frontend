@@ -31,7 +31,7 @@ const FILTERS: Array<{ id: "all" | "build" | "run" | "fault"; label: string; kin
 ];
 
 function Terminal({ api }: { api: Omit<TerminalApi, "clear"> }) {
-  const [lines, setLines] = useState<TermLine[]>([{ kind: "muted", text: "HHIP lab terminal. Type help for commands, or try: add led" }]);
+  const [lines, setLines] = useState<TermLine[]>([{ kind: "muted", text: "Kiungo lab terminal. Type help for commands, or try: add led" }]);
   const [value, setValue] = useState("");
   const [history, setHistory] = useState<string[]>([]);
   const [cursor, setCursor] = useState(-1);
@@ -66,7 +66,7 @@ function Terminal({ api }: { api: Omit<TerminalApi, "clear"> }) {
       <div className="hhip-scroll min-h-0 flex-1 overflow-y-auto px-3 py-2">
         {lines.map((l, i) => (
           <div key={i} className={cn("whitespace-pre-wrap break-words leading-5", l.kind === "in" ? "text-slate-400" : l.kind === "ok" ? "text-emerald-400" : l.kind === "err" ? "text-rose-400" : l.kind === "muted" ? "text-slate-500" : "text-slate-200")}>
-            {l.kind === "in" ? <span className="text-sky-400">hhip ›</span> : null} {l.text}
+            {l.kind === "in" ? <span className="text-sky-400">kiungo ›</span> : null} {l.text}
           </div>
         ))}
         <div ref={end} />
@@ -79,7 +79,7 @@ function Terminal({ api }: { api: Omit<TerminalApi, "clear"> }) {
         }}
       >
         <span className="text-sky-400" aria-hidden>
-          hhip ›
+          kiungo ›
         </span>
         <input
           ref={input}

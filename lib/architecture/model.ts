@@ -67,7 +67,7 @@ export const LAYERS: Layer[] = [
     name: "Web Platform",
     role: "Learn, plan, document",
     summary:
-      "The browser app you are using now. People learn how HHIP works, explore hardware, organise projects and record experiments here before they touch real devices.",
+      "The browser app you are using now. People learn how Kiungo works, explore hardware, organise projects and record experiments here before they touch real devices.",
     phase: 1,
     responsibilities: [
       "Documentation and the Learning Center",
@@ -90,7 +90,7 @@ export const LAYERS: Layer[] = [
     name: "Desktop Application",
     role: "Offline engineering",
     summary:
-      "The Phase Two app that turns HHIP from a knowledge platform into an operational hardware environment that runs next to the devices on your bench.",
+      "The Phase Two app that turns Kiungo from a knowledge platform into an operational hardware environment that runs next to the devices on your bench.",
     phase: 2,
     responsibilities: [
       "Run the simulation engine on your own machine",
@@ -156,7 +156,7 @@ export const LAYERS: Layer[] = [
     phase: 2,
     responsibilities: [
       "Boards detected when plugged in over USB",
-      "HHIP device agent firmware for the Arduino Uno and ESP32",
+      "Kiungo device agent firmware for the Arduino Uno and ESP32",
       "Sketches compiled with arduino-cli and uploaded",
       "Readings streamed back as a live digital twin",
     ],

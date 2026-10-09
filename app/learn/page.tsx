@@ -16,7 +16,7 @@ import {
 } from "@/lib/learning";
 
 export const metadata: Metadata = {
-  title: "Learning Center · HHIP",
+  title: "Learning Center",
   description:
     "A guided path through electronics, Arduino, ESP32, and sensors, finishing with the hybrid hardware workflow.",
 };

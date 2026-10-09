@@ -51,7 +51,7 @@ function PlatformDetails() {
       </div>
       <div>
         <dt className="text-xs text-muted">Workspace product</dt>
-        <dd className="mt-0.5 text-foreground">HHIP Engineering Laboratory</dd>
+        <dd className="mt-0.5 text-foreground">Kiungo Engineering Laboratory</dd>
       </div>
     </dl>
   );

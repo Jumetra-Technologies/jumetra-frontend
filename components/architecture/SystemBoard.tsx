@@ -105,7 +105,7 @@ export function SystemBoard({ layout: layoutId, view, selected, focus, onSelect,
       aria-labelledby={titleId}
       style={{ ["--arch-trace" as string]: "color-mix(in srgb, var(--muted) 55%, transparent)" }}
     >
-      <title id={titleId}>HHIP system diagram</title>
+      <title id={titleId}>Kiungo system diagram</title>
       <defs>
         <pattern id={`${uid}-grid`} width={wide ? 20 : 14} height={wide ? 20 : 14} patternUnits="userSpaceOnUse">
           <circle cx={1} cy={1} r={1} fill="var(--canvas-grid)" />

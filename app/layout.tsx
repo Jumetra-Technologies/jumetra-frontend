@@ -18,9 +18,10 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HHIP Robotics Workspace",
+  title: { default: "Kiungo", template: "%s · Kiungo" },
+  applicationName: "Kiungo",
   description:
-    "Universal Hybrid Hardware Simulation System — a robotics workspace for planning, simulation, and reproducible experiments",
+    "Kiungo, by Kiungo Labs Technologies: a hybrid hardware workspace for building, simulating and testing robotics and electronics projects, with or without the parts.",
 };
 
 const themeBootScript = `(function(){try{var k='hhip-theme';var t=localStorage.getItem(k);var ok=['light','dark','light-contrast','dark-contrast','blue','red','green'];if(ok.indexOf(t)<0)t='light';document.documentElement.dataset.theme=t;var dark=['dark','dark-contrast'];if(dark.indexOf(t)>=0)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){document.documentElement.dataset.theme='light';}})();`;

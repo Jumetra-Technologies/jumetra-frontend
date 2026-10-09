@@ -57,12 +57,12 @@ export function GoogleSignInButton({ disabled = false }: { disabled?: boolean })
         }}
       >
         <span className="flex size-5 items-center justify-center rounded-full bg-white text-sm font-bold text-blue-600">G</span>
-        {isSubmitting ? "Connecting to HHIP…" : "Continue with Google"}
+        {isSubmitting ? "Connecting to Kiungo…" : "Continue with Google"}
       </Button>
       {isSubmitting ? (
         <div className="flex items-center justify-center gap-2 text-xs text-muted">
           <LoaderCircle className="size-4 animate-spin" />
-          Connecting to HHIP…
+          Connecting to Kiungo…
         </div>
       ) : null}
     </div>

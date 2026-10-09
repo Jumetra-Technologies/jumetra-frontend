@@ -66,7 +66,7 @@ export default async function DeviceDetailPage({
           <ul className="list-inside list-disc text-sm">
             {device.experiments.map((expId) => (
               <li key={expId}>
-                <a href={`/experiments/${expId}`} className="text-blue-600 hover:underline">
+                <a href={`/experiments/${expId}`} className="text-primary hover:underline">
                   {expId}
                 </a>
               </li>

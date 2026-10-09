@@ -66,7 +66,7 @@ export function SerialMonitorPanel() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = "hhip-serial.log";
+            a.download = "kiungo-serial.log";
             a.click();
             URL.revokeObjectURL(url);
           }}

@@ -25,8 +25,8 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
   const { category, slug } = await params;
   const article = getArticle(category, slug);
-  if (!article) return { title: "Not found · HHIP" };
-  return { title: `${article.title} · HHIP Documentation`, description: article.summary };
+  if (!article) return { title: "Not found" };
+  return { title: `${article.title} · Kiungo Documentation`, description: article.summary };
 }
 
 export default async function DocsArticlePage({ params }: ArticlePageProps) {

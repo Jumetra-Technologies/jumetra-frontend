@@ -8,9 +8,9 @@ import { Card } from "@/components/ui/card";
 import { DOC_CATEGORIES, MODULES, getArticlesByCategory } from "@/lib/learning";
 
 export const metadata: Metadata = {
-  title: "Documentation Center · HHIP",
+  title: "Documentation Center",
   description:
-    "Reference documentation for the HHIP platform: system overview, technical guides, tutorials, hardware knowledge, and developer resources.",
+    "Reference documentation for the Kiungo platform: system overview, technical guides, tutorials, hardware knowledge, and developer resources.",
 };
 
 const WORKFLOW = [
@@ -21,9 +21,9 @@ const WORKFLOW = [
 ];
 
 const START_HERE = [
-  { href: "/docs/system-overview/what-is-hhip", title: "What is HHIP?", text: "The purpose and vision of the platform." },
+  { href: "/docs/system-overview/what-is-kiungo", title: "What is Kiungo?", text: "The purpose and vision of the platform." },
   { href: "/learn", title: "Learning Center", text: "A guided path from first circuit to hybrid projects." },
-  { href: "/docs/technical-guides/run-locally", title: "Run HHIP locally", text: "Start the backend and frontend on your machine." },
+  { href: "/docs/technical-guides/run-locally", title: "Run Kiungo locally", text: "Start the backend and frontend on your machine." },
 ];
 
 export default function DocumentationPage() {
@@ -31,9 +31,9 @@ export default function DocumentationPage() {
     <DashboardShell activePath="/docs">
       <div className="mb-8 max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Documentation Center</p>
-        <h2 className="mt-2 text-3xl font-bold tracking-tight">HHIP documentation</h2>
+        <h2 className="mt-2 text-3xl font-bold tracking-tight">Kiungo documentation</h2>
         <p className="mt-2 text-sm leading-6 text-muted">
-          The official reference for how HHIP works, how to run it, and the hardware it supports. New to hardware? The{" "}
+          The official reference for how Kiungo works, how to run it, and the hardware it supports. New to hardware? The{" "}
           <Link href="/learn" className="font-medium text-primary hover:underline">Learning Center</Link> teaches the basics step by step.
         </p>
       </div>

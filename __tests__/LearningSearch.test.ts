@@ -93,7 +93,7 @@ describe("inline markup", () => {
   });
 
   it("builds stable URL-safe slugs", () => {
-    expect(slugify("What is `HHIP`?")).toBe("what-is-hhip");
+    expect(slugify("What is `Kiungo`?")).toBe("what-is-kiungo");
     expect(slugify("Wire it to an Arduino Uno")).toBe("wire-it-to-an-arduino-uno");
   });
 

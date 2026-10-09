@@ -6,24 +6,24 @@ import type { LearningModule } from "../types";
  */
 export const LEARNING_MODULES: LearningModule[] = [
   {
-    slug: "getting-started-with-hhip",
+    slug: "getting-started-with-kiungo",
     order: 1,
     topic: "foundations",
     level: "beginner",
     minutes: 10,
-    title: "Getting started with HHIP",
+    title: "Getting started with Kiungo",
     summary: "A short tour of the platform and how to set up your first project.",
     objectives: [
-      "Explain what HHIP is for",
+      "Explain what Kiungo is for",
       "Find the main areas of the app",
       "Create your first project",
     ],
     tags: ["introduction", "tour", "projects", "first project", "start"],
-    relatedDocs: ["system-overview/what-is-hhip", "system-overview/how-hhip-works"],
+    relatedDocs: ["system-overview/what-is-kiungo", "system-overview/how-kiungo-works"],
     blocks: [
       {
         type: "p",
-        text: "HHIP helps you plan, simulate, and document hardware projects, even when you do not own every part. This module walks through the areas you will use most.",
+        text: "Kiungo helps you plan, simulate, and document hardware projects, even when you do not own every part. This module walks through the areas you will use most.",
       },
       { type: "h2", text: "The main areas" },
       {
@@ -277,7 +277,7 @@ void loop() {
   }
 }`,
       },
-      { type: "h2", text: "Try it in HHIP" },
+      { type: "h2", text: "Try it in Kiungo" },
       {
         type: "p",
         text: "Open the [Engineering Lab](/laboratory/workspace), add an Arduino Uno, then search for “led” and add it: it wires itself to pin 13 and GND. Press Run and watch it blink, then switch to the Current flow view to see the current go round. The lab assumes the 220 Ω resistor a real build needs. Compare the wiring with your real breadboard, then record what you observed in [Experiment Records](/experiments).",
@@ -688,23 +688,23 @@ void loop() {
     level: "intermediate",
     minutes: 20,
     title: "Prototype virtually, then build",
-    summary: "The HHIP workflow: design with virtual parts, swap in real ones as they arrive, and know what simulation cannot tell you.",
+    summary: "The Kiungo workflow: design with virtual parts, swap in real ones as they arrive, and know what simulation cannot tell you.",
     objectives: [
       "Plan a project that mixes virtual and physical parts",
       "Use virtual mode to check wiring and logic early",
       "Name the limits of simulation and verify on hardware",
     ],
     tags: ["hybrid", "simulation", "virtual", "physical", "workflow", "prototype", "verification", "laboratory"],
-    relatedDocs: ["technical-guides/device-modes", "system-overview/how-hhip-works"],
+    relatedDocs: ["technical-guides/device-modes", "system-overview/how-kiungo-works"],
     blocks: [
       {
         type: "p",
-        text: "HHIP's central idea is that a missing part should not stop you. You can start with every component virtual and replace them with real hardware one at a time.",
+        text: "Kiungo's central idea is that a missing part should not stop you. You can start with every component virtual and replace them with real hardware one at a time.",
       },
       { type: "h2", text: "A typical hybrid project" },
       {
         type: "p",
-        text: "Imagine a small greenhouse monitor. You own an ESP32 and a DHT11, but not yet the soil moisture sensor, relay, or display. In HHIP you can run the real ESP32 and DHT11 together with virtual versions of the others, then swap each virtual part for the real one when it arrives.",
+        text: "Imagine a small greenhouse monitor. You own an ESP32 and a DHT11, but not yet the soil moisture sensor, relay, or display. In Kiungo you can run the real ESP32 and DHT11 together with virtual versions of the others, then swap each virtual part for the real one when it arrives.",
       },
       { type: "h2", text: "The workflow" },
       {

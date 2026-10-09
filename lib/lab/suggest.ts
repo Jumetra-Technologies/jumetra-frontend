@@ -183,7 +183,7 @@ export function suggest(query: string, nodes: LabNode[], project?: ProjectContex
   const covered = (id: string) => INTENTS.some((intent) => intent.parts.includes(id) && intent.parts.some((p) => p !== id && (onCanvas.has(p) || list.some((s) => s.part.id === p))));
   for (const id of POPULAR) {
     if (onCanvas.has(id) || (getPinout(id).controller && hasBoard) || covered(id)) continue;
-    add(list, id, "Popular in HHIP builds", "popular");
+    add(list, id, "Popular in Kiungo builds", "popular");
   }
   return { items: list.slice(0, limit), didYouMean: false };
 }

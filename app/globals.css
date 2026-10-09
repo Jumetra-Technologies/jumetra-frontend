@@ -1,6 +1,25 @@
 @import "tailwindcss";
 
-/* HHIP Design System — soft chrome frame, stronger canvas */
+/* Kiungo brand colours (the logo): navy stem, teal arms, amber pads and beads. */
+:root {
+  --kiungo-navy: #01224b;
+  --kiungo-teal: #059093;
+  --kiungo-amber: #f1ab32;
+  --kiungo-stem: var(--kiungo-navy);
+  --kiungo-cut: #ffffff;
+  --kiungo-word: var(--kiungo-navy);
+  --kiungo-teal-text: #077a7d;
+}
+/* On dark themes the navy stem reverses to near-white and the cuts take the dark ground. */
+[data-theme="dark"],
+[data-theme="dark-contrast"] {
+  --kiungo-stem: #e8eef6;
+  --kiungo-cut: #141414;
+  --kiungo-word: #f5f5f5;
+  --kiungo-teal-text: #2fc4c6;
+}
+
+/* Kiungo design system: soft chrome frame, stronger canvas. Brand colours from the Kiungo logo. */
 
 :root,
 [data-theme="light"] {
@@ -15,7 +34,7 @@
   --sidebar-muted: #64748b;
   --sidebar-hover: #f1f5f9;
   --sidebar-border: #e2e8f0;
-  --primary: #2563eb;
+  --primary: #077a7d;
   --primary-foreground: #ffffff;
   --success: #16a34a;
   --success-foreground: #064e3b;
@@ -26,8 +45,8 @@
   --border: #e2e8f0;
   --muted: #64748b;
   --muted-bg: #f1f5f9;
-  --accent: #eff6ff;
-  --ring: #2563eb;
+  --accent: #e7f4f4;
+  --ring: #077a7d;
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 3px 10px rgba(15, 23, 42, 0.03);
   --shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
   --radius: 14px;

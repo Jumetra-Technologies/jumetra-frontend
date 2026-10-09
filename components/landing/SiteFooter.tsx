@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { KiungoLogo } from "@/components/brand/KiungoMark";
 import { FOOTER } from "@/lib/landing/content";
 
 function FooterLink({ href, label }: { href: string; label: string }) {
@@ -21,10 +22,7 @@ export function SiteFooter() {
       <div className="mx-auto w-full max-w-[1120px] px-5 py-14 sm:px-8 lg:px-10">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1.3fr)_repeat(4,minmax(0,1fr))]">
           <div>
-            <p className="flex items-baseline gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">HHIP</span>
-              <span className="text-sm font-semibold text-foreground">Engineering Platform</span>
-            </p>
+            <KiungoLogo variant="full" markClassName="size-9" />
             <p className="mt-4 max-w-sm text-sm leading-6 text-muted">{FOOTER.about}</p>
           </div>
           {FOOTER.columns.map((column) => (

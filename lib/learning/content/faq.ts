@@ -3,7 +3,7 @@ import type { FaqItem } from "../types";
 export const FAQ_ITEMS: FaqItem[] = [
   {
     id: "need-hardware",
-    question: "Do I need physical hardware to use HHIP?",
+    question: "Do I need physical hardware to use Kiungo?",
     answer:
       "No. Components can run in virtual mode, so you can design and test a system with no parts at all. You can also mix: connect the real parts you have and keep the rest virtual. See [Prototype virtually, then build](/learn/prototype-virtually-then-build).",
     tags: ["hardware", "virtual", "hybrid", "beginner", "requirements"],
@@ -26,7 +26,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "without-backend",
     question: "What works without the backend running?",
     answer:
-      "Documentation, the Learning Center, projects, experiment records, and Markdown reports work without the API. The component library, engineering laboratory, hybrid bridge, and firmware tools need the backend. See [Run HHIP locally](/docs/technical-guides/run-locally).",
+      "Documentation, the Learning Center, projects, experiment records, and Markdown reports work without the API. The component library, engineering laboratory, hybrid bridge, and firmware tools need the backend. See [Run Kiungo locally](/docs/technical-guides/run-locally).",
     tags: ["backend", "offline", "api", "requirements", "localhost"],
   },
   {
@@ -66,9 +66,9 @@ export const FAQ_ITEMS: FaqItem[] = [
   },
   {
     id: "run-own-machine",
-    question: "How do I run HHIP on my own computer?",
+    question: "How do I run Kiungo on my own computer?",
     answer:
-      "Start the backend with Python, then the frontend with npm, and point the frontend at the backend with `.env.local`. The steps are in [Run HHIP locally](/docs/technical-guides/run-locally).",
+      "Start the backend with Python, then the frontend with npm, and point the frontend at the backend with `.env.local`. The steps are in [Run Kiungo locally](/docs/technical-guides/run-locally).",
     tags: ["install", "setup", "localhost", "run", "development"],
   },
   {

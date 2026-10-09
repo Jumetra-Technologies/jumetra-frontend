@@ -72,7 +72,7 @@ export function PhysicalDevicePanel({ selectedDeviceId, onSelect, onConnected }:
       {error ? <p className="mt-2 text-xs text-danger">{error}</p> : null}
 
       <div className="mt-3 space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted">Connected in HHIP</p>
+        <p className="text-[11px] font-medium uppercase tracking-wide text-muted">Connected in Kiungo</p>
         {devices.length === 0 ? (
           <p className="text-xs text-muted">No physical devices connected yet.</p>
         ) : (

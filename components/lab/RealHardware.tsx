@@ -21,7 +21,7 @@ const BOARD_PART: Record<string, string> = {
 };
 
 /**
- * Real boards on USB, through the HHIP runtime: scan, then put a board on the
+ * Real boards on USB, through the Kiungo runtime: scan, then put a board on the
  * canvas as a physical part. Its wiring is checked like any other; the
  * runtime binds it to the port.
  */
@@ -34,7 +34,7 @@ export function RealHardware() {
   if (runtime !== "online" && runtime !== "syncing") {
     return (
       <p className="text-[12.5px] leading-5 text-muted">
-        Real boards on USB join the canvas through the HHIP runtime, which isn&apos;t running. Everything else works offline.{" "}
+        Real boards on USB join the canvas through the Kiungo runtime, which isn&apos;t running. Everything else works offline.{" "}
         <Link href="/docs/technical-guides/run-locally" className="font-medium text-primary hover:underline">
           Run it locally
         </Link>

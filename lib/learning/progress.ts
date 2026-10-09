@@ -8,13 +8,16 @@
 export const PROGRESS_STORAGE_KEY = "hhip-learning-progress:v1";
 export const PROGRESS_CHANGE_EVENT = "hhip-learning-progress-change";
 
+/** Modules renamed in the Kiungo rebrand, so progress saved under the old slug still counts. */
+const RENAMED: Record<string, string> = { "getting-started-with-hhip": "getting-started-with-kiungo" };
+
 /** Parses the stored value defensively; anything unexpected yields an empty list. */
 export function parseProgress(raw: string | null | undefined): string[] {
   if (!raw) return [];
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return Array.from(new Set(parsed.filter((item): item is string => typeof item === "string")));
+    return Array.from(new Set(parsed.filter((item): item is string => typeof item === "string").map((slug) => RENAMED[slug] ?? slug)));
   } catch {
     return [];
   }

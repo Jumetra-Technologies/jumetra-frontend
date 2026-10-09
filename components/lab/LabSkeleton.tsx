@@ -1,3 +1,4 @@
+import { KiungoMark } from "@/components/brand/KiungoMark";
 import { Skeleton, SkeletonRegion } from "@/components/ui/skeleton";
 
 /**
@@ -40,6 +41,15 @@ export function LabSkeleton() {
           <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
             <path d="M 42 34 C 50 34, 50 42, 58 42" fill="none" stroke="var(--border)" strokeWidth="3" strokeDasharray="6 8" vectorEffect="non-scaling-stroke" />
           </svg>
+          <div className="absolute inset-x-0 bottom-[14%] flex justify-center">
+            <div className="rounded-[16px] border border-border bg-surface/90 px-6 py-4 shadow-[var(--shadow-md)] backdrop-blur">
+              {/* The region above already announces "Loading"; this is the visible part. */}
+              <div className="flex flex-col items-center gap-2.5" aria-hidden>
+                <KiungoMark state="loading" className="size-12" />
+                <span className="text-[13px] font-medium text-muted">Setting up the lab…</span>
+              </div>
+            </div>
+          </div>
         </div>
         <div className="hidden w-[320px] shrink-0 flex-col gap-3 border-l border-border bg-surface p-4 xl:flex">
           <Skeleton className="h-5 w-40" />

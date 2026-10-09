@@ -154,7 +154,7 @@ describe("LandingPage", () => {
     expect(within(parts).getByText("Servo, simulated")).toBeInTheDocument();
     const stages = screen.getByRole("list", { name: "Learning path stages" });
     expect(within(stages).getAllByRole("link")).toHaveLength(5);
-    expect(within(stages).getByRole("link", { name: /Foundations/ })).toHaveAttribute("href", "/learn/getting-started-with-hhip");
+    expect(within(stages).getByRole("link", { name: /Foundations/ })).toHaveAttribute("href", "/learn/getting-started-with-kiungo");
   });
 
   it("lists every part in the library section", () => {

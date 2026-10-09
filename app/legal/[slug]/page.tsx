@@ -18,8 +18,8 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: LegalPageProps): Promise<Metadata> {
   const { slug } = await params;
   const document = getLegalDocument(slug);
-  if (!document) return { title: "Not found · HHIP" };
-  return { title: `${document.title} · HHIP`, description: document.summary };
+  if (!document) return { title: "Not found" };
+  return { title: `${document.title}`, description: document.summary };
 }
 
 function formatDate(iso: string): string {

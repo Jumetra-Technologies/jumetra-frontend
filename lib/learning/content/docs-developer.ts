@@ -52,7 +52,7 @@ export const DEVELOPER_ARTICLES: DocArticle[] = [
       { type: "h2", text: "Scrollbars" },
       {
         type: "p",
-        text: "Every scrolling area in HHIP uses the same slim, elastic scrollbar: a 6px bar with small arrows that squashes against the end when you scroll past the top or bottom (or left and right) and springs back when you let go. It is applied automatically by `<ElasticScrollbars />` in `app/layout.tsx`, which finds anything with `overflow: auto` or `scroll`, and textareas, including panels and modals that appear later.",
+        text: "Every scrolling area in Kiungo uses the same slim, elastic scrollbar: a 6px bar with small arrows that squashes against the end when you scroll past the top or bottom (or left and right) and springs back when you let go. It is applied automatically by `<ElasticScrollbars />` in `app/layout.tsx`, which finds anything with `overflow: auto` or `scroll`, and textareas, including panels and modals that appear later.",
       },
       {
         type: "ul",

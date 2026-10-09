@@ -9,11 +9,11 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const part = partId ? getPart(partId) : undefined;
   if (!part) {
     return {
-      title: "Component library · HHIP",
+      title: "Component library",
       description: `${PARTS.length} boards, sensors, outputs, displays and radios, each with a 3D model, a labelled top view and a current-flow diagram.`,
     };
   }
-  return { title: `${part.name} · HHIP Component library`, description: part.summary };
+  return { title: `${part.name} · Component library`, description: part.summary };
 }
 
 /** Compatibility from the backend catalog, when it answers quickly; the library itself needs nothing from it. */
@@ -38,7 +38,7 @@ export default async function ComponentsPage({ searchParams }: { searchParams: P
       <div className="mb-8 max-w-3xl">
         <h2 className="text-3xl font-bold tracking-tight">Component library</h2>
         <p className="mt-2 text-base leading-7 text-muted">
-          Every part HHIP can simulate, drawn to scale. Turn it in 3D, point at its pins in the top view, follow the current inside, then start an
+          Every part Kiungo can simulate, drawn to scale. Turn it in 3D, point at its pins in the top view, follow the current inside, then start an
           experiment with it in the lab.
         </p>
       </div>

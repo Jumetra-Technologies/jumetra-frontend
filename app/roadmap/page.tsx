@@ -29,7 +29,7 @@ export default function RoadmapPage() {
     <DashboardShell activePath="/roadmap">
       <div className="mb-8 max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Product direction</p>
-        <h2 className="mt-1 text-2xl font-bold">HHIP roadmap</h2>
+        <h2 className="mt-1 text-2xl font-bold">Kiungo roadmap</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted">A user-focused view of what is available and what would make robotics projects more durable, testable, and easier to reproduce.</p>
       </div>
 

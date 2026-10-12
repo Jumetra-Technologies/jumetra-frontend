@@ -96,6 +96,34 @@ describe("Engineering Lab", () => {
     vi.useRealTimers();
   });
 
+  it("Stop halts the clock and a rerun continues it at the same rate: no duplicate timers", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    fireEvent.click(within(screen.getByTestId("lab-empty")).getByText("Blink an LED"));
+    const time = () => Number.parseFloat(screen.getByTestId("sim-time").textContent ?? "0");
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    const afterFirst = time();
+    expect(afterFirst).toBeGreaterThanOrEqual(0.9);
+    expect(afterFirst).toBeLessThanOrEqual(1.1);
+    fireEvent.click(screen.getByTestId("run-toggle")); // stop
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(time()).toBe(afterFirst);
+    fireEvent.click(screen.getByTestId("run-toggle")); // run again
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    // One second of real time is one second of simulated time, not two.
+    expect(time() - afterFirst).toBeGreaterThanOrEqual(0.9);
+    expect(time() - afterFirst).toBeLessThanOrEqual(1.1);
+    vi.useRealTimers();
+  });
+
   it("switches between the three views and keeps the choice with the session", async () => {
     render(<EngineeringLab />);
     await screen.findByTestId("lab-empty");

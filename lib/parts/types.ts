@@ -95,6 +95,8 @@ export type Solid =
   | {
       /** Silkscreen text on the board surface. */
       kind: "text";
+      /** "screen:N" marks line N of a display's glass, which the lab writes live text into; "screen-demo" is decoration the lab blanks. */
+      id?: string;
       x: number;
       y: number;
       text: string;

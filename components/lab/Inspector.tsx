@@ -14,6 +14,7 @@ import { useLab } from "@/lib/lab/store";
 import type { DeviceMode } from "@/lib/lab/types";
 import { cn } from "@/lib/utils";
 import { FaultList } from "./FaultList";
+import { InputsPanel } from "./InputsPanel";
 import { RealHardware } from "./RealHardware";
 import { useLabContext } from "./lab-context";
 import { STATUS_TEXT, TONE_VAR } from "./PartNode";
@@ -139,6 +140,8 @@ function NodeInspector({ id }: { id: string }) {
           </dl>
         </Section>
       ) : null}
+
+      <InputsPanel node={node} />
 
       <Section title={`Problems${report?.faults.length ? ` · ${report.faults.length}` : ""}`}>
         <FaultList faults={report?.faults ?? []} empty={status === "idle" ? "Not wired yet. Drag from a pin, or use Auto-wire." : "No problems with this part."} />

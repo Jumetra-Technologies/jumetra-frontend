@@ -59,3 +59,45 @@ export function searchParts(query: string): PartModel[] {
     .sort((a, b) => b.score - a.score)
     .map((entry) => entry.part);
 }
+
+/* ----- Display glass -------------------------------------------------------- */
+
+const SCREEN_LINE = /^screen:(\d+)$/;
+
+/** Whether a model has glass the lab can write to ("screen:N" text solids). */
+export function hasScreen(model: PartModel): boolean {
+  return model.solids.some((s) => s.kind === "text" && !!s.id && SCREEN_LINE.test(s.id));
+}
+
+const screenCache = new WeakMap<PartModel, Map<string, PartModel>>();
+
+/**
+ * The model with the given lines written on its glass: line N goes into the
+ * "screen:N" solid, missing lines are blank, and "screen-demo" decoration is
+ * blanked. Results are cached per model and text so renderers keyed on the
+ * model object don't re-measure every frame.
+ */
+export function withScreenText(model: PartModel, lines: readonly string[]): PartModel {
+  if (!hasScreen(model)) return model;
+  const key = lines.join("\n");
+  let byText = screenCache.get(model);
+  if (!byText) {
+    byText = new Map();
+    screenCache.set(model, byText);
+  }
+  const cached = byText.get(key);
+  if (cached) return cached;
+  const next: PartModel = {
+    ...model,
+    solids: model.solids.map((s) => {
+      if (s.kind !== "text" || !s.id) return s;
+      const m = SCREEN_LINE.exec(s.id);
+      if (m) return { ...s, text: lines[Number(m[1])] ?? "" };
+      if (s.id === "screen-demo") return { ...s, text: "" };
+      return s;
+    }),
+  };
+  if (byText.size > 200) byText.clear();
+  byText.set(key, next);
+  return next;
+}

@@ -5,7 +5,7 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { AlertTriangle, Cpu, Lightbulb, Monitor, Radio, Thermometer, Usb, Zap } from "lucide-react";
 import { PartModel3D } from "@/components/library/views/PartModel3D";
 import { PartPlanGraphic } from "@/components/library/views/PartPlanView";
-import { getPart } from "@/lib/parts";
+import { getPart, hasScreen, withScreenText } from "@/lib/parts";
 import { getPinout, pinTone, type LabPin, type PinTone } from "@/lib/lab/pinout";
 import { NODE, nodeLayout, pinY } from "@/lib/lab/layout";
 import type { PartStatus } from "@/lib/lab/circuit";
@@ -206,6 +206,11 @@ function PartNodeView({ id, data, selected }: NodeProps & { data: PartNodeData }
     return part.animate.lit;
   }, [part, pinout.controller, live?.level]);
 
+  // A display's glass shows what the sketch wrote this frame, or nothing: never the library's sample text.
+  const screen = !!part && hasScreen(part);
+  const text = live?.text;
+  const shown = useMemo(() => (part && screen ? withScreenText(part, text ?? []) : part), [part, screen, text]);
+
   return (
     <div
       className={cn(
@@ -248,10 +253,10 @@ function PartNodeView({ id, data, selected }: NodeProps & { data: PartNodeData }
         ) : (
           <div className="pointer-events-none absolute overflow-hidden rounded-[10px]" style={{ left: layout.slot.x, top: layout.slot.y, width: layout.slot.w, height: layout.slot.h }}>
             {view === "reality" ? (
-              <PartModel3D model={part} powered={!!lit} lit={litIds} still={{ spin: -24, tilt: 50 }} className="!h-full !w-full" />
+              <PartModel3D model={shown!} powered={!!lit} lit={litIds} still={{ spin: -24, tilt: 50 }} className="!h-full !w-full" />
             ) : (
               <div className="flex h-full w-full items-center justify-center p-1.5" style={{ backgroundImage: "linear-gradient(var(--canvas-grid) 1px, transparent 1px), linear-gradient(90deg, var(--canvas-grid) 1px, transparent 1px)", backgroundSize: "10px 10px" }}>
-                <PartPlanGraphic model={part} powered={!!lit} lit={litIds} rotate={pinout.controller} className="h-full w-full drop-shadow-[0_3px_6px_rgba(15,23,42,0.18)]" />
+                <PartPlanGraphic model={shown!} powered={!!lit} lit={litIds} rotate={pinout.controller} className="h-full w-full drop-shadow-[0_3px_6px_rgba(15,23,42,0.18)]" />
               </div>
             )}
             {(node.partId === "led" || node.partId === "rgb-led") && on ? (
@@ -261,8 +266,8 @@ function PartNodeView({ id, data, selected }: NodeProps & { data: PartNodeData }
                 aria-hidden
               />
             ) : null}
-            {live?.text?.length ? (
-              <span className="absolute inset-x-2 bottom-2 rounded-md bg-black/80 px-2 py-1 font-mono text-[10px] leading-4 text-[#9df59b] shadow">{live.text.map((t) => <span key={t} className="block truncate">{t}</span>)}</span>
+            {live?.text?.length && !screen ? (
+              <span className="absolute inset-x-2 bottom-2 rounded-md bg-black/80 px-2 py-1 font-mono text-[10px] leading-4 text-[#9df59b] shadow" data-testid="screen-overlay">{live.text.map((t) => <span key={t} className="block truncate">{t}</span>)}</span>
             ) : null}
           </div>
         )

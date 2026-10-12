@@ -196,7 +196,8 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
   const nodes = useMemo(() => session?.nodes ?? [], [session?.nodes]);
   const wires = useMemo(() => session?.wires ?? [], [session?.wires]);
   const analysis = useMemo(() => analyze(nodes, wires), [nodes, wires]);
-  const frame = useMemo(() => frameAt(nodes, wires, analysis, t, running), [nodes, wires, analysis, t, running]);
+  const inputs = session?.inputs;
+  const frame = useMemo(() => frameAt(nodes, wires, analysis, t, running, inputs), [nodes, wires, analysis, t, running, inputs]);
 
   const prevAnalysis = useRef<{ id: string; analysis: Analysis } | null>(null);
   useEffect(() => {
@@ -210,22 +211,22 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
 
   // Simulation clock. Each tick advances time and, once a simulated second,
   // has every board print its readings to the serial monitor.
-  const latest = useRef({ nodes, wires, analysis, t });
+  const latest = useRef({ nodes, wires, analysis, t, inputs });
   useEffect(() => {
-    latest.current = { nodes, wires, analysis, t };
-  }, [nodes, wires, analysis, t]);
+    latest.current = { nodes, wires, analysis, t, inputs };
+  }, [nodes, wires, analysis, t, inputs]);
   const lastSecond = useRef(-1);
   useEffect(() => {
     if (!running) return;
     const id = window.setInterval(() => {
-      const { nodes: ns, wires: ws, analysis: an, t: now } = latest.current;
+      const { nodes: ns, wires: ws, analysis: an, t: now, inputs: ins } = latest.current;
       const next = Math.round((now + (TICK_MS / 1000) * speed) * 1000) / 1000;
       latest.current.t = next;
       setT(next);
       const second = Math.floor(next);
       if (second !== lastSecond.current) {
         lastSecond.current = second;
-        const line = serialLine(ns, frameAt(ns, ws, an, next, true));
+        const line = serialLine(ns, frameAt(ns, ws, an, next, true, ins));
         if (line) setSerial((lines) => [...lines, line].slice(-300));
       }
     }, TICK_MS);

@@ -175,6 +175,17 @@ describe("LandingPage", () => {
     expect(within(footer).getByText(/Arduino is a trademark/)).toBeInTheDocument();
     expect(within(footer).getByRole("link", { name: "GitHub" })).toHaveAttribute("target", "_blank");
   });
+
+  it("puts the description in a band above the four link columns, on the same grid", () => {
+    render(<LandingPage />);
+    const about = screen.getByTestId("footer-about");
+    const links = screen.getByTestId("footer-links");
+    expect(about.compareDocumentPosition(links) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(about).getByText(FOOTER.about)).toHaveClass("md:col-span-3");
+    expect(about).toHaveClass("md:grid-cols-4");
+    expect(links).toHaveClass("md:grid-cols-4");
+    expect(within(links).getAllByRole("navigation").map((n) => n.getAttribute("aria-label"))).toEqual(["Product", "Learn", "Legal", "About"]);
+  });
 });
 
 describe("HeroBoard", () => {

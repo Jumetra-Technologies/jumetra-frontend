@@ -20,11 +20,17 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-border" data-testid="site-footer">
       <div className="mx-auto w-full max-w-[1120px] px-5 py-14 sm:px-8 lg:px-10">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,1.3fr)_repeat(4,minmax(0,1fr))]">
-          <div>
-            <KiungoLogo variant="full" markClassName="size-9" />
-            <p className="mt-4 max-w-sm text-sm leading-6 text-muted">{FOOTER.about}</p>
-          </div>
+        {/*
+          The brand and what Kiungo is, as one band across the top. It uses the
+          same four-column grid as the links, so the text starts on the Learn
+          column and runs to the edge of About.
+        */}
+        <div className="grid gap-5 border-b border-border pb-10 md:grid-cols-4 md:gap-x-8" data-testid="footer-about">
+          <KiungoLogo variant="full" markClassName="size-9" className="self-start" />
+          <p className="text-sm leading-7 text-muted md:col-span-3">{FOOTER.about}</p>
+        </div>
+        {/* Links underneath, four even columns (two on phones). */}
+        <div className="grid grid-cols-2 gap-x-8 gap-y-10 pt-10 md:grid-cols-4" data-testid="footer-links">
           {FOOTER.columns.map((column) => (
             <nav key={column.title} aria-label={column.title}>
               <p className="text-sm font-semibold text-foreground">{column.title}</p>

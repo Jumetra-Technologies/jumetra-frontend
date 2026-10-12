@@ -11,8 +11,10 @@
 
 import { create } from "zustand";
 import { getPart } from "@/lib/parts";
+import { SOURCE_KEY, SOURCE_SET, coerceInput, findControl } from "./controls";
 import { getPinout } from "./pinout";
-import type { DeviceMode, LabData, LabNode, LabSession, LabView, LabWire, LogEntry, LogKind, PinRef } from "./types";
+import { stepperStepsAt } from "./simulate";
+import type { DeviceMode, LabData, LabNode, LabSession, LabView, LabWire, LogEntry, LogKind, NodeInputs, PinRef } from "./types";
 
 export const LAB_STORAGE_KEY = "hhip.lab:v1";
 const MAX_LOG = 400;
@@ -43,6 +45,7 @@ export function newSession(input: { name?: string; projectId?: string | null; no
     log: [logEntry("session", `Session “${name}” started`)],
     view: "top",
     runMs: 0,
+    inputs: {},
     runtime: null,
   };
 }
@@ -113,6 +116,7 @@ function sanitize(raw: unknown): LabData {
           log: Array.isArray(s.log) ? s.log : [],
           view: (s.view === "reality" || s.view === "flow" ? s.view : "top") as LabView,
           runMs: Number(s.runMs) || 0,
+          inputs: s.inputs && typeof s.inputs === "object" ? s.inputs : {},
         }))
     : [];
   return { version: 1, sessions, activeId: typeof data.activeId === "string" ? data.activeId : null };
@@ -169,6 +173,14 @@ export interface LabState {
   log: (kind: LogKind, text: string, nodes?: string[]) => void;
   addRunTime: (ms: number) => void;
   setRuntime: (runtime: LabSession["runtime"]) => void;
+  /** Set a sensor's surroundings, an actuator's command or a board's sketch setting. Out-of-range numbers are clamped. */
+  setInput: (nodeId: string, key: string, value: number | string | boolean) => void;
+  /** Back to the defaults (the simulated sweep for sensors). */
+  clearInputs: (nodeId: string) => void;
+  /** Tell a stepper to move `steps` (negative for anticlockwise) from where it is at simulated time t; 0 holds. */
+  commandStepper: (nodeId: string, steps: number, t: number) => void;
+  /** Make the stepper's current position its zero. */
+  zeroStepper: (nodeId: string, t: number) => void;
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -285,6 +297,7 @@ export const useLab = create<LabState>((set, get) => {
           ...s,
           nodes: s.nodes.filter((n) => !ids.includes(n.id)),
           wires: s.wires.filter((w) => !ids.includes(w.from.node) && !ids.includes(w.to.node)),
+          inputs: Object.fromEntries(Object.entries(s.inputs ?? {}).filter(([id]) => !ids.includes(id))),
           log: [...s.log, logEntry("build", `Removed ${gone.map((n) => n.label).join(", ")}`)],
         }),
         { history: true },
@@ -295,15 +308,56 @@ export const useLab = create<LabState>((set, get) => {
       const session = active();
       if (!session) return [];
       const copies: LabNode[] = [];
+      const copiedInputs: Record<string, NodeInputs> = {};
       let pool = [...session.nodes];
       for (const node of session.nodes.filter((n) => ids.includes(n.id))) {
         const copy = { ...node, id: makeId("n"), label: nextLabel(pool, node.partId), x: node.x + 40, y: node.y + 40 };
         copies.push(copy);
+        if (session.inputs?.[node.id]) copiedInputs[copy.id] = { ...session.inputs[node.id] };
         pool = [...pool, copy];
       }
       if (!copies.length) return [];
-      update((s) => ({ ...s, nodes: [...s.nodes, ...copies], log: [...s.log, logEntry("build", `Duplicated ${copies.map((c) => c.label).join(", ")}`, copies.map((c) => c.id))] }), { history: true });
+      update((s) => ({ ...s, nodes: [...s.nodes, ...copies], inputs: { ...(s.inputs ?? {}), ...copiedInputs }, log: [...s.log, logEntry("build", `Duplicated ${copies.map((c) => c.label).join(", ")}`, copies.map((c) => c.id))] }), { history: true });
       return copies;
+    },
+
+    setInput: (nodeId, key, value) => {
+      const session = active();
+      const node = session?.nodes.find((n) => n.id === nodeId);
+      if (!session || !node) return;
+      const control = findControl(node.partId, key);
+      const next = control ? coerceInput(control, value) : typeof value === "number" && !Number.isFinite(value) ? null : value;
+      if (next === null) return;
+      if (session.inputs?.[nodeId]?.[key] === next) return;
+      // Changing a value is taking it over; the Input switch itself is set explicitly.
+      const takeOver: NodeInputs = key !== SOURCE_KEY && control && findControl(node.partId, SOURCE_KEY) ? { [SOURCE_KEY]: SOURCE_SET } : {};
+      update((s) => ({ ...s, inputs: { ...(s.inputs ?? {}), [nodeId]: { ...(s.inputs?.[nodeId] ?? {}), ...takeOver, [key]: next } } }));
+    },
+
+    clearInputs: (nodeId) => {
+      const session = active();
+      if (!session?.inputs?.[nodeId]) return;
+      update((s) => ({ ...s, inputs: Object.fromEntries(Object.entries(s.inputs ?? {}).filter(([id]) => id !== nodeId)) }));
+    },
+
+    commandStepper: (nodeId, steps, t) => {
+      const session = active();
+      const node = session?.nodes.find((n) => n.id === nodeId);
+      if (!session || !node || node.partId !== "stepper-motor" || !Number.isFinite(steps)) return;
+      const current = session.inputs?.[nodeId]?.[SOURCE_KEY] === SOURCE_SET ? stepperStepsAt(session.inputs, nodeId, t) : 0;
+      const move = Math.round(steps);
+      update((s) => ({
+        ...s,
+        inputs: { ...(s.inputs ?? {}), [nodeId]: { ...(s.inputs?.[nodeId] ?? {}), [SOURCE_KEY]: SOURCE_SET, cmdFrom: current, cmdTarget: current + move, cmdAt: t } },
+        log: move ? [...s.log, logEntry("run", `${node.label}: move ${Math.abs(move)} steps ${move > 0 ? "clockwise" : "anticlockwise"}`, [nodeId])] : s.log,
+      }));
+    },
+
+    zeroStepper: (nodeId, t) => {
+      const session = active();
+      const node = session?.nodes.find((n) => n.id === nodeId);
+      if (!session || !node || node.partId !== "stepper-motor") return;
+      update((s) => ({ ...s, inputs: { ...(s.inputs ?? {}), [nodeId]: { ...(s.inputs?.[nodeId] ?? {}), [SOURCE_KEY]: SOURCE_SET, cmdFrom: 0, cmdTarget: 0, cmdAt: t } } }));
     },
 
     addWire: (from, to, opts) => {

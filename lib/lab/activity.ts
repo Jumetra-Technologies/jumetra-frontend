@@ -173,7 +173,7 @@ function firstOnText(node: LabNode, badge?: string, value?: string): string {
     case "relay":
       return `${node.label} clicks: COM switches to NO`;
     case "servo":
-      return `${node.label} starts sweeping`;
+      return `${node.label} moves to ${badge ?? "its angle"}`;
     case "dc-motor":
       return `${node.label} spins up${badge ? ` to ${badge}` : ""}`;
     case "stepper-motor":

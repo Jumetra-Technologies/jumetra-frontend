@@ -1,17 +1,21 @@
 /**
- * The lab's simulation: a pure function of the build and the time.
+ * The lab's simulation: a pure function of the build, the inputs and the time.
  *
- * Each board runs a default sketch ("blink and read"): it switches the
- * outputs wired to it in a recognisable pattern and reads every sensor wired
- * to it. Parts only respond when the analysis says they are powered and
+ * Each board runs the default sketch in `sketch.ts`: it reads the sensors
+ * wired to it, compares them to its settings and drives its outputs. Sensors
+ * read what the person set in the Inspector, or the lab's simulated sweep
+ * until they do. Actuators with no sensor driving them follow their own
+ * command. Parts only respond when the analysis says they are powered and
  * connected, so a missing ground shows up as a dark LED, as it would on a
  * bench. Being pure, any moment can be sampled again, which is how the
- * Signals panel draws its traces.
+ * Signals panel draws its traces and how the tests check a frame.
  */
 
 import type { Analysis } from "./circuit";
 import { pinKey } from "./circuit";
+import { inputOf, isSet, isSensorPart } from "./controls";
 import { getPinout } from "./pinout";
+import { boardSettings, displayLines, planBoard, sampleSensor, type BoardPlan, type Inputs, type SensorSample } from "./sketch";
 import type { LabNode, LabWire } from "./types";
 
 export interface Reading {
@@ -49,6 +53,11 @@ export interface Frame {
   wires: Record<string, WireLive>;
 }
 
+/** 28BYJ-48 through its gearbox: steps per turn of the output shaft (full-step). */
+export const STEPPER_STEPS_PER_TURN = 2048;
+/** The TT gear motor's no-load speed at full duty. */
+export const DC_MOTOR_MAX_RPM = 140;
+
 const square = (t: number, period: number, duty = 0.5, phase = 0) => (((t + phase) % period) + period) % period < period * duty ? 1 : 0;
 const fmt = (n: number, digits = 1) => n.toFixed(digits);
 
@@ -67,59 +76,21 @@ function outputOrder(nodes: LabNode[], analysis: Analysis): Map<string, number> 
   return order;
 }
 
+/** A sensor's reading at time t with no inputs: the simulated sweep. Kept for the Signals panel and older callers. */
 export function sensorReadings(partId: string, t: number): { readings: Reading[]; level: number; on: boolean; badge?: string } {
-  switch (partId) {
-    case "dht11":
-    case "dht22":
-    case "am2302": {
-      const temp = 22 + 3 * Math.sin(t / 8);
-      const hum = 55 + 8 * Math.cos(t / 12);
-      return { readings: [{ label: "Temperature", value: `${fmt(temp)} °C` }, { label: "Humidity", value: `${fmt(hum, 0)} %` }], level: 0.5, on: true, badge: `${fmt(temp)} °C` };
-    }
-    case "ds18b20": {
-      const temp = 24.5 + 1.5 * Math.sin(t / 10);
-      return { readings: [{ label: "Temperature", value: `${fmt(temp, 2)} °C` }], level: 0.5, on: true, badge: `${fmt(temp)} °C` };
-    }
-    case "hc-sr04": {
-      const d = 30 + 20 * Math.abs(Math.sin(t / 5));
-      return { readings: [{ label: "Distance", value: `${fmt(d)} cm` }], level: square(t, 0.1, 0.3), on: true, badge: `${fmt(d, 0)} cm` };
-    }
-    case "pir": {
-      const motion = square(t, 8, 0.375) === 1;
-      return { readings: [{ label: "Motion", value: motion ? "Detected" : "None" }], level: motion ? 1 : 0, on: motion, badge: motion ? "Motion" : "Clear" };
-    }
-    case "ldr": {
-      const light = 50 + 40 * Math.sin(t / 4);
-      return { readings: [{ label: "Light", value: `${fmt(light, 0)} %` }], level: light / 100, on: true, badge: `${fmt(light, 0)} %` };
-    }
-    case "soil-moisture": {
-      const m = 60 - ((t * 0.8) % 40);
-      return { readings: [{ label: "Moisture", value: `${fmt(m, 0)} %` }, { label: "Threshold", value: m < 30 ? "Dry" : "Wet enough" }], level: m / 100, on: true, badge: `${fmt(m, 0)} %` };
-    }
-    case "mq2": {
-      const ppm = 300 + 250 * Math.max(0, Math.sin(t / 6)) ** 3;
-      return { readings: [{ label: "Gas", value: `${fmt(ppm, 0)} ppm` }, { label: "Alarm", value: ppm > 450 ? "Over threshold" : "Normal" }], level: ppm / 600, on: true, badge: `${fmt(ppm, 0)} ppm` };
-    }
-    case "mpu6050": {
-      const pitch = 25 * Math.sin(t / 2);
-      const roll = 15 * Math.cos(t / 3);
-      return { readings: [{ label: "Pitch", value: `${fmt(pitch)}°` }, { label: "Roll", value: `${fmt(roll)}°` }, { label: "Accel Z", value: `${fmt(Math.cos((pitch * Math.PI) / 180), 2)} g` }], level: 0.5, on: true, badge: `${fmt(pitch, 0)}° tilt` };
-    }
-    case "bmp280": {
-      const p = 1013.2 + 1.5 * Math.sin(t / 20);
-      return { readings: [{ label: "Pressure", value: `${fmt(p)} hPa` }, { label: "Temperature", value: `${fmt(23.1 + 0.4 * Math.sin(t / 9))} °C` }, { label: "Altitude", value: `${fmt(44330 * (1 - (p / 1013.25) ** 0.1903), 1)} m` }], level: 0.5, on: true, badge: `${fmt(p, 0)} hPa` };
-    }
-    default:
-      return { readings: [], level: 0, on: false };
-  }
+  const s = sampleSensor({ id: "", partId, label: partId, x: 0, y: 0, mode: "virtual" }, t, undefined, boardSettings(null, undefined));
+  return { readings: s.readings, level: s.level, on: s.on, badge: s.badge };
 }
 
-const SENSORS = new Set(["dht11", "dht22", "am2302", "ds18b20", "hc-sr04", "pir", "ldr", "soil-moisture", "mq2", "mpu6050", "bmp280"]);
 const DISPLAYS = new Set(["lcd-16x2", "oled-ssd1306", "tft-display"]);
 const RADIOS = new Set(["hc-05", "wifi-module", "nrf24l01", "lora"]);
 
 export function isSensor(partId: string) {
-  return SENSORS.has(partId);
+  return isSensorPart(partId);
+}
+
+export function isDisplay(partId: string) {
+  return DISPLAYS.has(partId);
 }
 
 /**
@@ -133,30 +104,66 @@ export function runnable(report: Analysis["nodes"][string] | undefined): boolean
   return report.status === "fault" && report.powered && report.faults.every((f) => f.severity !== "error" || f.id.startsWith("level"));
 }
 
-export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, t: number, running: boolean): Frame {
+/** The board a peripheral takes its signal from. */
+function boardFor(report: Analysis["nodes"][string] | undefined): string | null {
+  const links = report?.links ?? [];
+  return links.find((l) => !["vcc", "gnd"].includes(l.role))?.board ?? links[0]?.board ?? null;
+}
+
+/**
+ * Where a commanded stepper is at time t, in steps of the output shaft,
+ * accumulated since the position was last zeroed. A command moves from
+ * `cmdFrom` to `cmdTarget` at `stepsPerSecond`, starting at `cmdAt`, then
+ * holds. With no command the shaft holds at `cmdFrom` (0 by default).
+ */
+export function stepperStepsAt(inputs: Inputs, nodeId: string, t: number): number {
+  const from = inputOf(inputs, nodeId, "cmdFrom", 0);
+  const target = inputOf(inputs, nodeId, "cmdTarget", from);
+  const at = inputOf(inputs, nodeId, "cmdAt", 0);
+  const sps = Math.max(1, inputOf(inputs, nodeId, "stepsPerSecond", 256));
+  const distance = Math.abs(target - from);
+  const travelled = Math.min(distance, Math.max(0, t - at) * sps);
+  return Math.round(from + Math.sign(target - from) * travelled);
+}
+
+export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, t: number, running: boolean, inputs: Inputs = undefined): Frame {
   const live: Record<string, NodeLive> = {};
   const pins: Record<string, number> = {};
   const order = outputOrder(nodes, analysis);
-  const firstReading: string[] = [];
 
-  // Sensors first, so displays can show what they read.
+  // Sensors first: the sketch on each board reads them before deciding anything.
+  const samplesByBoard = new Map<string, SensorSample[]>();
+  const sensorSamples = new Map<string, SensorSample>();
   for (const node of nodes) {
-    if (!SENSORS.has(node.partId)) continue;
+    if (!isSensorPart(node.partId)) continue;
     const report = analysis.nodes[node.id];
     const ready = runnable(report);
     if (!ready || !running) {
       live[node.id] = { on: false, level: 0, readings: [], badge: ready ? "Ready" : undefined };
       continue;
     }
-    const r = sensorReadings(node.partId, t);
-    live[node.id] = { on: r.on, level: r.level, readings: r.readings, badge: r.badge };
-    if (r.readings[0]) firstReading.push(`${node.label.split(" ")[0]} ${r.readings[0].value}`);
+    const board = boardFor(report);
+    const sample = sampleSensor(node, t, inputs, boardSettings(board, inputs));
+    sensorSamples.set(node.id, sample);
+    if (board) samplesByBoard.set(board, [...(samplesByBoard.get(board) ?? []), sample]);
+    live[node.id] = { on: sample.on, level: sample.level, readings: sample.readings, badge: sample.held ? `${sample.badge} (set)` : sample.badge };
     for (const link of report!.links) {
-      const value = link.role === "out-analog" ? r.level : link.role === "out-digital" ? (node.partId === "soil-moisture" || node.partId === "mq2" ? (r.level < 0.3 ? 0 : 1) : r.level) : square(t, 2, 0.08);
+      const value = link.role === "out-analog" ? sample.level : link.role === "out-digital" ? (node.partId === "soil-moisture" || node.partId === "mq2" ? (sample.level < 0.3 ? 0 : 1) : sample.level) : square(t, 2, 0.08);
       pins[`${node.id}:${link.pin}`] = value;
       pins[`${link.board}:${link.boardPin}`] = value;
     }
   }
+
+  const plans = new Map<string, BoardPlan>();
+  const planFor = (boardId: string | null): BoardPlan => {
+    const key = boardId ?? "";
+    let plan = plans.get(key);
+    if (!plan) {
+      plan = planBoard(boardId, boardId ? (samplesByBoard.get(boardId) ?? []) : [], inputs);
+      plans.set(key, plan);
+    }
+    return plan;
+  };
 
   for (const node of nodes) {
     if (live[node.id]) continue;
@@ -164,17 +171,16 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
     const pinout = getPinout(node.partId);
     if (pinout.controller) {
       const powered = report?.powered ?? true;
+      const { settings, samples, alertSensor, alert } = planFor(node.id);
       const ledPin = pinout.pins.find((p) => p.fns?.includes("led"));
       const ledUsed = ledPin && report?.wiredPins.has(ledPin.id);
-      const blink = running && powered && !ledUsed ? square(t, 1) : 0;
+      const blink = running && powered && !ledUsed ? square(t, (2 * settings.delayMs) / 1000) : 0;
       if (ledPin && !ledUsed) pins[`${node.id}:${ledPin.id}`] = blink;
+      const sketch = !running ? "Stopped" : alertSensor ? `${alertSensor.node.label} → outputs${alert ? " (on)" : " (off)"}` : samples.length ? "Read and show" : `Blink, delay ${settings.delayMs} ms`;
       live[node.id] = {
         on: powered,
         level: blink,
-        readings: [
-          { label: "Power", value: powered ? `USB, ${pinout.logic} V logic` : "Off" },
-          ...(running ? [{ label: "Sketch", value: "Blink and read" }, { label: "Uptime", value: `${fmt(t)} s` }] : [{ label: "Sketch", value: "Stopped" }]),
-        ],
+        readings: [{ label: "Power", value: powered ? `USB, ${pinout.logic} V logic` : "Off" }, { label: "Sketch", value: sketch }, ...(running ? [{ label: "Uptime", value: `${fmt(t)} s` }] : [])],
         badge: !powered ? "Off" : running ? (ledUsed ? "Running" : blink ? "L on" : "L off") : "Idle",
       };
       continue;
@@ -183,6 +189,10 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
     const ready = runnable(report);
     const k = order.get(node.id) ?? 0;
     const go = running && ready;
+    const board = boardFor(report);
+    const plan = planFor(board);
+    const period = (2 * plan.settings.delayMs) / 1000;
+    const held = isSet(inputs, node.id);
     const setLinks = (fn: (role: string, pin: string) => number) => {
       for (const link of report?.links ?? []) {
         const v = fn(link.role, link.pin);
@@ -194,19 +204,20 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
     switch (node.partId) {
       case "led": {
         const onRail = !report?.links.some((l) => l.pin === "A") && report?.powered;
-        const level = go ? (onRail ? 1 : square(t, 1, 0.5, k * 0.25)) : !running && onRail && ready ? 1 : 0;
+        const level = go ? (onRail ? 1 : plan.alertSensor ? (plan.alert ? 1 : 0) : square(t, period, 0.5, k * (period / 4))) : !running && onRail && ready ? 1 : 0;
         setLinks(() => level);
-        live[node.id] = { on: level > 0, level, readings: [{ label: "State", value: level ? "On" : "Off" }], badge: level ? "ON" : "OFF" };
+        const why = plan.alertSensor ? (plan.alert ? `On: ${plan.alertSensor.node.label} condition met` : `Off: waiting on ${plan.alertSensor.node.label}`) : go ? `Blinking, ${plan.settings.delayMs} ms` : "—";
+        live[node.id] = { on: level > 0, level, readings: [{ label: "State", value: level ? "On" : "Off" }, ...(go ? [{ label: "Sketch", value: why }] : [])], badge: level ? "ON" : "OFF" };
         break;
       }
       case "buzzer": {
-        const level = go ? square(t, 1, 0.15, k * 0.2) : 0;
+        const level = go ? (plan.alertSensor ? (plan.alert ? square(t, 0.3, 0.5) : 0) : square(t, period, 0.15, k * 0.2)) : 0;
         setLinks(() => level);
-        live[node.id] = { on: level > 0, level, readings: [{ label: "Tone", value: level ? "2.3 kHz beep" : "Silent" }], badge: level ? "BEEP" : "Quiet" };
+        live[node.id] = { on: level > 0, level, readings: [{ label: "Tone", value: level ? "2.3 kHz beep" : plan.alertSensor && plan.alert ? "Beeping" : "Silent" }], badge: level ? "BEEP" : plan.alertSensor && plan.alert && go ? "Beeping" : "Quiet" };
         break;
       }
       case "relay": {
-        const level = go ? square(t, 4, 0.5, k) : 0;
+        const level = go ? (plan.alertSensor ? (plan.alert ? 1 : 0) : square(t, 4 * period, 0.5, k)) : 0;
         setLinks((role) => (role === "drive" ? 1 - level : 0));
         live[node.id] = { on: level > 0, level, readings: [{ label: "Contact", value: level ? "COM–NO closed" : "COM–NC closed" }], badge: level ? "Energised" : "Released" };
         break;
@@ -223,32 +234,80 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
         break;
       }
       case "servo": {
-        const angle = go ? 90 + 75 * Math.sin(t * 1.2 + k) : 90;
+        // Gate policy when a PIR shares the board; otherwise the servo's own command.
+        const gate = plan.motion !== null;
+        const commanded = gate ? (plan.motion ? plan.settings.gateOpen : plan.settings.gateRest) : held ? inputOf(inputs, node.id, "angle", 90) : null;
+        const angle = !go ? (commanded ?? 90) : commanded !== null ? Math.min(180, Math.max(0, commanded)) : 90 + 75 * Math.sin(t * 1.2 + k);
         setLinks((role) => (role === "pwm" ? (go ? 0.05 + (angle / 180) * 0.05 + 0.4 : 0) : 0));
-        live[node.id] = { on: go, level: angle / 180, angle, readings: [{ label: "Angle", value: `${Math.round(angle)}°` }], badge: `${Math.round(angle)}°` };
+        const command = gate ? (plan.motion ? `Open (${plan.settings.gateOpen}°): motion seen` : `Rest (${plan.settings.gateRest}°): no motion`) : held ? `Hold ${Math.round(angle)}°` : "Sweep (simulated)";
+        live[node.id] = { on: go, level: angle / 180, angle, readings: [{ label: "Angle", value: `${Math.round(angle)}°` }, ...(go ? [{ label: "Command", value: command }] : [])], badge: `${Math.round(angle)}°` };
         break;
       }
       case "dc-motor": {
         const hasEn = report?.links.some((l) => l.pin === "EN");
-        const duty = go ? (hasEn ? 0.35 + 0.65 * Math.abs(Math.sin(t / 2.5)) : 1) : 0;
-        const forward = square(t, 8) === 1;
+        const in1 = report?.links.some((l) => l.pin === "IN1") ?? false;
+        const in2 = report?.links.some((l) => l.pin === "IN2") ?? false;
+        let duty: number;
+        let forward: boolean;
+        let note: string | undefined;
+        if (held) {
+          const speed = inputOf(inputs, node.id, "speed", 0) / 100;
+          forward = inputOf(inputs, node.id, "direction", "forward") !== "reverse";
+          const dirPin = forward ? in1 : in2;
+          if (!go) duty = 0;
+          else if (!dirPin) {
+            duty = 0;
+            note = `${forward ? "IN1" : "IN2"} isn't wired, so the driver can't turn ${forward ? "forward" : "in reverse"}`;
+          } else if (!hasEn) {
+            duty = speed > 0 ? 1 : 0;
+            note = "EN isn't wired: full speed or stopped";
+          } else duty = speed;
+        } else {
+          duty = go ? (hasEn ? 0.35 + 0.65 * Math.abs(Math.sin(t / 2.5)) : 1) : 0;
+          forward = square(t, 8) === 1;
+        }
         setLinks((_, pin) => (pin === "EN" ? duty : pin === "IN1" ? (go && forward ? 1 : 0) : pin === "IN2" ? (go && !forward ? 1 : 0) : 0));
-        const rpm = Math.round(duty * 140);
-        live[node.id] = { on: duty > 0, level: duty, angle: (t * rpm * 6) % 360, readings: [{ label: "Speed", value: `${rpm} rpm` }, { label: "Direction", value: forward ? "Forward" : "Reverse" }], badge: go ? `${rpm} rpm` : "Stopped" };
+        const rpm = Math.round(duty * DC_MOTOR_MAX_RPM);
+        live[node.id] = {
+          on: duty > 0,
+          level: duty,
+          angle: (t * rpm * 6) % 360,
+          readings: [
+            { label: "Speed", value: `${rpm} rpm` },
+            { label: "Direction", value: rpm ? (forward ? "Forward" : "Reverse") : "Stopped" },
+            ...(go ? [{ label: "Command", value: held ? `${Math.round(inputOf(inputs, node.id, "speed", 0))} % ${forward ? "forward" : "reverse"}` : "Varying (simulated)" }] : []),
+            ...(note ? [{ label: "Note", value: note }] : []),
+          ],
+          badge: go ? (rpm ? `${rpm} rpm` : "Stopped") : "Stopped",
+        };
         break;
       }
       case "stepper-motor": {
-        const step = go ? Math.floor(t * 8) : 0;
-        setLinks((_, pin) => (go && pin === `IN${(step % 4) + 1}` ? 1 : 0));
-        const angle = go ? (t * 22.5) % 360 : 0;
-        live[node.id] = { on: go, level: go ? 1 : 0, angle, readings: [{ label: "Position", value: `${Math.round(angle)}°` }, { label: "Steps", value: String(step * 64) }], badge: `${Math.round(angle)}°` };
+        // Commanded: move from → target at the set speed, then hold. Simulated: turn at 128 steps/s.
+        const steps = held ? stepperStepsAt(inputs, node.id, t) : go ? Math.floor(t * 128) : 0;
+        const target = held ? inputOf(inputs, node.id, "cmdTarget", inputOf(inputs, node.id, "cmdFrom", 0)) : null;
+        const moving = go && (held ? steps !== target : true);
+        const angle = ((((steps % STEPPER_STEPS_PER_TURN) + STEPPER_STEPS_PER_TURN) % STEPPER_STEPS_PER_TURN) / STEPPER_STEPS_PER_TURN) * 360;
+        setLinks((_, pin) => (moving && pin === `IN${((((steps % 4) + 4) % 4) + 1)}` ? 1 : 0));
+        const remaining = target === null ? null : target - steps;
+        live[node.id] = {
+          on: moving,
+          level: moving ? 1 : 0,
+          angle,
+          readings: [
+            { label: "Position", value: `${fmt(angle, 0)}°` },
+            { label: "Steps", value: `${steps}` },
+            ...(go ? [{ label: "Command", value: held ? (remaining ? `${Math.abs(remaining)} steps to go ${remaining > 0 ? "clockwise" : "anticlockwise"}` : "Holding") : "Turning (simulated)" }] : []),
+          ],
+          badge: `${fmt(angle, 0)}°`,
+        };
         break;
       }
       default: {
         if (DISPLAYS.has(node.partId)) {
-          const lines = go ? (firstReading.length ? firstReading.slice(0, 2) : ["Hello, Kiungo!", `Up ${fmt(t, 0)} s`]) : [];
+          const lines = go ? displayLines(node.partId, plan.samples, t) : [];
           setLinks(() => (go ? 0.5 : 0));
-          live[node.id] = { on: go, level: go ? 1 : 0, text: lines, readings: go ? [{ label: "Showing", value: lines.join(" · ") }] : [], badge: go ? "Showing" : "Blank" };
+          live[node.id] = { on: go, level: go ? 1 : 0, text: lines, readings: go ? [{ label: "Showing", value: lines.join(" · ") }, { label: "Source", value: plan.samples.length ? plan.samples.map((s) => s.node.label).join(", ") : "No sensor on this board" }] : [], badge: go ? "Showing" : "Blank" };
         } else if (RADIOS.has(node.partId)) {
           const up = go && t > 2.5;
           const status =
@@ -301,11 +360,11 @@ export function serialLine(nodes: LabNode[], frame: Frame): string | null {
   for (const node of nodes) {
     const l = frame.nodes[node.id];
     if (!l || !l.readings.length || getPinout(node.partId).controller) continue;
-    if (SENSORS.has(node.partId)) parts.push(`${node.label}: ${l.readings.map((r) => r.value).join(", ")}`);
+    if (isSensorPart(node.partId)) parts.push(`${node.label}: ${l.readings.map((r) => r.value).join(", ")}`);
   }
   for (const node of nodes) {
     const l = frame.nodes[node.id];
-    if (!l || SENSORS.has(node.partId) || getPinout(node.partId).controller || !l.badge) continue;
+    if (!l || isSensorPart(node.partId) || getPinout(node.partId).controller || !l.badge) continue;
     parts.push(`${node.label}: ${l.badge}`);
   }
   if (!parts.length) return null;

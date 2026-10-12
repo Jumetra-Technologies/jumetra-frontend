@@ -45,6 +45,14 @@ export interface LogEntry {
   nodes?: string[];
 }
 
+/**
+ * What a person has set on a part: a sensor's surroundings (the obstacle
+ * distance, the temperature), a command to an actuator (motor speed), or a
+ * board's sketch settings (blink delay, warning distance). Keys and ranges
+ * are declared per part in `lib/lab/controls.ts`.
+ */
+export type NodeInputs = Record<string, number | string | boolean>;
+
 export interface LabSession {
   id: string;
   name: string;
@@ -58,6 +66,8 @@ export interface LabSession {
   view: LabView;
   /** Total simulated run time, for the project summary. */
   runMs: number;
+  /** Inputs, commands and sketch settings by node id. Absent for sessions saved before 1.3. */
+  inputs?: Record<string, NodeInputs>;
   /** Backend workspace mirroring this session, when one exists. */
   runtime?: { workspaceId: string; nodeIds: Record<string, string>; wireIds: Record<string, string> } | null;
 }

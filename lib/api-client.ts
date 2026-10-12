@@ -45,6 +45,23 @@ function getStoredAuthSessionSafe(): { access_token?: string } | null {
   }
 }
 
+/** A response the API answered with an error status. `status` lets callers tell "sign in" (401) from "server down". */
+export class ApiError extends Error {
+  constructor(
+    public readonly path: string,
+    public readonly status: number,
+    public readonly detail?: string,
+  ) {
+    super(`API ${path} failed: ${status}`);
+    this.name = "ApiError";
+  }
+}
+
+/** True when the server refused the request for want of a valid sign-in. */
+export function isAuthError(error: unknown): error is ApiError {
+  return error instanceof ApiError && (error.status === 401 || error.status === 403);
+}
+
 export const FIREBASE_API_URL = "https://europe-west4-hhipsystemv0.cloudfunctions.net/api";
 export const FIREBASE_WS_URL = "wss://api-aoxa3kagvq-ez.a.run.app";
 
@@ -102,7 +119,8 @@ async function fetchJson<T>(path: string, init?: RequestInit, timeoutMs?: number
       throw new Error(hint ? `${message}. ${hint}` : message);
     }
     if (!res.ok) {
-      throw new Error(`API ${path} failed: ${res.status}`);
+      const payload = (await res.json().catch(() => null)) as { detail?: unknown } | null;
+      throw new ApiError(path, res.status, typeof payload?.detail === "string" ? payload.detail : undefined);
     }
     return (await res.json()) as T;
   } catch (err) {
@@ -554,8 +572,8 @@ export const api = {
     fetchJson<Record<string, unknown>>(
       `/workspace/connections/pin/${encodeURIComponent(deviceId)}/${encodeURIComponent(pin)}`,
     ),
-  listFirmwareProjects: () =>
-    fetchJson<{ projects: Array<Record<string, unknown>>; count: number }>("/firmware/projects"),
+  listFirmwareProjects: (timeoutMs?: number) =>
+    fetchJson<{ projects: Array<Record<string, unknown>>; count: number }>("/firmware/projects", undefined, timeoutMs),
   createFirmwareProject: (body: Record<string, unknown>) =>
     fetchJson<Record<string, unknown>>("/firmware/projects", {
       method: "POST",
@@ -568,8 +586,8 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(body),
     }),
-  listFirmwareTemplates: () =>
-    fetchJson<{ templates: Array<Record<string, unknown>>; count: number }>("/firmware/templates"),
+  listFirmwareTemplates: (timeoutMs?: number) =>
+    fetchJson<{ templates: Array<Record<string, unknown>>; count: number }>("/firmware/templates", undefined, timeoutMs),
   listFirmwareToolchains: () =>
     fetchJson<{
       toolchains: Array<Record<string, unknown>>;

@@ -10,6 +10,19 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.9.0] - 2026-10-13
+
+### Changed
+- The Hybrid Hardware page has been reorganized and redesigned:
+  - The four device modes (Virtual, Physical, Simulator, Hybrid) are explained at the top, with a link to the Device modes article.
+  - Building an experiment is laid out as three numbered steps: name it and pick the board; choose parts and how each one joins; create, then run it. A filter narrows the parts list, and a summary counts the chosen parts by mode.
+  - The run panel shows the experiment's status in words (Ready to start, Running, Stopped) and gains a Stop button. "Advance" is renamed **Step 100 ms**.
+  - Hardware availability lists parts by name and mode, instead of raw data. Missing components come with what to do about them.
+  - The circuit panel explains itself before an experiment exists.
+  - Colors follow the theme, including dark mode.
+- If boards and parts can't be loaded, the page says so plainly and offers the Engineering Lab instead of showing an empty form.
+- Failed actions show a short, plain message instead of the technical error.
+
 ## [1.8.0] - 2026-10-13
 
 ### Changed
@@ -140,6 +153,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.9.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.6.1...v1.7.0
 [1.6.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.6.0...v1.6.1

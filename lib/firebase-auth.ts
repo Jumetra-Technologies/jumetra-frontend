@@ -1,5 +1,6 @@
 "use client";
 
+import { describeError } from "@/lib/errors";
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, type Auth } from "firebase/auth";
 import { API_BASE } from "@/lib/api-client";
@@ -69,12 +70,12 @@ export function describeSignInError(error: unknown): string | null {
     case "auth/popup-blocked":
       return "Your browser blocked the Google window. Allow pop-ups for this site and try again.";
     case "auth/unauthorized-domain":
-      return "Google sign-in isn't enabled for this web address yet. Ask the Kiungo team to add it in Firebase.";
+      return describeError(error, "Google sign-in isn't set up for this web address yet");
     case "auth/network-request-failed":
       return "The network dropped during sign-in. Check your connection and try again.";
     case "auth/account-exists-with-different-credential":
       return "That email is already linked to a different sign-in method.";
     default:
-      return error instanceof Error && error.message ? error.message : "Google sign-in failed. Try again.";
+      return describeError(error, "You weren't signed in");
   }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { describeError } from "@/lib/errors";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { Check, Info, LogOut, Pencil, Trash2, X } from "lucide-react";
 import { Avatar } from "@/components/account/Avatar";
@@ -73,7 +74,7 @@ export function ProfileDialog({ open }: { open: boolean }) {
       setConfirm(null);
       setNotice(result.savedTo === "server" ? { tone: "ok", text: done } : { tone: "info", text: DEVICE_NOTE });
     } catch (error) {
-      setNotice({ tone: "error", text: error instanceof Error ? error.message : "Your changes weren't saved." });
+      setNotice({ tone: "error", text: describeError(error, "Your changes weren't saved") });
     } finally {
       setBusy(false);
     }

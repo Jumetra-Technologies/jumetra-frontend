@@ -19,7 +19,8 @@ export default async function AnalyticsPage() {
 
       {!analytics ? (
         <Card>
-          <p className="text-muted">Unable to load analytics. Ensure the API is running.</p>
+          <p className="font-medium">Analytics aren&apos;t available right now</p>
+          <p className="mt-1 text-sm text-muted">We couldn&apos;t load the latest figures. Refresh the page in a moment.</p>
         </Card>
       ) : (
         <>

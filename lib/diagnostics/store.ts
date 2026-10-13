@@ -115,6 +115,27 @@ export function recordRequest(entry: Omit<RequestEntry, "at" | "path"> & { path:
   update((d) => ({ ...d, requests: [...d.requests, { ...entry, path: normalizePath(entry.path), at: Date.now() }].slice(-MAX_REQUESTS) }));
 }
 
+let telemetryUrl: string | null = null;
+
+/** Where errors are also reported for the whole team to see (POST /telemetry/error). Set by the API client. */
+export function setTelemetryEndpoint(url: string | null): void {
+  telemetryUrl = url;
+}
+
+/** Best effort: send the error to the backend. It is kept locally either way; a backend without the route just ignores it. */
+function report(entry: ErrorEntry) {
+  if (!telemetryUrl || !browser() || typeof navigator.sendBeacon !== "function") return;
+  // Never report a failure of the reporting itself.
+  if (entry.detail?.includes("/telemetry/")) return;
+  try {
+    const body = JSON.stringify({ message: entry.message, source: entry.source, page: entry.page, shown: entry.shown, detail: entry.detail?.slice(0, 1000), at: entry.at, app_version: process.env.NEXT_PUBLIC_APP_VERSION });
+    // text/plain keeps it a simple request (no CORS preflight); the body is JSON.
+    navigator.sendBeacon(telemetryUrl, new Blob([body], { type: "text/plain;charset=UTF-8" }));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function recordError(entry: Omit<ErrorEntry, "id" | "at" | "page"> & { page?: string }): ErrorEntry {
   const full: ErrorEntry = {
     id: `e${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
@@ -125,7 +146,13 @@ export function recordError(entry: Omit<ErrorEntry, "id" | "at" | "page"> & { pa
     detail: entry.detail?.slice(0, 2000),
   };
   update((d) => ({ ...d, errors: [...d.errors, full].slice(-MAX_ERRORS) }));
+  report(full);
   return full;
+}
+
+/** Note what the person was told about an error already logged (by the request layer, say). */
+export function annotateError(id: string, shown: string): void {
+  update((d) => ({ ...d, errors: d.errors.map((e) => (e.id === id ? { ...e, shown } : e)) }));
 }
 
 export function recordPageView(path: string): void {

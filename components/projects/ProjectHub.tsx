@@ -1,5 +1,7 @@
 "use client";
 
+import { storageError } from "@/lib/errors";
+import { ErrorNotice } from "@/components/ui/error-notice";
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -62,7 +64,7 @@ export function ProjectHub({ serverProjects, startCreating = false }: { serverPr
     });
     const next = { ...readRoboticsData(), projects: [project, ...projects] };
     if (!writeRoboticsData(next)) {
-      setError("Browser storage is unavailable. Check this browser's storage settings.");
+      setError(storageError("Your project wasn't saved"));
       return;
     }
     setDraft(emptyDraft);
@@ -277,7 +279,7 @@ export function ProjectHub({ serverProjects, startCreating = false }: { serverPr
             Hardware
             <textarea value={draft.hardware} onChange={(event) => setDraft({ ...draft, hardware: event.target.value })} className="mt-1.5 min-h-16 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]" placeholder="ESP32, motor driver, encoders" />
           </label>
-          {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+          {error ? <ErrorNotice message={error} /> : null}
           <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button type="button" variant="ghost" onClick={closeCreate}>Cancel</Button>
             <Button type="submit">Create project</Button>

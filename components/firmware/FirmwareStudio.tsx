@@ -1,5 +1,7 @@
 "use client";
 
+import { ErrorNotice } from "@/components/ui/error-notice";
+import { describeError } from "@/lib/errors";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogIn, RefreshCw } from "lucide-react";
 import { api, getFirmwareWsUrl } from "@/lib/api-client";
@@ -54,7 +56,6 @@ type Connection =
   | { state: "offline"; message: string }
   | { state: "sign-in"; message: string };
 
-const errorText = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
 
 export function FirmwareStudio() {
   const [projects, setProjects] = useState<ProjectSummary[]>(() => readCache()?.projects ?? []);
@@ -115,7 +116,7 @@ export function FirmwareStudio() {
         if (err instanceof SignInNeeded || (err instanceof Error && /failed: 40[13]$/.test(err.message))) {
           setConnection({ state: "sign-in", message: "Sign in to see your firmware projects." });
         } else {
-          setConnection({ state: "offline", message: errorText(err, "Cannot reach the Kiungo API.") });
+          setConnection({ state: "offline", message: describeError(err, "Your firmware projects couldn't be loaded") });
         }
         throw err;
       },
@@ -163,7 +164,7 @@ export function FirmwareStudio() {
         retryAfterSignIn.current = retry;
         setSignIn(err);
       } else {
-        setError(errorText(err, `Failed to ${action}`));
+        setError(describeError(err, `Couldn't ${action}`));
       }
     }
   }, []);
@@ -251,7 +252,7 @@ export function FirmwareStudio() {
       setProject(full as Project);
       setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
+      setError(describeError(err, "Your file wasn't saved"));
     }
   }
 
@@ -287,7 +288,7 @@ export function FirmwareStudio() {
         setError(message);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Compile failed");
+      setError(describeError(err, "The build didn't finish"));
     } finally {
       setBuildBusy(false);
     }
@@ -309,7 +310,7 @@ export function FirmwareStudio() {
     } catch (err) {
       setUploadDone(true);
       setUploadMsg("Upload failed");
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setError(describeError(err, "The upload didn't finish"));
     }
   }
 
@@ -369,11 +370,7 @@ export function FirmwareStudio() {
             <Button size="sm" className="h-7 w-full text-[11px]" onClick={createProject} data-testid="new-project">
               New Project
             </Button>
-            {error && (
-              <p role="alert" className="text-[10px] text-danger">
-                {error}
-              </p>
-            )}
+            {error && <ErrorNotice message={error} size="sm" />}
             {signIn && <SignInPrompt need={signIn} />}
           </div>
           <div className="max-h-32 overflow-auto border-b border-border p-1" data-testid="project-list">

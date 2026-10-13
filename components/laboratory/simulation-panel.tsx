@@ -1,5 +1,7 @@
 "use client";
 
+import { ErrorNotice } from "@/components/ui/error-notice";
+import { describeError } from "@/lib/errors";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -65,7 +67,7 @@ export function SimulationPanel({
       }
       await refreshState();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Simulation action failed");
+      setError(describeError(err, "That didn't work"));
     } finally {
       setLoading(false);
     }
@@ -128,7 +130,7 @@ export function SimulationPanel({
       }
       setActiveNodes(active);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Advance failed");
+      setError(describeError(err, "The simulation didn't move forward"));
     } finally {
       setLoading(false);
     }
@@ -140,7 +142,7 @@ export function SimulationPanel({
       await api.sendActuatorCommand(laboratoryId, instanceId, "toggle");
       await refreshState();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Command failed");
+      setError(describeError(err, "The command wasn't sent"));
     } finally {
       setLoading(false);
     }
@@ -197,7 +199,7 @@ export function SimulationPanel({
             Advance +100ms
           </button>
         </div>
-        {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+        {error ? <ErrorNotice message={error} className="mt-3" /> : null}
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">

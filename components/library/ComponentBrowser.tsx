@@ -1,5 +1,7 @@
 "use client";
 
+import { ErrorNotice } from "@/components/ui/error-notice";
+import { describeError } from "@/lib/errors";
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { api } from "@/lib/api-client";
@@ -39,7 +41,7 @@ export function ComponentBrowser({ onAddToWorkspace, onInspect }: Props) {
       .catch((err) => {
         if (cancelled) return;
         setResults([]);
-        setError(err instanceof Error ? err.message : "Search failed");
+        setError(describeError(err, "The parts list couldn't be searched"));
       });
     return () => {
       cancelled = true;
@@ -63,7 +65,7 @@ export function ComponentBrowser({ onAddToWorkspace, onInspect }: Props) {
             data-testid="v2-search-input"
           />
         </div>
-        {error ? <p className="text-[10px] text-amber-300">{error}</p> : null}
+        {error ? <ErrorNotice message={error} size="sm" /> : null}
       </div>
       <div className="border-b border-white/10 p-2">
         <ComponentPreview item={selected} />

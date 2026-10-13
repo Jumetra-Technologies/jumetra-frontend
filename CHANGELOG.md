@@ -10,6 +10,17 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.11.0] - 2026-10-13
+
+### Changed
+- Error messages are short and plain. Each says what didn't happen and what to do next: check your connection, sign in, try something smaller, try again in a minute. For faults on Kiungo's side it says "We've logged the problem and will look into it." Messages never show status codes, URLs, "API", gateways or stack traces. This applies to Firmware, the Component library, the Engineering Lab's hardware scan, the hybrid and laboratory screens, profile saving, sign-in, projects and experiment records (`lib/errors.ts`).
+- Errors appear in a small notice with an icon (and Try again where it helps), instead of bare red text.
+- When browser storage refuses a save, the message says how to fix it (privacy or storage settings).
+
+### Added
+- Every error is logged for System Diagnostics with its technical details and the sentence the person saw. A failed request is logged once, and the message shown is added to that entry. Each error is also sent to the backend's error collector (`POST /telemetry/error`) as soon as that route exists, so the team sees errors from every browser.
+- A designed error page for any page that breaks while loading, with Try again, Go home and a reference to quote. The Engineering Lab keeps its own version. A last-resort page covers the app frame itself failing.
+
 ## [1.10.0] - 2026-10-13
 
 ### Added
@@ -172,6 +183,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.11.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.7.0...v1.8.0

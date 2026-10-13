@@ -60,6 +60,7 @@ import { LabCanvas, type LabCanvasHandle } from "./LabCanvas";
 import { LabContext, type LabContextValue } from "./lab-context";
 import { LabDock, type DockTab } from "./LabDock";
 import { LabSkeleton } from "./LabSkeleton";
+import type { PowerState } from "./UsbCable";
 
 const VIEW_OPTIONS = [
   { id: "reality" as const, label: VIEW_COPY["3d"].label, icon: <Box className="size-4" aria-hidden />, description: VIEW_COPY["3d"].description, info: VIEW_COPY["3d"].info },
@@ -68,6 +69,10 @@ const VIEW_OPTIONS = [
 ];
 
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
+/** USB lead timing: the click lands as the plug seats; the sketch starts just after; unplugging is quicker. */
+const PLUG_CLICK_MS = 380;
+const PLUG_SEATED_MS = 520;
+const UNPLUG_MS = 320;
 const TICK_MS = 100;
 
 function useIsWide(query = "(min-width: 1024px)") {
@@ -268,27 +273,72 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
     if (next) engine.unlock();
   }, [soundOn, soundEngine]);
 
+  // Power: on Run, each board's USB lead plugs in (drop, settle, click), and
+  // the sketch starts once it's seated; on Stop the lead comes out and the
+  // power cuts at once. Skipped for people who prefer less motion.
+  const [power, setPower] = useState<PowerState>("off");
+  const powerTimer = useRef<number | null>(null);
+  const clearPowerTimer = () => {
+    if (powerTimer.current !== null) window.clearTimeout(powerTimer.current);
+    powerTimer.current = null;
+  };
+  useEffect(() => clearPowerTimer, []);
+  const hasBoard = nodes.some((n) => getPinout(n.partId).controller);
+  const calm = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
   const startRun = useCallback(() => {
-    if (running || !session) return;
+    if (running || power === "plugging" || !session) return;
     const engine = soundEngine();
     engine.setEnabled(soundOn);
     engine.unlock();
-    recorder.current = new RunRecorder(nodes);
-    recorder.current.start(t);
-    store.getState().log("run", `Run started${nodes.length ? ` with ${nodes.length} part${nodes.length === 1 ? "" : "s"}` : ""}`);
-    setRunning(true);
-  }, [running, session, nodes, t, store, soundEngine, soundOn]);
+    const begin = () => {
+      powerTimer.current = null;
+      recorder.current = new RunRecorder(nodes);
+      recorder.current.start(t);
+      store.getState().log("run", `Run started${nodes.length ? ` with ${nodes.length} part${nodes.length === 1 ? "" : "s"}` : ""}`);
+      setRunning(true);
+      setPower(hasBoard ? "on" : "off");
+    };
+    clearPowerTimer();
+    if (!hasBoard || calm()) {
+      if (hasBoard) engine.click();
+      begin();
+      return;
+    }
+    setPower("plugging");
+    engine.click(PLUG_CLICK_MS / 1000);
+    powerTimer.current = window.setTimeout(begin, PLUG_SEATED_MS);
+  }, [running, power, session, nodes, t, store, soundEngine, soundOn, hasBoard]);
+
+  const unplug = useCallback(() => {
+    clearPowerTimer();
+    if (calm()) {
+      setPower("off");
+      return;
+    }
+    setPower("unplugging");
+    powerTimer.current = window.setTimeout(() => {
+      powerTimer.current = null;
+      setPower("off");
+    }, UNPLUG_MS);
+  }, []);
 
   const stopRun = useCallback(() => {
+    if (power === "plugging") {
+      // Stopped before the plug seated: nothing ran.
+      unplug();
+      return;
+    }
     if (!running) return;
     setRunning(false);
+    unplug();
     const result = recorder.current?.stop();
     recorder.current = null;
     if (result) {
       store.getState().log(result.draft.kind, result.draft.text);
       store.getState().addRunTime(result.ms);
     }
-  }, [running, store]);
+  }, [running, power, store, unplug]);
 
   const reset = useCallback(() => {
     if (running) stopRun();
@@ -303,6 +353,8 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
     if (sessionIdRef.current !== session?.id) {
       sessionIdRef.current = session?.id;
       setRunning(false);
+      clearPowerTimer();
+      setPower("off");
       recorder.current = null;
       setT(0);
       setSerial([]);
@@ -430,9 +482,9 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
   const ctx = useMemo<LabContextValue | null>(
     () =>
       session
-        ? { session, analysis, frame, view: session.view, running, runtime, selectedNodes, selectedWire, flash, select, focusNode, addPart, autowireNode, openContextMenu }
+        ? { session, analysis, frame, view: session.view, running, power, runtime, selectedNodes, selectedWire, flash, select, focusNode, addPart, autowireNode, openContextMenu }
         : null,
-    [session, analysis, frame, running, runtime, selectedNodes, selectedWire, flash, select, focusNode, addPart, autowireNode, openContextMenu],
+    [session, analysis, frame, running, power, runtime, selectedNodes, selectedWire, flash, select, focusNode, addPart, autowireNode, openContextMenu],
   );
 
   // ----- keyboard -----------------------------------------------------------------
@@ -616,9 +668,9 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
           <SegmentedControl value={session.view} onChange={(v) => store.getState().setView(v)} options={VIEW_OPTIONS} label="Canvas view" size="sm" className="order-last mx-auto w-full sm:order-none sm:w-auto [&_[role=radio]]:pl-3 [&_[role=radio]]:pr-5" />
 
           <div className="ml-auto flex items-center gap-1.5">
-            <Button size="sm" onClick={running ? stopRun : startRun} variant={running ? "secondary" : "default"} className="min-w-[5.5rem]" data-testid="run-toggle" title={running ? "Stop (⌘↵)" : "Run the default sketch (⌘↵)"}>
+            <Button size="sm" onClick={running || power === "plugging" ? stopRun : startRun} variant={running ? "secondary" : "default"} className="min-w-[5.5rem]" data-testid="run-toggle" aria-busy={power === "plugging" || undefined} title={running ? "Stop (⌘↵)" : power === "plugging" ? "Plugging in the board…" : "Run the default sketch (⌘↵)"}>
               {running ? <Pause className="size-3.5" aria-hidden /> : <Play className="size-3.5" aria-hidden />}
-              {running ? "Stop" : "Run"}
+              {running ? "Stop" : power === "plugging" ? "Powering…" : "Run"}
             </Button>
             <span className="hidden w-14 text-right font-mono text-xs tabular-nums text-muted sm:inline" data-testid="sim-time" aria-label={`Simulated time ${t.toFixed(1)} seconds`}>
               {t.toFixed(1)} s

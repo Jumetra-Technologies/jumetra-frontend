@@ -123,6 +123,41 @@ export class LabSound {
     this.apply();
   }
 
+  /**
+   * The snap of a USB plug seating: a few milliseconds of filtered noise (the
+   * shell scraping home) and a short high tick (the latch), at `delay`
+   * seconds from now.
+   */
+  click(delay = 0): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.master || !this.enabled) return;
+    const at = ctx.currentTime + Math.max(0, delay);
+    const noise = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.03), ctx.sampleRate);
+    const data = noise.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.004));
+    const src = ctx.createBufferSource();
+    src.buffer = noise;
+    const band = ctx.createBiquadFilter();
+    band.type = "bandpass";
+    band.frequency.value = 3200;
+    band.Q.value = 1.2;
+    const snap = ctx.createGain();
+    snap.gain.value = 2.2;
+    src.connect(band).connect(snap).connect(this.master);
+    src.start(at);
+    const tick = ctx.createOscillator();
+    tick.type = "triangle";
+    tick.frequency.setValueAtTime(4200, at);
+    tick.frequency.exponentialRampToValueAtTime(1800, at + 0.02);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, at);
+    env.gain.exponentialRampToValueAtTime(0.9, at + 0.001);
+    env.gain.exponentialRampToValueAtTime(0.0001, at + 0.025);
+    tick.connect(env).connect(this.master);
+    tick.start(at);
+    tick.stop(at + 0.04);
+  }
+
   /** The lab's latest frame: called on every tick. */
   update(next: SoundState): void {
     this.state = next;

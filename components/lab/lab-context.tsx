@@ -4,6 +4,7 @@ import { createContext, useContext } from "react";
 import type { Analysis } from "@/lib/lab/circuit";
 import type { Frame } from "@/lib/lab/simulate";
 import type { RuntimeStatus } from "@/lib/lab/runtime";
+import type { PowerState } from "./UsbCable";
 import type { LabNode, LabSession, LabView } from "@/lib/lab/types";
 
 export interface LabContextValue {
@@ -12,6 +13,8 @@ export interface LabContextValue {
   frame: Frame;
   view: LabView;
   running: boolean;
+  /** The boards' USB leads: plugged in while the sketch runs. */
+  power: PowerState;
   runtime: RuntimeStatus;
   selectedNodes: string[];
   selectedWire: string | null;

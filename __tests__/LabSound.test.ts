@@ -12,6 +12,9 @@ class FakeParam {
   setTargetAtTime(value: number, at: number) {
     this.events.push({ kind: "target", value, at });
   }
+  exponentialRampToValueAtTime(value: number, at: number) {
+    this.events.push({ kind: "ramp", value, at });
+  }
   setValueAtTime(value: number, at: number) {
     this.events.push({ kind: "set", value, at });
   }
@@ -54,6 +57,15 @@ class FakeContext {
   }
   createBiquadFilter() {
     return new FakeNode();
+  }
+  sampleRate = 44100;
+  createBuffer(_c: number, length: number) {
+    const data = new Float32Array(length);
+    return { getChannelData: () => data };
+  }
+  createBufferSource() {
+    const n = new FakeNode() as FakeNode & { buffer: unknown };
+    return n;
   }
   resume() {
     return Promise.resolve();
@@ -207,5 +219,26 @@ describe("What the simulation asks the buzzer to do", () => {
     const bz = nodes.find((n) => n.partId === "buzzer")!.id;
     expect(frameAt(nodes, wires, analysis, 1, true).nodes[bz].tone?.pattern).toMatchObject({ period: 1, duty: 0.15 });
     expect(frameAt(nodes, wires, analysis, 1, true, { [uno.id]: { delayMs: 1000 } }).nodes[bz].tone?.pattern).toMatchObject({ period: 2 });
+  });
+});
+
+describe("The USB lead", () => {
+  it("has the plug each board really takes", async () => {
+    const { connectorFor } = await import("@/components/lab/UsbCable");
+    expect(connectorFor("arduino-uno")).toBe("usb-b");
+    expect(connectorFor("arduino-mega")).toBe("usb-b");
+    expect(connectorFor("esp32")).toBe("micro-usb");
+    expect(connectorFor("raspberry-pi-pico")).toBe("micro-usb");
+    expect(connectorFor("raspberry-pi-4")).toBe("usb-c");
+  });
+
+  it("clicks when the plug seats, only with sound on", () => {
+    const engine = make();
+    const before = ctx.oscillators.length;
+    engine.click(0.38);
+    expect(ctx.oscillators.length).toBe(before + 1);
+    engine.setEnabled(false);
+    engine.click();
+    expect(ctx.oscillators.length).toBe(before + 1);
   });
 });

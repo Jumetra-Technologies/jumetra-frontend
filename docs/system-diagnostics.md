@@ -39,7 +39,4 @@ All `/admin/*` routes answer only when the bearer token belongs to a user whose 
      "top_pages": [{ "path": "/laboratory/workspace", "views": 1840 }] }
    ```
    "Online" means a request or heartbeat in the last 5 minutes (`users.last_seen_at`, updated by the auth dependency at most once a minute).
-3. **`POST /telemetry/page-view`** `{ "path": "/docs/roadmap" }`: anonymous, rate-limited, path only (no query string). Feeds `top_pages`.
-4. **`POST /telemetry/error`** `{ "message", "source", "page", "shown", "detail", "at", "app_version" }`, rate-limited, size-capped; **`GET /admin/errors?limit=100`** lists them for this page. The app already sends every error it logs here (since v1.11.0), with `navigator.sendBeacon` and a `text/plain` body containing JSON (a simple request, no CORS preflight). Until the route exists the beacons are ignored and errors stay in each browser's own log.
-
-Once 3 exists, `lib/diagnostics/store.ts` posts page views the same way.
+3. `POST /telemetry/page-view` and `POST /telemetry/error` are not currently implemented. Browser errors and page views remain in that browser's local diagnostics log; the frontend does not send telemetry requests to the API.

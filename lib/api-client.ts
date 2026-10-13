@@ -26,7 +26,7 @@ import type {
 } from "./types";
 import type { WorkspaceNode, WorkspaceState } from "./workspace-types";
 import { coerceWorkspaceState } from "./workspace-snapshot";
-import { recordError, recordRequest, setTelemetryEndpoint } from "./diagnostics/store";
+import { recordError, recordRequest } from "./diagnostics/store";
 import { getStoredAuthSession } from "./auth-session";
 import type {
   ExperimentRecord,
@@ -62,7 +62,6 @@ export const PRODUCTION_WS_URL = "wss://api-aoxa3kagvq-ez.a.run.app";
 const DEFAULT_API_BASE =
   process.env.NODE_ENV === "production" ? PRODUCTION_API_URL : "http://127.0.0.1:8000";
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_BASE).replace(/\/+$/, "");
-setTelemetryEndpoint(`${API_BASE}/telemetry/error`);
 const ENGINEERING_WORKSPACE_REQUEST_TIMEOUT_MS = 15_000;
 
 type UserProjectPayload = {

@@ -9,8 +9,6 @@ import {
   FlaskConical,
   GraduationCap,
   Home,
-  Map,
-  Network,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
@@ -56,8 +54,6 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/learn", label: "Learning Center", icon: GraduationCap },
       { href: "/docs", label: "Documentation", icon: BookOpen },
-      { href: "/architecture", label: "Architecture", icon: Network },
-      { href: "/roadmap", label: "Roadmap", icon: Map },
       { href: "/hybrid", label: "Hybrid Hardware", icon: Workflow },
     ],
   },

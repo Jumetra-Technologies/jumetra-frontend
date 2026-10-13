@@ -4,6 +4,7 @@ import { SYSTEM_OVERVIEW_ARTICLES, TECHNICAL_GUIDE_ARTICLES } from "./content/do
 import { FAQ_ITEMS } from "./content/faq";
 import { LEARNING_MODULES } from "./content/modules";
 import { DOC_CATEGORIES, TOPIC_LABELS, TOPIC_ORDER, getCategory } from "./categories";
+import { DOC_PAGES } from "./doc-pages";
 import { stripInline } from "./inline";
 import type {
   ArticleCategoryId,
@@ -17,7 +18,7 @@ import type {
 } from "./types";
 
 export { DOC_CATEGORIES, TOPIC_LABELS, TOPIC_ORDER, getCategory };
-export { FAQ_ITEMS };
+export { FAQ_ITEMS, DOC_PAGES };
 export type { ArticleCategoryId, DocArticle, DocCategoryId, FaqItem, LearningModule, ModuleTopic };
 
 export const ARTICLES: DocArticle[] = [
@@ -151,7 +152,18 @@ export function getSearchEntries(): SearchEntry[] {
     text: stripInline(item.answer),
   }));
 
-  cachedEntries = [...docEntries, ...moduleEntries, ...faqEntries];
+  const pageEntries: SearchEntry[] = DOC_PAGES.map((page) => ({
+    id: `page:${page.href}`,
+    kind: "doc",
+    title: page.title,
+    summary: page.summary,
+    href: page.href,
+    label: "Documentation",
+    tags: [...page.tags],
+    text: page.summary,
+  }));
+
+  cachedEntries = [...pageEntries, ...docEntries, ...moduleEntries, ...faqEntries];
   return cachedEntries;
 }
 

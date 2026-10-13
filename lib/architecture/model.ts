@@ -101,7 +101,7 @@ export const LAYERS: Layer[] = [
     code: {
       status: "not-started",
       text: "Nothing exists in either repository yet. The capabilities above come from the spec's Phase Two plan.",
-      links: [{ href: "/roadmap", label: "Roadmap" }],
+      links: [{ href: "/docs/roadmap", label: "Roadmap" }],
     },
   },
   {

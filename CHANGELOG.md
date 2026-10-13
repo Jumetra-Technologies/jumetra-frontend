@@ -10,6 +10,16 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.8.0] - 2026-10-13
+
+### Changed
+- **Architecture** and **Roadmap** are part of Documentation now, as the team agreed: `/docs/architecture` and `/docs/roadmap`, with breadcrumbs, a "The platform" section on the Documentation home, and entries in docs search. They are no longer in the sidebar. `/architecture` and `/roadmap` redirect, so old links still work.
+- The roadmap has been reviewed and rebuilt around the project's four goals: build without every part, mix virtual and real, bridge learning and building, and work others can repeat. It now has three development phases: Phase One, the web platform (in progress); Phase Two, desktop and real hardware; Phase Three, classrooms and clubs. Each phase names the goals it serves, has milestones with a status (Done, In progress, Next, Planned) and lists the conditions that mark it done. A "Where we are" summary leads the page. The data lives in `lib/roadmap.ts`.
+- The Development phases article matches the roadmap's phases and exit criteria.
+
+### Added
+- The project history on the roadmap records when HHIP became Kiungo: v1.1.0, pull request #11, merged 9 October 2026 at 09:59 EAT (06:59 UTC). "What is Kiungo?" gives the date too.
+
 ## [1.7.0] - 2026-10-13
 
 Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are in `docs/engineering-lab-simulation.md` §4.
@@ -130,6 +140,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.8.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.6.1...v1.7.0
 [1.6.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.5.0...v1.6.0

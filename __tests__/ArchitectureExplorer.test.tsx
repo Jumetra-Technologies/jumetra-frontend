@@ -4,6 +4,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { ArchitectureExplorer } from "@/components/architecture/ArchitectureExplorer";
 import { SystemBoard } from "@/components/architecture/SystemBoard";
 import { NAV_ITEMS } from "@/components/layout/nav-items";
+import { DOC_PAGES } from "@/lib/learning/doc-pages";
 import { BOARD_LAYOUTS, relationshipTrace, type BoardLayoutId } from "@/lib/architecture/geometry";
 import {
   DATA_FLOWS,
@@ -17,7 +18,7 @@ import {
 } from "@/lib/architecture/model";
 import { getArticle } from "@/lib/learning";
 
-const STATIC_ROUTES = new Set(NAV_ITEMS.map((item) => item.href));
+const STATIC_ROUTES = new Set([...NAV_ITEMS.map((item) => item.href), ...DOC_PAGES.map((page) => page.href)]);
 
 function routeExists(href: string): boolean {
   if (STATIC_ROUTES.has(href)) return true;

@@ -120,8 +120,8 @@ export const FOOTER = {
       title: "About",
       links: [
         { label: "What is Kiungo", href: "/docs/system-overview/what-is-kiungo" },
-        { label: "Architecture", href: "/architecture" },
-        { label: "Roadmap", href: "/roadmap" },
+        { label: "Architecture", href: "/docs/architecture" },
+        { label: "Roadmap", href: "/docs/roadmap" },
         { label: "Development phases", href: "/docs/system-overview/development-phases" },
         { label: "GitHub", href: "https://github.com/Jumetra-Technologies" },
       ],

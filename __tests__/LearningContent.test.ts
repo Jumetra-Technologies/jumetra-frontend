@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { NAV_ITEMS } from "@/components/layout/nav-items";
+import { DOC_PAGES } from "@/lib/learning/doc-pages";
 import { getHeadings } from "@/components/learning/ContentRenderer";
 import {
   ARTICLES,
@@ -15,7 +16,7 @@ import {
 } from "@/lib/learning";
 import type { Block } from "@/lib/learning/types";
 
-const STATIC_ROUTES = new Set(NAV_ITEMS.map((item) => item.href));
+const STATIC_ROUTES = new Set([...NAV_ITEMS.map((item) => item.href), ...DOC_PAGES.map((page) => page.href)]);
 const FAQ_ANCHORS = new Set(FAQ_ITEMS.map((item) => `faq-${item.id}`));
 
 function isKnownInternalHref(href: string): boolean {
@@ -158,9 +159,9 @@ describe("content structure", () => {
 });
 
 describe("search index", () => {
-  it("indexes every article, module, and FAQ entry exactly once", () => {
+  it("indexes every article, module, FAQ entry and documentation page exactly once", () => {
     const entries = getSearchEntries();
-    expect(entries).toHaveLength(ARTICLES.length + MODULES.length + FAQ_ITEMS.length);
+    expect(entries).toHaveLength(ARTICLES.length + MODULES.length + FAQ_ITEMS.length + DOC_PAGES.length);
     expect(new Set(entries.map((entry) => entry.id)).size).toBe(entries.length);
   });
 });

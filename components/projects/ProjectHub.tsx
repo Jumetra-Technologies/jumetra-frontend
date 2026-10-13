@@ -1,6 +1,6 @@
 "use client";
 
-import { storageError } from "@/lib/errors";
+import { describeError } from "@/lib/errors";
 import { ErrorNotice } from "@/components/ui/error-notice";
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
@@ -9,18 +9,21 @@ import { ArrowUpRight, FlaskConical, FolderKanban, Plus } from "lucide-react";
 import { LabSessionCard, labHref } from "@/components/projects/LabSessionCard";
 import { ProjectsSkeleton } from "@/components/projects/ProjectsSkeleton";
 import { useLab } from "@/lib/lab/store";
+import { api } from "@/lib/api-client";
+import { useAuthStore } from "@/lib/auth-store";
+import { openAuth } from "@/lib/account-dialogs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/input";
 import {
-  createProjectRecord,
   getServerRoboticsDataSnapshot,
   readRoboticsData,
   subscribeToRoboticsData,
-  writeRoboticsData,
   type ProjectCategory,
+  type ProjectTeammate,
+  type RoboticsProject,
 } from "@/lib/robotics-data";
 import type { ProjectSummary } from "@/lib/types";
 
@@ -28,7 +31,6 @@ const emptyDraft = {
   name: "",
   description: "",
   objectives: "",
-  contributors: "",
   category: "robotics" as ProjectCategory,
   hardware: "",
 };
@@ -40,7 +42,7 @@ export function ProjectHub({ serverProjects, startCreating = false }: { serverPr
     readRoboticsData,
     getServerRoboticsDataSnapshot,
   );
-  const projects = data?.projects ?? [];
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const labReady = useLab((s) => s.hydrated);
   const sessions = useLab((s) => s.sessions);
   useEffect(() => {
@@ -48,33 +50,104 @@ export function ProjectHub({ serverProjects, startCreating = false }: { serverPr
   }, []);
   const recentSessions = [...sessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const [creating, setCreating] = useState(startCreating);
-  const [includeContributor, setIncludeContributor] = useState(false);
   const [draft, setDraft] = useState(emptyDraft);
+  const [teammateQuery, setTeammateQuery] = useState("");
+  const [teammateResults, setTeammateResults] = useState<ProjectTeammate[]>([]);
+  const [selectedTeammates, setSelectedTeammates] = useState<ProjectTeammate[]>([]);
+  const [searchingTeammates, setSearchingTeammates] = useState(false);
+  const [teammateSearchError, setTeammateSearchError] = useState("");
   const [error, setError] = useState("");
+  const [ownedProjects, setOwnedProjects] = useState<RoboticsProject[]>([]);
+  const [saving, setSaving] = useState(false);
 
-  function onCreate(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let active = true;
+    void api.getMyProjects().then((saved) => {
+      if (active) setOwnedProjects(saved);
+    }).catch((loadError: unknown) => {
+      if (active) setError(describeError(loadError, "Your saved projects couldn't be loaded."));
+    });
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    const query = teammateQuery.trim();
+    if (query.length < 2 || !isAuthenticated) {
+      setTeammateResults([]);
+      setSearchingTeammates(false);
+      setTeammateSearchError("");
+      return;
+    }
+
+    let active = true;
+    const timer = setTimeout(() => {
+      setSearchingTeammates(true);
+      void api.searchUsers(query).then((users) => {
+        if (active) {
+          const selectedIds = new Set(selectedTeammates.map((teammate) => teammate.id));
+          setTeammateResults(users.filter((teammate) => !selectedIds.has(teammate.id)));
+          setTeammateSearchError("");
+        }
+      }).catch((searchError: unknown) => {
+        if (active) {
+          setTeammateSearchError(describeError(searchError, "Users couldn't be searched."));
+          setTeammateResults([]);
+        }
+      }).finally(() => {
+        if (active) setSearchingTeammates(false);
+      });
+    }, 250);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [isAuthenticated, selectedTeammates, teammateQuery]);
+
+  const visibleProjects = isAuthenticated ? ownedProjects : [];
+  const projects = visibleProjects;
+
+  async function onCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const project = createProjectRecord({
+    if (!isAuthenticated) {
+      openAuth("login");
+      return;
+    }
+    const input = {
       name: draft.name.trim(),
       description: draft.description.trim(),
       objectives: draft.objectives.trim(),
-      contributors: includeContributor ? draft.contributors.trim() : "",
+      contributors: selectedTeammates.map((teammate) => teammate.display_name).join(", "),
       category: draft.category,
       hardware: draft.hardware.split(/[\n,]/).map((item) => item.trim()).filter(Boolean),
-    });
-    const next = { ...readRoboticsData(), projects: [project, ...projects] };
-    if (!writeRoboticsData(next)) {
-      setError(storageError("Your project wasn't saved"));
-      return;
+      teammates: selectedTeammates,
+    };
+    setSaving(true);
+    try {
+      const project = await api.createMyProject(input);
+      setOwnedProjects((existing) => [project, ...existing.filter((item) => item.id !== project.id)]);
+      setDraft(emptyDraft);
+      setSelectedTeammates([]);
+      setTeammateQuery("");
+      setTeammateResults([]);
+      setError("");
+      setCreating(false);
+      if (startCreating) router.replace("/workspace");
+    } catch (saveError) {
+      setError(describeError(saveError, "Your project wasn't saved. Try again."));
+    } finally {
+      setSaving(false);
     }
-    setDraft(emptyDraft);
-    setIncludeContributor(false);
-    setError("");
-    setCreating(false);
-    if (startCreating) router.replace("/workspace");
   }
 
   function newLabSession() {
+    if (!isAuthenticated) {
+      openAuth("login");
+      return;
+    }
     const session = useLab.getState().createSession({ name: "Untitled lab" });
     router.push(labHref(session.id));
   }
@@ -84,8 +157,11 @@ export function ProjectHub({ serverProjects, startCreating = false }: { serverPr
   function closeCreate() {
     setCreating(false);
     if (startCreating) router.replace("/workspace");
-    setIncludeContributor(false);
-    setDraft((current) => ({ ...current, contributors: "" }));
+    setSelectedTeammates([]);
+    setTeammateQuery("");
+    setTeammateResults([]);
+    setTeammateSearchError("");
+    setDraft(emptyDraft);
   }
 
   return (
@@ -113,7 +189,7 @@ export function ProjectHub({ serverProjects, startCreating = false }: { serverPr
       <section aria-labelledby="lab-sessions-heading" className="mb-10">
         <div className="mb-3 flex items-center justify-between">
           <h3 id="lab-sessions-heading" className="text-sm font-semibold">Lab sessions</h3>
-          <span className="text-xs text-muted">Saved in this browser · open any to pick up where you left off</span>
+          <span className="text-xs text-muted">Available for this session</span>
         </div>
         {recentSessions.length === 0 ? (
           <Card className="flex flex-col items-start gap-3 py-8">
@@ -139,9 +215,9 @@ export function ProjectHub({ serverProjects, startCreating = false }: { serverPr
       <section aria-labelledby="robotics-projects-heading">
         <div className="mb-3 flex items-center justify-between">
           <h3 id="robotics-projects-heading" className="text-sm font-semibold">Your robotics projects</h3>
-          <span className="text-xs text-muted">Saved in this browser</span>
+          <span className="text-xs text-muted">Saved to your account</span>
         </div>
-        {projects.length === 0 ? (
+        {visibleProjects.length === 0 ? (
           <Card className="flex flex-col items-start gap-3 py-8">
             <FolderKanban className="size-5 text-muted" aria-hidden />
             <div>
@@ -154,7 +230,7 @@ export function ProjectHub({ serverProjects, startCreating = false }: { serverPr
           </Card>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {projects.map((project) => {
+            {visibleProjects.map((project) => {
               const experimentCount = (data?.experiments ?? []).filter(
                 (experiment) => experiment.projectId === project.id,
               ).length;
@@ -243,38 +319,61 @@ export function ProjectHub({ serverProjects, startCreating = false }: { serverPr
             Objectives
             <textarea value={draft.objectives} onChange={(event) => setDraft({ ...draft, objectives: event.target.value })} className="mt-1.5 min-h-20 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]" placeholder="What should the robot or system achieve?" />
           </label>
-          <div className="flex items-center justify-between gap-4 py-3">
-            <span id="include-teammate-label" className="text-sm font-medium">Add a teammate</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={includeContributor}
-              aria-labelledby="include-teammate-label"
-              onClick={() => {
-                setIncludeContributor((enabled) => !enabled);
-                if (includeContributor) setDraft({ ...draft, contributors: "" });
-              }}
-              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 ${includeContributor ? "border-primary bg-primary" : "border-border bg-muted-bg"}`}
-            >
-              <span
-                aria-hidden="true"
-                className={`size-4 rounded-full bg-white shadow-sm transition-transform ${includeContributor ? "translate-x-5" : "translate-x-1"}`}
-              />
-            </button>
+          <div className="space-y-2">
+            <label htmlFor="project-teammate-search" className="block text-sm font-medium">Add teammates</label>
+            <Input
+              id="project-teammate-search"
+              value={teammateQuery}
+              onChange={(event) => setTeammateQuery(event.target.value)}
+              placeholder="Search users by name or email"
+              autoComplete="off"
+            />
+            <p className="text-xs text-muted">Search for at least two characters. Added teammates will be saved with this project.</p>
+            {selectedTeammates.length ? (
+              <ul className="flex flex-wrap gap-2" aria-label="Selected teammates">
+                {selectedTeammates.map((teammate) => (
+                  <li key={teammate.id} className="flex items-center gap-2 rounded-full border border-border bg-muted-bg px-3 py-1 text-xs">
+                    <span>{teammate.display_name} <span className="text-muted">({teammate.email})</span></span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${teammate.display_name}`}
+                      onClick={() => setSelectedTeammates((current) => current.filter((item) => item.id !== teammate.id))}
+                      className="font-semibold text-muted hover:text-foreground"
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {searchingTeammates ? <p role="status" className="text-xs text-muted">Searching users…</p> : null}
+            {teammateSearchError ? <ErrorNotice message={teammateSearchError} size="sm" /> : null}
+            {teammateQuery.trim().length >= 2 && !searchingTeammates && !teammateSearchError && teammateResults.length === 0 ? (
+              <p className="text-xs text-muted">No matching users found.</p>
+            ) : null}
+            {teammateResults.length ? (
+              <ul className="max-h-40 overflow-y-auto rounded-md border border-border" aria-label="User search results">
+                {teammateResults.map((teammate) => (
+                  <li key={teammate.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTeammates((current) => (
+                          current.some((item) => item.id === teammate.id) ? current : [...current, teammate]
+                        ));
+                        setTeammateQuery("");
+                        setTeammateResults([]);
+                      }}
+                      className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-muted-bg"
+                    >
+                      <span className="text-sm font-medium">{teammate.display_name}</span>
+                      <span className="text-xs text-muted">{teammate.email}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
-          {includeContributor ? (
-            <label className="block text-sm font-medium">
-              Teammate name or email
-              <Input
-                required
-                autoFocus
-                value={draft.contributors}
-                onChange={(event) => setDraft({ ...draft, contributors: event.target.value })}
-                className="mt-1.5"
-                placeholder="Name or email address"
-              />
-            </label>
-          ) : null}
           <label className="block text-sm font-medium">
             Hardware
             <textarea value={draft.hardware} onChange={(event) => setDraft({ ...draft, hardware: event.target.value })} className="mt-1.5 min-h-16 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]" placeholder="ESP32, motor driver, encoders" />
@@ -282,7 +381,7 @@ export function ProjectHub({ serverProjects, startCreating = false }: { serverPr
           {error ? <ErrorNotice message={error} /> : null}
           <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button type="button" variant="ghost" onClick={closeCreate}>Cancel</Button>
-            <Button type="submit">Create project</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Create project"}</Button>
           </div>
         </form>
       </Dialog>

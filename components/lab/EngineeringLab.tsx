@@ -612,7 +612,7 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
       ? { icon: <Server className="size-3.5" aria-hidden />, text: runtime === "syncing" ? "Saving" : "Online", tone: "text-success", title: "Connected: real boards can join this session" }
       : runtime === "checking"
         ? { icon: <Server className="size-3.5" aria-hidden />, text: "Connecting", tone: "text-muted", title: "Connecting to Kiungo" }
-        : { icon: <CloudOff className="size-3.5" aria-hidden />, text: "Offline mode", tone: "text-muted", title: "Working offline. Everything works and is saved in this browser; connecting real boards needs Kiungo online." };
+        : { icon: <CloudOff className="size-3.5" aria-hidden />, text: "Offline mode", tone: "text-muted", title: "Simulation works offline, but this lab session isn't saved to your account. Connecting real boards needs Kiungo online." };
 
   const panelLeft = (
     <AddPanel
@@ -720,12 +720,8 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
               {runtimePill.icon}
               <span className="hidden 2xl:inline">{runtimePill.text}</span>
             </span>
-            <span className={cn("hidden items-center gap-1 text-[11.5px] lg:inline-flex", saveError ? "text-danger" : "text-muted")} title={saveError ? "Browser storage is full or blocked: changes aren't being saved" : "Saved in this browser"} aria-label={saveError ? "Not saved" : "Saved in this browser"} data-testid="save-status">
-              {saveError ? "Not saved" : (
-                <>
-                  <Check className="size-3.5 text-success" aria-hidden /> <span className="hidden 2xl:inline">Saved</span>
-                </>
-              )}
+            <span className={cn("hidden items-center gap-1 text-[11.5px] lg:inline-flex", saveError ? "text-danger" : "text-muted")} title={saveError ? "The lab session couldn't be synchronized with the server." : "Lab sessions are not currently saved to your account."} aria-label={saveError ? "Not synchronized" : "Session only"} data-testid="save-status">
+              {saveError ? "Not synchronized" : "Session only"}
             </span>
             <button type="button" onClick={() => setRightOpen(!showRight)} aria-pressed={showRight} aria-label={showRight ? "Hide inspector" : "Show inspector"} title="Inspector" className={cn("flex size-9 items-center justify-center rounded-[10px] transition-colors", showRight ? "bg-muted-bg text-foreground" : "text-muted hover:bg-muted-bg")}>
               <PanelRight className="size-4" />

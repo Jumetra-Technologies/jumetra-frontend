@@ -1,8 +1,7 @@
 "use client";
 
-import { storageError } from "@/lib/errors";
 import { ErrorNotice } from "@/components/ui/error-notice";
-import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, FilePlus2, FlaskConical, Trash2 } from "lucide-react";
@@ -10,6 +9,7 @@ import { labHref } from "@/components/projects/LabSessionCard";
 import { ProjectDetailSkeleton } from "@/components/projects/ProjectsSkeleton";
 import { labHardware, ProjectLabActivity, useProjectSessions } from "@/components/projects/ProjectLabActivity";
 import { useLab } from "@/lib/lab/store";
+import { api } from "@/lib/api-client";
 import { ExperimentRecordDialog } from "@/components/experiments/ExperimentRecordDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,10 +19,11 @@ import {
   getServerRoboticsDataSnapshot,
   readRoboticsData,
   subscribeToRoboticsData,
-  writeRoboticsData,
+  type ExperimentRecord,
   type ProjectCategory,
   type RoboticsProject,
 } from "@/lib/robotics-data";
+import { describeError } from "@/lib/errors";
 
 export function LocalProjectDetail({ projectId }: { projectId: string }) {
   const router = useRouter();
@@ -31,38 +32,87 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
     readRoboticsData,
     getServerRoboticsDataSnapshot,
   );
-  const project = data?.projects.find((item) => item.id === projectId) ?? null;
+  const [serverProject, setServerProject] = useState<RoboticsProject | null>(null);
   const [hardwareText, setHardwareText] = useState("");
   const [draft, setDraft] = useState<RoboticsProject | null>(null);
   const [editing, setEditing] = useState(false);
   const [creatingRecord, setCreatingRecord] = useState(false);
+  const [records, setRecords] = useState<Awaited<ReturnType<typeof api.getMyProjectExperiments>>>([]);
   const [error, setError] = useState("");
   const lab = useProjectSessions(projectId);
 
+  useEffect(() => {
+    if (!data || !projectId.startsWith("user-project-")) return;
+    let active = true;
+    void api.getMyProject(projectId).then((saved) => {
+      if (active) setServerProject(saved);
+    }).catch((loadError: unknown) => {
+      if (active) setError(describeError(loadError, "This project couldn't be loaded."));
+    });
+    return () => {
+      active = false;
+    };
+  }, [data, projectId]);
+
+  const project = serverProject;
+
+  useEffect(() => {
+    if (!project) return;
+    let active = true;
+    void api.getMyProjectExperiments(project.id).then((savedRecords) => {
+      if (active) setRecords(savedRecords);
+    }).catch((loadError: unknown) => {
+      if (active) setError(describeError(loadError, "Experiment records couldn't be loaded."));
+    });
+    return () => {
+      active = false;
+    };
+  }, [project]);
+
   if (!data || !lab.ready) {
+    return <ProjectDetailSkeleton />;
+  }
+  if (!project && projectId.startsWith("user-project-") && !error) {
     return <ProjectDetailSkeleton />;
   }
   if (!project) {
     return (
       <Card>
-        <p className="font-medium">Project not found in this browser</p>
-        <p className="mt-1 text-sm text-muted">Local projects are saved in the browser where they were created.</p>
+        <p className="font-medium">Project not found in your account</p>
+        <p className="mt-1 text-sm text-muted">Check that you are signed in to the account that owns this project.</p>
         <Link href="/workspace" className="mt-4 inline-flex text-sm text-primary hover:underline">Back to projects</Link>
       </Card>
     );
   }
 
-  const records = data.experiments.filter((item) => item.projectId === project.id);
-
   function startEditing() {
-    const currentProject = readRoboticsData().projects.find((item) => item.id === projectId);
+    const currentProject = project;
     if (!currentProject) return;
     setDraft(currentProject);
     setHardwareText(currentProject.hardware.join(", "));
     setEditing(true);
   }
 
-  function saveProject(event: FormEvent<HTMLFormElement>) {
+  async function saveExperimentRecord(
+    recordDraft: Omit<ExperimentRecord, "id" | "createdAt" | "updatedAt">,
+    existing?: ExperimentRecord,
+  ) {
+    const currentProject = project;
+    if (!currentProject) {
+      setError("This project is no longer available.");
+      return;
+    }
+    const saved = existing
+      ? await api.updateMyProjectExperiment(currentProject.id, existing.id, recordDraft)
+      : await api.createMyProjectExperiment(currentProject.id, recordDraft);
+    setRecords((current) => {
+      const next = current.filter((item) => item.id !== saved.id);
+      return [saved, ...next];
+    });
+    setError("");
+  }
+
+  async function saveProject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!project || !draft) return;
     const formData = new FormData(event.currentTarget);
@@ -76,25 +126,24 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
       hardware: hardwareText.split(/[\n,]/).map((item) => item.trim()).filter(Boolean),
       updatedAt: new Date().toISOString(),
     };
-    const data = readRoboticsData();
-    const next = { ...data, projects: data.projects.map((item) => item.id === updated.id ? updated : item) };
-    if (!writeRoboticsData(next)) {
-      setError(storageError("Your changes weren't saved"));
-      return;
+    try {
+      const savedProject = project.id.startsWith("user-project-")
+        ? await api.updateMyProject(project.id, updated)
+        : updated;
+      setServerProject(savedProject);
+      setEditing(false);
+      setError("");
+    } catch (saveError) {
+      setError(describeError(saveError, "Your changes weren't saved. Try again."));
     }
-    setEditing(false);
-    setError("");
   }
 
-  function deleteProject() {
+  async function deleteProject() {
     if (!project || !window.confirm(`Delete ${project.name} and its experiment records?`)) return;
-    const data = readRoboticsData();
-    const saved = writeRoboticsData({
-      projects: data.projects.filter((item) => item.id !== project.id),
-      experiments: data.experiments.filter((item) => item.projectId !== project.id),
-    });
-    if (!saved) {
-      setError(storageError("The project wasn't deleted"));
+    try {
+      if (project.id.startsWith("user-project-")) await api.deleteMyProject(project.id);
+    } catch (deleteError) {
+      setError(describeError(deleteError, "The project wasn't deleted. Try again."));
       return;
     }
     // Its lab sessions stay, unlinked.
@@ -113,7 +162,7 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
             <h2 className="text-2xl font-bold">{project.name}</h2>
             <Badge variant="info">{project.category}</Badge>
           </div>
-          <p className="mt-1 text-sm text-muted">Saved in this browser · Updated {new Date(project.updatedAt).toLocaleDateString()}</p>
+          <p className="mt-1 text-sm text-muted">Saved to your account · Updated {new Date(project.updatedAt).toLocaleDateString()}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href={lab.sessions[0] ? labHref(lab.sessions[0].id) : `/laboratory/workspace?project=${encodeURIComponent(project.id)}`} className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90" data-testid="project-open-lab">
@@ -165,7 +214,18 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
         </Card>
         <Card>
           <h3 className="text-sm font-semibold">Contributors</h3>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-muted">{project.contributors || "No contributors listed."}</p>
+          {project.teammates?.length ? (
+            <ul className="mt-2 space-y-2 text-sm text-muted">
+              {project.teammates.map((teammate) => (
+                <li key={teammate.id}>
+                  <span className="font-medium text-foreground">{teammate.display_name}</span>
+                  <span className="block text-xs">{teammate.email}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 whitespace-pre-wrap text-sm text-muted">{project.contributors || "No contributors listed."}</p>
+          )}
         </Card>
       </div>
 
@@ -199,6 +259,7 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
           open
           projectId={project.id}
           projects={data.projects}
+          onSave={saveExperimentRecord}
           onClose={() => setCreatingRecord(false)}
         />
       ) : null}

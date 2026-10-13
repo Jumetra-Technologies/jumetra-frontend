@@ -1,21 +1,20 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Download, FilePlus2, Pencil, Trash2 } from "lucide-react";
 import { exportExperiment } from "@/lib/reports";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ErrorNotice } from "@/components/ui/error-notice";
 import { Select } from "@/components/ui/input";
 import { ExperimentRecordDialog } from "@/components/experiments/ExperimentRecordDialog";
+import { describeError } from "@/lib/errors";
 import { api } from "@/lib/api-client";
 import {
-  getServerRoboticsDataSnapshot,
-  readRoboticsData,
-  subscribeToRoboticsData,
-  writeRoboticsData,
   type ExperimentRecord,
+  type RoboticsProject,
 } from "@/lib/robotics-data";
 import type { ExperimentSummary } from "@/lib/types";
 import { SkeletonRegion } from "@/components/ui/skeleton";
@@ -30,28 +29,42 @@ export function ExperimentJournal({
   initialRecordId?: string;
   simulationRuns: ExperimentSummary[];
 }) {
-  const data = useSyncExternalStore(
-    subscribeToRoboticsData,
-    readRoboticsData,
-    getServerRoboticsDataSnapshot,
-  );
   const [creating, setCreating] = useState(Boolean(initialProjectId));
   const [editingRecord, setEditingRecord] = useState<ExperimentRecord | null>(null);
   const [connectedRuns, setConnectedRuns] = useState(simulationRuns);
   const [filterProjectId, setFilterProjectId] = useState(initialProjectId ?? "all");
+  const [projects, setProjects] = useState<RoboticsProject[]>([]);
+  const [records, setRecords] = useState<ExperimentRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
-    api.getExperiments().then((runs) => {
-      if (active) setConnectedRuns(runs);
-    }).catch(() => undefined);
+    setLoading(true);
+    Promise.all([
+      api.getMyProjects(),
+      api.getExperiments(),
+    ]).then(async ([savedProjects, runs]) => {
+      const projectRecords = await Promise.all(
+        savedProjects.map((project) => api.getMyProjectExperiments(project.id)),
+      );
+      if (active) {
+        setProjects(savedProjects);
+        setRecords(projectRecords.flat());
+        setConnectedRuns(runs);
+        setError("");
+      }
+    }).catch((loadError: unknown) => {
+      if (active) setError(describeError(loadError, "Your projects and experiment records couldn't be loaded."));
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
     return () => {
       active = false;
     };
   }, []);
 
-  const projects = data?.projects ?? [];
-  const records = (data?.experiments ?? []).filter(
+  const visibleRecords = records.filter(
     (record) => filterProjectId === "all" || record.projectId === filterProjectId,
   );
 
@@ -70,13 +83,31 @@ export function ExperimentJournal({
     setEditingRecord(null);
   }
 
-  function deleteRecord(record: ExperimentRecord) {
+  async function deleteRecord(record: ExperimentRecord) {
     if (!window.confirm(`Delete the experiment record “${record.title}”?`)) return;
-    const current = readRoboticsData();
-    writeRoboticsData({
-      ...current,
-      experiments: current.experiments.filter((item) => item.id !== record.id),
-    });
+    try {
+      await api.deleteMyProjectExperiment(record.projectId, record.id);
+      setRecords((current) => current.filter((item) => item.id !== record.id));
+      setError("");
+    } catch (deleteError) {
+      setError(describeError(deleteError, "The record wasn't deleted. Try again."));
+    }
+  }
+
+  async function saveRecord(
+    draft: Omit<ExperimentRecord, "id" | "createdAt" | "updatedAt">,
+    existing?: ExperimentRecord,
+  ) {
+    if (existing) {
+      await api.updateMyProjectExperiment(existing.projectId, existing.id, draft);
+    } else {
+      await api.createMyProjectExperiment(draft.projectId, draft);
+    }
+    const savedRecords = await Promise.all(
+      projects.map((project) => api.getMyProjectExperiments(project.id)),
+    );
+    setRecords(savedRecords.flat());
+    setError("");
   }
 
   return (
@@ -89,10 +120,12 @@ export function ExperimentJournal({
             Capture procedures and results so a test can be understood and repeated later.
           </p>
         </div>
-        <Button onClick={startCreate}>
+        <Button onClick={startCreate} disabled={projects.length === 0}>
           <FilePlus2 className="size-4" aria-hidden /> Record experiment
         </Button>
       </div>
+
+      {error ? <ErrorNotice message={error} className="mb-4" /> : null}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
         <label className="flex items-center gap-2 text-sm">
@@ -102,14 +135,14 @@ export function ExperimentJournal({
             {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
           </Select>
         </label>
-        <span className="text-xs text-muted">Records are saved in this browser</span>
+        <span className="text-xs text-muted">Records are saved to your account</span>
       </div>
 
-      {!data ? (
+      {loading ? (
         <SkeletonRegion label="Loading experiment records">
           <ListSkeleton rows={4} />
         </SkeletonRegion>
-      ) : records.length === 0 ? (
+      ) : visibleRecords.length === 0 ? (
         <Card className="py-8">
           <h3 className="font-medium">No experiment records yet</h3>
           <p className="mt-1 text-sm text-muted">Start with an objective, the hardware under test, and the procedure.</p>
@@ -119,7 +152,7 @@ export function ExperimentJournal({
         </Card>
       ) : (
         <div className="divide-y divide-border border-y border-border">
-          {records.map((record) => {
+          {visibleRecords.map((record) => {
             const project = projects.find((item) => item.id === record.projectId);
             return (
               <details key={record.id} open={record.id === initialRecordId} className="group py-4">
@@ -188,6 +221,7 @@ export function ExperimentJournal({
           projectId={initialProjectId ?? projects[0]?.id ?? ""}
           projects={projects}
           record={editingRecord ?? undefined}
+          onSave={saveRecord}
           onClose={closeEditor}
         />
       ) : null}

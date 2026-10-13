@@ -6,13 +6,7 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/input";
-import {
-  createExperimentRecord,
-  readRoboticsData,
-  writeRoboticsData,
-  type ExperimentRecord,
-  type RoboticsProject,
-} from "@/lib/robotics-data";
+import type { ExperimentRecord, RoboticsProject } from "@/lib/robotics-data";
 
 type ExperimentDraft = Omit<ExperimentRecord, "id" | "createdAt" | "updatedAt">;
 
@@ -45,41 +39,38 @@ export function ExperimentRecordDialog({
   projectId,
   projects,
   record,
+  onSave,
   onClose,
 }: {
   open: boolean;
   projectId: string;
   projects: RoboticsProject[];
   record?: ExperimentRecord;
+  onSave: (draft: ExperimentDraft, record?: ExperimentRecord) => Promise<void>;
   onClose: () => void;
 }) {
   const [draft, setDraft] = useState(() => createDraft(projectId, record));
   const [hardwareText, setHardwareText] = useState(() => record?.hardware.join(", ") ?? "");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  function saveRecord(event: FormEvent<HTMLFormElement>) {
+  async function saveRecord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const current = readRoboticsData();
-    const hardware = hardwareText.split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
-    if (record) {
-      const next = {
-        ...current,
-        experiments: current.experiments.map((item) => item.id === record.id
-          ? { ...item, ...draft, hardware, updatedAt: new Date().toISOString() }
-          : item),
-      };
-      if (!writeRoboticsData(next)) {
-        setError(storageError("The record wasn't saved"));
-        return;
-      }
-    } else {
-      const newRecord = createExperimentRecord({ ...draft, hardware });
-      if (!writeRoboticsData({ ...current, experiments: [newRecord, ...current.experiments] })) {
-        setError(storageError("The record wasn't saved"));
-        return;
-      }
+    if (!draft.projectId) {
+      setError("Choose a project before saving this experiment.");
+      return;
     }
-    onClose();
+    const hardware = hardwareText.split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
+    setSaving(true);
+    setError("");
+    try {
+      await onSave({ ...draft, hardware }, record);
+      onClose();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "The record wasn't saved. Try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -96,8 +87,8 @@ export function ExperimentRecordDialog({
         </label>
         <label className="block text-sm font-medium">
           Project
-          <Select value={draft.projectId} onChange={(event) => setDraft({ ...draft, projectId: event.target.value })} className="mt-1.5">
-            <option value="">Unassigned</option>
+          <Select required value={draft.projectId} disabled={Boolean(record)} onChange={(event) => setDraft({ ...draft, projectId: event.target.value })} className="mt-1.5">
+            <option value="">Choose a project</option>
             {projects.map((projectOption) => <option key={projectOption.id} value={projectOption.id}>{projectOption.name}</option>)}
           </Select>
         </label>
@@ -128,7 +119,7 @@ export function ExperimentRecordDialog({
         {error ? <ErrorNotice message={error} /> : null}
         <div className="flex justify-end gap-2 border-t border-border pt-4">
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit">{record ? "Save record" : "Save experiment"}</Button>
+          <Button type="submit" disabled={saving}>{saving ? "Saving…" : record ? "Save record" : "Save experiment"}</Button>
         </div>
       </form>
     </Dialog>

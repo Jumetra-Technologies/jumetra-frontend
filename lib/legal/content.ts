@@ -79,15 +79,15 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       { type: "h2", text: "Accounts" },
       {
         type: "p",
-        text: "You sign in to Kiungo with a Google account. We receive your name, email address and profile picture from Google and use them to identify you inside Kiungo. We never see your Google password. You can use most of Kiungo without signing in; signing in lets Kiungo recognise you across devices and is the basis for shared projects and classrooms as they arrive.",
+        text: "Sign in with a supported provider to use account features such as projects and experiment records. Kiungo receives the profile details needed to identify your account; your provider password is never shared with Kiungo.",
       },
       { type: "h2", text: "Where your work lives" },
       {
         type: "ul",
         items: [
-          "Projects, experiment records and reports are saved in your browser's local storage on the device you use. They are not uploaded unless a feature says so. Clearing site data removes them, and they do not follow you to another device.",
-          "Engineering Lab workspaces, simulations, firmware projects and hybrid experiments are processed by Kiungo's servers so they can run.",
-          "Learning progress and your theme choice are saved in your browser.",
+          "Projects and experiment records are saved to your signed-in account. Reports are generated as files when you export them.",
+          "Engineering Lab sessions are temporary and are not currently saved to your account. Some lab and device features communicate with Kiungo services while in use.",
+          "Your sign-in session, learning progress and theme choice are saved in your browser.",
         ],
       },
       { type: "h2", text: "What we ask of you" },
@@ -108,7 +108,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       { type: "h2", text: "Closing your account" },
       {
         type: "p",
-        text: "Ask us to close your account at any time. We will remove your account record and the data tied to it from Kiungo's servers within 30 days. Work saved in your browser is yours to delete by clearing site data for Kiungo.",
+        text: "Ask us to close your account at any time. We will remove your account record and the data tied to it from Kiungo's servers within 30 days. You can clear browser-stored sign-in and preference data by clearing site data for Kiungo.",
       },
       { type: "h2", text: "Contact" },
       { type: "p", text: CONTACT },
@@ -174,9 +174,10 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         type: "table",
         head: ["Data", "Where it comes from", "Why", "Where it is kept"],
         rows: [
-          ["Name, email address, profile picture", "Google, when you sign in", "To identify you inside Kiungo", "Kiungo's servers and your browser's local storage"],
-          ["Projects, experiment records, reports", "You", "So you can plan and document your work", "Your browser's local storage only"],
-          ["Workspaces, simulations, firmware projects, hybrid experiments", "You, while using the Engineering Lab", "To run them", "Kiungo's servers"],
+          ["Name, email address, profile picture", "Your sign-in provider", "To identify you inside Kiungo", "Kiungo's servers and sign-in session in your browser"],
+          ["Projects, experiment records", "You", "So you can plan and document your work", "Your signed-in account"],
+          ["Reports", "You, when exporting", "To keep or share a copy of your work", "A file downloaded to your device"],
+          ["Temporary lab sessions and simulations", "You, while using the Engineering Lab", "To run and explore designs", "Temporary session state; not saved to your account"],
           ["Theme, sidebar state, learning progress", "You", "To remember your preferences", "Your browser's local storage only"],
           ["Technical logs (requests, errors)", "Your browser's requests to Kiungo", "To keep Kiungo running and find faults", "Kiungo's servers, for a limited time"],
         ],
@@ -200,8 +201,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         type: "ul",
         items: [
-          "Use Kiungo without signing in. Only the features that need an account will ask you to.",
-          "Delete work saved in your browser by clearing site data for Kiungo.",
+          "Sign out or clear browser-stored sign-in and preference data by clearing site data for Kiungo.",
           "Ask us to close your account and remove the data tied to it. See the [User Agreement](/legal/user-agreement).",
           "Ask us what we hold about you, and to correct it.",
         ],
@@ -228,17 +228,15 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
     blocks: [
       {
         type: "p",
-        text: "Kiungo does not set cookies. It keeps a small number of values in your browser's local storage so the app can remember you and your preferences between visits. Local storage never leaves your device unless a feature sends it to Kiungo's servers, and nothing in it is used for advertising or tracking.",
+        text: "Kiungo does not set cookies of its own. It keeps your sign-in session and a small number of preferences in your browser's local storage. Project and experiment records are saved to your signed-in account, not browser storage.",
       },
       { type: "h2", text: "What Kiungo keeps in your browser" },
       {
         type: "table",
         head: ["Key", "What it holds", "How long"],
         rows: [
-          ["`hhip-auth-session`", "Your sign-in token and profile after you sign in with Google", "Until you sign out or clear site data"],
-          ["`hhip-account`", "Your display name and email, for the sidebar", "Until you sign out or clear site data"],
-          ["`hhip-robotics-workspace:v1`", "Your projects, experiment records and reports", "Until you delete them or clear site data"],
-          ["`hhip.lab:v1`", "Your Engineering Lab sessions: the parts, wires and activity log of each, and which one you had open", "Until you delete them or clear site data"],
+          ["`hhip-auth-session`", "Your sign-in token and profile", "Until you sign out or clear site data"],
+          ["`hhip-account`", "Account display details for the sidebar", "Until you sign out or clear site data"],
           ["`hhip-learning-progress:v1`", "Which learning modules you have marked complete", "Until you clear site data"],
           ["`hhip-theme`", "Your chosen theme", "Until you change it or clear site data"],
           ["`hhip-sidebar-collapsed`", "Whether the sidebar is collapsed", "Until you change it or clear site data"],

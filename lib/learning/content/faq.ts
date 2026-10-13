@@ -12,14 +12,14 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "where-saved",
     question: "Where are my projects and experiment records saved?",
     answer:
-      "In your browser's local storage. They are not yet backed up, synced between devices, or shared with teammates, and clearing site data deletes them. Export a Markdown report from [Experiment Records](/experiments) to keep a copy.",
+      "Projects and experiment records are saved to your signed-in account. Sign in before creating or viewing them. Export a Markdown report from [Experiment Records](/experiments) to download a copy.",
     tags: ["storage", "projects", "experiments", "backup", "local storage", "data"],
   },
   {
     id: "sign-in",
     question: "Do I need to sign in?",
     answer:
-      "Google sign-in is available, but in the current build the data features do not require it. See [API and environment](/docs/technical-guides/api-and-environment) if you want to configure it for your own deployment.",
+      "Yes. Sign in is required before you can create or access account-owned projects and experiment records.",
     tags: ["sign in", "login", "google", "auth", "account"],
   },
   {

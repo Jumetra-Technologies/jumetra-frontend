@@ -5,6 +5,7 @@ import { useId } from "react";
 import { X } from "lucide-react";
 import { KiungoMark } from "@/components/brand/KiungoMark";
 import { GoogleSignInButton } from "@/components/auth/google-signin-button";
+import { GitHubSignInButton } from "@/components/auth/github-signin-button";
 import { ModalShell } from "@/components/ui/modal";
 import { closeAccountDialog, openAuth, type AuthMode } from "@/lib/account-dialogs";
 import { closeSettings } from "@/lib/settings-dialog";
@@ -20,7 +21,7 @@ const COPY: Record<AuthMode, { title: string; body: string; button: string; swit
   },
   signup: {
     title: "Create your Kiungo account",
-    body: "Free for students, instructors, clubs and schools. Your Google account is all you need.",
+    body: "Free for students, instructors, clubs and schools. Choose how you want to continue.",
     button: "Sign up with Google",
     switchText: "Already have an account?",
     switchAction: "Log in",
@@ -28,7 +29,7 @@ const COPY: Record<AuthMode, { title: string; body: string; button: string; swit
   },
 };
 
-/** Log in or sign up. Both use Google; the account is created on first sign-in. */
+/** Log in or sign up with Google or GitHub; the account is created on first sign-in. */
 export function AuthDialog({ open, mode }: { open: boolean; mode: AuthMode }) {
   const titleId = useId();
   const bodyId = useId();
@@ -55,6 +56,16 @@ export function AuthDialog({ open, mode }: { open: boolean; mode: AuthMode }) {
         </p>
 
         <GoogleSignInButton key={mode} label={copy.button} onSignedIn={closeAccountDialog} className="mt-7 w-full" />
+        <div className="my-4 flex w-full items-center gap-3 text-[11px] font-medium uppercase tracking-[0.12em] text-muted" aria-hidden="true">
+          <span className="h-px flex-1 bg-border" />
+          <span>or</span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <GitHubSignInButton
+          label={mode === "signup" ? "Sign up with GitHub" : "Continue with GitHub"}
+          onSignedIn={closeAccountDialog}
+          className="w-full"
+        />
 
         <p className="mt-5 text-sm text-muted">
           {copy.switchText}{" "}
@@ -70,7 +81,7 @@ export function AuthDialog({ open, mode }: { open: boolean; mode: AuthMode }) {
       </div>
 
       <p className="border-t border-border bg-canvas px-7 py-3.5 text-center text-xs leading-5 text-muted sm:px-9">
-        We keep your name, email and photo from Google so your work stays yours.{" "}
+        We use your name, email and photo from your chosen provider so your work stays yours.{" "}
         <Link
           href="/legal/privacy"
           onClick={() => {

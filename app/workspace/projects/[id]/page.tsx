@@ -12,7 +12,7 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  if (id.startsWith("local-project-")) {
+  if (id.startsWith("user-project-")) {
     return (
       <>
         <LocalProjectDetail projectId={id} />

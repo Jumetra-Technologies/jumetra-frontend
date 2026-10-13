@@ -20,7 +20,7 @@ export const DEVELOPER_ARTICLES: DocArticle[] = [
           ["Styling and controls", "Tailwind CSS 4 with shared local UI components"],
           ["Engineering canvas", "React Flow (`@xyflow/react`)"],
           ["Code editing", "Monaco editor (`@monaco-editor/react`)"],
-          ["Client state", "Zustand stores; browser local storage for project journals"],
+          ["Client state", "Zustand stores; browser local storage for sign-in and preferences"],
           ["Charts and icons", "Recharts and lucide-react"],
           ["Tests", "Vitest with Testing Library in a jsdom environment"],
         ],
@@ -47,7 +47,7 @@ export const DEVELOPER_ARTICLES: DocArticle[] = [
       { type: "h2", text: "Where data is kept" },
       {
         type: "p",
-        text: "Projects and experiment journals are saved in the browser under the local storage key `hhip-robotics-workspace:v1`. Other keys hold the sign-in session, theme choice, sidebar state, and the active workspace id. Hardware, simulation, and firmware features talk to the backend through the shared API client in `lib/api-client.ts`.",
+        text: "Projects and experiment records are stored in the signed-in user's Firestore project path and accessed through authenticated endpoints in `lib/api-client.ts`. Browser storage is used for the sign-in session and preferences, not as a project-data store. Lab sessions are currently temporary.",
       },
       { type: "h2", text: "Scrollbars" },
       {

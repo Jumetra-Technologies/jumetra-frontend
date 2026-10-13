@@ -1,6 +1,8 @@
 "use client";
 
 import { ProfileDialog } from "@/components/account/ProfileDialog";
+import { ProviderLinkDialog } from "@/components/account/ProviderLinkDialog";
+import { WelcomeDialog } from "@/components/account/WelcomeDialog";
 import { AuthDialog } from "@/components/auth/AuthDialog";
 import { useAccountDialog } from "@/lib/account-dialogs";
 
@@ -11,6 +13,8 @@ export function AccountDialogs() {
     <>
       <AuthDialog open={dialog?.kind === "auth"} mode={dialog?.kind === "auth" ? dialog.mode : "login"} />
       {dialog?.kind === "profile" ? <ProfileDialog open /> : null}
+      {dialog?.kind === "welcome" ? <WelcomeDialog open /> : null}
+      {dialog?.kind === "provider-link" ? <ProviderLinkDialog open /> : null}
     </>
   );
 }

@@ -1,13 +1,6 @@
 "use client";
 
-/**
- * Lab sessions, saved in this browser.
- *
- * One store holds every session and which one is open. Edits to the open
- * session go through actions that keep an undo history; everything is written
- * to localStorage shortly after it changes and re-read when another tab
- * changes it, so the Projects page and the lab stay in step.
- */
+/** In-memory lab sessions; persistence belongs on the authenticated server. */
 
 import { create } from "zustand";
 import { getPart } from "@/lib/parts";
@@ -19,6 +12,16 @@ import type { DeviceMode, LabData, LabNode, LabSession, LabView, LabWire, LogEnt
 export const LAB_STORAGE_KEY = "hhip.lab:v1";
 const MAX_LOG = 400;
 const MAX_HISTORY = 60;
+let labData: LabData = { version: 1, sessions: [], activeId: null };
+
+function clearLegacyLabData(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(LAB_STORAGE_KEY);
+  } catch (error) {
+    console.error("Could not clear previously stored lab sessions.", error);
+  }
+}
 
 export function makeId(prefix: string): string {
   const rand = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10);
@@ -123,22 +126,14 @@ function sanitize(raw: unknown): LabData {
 }
 
 export function readLabData(): LabData {
-  if (typeof window === "undefined") return { version: 1, sessions: [], activeId: null };
-  try {
-    return sanitize(JSON.parse(window.localStorage.getItem(LAB_STORAGE_KEY) ?? "null"));
-  } catch {
-    return { version: 1, sessions: [], activeId: null };
-  }
+  clearLegacyLabData();
+  return labData;
 }
 
 export function writeLabData(data: LabData): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    window.localStorage.setItem(LAB_STORAGE_KEY, JSON.stringify(data));
-    return true;
-  } catch {
-    return false;
-  }
+  clearLegacyLabData();
+  labData = sanitize(data);
+  return true;
 }
 
 type Snapshot = { nodes: LabNode[]; wires: LabWire[] };

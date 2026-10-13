@@ -1,33 +1,47 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
+import { ErrorNotice } from "@/components/ui/error-notice";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/input";
-import {
-  formatExperimentReport,
-  getServerRoboticsDataSnapshot,
-  readRoboticsData,
-  subscribeToRoboticsData,
-} from "@/lib/robotics-data";
-import { SkeletonRegion } from "@/components/ui/skeleton";
+import { formatExperimentReport, type ExperimentRecord, type RoboticsProject } from "@/lib/robotics-data";
+import { describeError } from "@/lib/errors";
+import { api } from "@/lib/api-client";
 import { downloadMarkdown, safeFilename } from "@/lib/reports";
-import { ListSkeleton } from "@/components/ui/page-skeletons";
 
-/** Markdown reports of the experiment records in this browser. `embedded`: inside System Diagnostics, without the page title. */
+/** Markdown reports of account-owned experiment records. `embedded`: inside System Diagnostics, without the page title. */
 export function ReportCenter({ embedded = false }: { embedded?: boolean } = {}) {
-  const data = useSyncExternalStore(
-    subscribeToRoboticsData,
-    readRoboticsData,
-    getServerRoboticsDataSnapshot,
-  );
   const [projectId, setProjectId] = useState("all");
-  const projects = data?.projects ?? [];
-  const records = (data?.experiments ?? []).filter(
+  const [projects, setProjects] = useState<RoboticsProject[]>([]);
+  const [allRecords, setAllRecords] = useState<ExperimentRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const records = allRecords.filter(
     (record) => projectId === "all" || record.projectId === projectId,
   );
   const selectedProject = projects.find((project) => project.id === projectId);
+
+  useEffect(() => {
+    let active = true;
+    void api.getMyProjects().then(async (savedProjects) => {
+      const savedRecords = await Promise.all(
+        savedProjects.map((project) => api.getMyProjectExperiments(project.id)),
+      );
+      if (active) {
+        setProjects(savedProjects);
+        setAllRecords(savedRecords.flat());
+      }
+    }).catch((loadError: unknown) => {
+      if (active) setError(describeError(loadError, "Your report records couldn't be loaded."));
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function exportProject() {
     if (!selectedProject) return;
@@ -55,7 +69,7 @@ export function ReportCenter({ embedded = false }: { embedded?: boolean } = {}) 
   return (
     <>
       {embedded ? (
-        <p className="mb-4 max-w-2xl text-sm text-muted">Export project and experiment records stored in this browser as Markdown files.</p>
+        <p className="mb-4 max-w-2xl text-sm text-muted">Export project and experiment records saved to your account as Markdown files.</p>
       ) : (
         <div className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Robotics workspace</p>
@@ -79,10 +93,10 @@ export function ReportCenter({ embedded = false }: { embedded?: boolean } = {}) 
         ) : null}
       </div>
 
-      {!data ? (
-        <SkeletonRegion label="Loading report records">
-          <ListSkeleton rows={4} />
-        </SkeletonRegion>
+      {error ? <ErrorNotice message={error} className="mb-4" /> : null}
+
+      {loading ? (
+        <p className="py-6 text-sm text-muted" role="status">Loading report records…</p>
       ) : records.length === 0 ? (
         <Card>
           <h3 className="font-medium">No reportable experiment records</h3>
@@ -107,7 +121,7 @@ export function ReportCenter({ embedded = false }: { embedded?: boolean } = {}) 
           })}
         </div>
       )}
-      <p className="mt-4 text-xs text-muted">Reports are generated from records stored in this browser; connected simulation-run exports are not included.</p>
+      <p className="mt-4 text-xs text-muted">Reports are generated from account-owned records; connected simulation-run exports are not included.</p>
     </>
   );
 }

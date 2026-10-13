@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SignInRequired } from "@/components/auth/SignInRequired";
 import { EngineeringLab } from "@/components/lab/EngineeringLab";
 
 export const metadata: Metadata = {
@@ -10,8 +11,8 @@ export default async function LaboratoryWorkspacePage({ searchParams }: { search
   const params = await searchParams;
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   return (
-    <>
+    <SignInRequired>
       <EngineeringLab sessionId={one(params.session)} newForProject={one(params.project)} />
-    </>
+    </SignInRequired>
   );
 }

@@ -8,7 +8,7 @@ import { PartPlanView } from "@/components/library/views/PartPlanView";
 import { PartFlowView } from "@/components/library/views/PartFlowView";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Button } from "@/components/ui/button";
-import { getPart, partHref } from "@/lib/parts";
+import { getPart, hasScreen, partHref, withScreenText } from "@/lib/parts";
 import { getPinout, pinTone } from "@/lib/lab/pinout";
 import { useLab } from "@/lib/lab/store";
 import type { DeviceMode } from "@/lib/lab/types";
@@ -58,6 +58,10 @@ function NodeInspector({ id }: { id: string }) {
   const live = frame.nodes[id];
 
   const wiresOf = useMemo(() => session.wires.filter((w) => w.from.node === id || w.to.node === id), [session.wires, id]);
+  // The preview is this part in the lab, not the library's: a display's glass shows what the sketch
+  // wrote this frame (the same lines as on the canvas), or nothing. Never the library's sample text.
+  // withScreenText caches per model and text, so this is cheap on every frame.
+  const shown = part && hasScreen(part) ? withScreenText(part, live?.text ?? []) : part;
   if (!node || !pinout) return null;
 
   const otherEnd = (pin: string) =>
@@ -105,7 +109,7 @@ function NodeInspector({ id }: { id: string }) {
               ]}
             />
             <div className="mt-2 h-52 overflow-hidden rounded-[12px] border border-border bg-canvas">
-              {preview === "model" ? <PartModel3D model={part} powered={!!live?.on || (pinout.controller && !!report?.powered)} /> : preview === "plan" ? <PartPlanView model={part} powered={!!live?.on} activeFeature={feature} onFeature={setFeature} className="h-full" /> : <PartFlowView model={part} powered={!!live?.on || (pinout.controller && !!report?.powered)} className="h-full" />}
+              {preview === "model" ? <PartModel3D model={shown!} powered={!!live?.on || (pinout.controller && !!report?.powered)} /> : preview === "plan" ? <PartPlanView model={shown!} powered={!!live?.on} activeFeature={feature} onFeature={setFeature} className="h-full" /> : <PartFlowView model={shown!} powered={!!live?.on || (pinout.controller && !!report?.powered)} className="h-full" />}
             </div>
           </>
         ) : null}

@@ -294,12 +294,12 @@ describe("Experiment 05: DC motor and stepper motor", () => {
     // 512 steps clockwise from rest at t=0 → a quarter turn, done after 2 s, then holding.
     expect(stepperStepsAt(cmd(0, 512, 0), s, 1)).toBe(256);
     const mid = at(1, cmd(0, 512, 0));
-    expect(mid.nodes[s].readings.map((r) => r.value)).toEqual(["45°", "256", "256 steps to go clockwise"]);
-    expect(at(2, cmd(0, 512, 0)).nodes[s].readings.map((r) => r.value)).toEqual(["90°", "512", "Holding"]);
+    expect(mid.nodes[s].readings.map((r) => r.value)).toEqual(["45°", "256", "256 steps to go clockwise", "+512 steps", "256 of 512"]);
+    expect(at(2, cmd(0, 512, 0)).nodes[s].readings.map((r) => r.value)).toEqual(["90°", "512", "Holding", "+512 steps", "512 of 512"]);
     expect(at(10, cmd(0, 512, 0)).nodes[s].readings[1].value).toBe("512");
     expect(at(10, cmd(0, 512, 0)).nodes[s].on).toBe(false);
     // Reverse 512 from there at t=10 → back to 0 by t=12.
-    expect(at(11, cmd(512, 0, 10)).nodes[s].readings.map((r) => r.value)).toEqual(["45°", "256", "256 steps to go anticlockwise"]);
+    expect(at(11, cmd(512, 0, 10)).nodes[s].readings.map((r) => r.value)).toEqual(["45°", "256", "256 steps to go anticlockwise", "−512 steps", "256 of 512"]);
     expect(at(12, cmd(512, 0, 10)).nodes[s].readings.slice(0, 2).map((r) => r.value)).toEqual(["0°", "0"]);
     // Two full turns: the angle wraps, the count accumulates.
     const two = at(100, cmd(0, 2 * STEPPER_STEPS_PER_TURN, 0));

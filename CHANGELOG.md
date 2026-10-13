@@ -10,6 +10,24 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.7.0] - 2026-10-13
+
+Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are in `docs/engineering-lab-simulation.md` §4.
+
+### Fixed
+- Selecting an LCD 16×2 showed "Hello, Kiungo! / Temp: 24.5 C" in the Inspector while its Live panel named the DHT11 as the source. The Inspector's preview drew the Component library's model, which has that sample text printed on its glass. The lab's own data path was correct. The preview now shows what the sketch wrote this frame, in 3D and 2D, the same as the canvas, or nothing before Run.
+- Changing a stepper's speed partway through a move made it jump, because the whole move was re-timed at the new speed. The rest of the move now continues from where the shaft is.
+- Stop on a stepper replaced the move it interrupted, so the commanded and executed steps couldn't be compared. The move now stays on record as stopped partway.
+- A DC motor's shaft angle (frame data) turned the same way in reverse.
+
+### Changed
+- The LED's resistor note explains the model. The lab has no resistor part, so it assumes a 220 Ω resistor in series and shows the current that gives (13.6 mA from a 5 V pin, 5.9 mA from 3.3 V). The LED's Live panel shows "Current (modelled)". It remains a tip: a real build needs the resistor.
+- Stepper Live readings: Position, Position (steps), Command, **Last move** and **Done** ("670 of 2000, stopped").
+- An LCD's Live "Source" says whether each reading is set, simulated or missing. A sensor that is wired but can't be read (no ground, say) shows "DHT11: no data / Check its wiring" instead of the no-sensor banner.
+
+### Added
+- `__tests__/LabAcceptance.test.ts`: 37 acceptance tests for the five experiments as the QA brief lists them, plus a component test that the Inspector preview shows the live LCD text.
+
 ## [1.6.1] - 2026-10-13
 
 ### Removed
@@ -112,6 +130,7 @@ Versions before 1.2.0 were assigned after the fact to the pull requests already 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.7.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.6.1...v1.7.0
 [1.6.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.4.0...v1.5.0

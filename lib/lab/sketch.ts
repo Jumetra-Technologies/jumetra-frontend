@@ -161,10 +161,14 @@ const SHORT_LABEL: Record<string, string> = { Temperature: "Temp", Humidity: "Hu
 /**
  * What a display on the board shows: the readings of the board's sensors,
  * one per line, the first reading of each sensor before second readings,
- * cut to the display's width. With no sensor: a banner and the uptime.
+ * cut to the display's width. With no sensor: a banner and the uptime. With
+ * a sensor wired that can't be read: "<sensor>: no data".
  */
-export function displayLines(partId: string, samples: SensorSample[], t: number): string[] {
+export function displayLines(partId: string, samples: SensorSample[], t: number, silent: readonly string[] = []): string[] {
   const screen = SCREENS[partId] ?? { cols: 16, rows: 2 };
+  // A sensor that is on the board but gives no reading: the sketch's read fails, and says so, rather
+  // than showing a made-up value or the no-sensor banner.
+  if (!samples.length && silent.length) return [`${silent[0]}: no data`, "Check its wiring"].map((l) => l.slice(0, screen.cols));
   if (!samples.length) return [`Hello, Kiungo!`, `Up ${fmt(t, 0)} s`].map((l) => l.slice(0, screen.cols));
   const lines: string[] = [];
   const depth = Math.max(...samples.map((s) => s.readings.length));

@@ -12,6 +12,7 @@ import type { PartStatus } from "@/lib/lab/circuit";
 import type { LabNode } from "@/lib/lab/types";
 import { cn } from "@/lib/utils";
 import { useLabContext } from "./lab-context";
+import { UsbCable, connectorFor } from "./UsbCable";
 
 export type PartNodeData = { node: LabNode };
 
@@ -151,7 +152,7 @@ function FlowBody({ node, slot, status, badge, on, left, right, live }: { node: 
 }
 
 function PartNodeView({ id, data, selected }: NodeProps & { data: PartNodeData }) {
-  const { analysis, frame, view, flash, session } = useLabContext();
+  const { analysis, frame, view, flash, session, power } = useLabContext();
   const node = data.node;
   const part = getPart(node.partId);
   const pinout = getPinout(node.partId);
@@ -223,6 +224,8 @@ function PartNodeView({ id, data, selected }: NodeProps & { data: PartNodeData }
       data-part={node.partId}
       data-status={status}
     >
+      {pinout.controller ? <UsbCable connector={connectorFor(node.partId)} state={power} /> : null}
+
       {/* Header */}
       <div className="flex h-[46px] items-center gap-2 border-b border-border px-3">
         <span className={cn("size-2.5 shrink-0 rounded-full", STATUS_DOT[status], status === "ready" && on && "shadow-[0_0_0_3px_color-mix(in_srgb,var(--success)_25%,transparent)]")} title={STATUS_TEXT[status]} />

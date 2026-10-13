@@ -224,6 +224,59 @@ describe("Engineering Lab", () => {
     expect(window.localStorage.getItem("hhip-lab-sound")).toBe("off");
   });
 
+  it("plugs a USB lead into the board on Run, then starts; unplugs on Stop", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    // Motion allowed: the lead animates.
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({ matches: !query.includes("reduced-motion"), media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn() }));
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    fireEvent.click(within(screen.getByTestId("lab-empty")).getByText("Blink an LED"));
+    const lead = () => screen.getByTestId("usb-cable");
+    expect(lead()).toHaveAttribute("data-state", "off");
+    expect(lead()).toHaveAttribute("data-connector", "usb-b");
+
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    expect(lead()).toHaveAttribute("data-state", "plugging");
+    expect(screen.getByTestId("run-toggle")).toHaveTextContent("Powering…");
+    expect(useLab.getState().sessions[0].log.map((e) => e.text)).not.toContain("Run started with 2 parts");
+
+    await act(async () => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(lead()).toHaveAttribute("data-state", "on");
+    expect(screen.getByTestId("run-toggle")).toHaveTextContent("Stop");
+    expect(useLab.getState().sessions[0].log.map((e) => e.text)).toContain("Run started with 2 parts");
+
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    expect(lead()).toHaveAttribute("data-state", "unplugging");
+    expect(screen.getByTestId("run-toggle")).toHaveTextContent("Run");
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(lead()).toHaveAttribute("data-state", "off");
+
+    // Stopping while it's still plugging in: nothing runs.
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    await act(async () => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(lead()).toHaveAttribute("data-state", "off");
+    expect(screen.getByTestId("run-toggle")).toHaveTextContent("Run");
+    vi.useRealTimers();
+    window.matchMedia = original;
+  });
+
+  it("starts at once, with the lead already in, for people who prefer less motion", async () => {
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    fireEvent.click(within(screen.getByTestId("lab-empty")).getByText("Blink an LED"));
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    expect(screen.getByTestId("usb-cable")).toHaveAttribute("data-state", "on");
+    expect(screen.getByTestId("run-toggle")).toHaveTextContent("Stop");
+  });
+
   it("takes commands in the terminal", async () => {
     render(<EngineeringLab />);
     await screen.findByTestId("lab-empty");

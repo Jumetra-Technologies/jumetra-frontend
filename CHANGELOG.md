@@ -10,6 +10,15 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.6.0] - 2026-10-13
+
+### Added
+- Powering up on Run. In the Engineering Lab, pressing Run plugs a USB lead into each board before the sketch starts: the cable drops in from above, the plug seats with a small settle, a click and a ring on the port, and a 5 V pulse runs down the cable while the sketch runs. Each board gets the plug it really takes: USB-B for the Uno and Mega (the square printer-style plug; the USB-A end is in the computer, off the canvas), micro-USB for ESP32, ESP8266, Pico, STM32, Teensy and micro:bit, USB-C for the Raspberry Pi 4. The run starts once the plug is seated (about half a second); the Run button reads "Powering…" meanwhile, and pressing it again cancels. Stop pulls the lead out. The click is part of the lab's sound and follows the sound button.
+- With "reduce motion" set in the system, the lead appears already plugged in and the run starts at once.
+
+### Changed
+- Parts higher on the canvas draw over the parts below them, so a lead coming down to a lower board passes behind the one above. A selected part no longer jumps above the others.
+
 ## [1.5.0] - 2026-10-13
 
 ### Added
@@ -98,6 +107,7 @@ Versions before 1.2.0 were assigned after the fact to the pull requests already 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.6.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.2.3...v1.3.0

@@ -40,9 +40,18 @@ export interface LabCanvasHandle {
   toFlow: (screen: { x: number; y: number }) => { x: number; y: number };
 }
 
-function toFlowNode(node: LabNode, selected: boolean): Node<PartNodeData> {
+/**
+ * Parts higher on the canvas draw over parts below them, so a board's USB
+ * lead, which comes in from above, passes behind the part above it as a
+ * real lead would.
+ */
+function layerOf(node: LabNode, all: LabNode[]): number {
+  return 1 + all.filter((n) => n.y > node.y || (n.y === node.y && n.id > node.id)).length;
+}
+
+function toFlowNode(node: LabNode, selected: boolean, all: LabNode[] = [node]): Node<PartNodeData> {
   const { w, h } = nodeLayout(node.partId);
-  return { id: node.id, type: "part", position: { x: node.x, y: node.y }, data: { node }, selected, width: w, height: h, style: { width: w, height: h } };
+  return { id: node.id, type: "part", position: { x: node.x, y: node.y }, data: { node }, selected, width: w, height: h, style: { width: w, height: h }, zIndex: layerOf(node, all) };
 }
 
 /** Which way current or data moves along a wire, from the pins at each end. */
@@ -79,10 +88,10 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
   const wrapper = useRef<HTMLDivElement>(null);
   const fittedFor = useRef<string | null>(null);
 
-  const [nodes, setNodes, onNodesChangeBase] = useNodesState<Node<PartNodeData>>(session.nodes.map((n) => toFlowNode(n, selectedNodes.includes(n.id))));
+  const [nodes, setNodes, onNodesChangeBase] = useNodesState<Node<PartNodeData>>(session.nodes.map((n) => toFlowNode(n, selectedNodes.includes(n.id), session.nodes)));
 
   useEffect(() => {
-    setNodes(session.nodes.map((n) => toFlowNode(n, selectedNodes.includes(n.id))));
+    setNodes(session.nodes.map((n) => toFlowNode(n, selectedNodes.includes(n.id), session.nodes)));
   }, [session.nodes, selectedNodes, setNodes]);
 
   const edges = useMemo<Edge[]>(
@@ -207,6 +216,7 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         connectionMode={ConnectionMode.Loose}
+        elevateNodesOnSelect={false}
         connectionRadius={22}
         onNodeDragStop={(_, node, dragged) => {
           for (const n of dragged?.length ? dragged : [node]) moveNode(n.id, n.position.x, n.position.y);

@@ -46,20 +46,20 @@ export const THEME_OPTIONS: ThemeOption[] = [
   {
     id: "blue",
     label: "Blue",
-    description: "Muted blue chrome, light blue canvas",
-    swatch: ["#6b86b8", "#eff6ff", "#2563eb"],
+    description: "Deep blue sidebar, crisp white pages",
+    swatch: ["#0f2557", "#f4f7fc", "#2563eb"],
   },
   {
     id: "red",
     label: "Red",
-    description: "Muted red chrome, light red canvas",
-    swatch: ["#a66b6b", "#fef2f2", "#dc2626"],
+    description: "Deep crimson sidebar, warm white pages",
+    swatch: ["#4c0f1b", "#fcf6f7", "#be123c"],
   },
   {
     id: "green",
     label: "Green",
-    description: "Muted green chrome, light green canvas",
-    swatch: ["#5f8a6d", "#f0fdf4", "#16a34a"],
+    description: "Deep forest sidebar, fresh white pages",
+    swatch: ["#0b3b2a", "#f4f9f6", "#047857"],
   },
 ];
 

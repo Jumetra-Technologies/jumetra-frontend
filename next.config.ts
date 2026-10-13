@@ -14,6 +14,8 @@ const nextConfig = {
       { source: "/docs/system-overview/what-is-hhip", destination: "/docs/system-overview/what-is-kiungo", permanent: true },
       { source: "/docs/system-overview/how-hhip-works", destination: "/docs/system-overview/how-kiungo-works", permanent: true },
       { source: "/learn/getting-started-with-hhip", destination: "/learn/getting-started-with-kiungo", permanent: true },
+      // System Diagnostics was removed (v1.6.1); its metrics are in Advanced Analytics.
+      { source: "/dashboard", destination: "/analytics", permanent: true },
     ];
   },
   env: {

@@ -9,7 +9,6 @@ import {
   FlaskConical,
   GraduationCap,
   Home,
-  LayoutDashboard,
   Map,
   Network,
   Workflow,
@@ -48,7 +47,6 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/experiments", label: "Experiment Records", icon: FlaskConical },
       { href: "/reports", label: "Reports", icon: FileText },
-      { href: "/dashboard", label: "System Diagnostics", icon: LayoutDashboard },
       { href: "/analytics", label: "Advanced Analytics", icon: BarChart3 },
     ],
   },

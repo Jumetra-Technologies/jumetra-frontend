@@ -11,7 +11,7 @@
 
 import { create } from "zustand";
 import { getPart } from "@/lib/parts";
-import { SOURCE_KEY, SOURCE_SET, coerceInput, findControl } from "./controls";
+import { SOURCE_KEY, SOURCE_SET, coerceInput, findControl, inputOf } from "./controls";
 import { getPinout } from "./pinout";
 import { stepperStepsAt } from "./simulate";
 import type { DeviceMode, LabData, LabNode, LabSession, LabView, LabWire, LogEntry, LogKind, NodeInputs, PinRef } from "./types";
@@ -173,8 +173,12 @@ export interface LabState {
   log: (kind: LogKind, text: string, nodes?: string[]) => void;
   addRunTime: (ms: number) => void;
   setRuntime: (runtime: LabSession["runtime"]) => void;
-  /** Set a sensor's surroundings, an actuator's command or a board's sketch setting. Out-of-range numbers are clamped. */
-  setInput: (nodeId: string, key: string, value: number | string | boolean) => void;
+  /**
+   * Set a sensor's surroundings, an actuator's command or a board's sketch setting. Out-of-range
+   * numbers are clamped; values that aren't numbers, or options that don't exist, are ignored.
+   * `t` is the lab's clock: a stepper's speed change takes effect from there, mid-move.
+   */
+  setInput: (nodeId: string, key: string, value: number | string | boolean, t?: number) => void;
   /** Back to the defaults (the simulated sweep for sensors). */
   clearInputs: (nodeId: string) => void;
   /** Tell a stepper to move `steps` (negative for anticlockwise) from where it is at simulated time t; 0 holds. */
@@ -321,7 +325,7 @@ export const useLab = create<LabState>((set, get) => {
       return copies;
     },
 
-    setInput: (nodeId, key, value) => {
+    setInput: (nodeId, key, value, t) => {
       const session = active();
       const node = session?.nodes.find((n) => n.id === nodeId);
       if (!session || !node) return;
@@ -331,7 +335,13 @@ export const useLab = create<LabState>((set, get) => {
       if (session.inputs?.[nodeId]?.[key] === next) return;
       // Changing a value is taking it over; the Input switch itself is set explicitly.
       const takeOver: NodeInputs = key !== SOURCE_KEY && control && findControl(node.partId, SOURCE_KEY) ? { [SOURCE_KEY]: SOURCE_SET } : {};
-      update((s) => ({ ...s, inputs: { ...(s.inputs ?? {}), [nodeId]: { ...(s.inputs?.[nodeId] ?? {}), ...takeOver, [key]: next } } }));
+      // A stepper's move is worked out from where it started at what speed. Changing the speed mid-move
+      // restarts the rest of the move from where the shaft is now, so the position doesn't jump.
+      const reanchor: NodeInputs =
+        node.partId === "stepper-motor" && key === "stepsPerSecond" && t !== undefined && session.inputs?.[nodeId]?.[SOURCE_KEY] === SOURCE_SET
+          ? { cmdFrom: stepperStepsAt(session.inputs, nodeId, t), cmdAt: t, cmdTarget: inputOf(session.inputs, nodeId, "cmdTarget", inputOf(session.inputs, nodeId, "cmdFrom", 0)) }
+          : {};
+      update((s) => ({ ...s, inputs: { ...(s.inputs ?? {}), [nodeId]: { ...(s.inputs?.[nodeId] ?? {}), ...takeOver, ...reanchor, [key]: next } } }));
     },
 
     clearInputs: (nodeId) => {
@@ -348,7 +358,9 @@ export const useLab = create<LabState>((set, get) => {
       const move = Math.round(steps);
       update((s) => ({
         ...s,
-        inputs: { ...(s.inputs ?? {}), [nodeId]: { ...(s.inputs?.[nodeId] ?? {}), [SOURCE_KEY]: SOURCE_SET, cmdFrom: current, cmdTarget: current + move, cmdAt: t } },
+        // Go records the move (cmdStart → cmdGoal) for the Inspector; Stop (0) holds where the shaft is
+        // and keeps that record, so it reads "stopped at 750 of 2000" rather than finishing the move.
+        inputs: { ...(s.inputs ?? {}), [nodeId]: { ...(s.inputs?.[nodeId] ?? {}), [SOURCE_KEY]: SOURCE_SET, cmdFrom: current, cmdTarget: current + move, cmdAt: t, ...(move ? { cmdStart: current, cmdGoal: current + move } : {}) } },
         log: move ? [...s.log, logEntry("run", `${node.label}: move ${Math.abs(move)} steps ${move > 0 ? "clockwise" : "anticlockwise"}`, [nodeId])] : s.log,
       }));
     },
@@ -357,7 +369,7 @@ export const useLab = create<LabState>((set, get) => {
       const session = active();
       const node = session?.nodes.find((n) => n.id === nodeId);
       if (!session || !node || node.partId !== "stepper-motor") return;
-      update((s) => ({ ...s, inputs: { ...(s.inputs ?? {}), [nodeId]: { ...(s.inputs?.[nodeId] ?? {}), [SOURCE_KEY]: SOURCE_SET, cmdFrom: 0, cmdTarget: 0, cmdAt: t } } }));
+      update((s) => ({ ...s, inputs: { ...(s.inputs ?? {}), [nodeId]: { ...(s.inputs?.[nodeId] ?? {}), [SOURCE_KEY]: SOURCE_SET, cmdFrom: 0, cmdStart: 0, cmdGoal: 0, cmdTarget: 0, cmdAt: t } } }));
     },
 
     addWire: (from, to, opts) => {

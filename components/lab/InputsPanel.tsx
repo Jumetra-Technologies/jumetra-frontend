@@ -39,7 +39,7 @@ export function InputsPanel({ node }: { node: LabNode }) {
       {note ? <p className="text-[12px] leading-5 text-muted">{note}</p> : null}
       <div className="space-y-3">
         {controls.map((control) => (
-          <Field key={control.key} control={control} value={values[control.key]} dimmed={hasSource && control.key !== SOURCE_KEY && !held} onChange={(v) => setInput(node.id, control.key, v)} />
+          <Field key={control.key} control={control} value={values[control.key]} dimmed={hasSource && control.key !== SOURCE_KEY && !held} onChange={(v) => setInput(node.id, control.key, v, frame.t)} />
         ))}
         {node.partId === "stepper-motor" ? <StepperCommands nodeId={node.id} t={frame.t} /> : null}
       </div>

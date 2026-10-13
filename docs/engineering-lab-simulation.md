@@ -1,4 +1,4 @@
-# Engineering Lab simulation (v1.3.0)
+# Engineering Lab simulation (v1.7.0)
 
 How the lab decides what each part does, where you can change its inputs, and how to retest the five reference experiments.
 
@@ -35,7 +35,7 @@ There is no firmware execution in the lab; the Firmware page is separate. The "s
 | Sensors | `source`: **Simulated sweep** (the lab's time-varying signal; the default, so older sessions look the same) or **Set by you**. Changing any value switches to *Set by you*. Values: HC-SR04 `distanceCm` 2–400; PIR `motion`; DHT11 `temperatureC` 0–50, `humidity` 20–90; DHT22/AM2302 −40–80 / 0–100; DS18B20; LDR `light`; soil `moisture`; MQ2 `gasPpm`; MPU6050 `pitch`, `roll`; BMP280 `pressureHpa`, `temperatureC`. |
 | Servo (no PIR on its board) | `angle` 0–180°, or the simulated sweep. |
 | DC motor | `speed` 0–100 % (duty on EN), `direction` forward/reverse. No EN wire: full speed or stopped. The driver needs IN1 for forward and IN2 for reverse. rpm = duty × 140 (TT gear motor, no load). |
-| Stepper (28BYJ-48 + ULN2003) | `stepsPerSecond` 1–1000; **Go** moves `steps` (negative = anticlockwise) from where it is; **Stop** holds; **Zero position** makes the current position 0. 2048 steps per turn of the output shaft. Position wraps 0–360°; the step count accumulates (signed). |
+| Stepper (28BYJ-48 + ULN2003) | `stepsPerSecond` 1–1000; **Go** moves `steps` (negative = anticlockwise) from where it is; **Stop** holds where the shaft is and does not finish the move; **Zero position** makes the current position 0 and ends any move (as AccelStepper's `setCurrentPosition()` does). 2048 steps per turn of the output shaft. Position wraps 0–360°; "Position (steps)" is signed and counts from the last zero. Changing the speed mid-move carries on from the current position at the new rate. |
 | Boards | `delayMs` 50–5000 (period = 2 × delay, as in Blink); `warnCm` with an HC-SR04; `gateOpen`, `gateRest` with a PIR and a servo; `gasPpm` with an MQ2; `dryPct` with a soil sensor; `darkPct` with an LDR. Only the settings that apply to the wired parts are shown. |
 
 ### Sketch rules (per board)
@@ -74,9 +74,55 @@ Open **Engineering Lab**, click **Arduino Uno** in the empty-canvas quick-add, l
 
 **Defaults** (top of the Inputs section) returns a part to the simulated sweep.
 
-## 4. Known limits and remaining work
+## 4. QA cycle 2 (v1.7.0)
+
+### Root causes
+
+| Issue | Where | Cause | Evidence |
+|---|---|---|---|
+| LCD shows "Hello, Kiungo! / Temp: 24.5 C" while its Live panel says the source is the DHT11 | `components/lab/Inspector.tsx` | The Inspector's preview (3D and 2D) drew the Component library's model, whose glass has that sample text printed on it. The v1.3.0 fix wrote live text into the canvas card's glass only. The data path (DHT11 → sketch → LCD) was already correct. | Reproduced in Chromium: canvas glass `Temp: 50.0 °C / Hum: 70 %`; Inspector preview `Hello, Kiungo! / Temp: 24.5 C`; Live `Temp: 50.0 °C · Hum: 70 % · DHT11`. |
+| LED "draws too much current, the simulation assumes 220 Ω" | `lib/lab/circuit.ts` | An advisory (`tip`) raised for every LED that is driven and grounded. The catalog has no resistor part, so a resistor can't be wired and the model assumes one. The diagnostic was right but didn't say so, or what it means for the model. | No `resistor` part in `lib/parts`; the LED pin note says "through 220 Ω". |
+| Stepper jumps when its speed changes mid-move | `lib/lab/store.ts`, `simulate.ts` | The position is worked out as (t − start) × speed, so a new speed re-timed the whole move, including the part already done. | Unit test: 200 steps in at 100 steps/s, speed → 400 jumped to 800 before the fix; now 200, then 600 a second later. |
+| Stop and Zero lost the record of the move | `lib/lab/store.ts` | Stop was "move 0 steps", which overwrote the commanded move, so commanded and executed steps couldn't be told apart. | Inspector showed only Position, Steps, Command. |
+| DC motor's shaft angle turned the same way in reverse | `lib/lab/simulate.ts` | The angle didn't take the direction into account. It isn't drawn on the canvas, so only the frame data was wrong. | Unit test DC-07. |
+| A wired sensor that can't be read showed the no-sensor banner on the LCD | `lib/lab/simulate.ts`, `sketch.ts` | Unready sensors were dropped before the sketch ran. | Unit test: DHT11 without GND. |
+
+### Changes
+
+- Inspector preview of a display shows the frame's lines, the same as the canvas, or nothing. It never shows sample text.
+- LCD Live "Source" says `DHT11 (set)`, `DHT11 (simulated)` or `DHT11 (no data)`. A wired sensor that can't be read shows `DHT11: no data / Check its wiring` on the glass, not a value.
+- LED tip: **Assumed: 220 Ω resistor in series**, with the pin voltage and the current the model uses (13.6 mA at 5 V, 5.9 mA at 3.3 V). The LED's Live panel shows `Current (modelled)`. It stays a tip: the build works in the lab, but a real one needs the resistor.
+- Stepper: Live shows **Position**, **Position (steps)**, **Command** (steps to go or Holding), **Last move** (as commanded) and **Done** ("670 of 2000, stopped"). A speed change mid-move doesn't jump.
+- DC motor: the shaft angle follows the direction.
+
+### Acceptance matrix
+
+| # | Original observation | Cause / uncertainty | Correction | Verification | Status |
+|---|---|---|---|---|---|
+| 01 LDR → LED | ON below ~30, OFF above; resistor warning | Rule is `light < Dark below` (board setting, default 30 %, strict). The warning is an advisory: no resistor part exists, so one is assumed. | Diagnostic and Live current describe the model. | Unit: 0/29 on, 30/31/100 off; threshold 50 → 45 on; steady over 5 s; 5 V vs 3.3 V current. Browser: same five levels, tip text, "13.6 mA via 220 Ω" / "0 mA". | Fixed and verified |
+| 02 Ultrasonic | Below 20 cm LED on, buzzer beeps | Rule is `distance < Warning distance` (default 20 cm, strict: 20 is clear). Active buzzer, beeped 150 ms on/off by the sketch while the warning holds, by design. | None needed. | Unit: 19 on, 20/21 off; 2 and 400 cm; NaN and "abc" rejected, 0 → 2, 999 → 400; steady 3 s; Stop clears, Run restores. Browser: 19/20/21/2/400/19, Stop and Run. | Verified (no defect) |
+| 03 DHT11 → LCD | LCD stuck at 24.5 °C next to "Source: DHT11" | Inspector preview drew the library model (see above). | Preview uses the live glass; source mode shown; no-data case. | Unit: 0/10/24.5/35/50 °C × 30/80 % at input → reading → sketch → display → glass; mid-run changes; other parts' updates; rounding. Component test: Inspector preview reads `Temp: 50.0 °C` (fails without the fix). Browser: five values, canvas + Inspector 3D and 2D. | Fixed and verified |
+| 04 PIR → servo, LED | Detected → ON, 90°; None → OFF, 0° | Gate policy in the sketch; one command path. | None needed. | Unit: none → detected → detected → none, twice, each held 5 s; Stop holds 90°; Run restores; gate angles clamped 0–180. Browser: same sequence, sampled over 1 s each, Stop and Run. | Verified (no defect) |
+| 05 DC motor | PWM 0–100 %, Forward/Reverse | Linear model, rpm = duty × 140 (no load, no inertia). | Shaft angle follows direction. | Unit DC-01…08 (0/25/50/75 % → 0/35/70/105 rpm; IN1/IN2; zero and Stop hold; same speed at t = 1…500). Browser: DC-01…07 and Stop. | Fixed and verified |
+| 05 Stepper | Speed 1–1000, Move, Go, Stop, Zero | Constant speed, no acceleration; 2048 steps/turn. | Speed change mid-move; Stop keeps the move on record; Last move / Done readings. | Unit: 100 then 200 steps at 100/s; reverse; Zero; Stop at 250 of 1000 holds; new move after Stop; speed change; 1000 turns. Browser: the brief's sequence (100, 200, −100, Zero, 2000 with Stop partway, 50 after Stop). | Fixed and verified |
+
+### Retest (v1.7.0)
+
+As in section 3, with these additions:
+
+1. **LDR:** add `ldr`, `led`. Run. Select the LDR: Light 29 → LED ON; 30 → OFF; 31 → OFF; 0 → ON; 100 → OFF. Select the LED: Problems shows the tip "Assumed: 220 Ω resistor in series"; Live shows "Current (modelled) 13.6 mA via 220 Ω" while on. Select the Arduino: **Dark below** changes the threshold.
+2. **Ultrasonic:** 19 cm → LED ON, buzzer beeping; 20 cm and 21 cm → OFF, Quiet. 2 and 400 cm accepted; typing 999 gives 400.
+3. **DHT11 + LCD:** set 0, 10, 24.5, 35, 50 °C with 30 or 80 %. Select the LCD: the Inspector preview (3D and 2D) and the canvas both read `Temp: <t> °C / Hum: <h> %`, and Live says `Source: DHT11 (set)`. **Defaults** on the DHT11 → `DHT11 (simulated)`.
+4. **PIR gate:** None, Detected, Detected, None, twice: LED OFF/ON, servo 0°/90°, steady. Stop: servo holds; Run: follows again.
+5. **Motors:** DC 0/25/50/75 % forward → 0/35/70/105 rpm; 75 % reverse → 105 rpm Reverse. Stepper at 100 steps/s: Move 100, Go → Done "100 of 100", Position (steps) 100; Move 200, Go → 300; Move −100 → 200; Zero → 0; Move 2000, Go, Stop after a second → "N of 2000, stopped" and it stays there; Move 50, Go → N + 50.
+
+## 5. Known limits and remaining work
 
 - Inputs are not mirrored to the backend workspace; they live in the browser session like the rest of the build.
 - The sketch rules are fixed. Writing your own firmware for a lab build (the Firmware page's projects) is not connected to the lab's simulation; that needs a backend-run or browser-run interpreter and is out of scope here.
 - The DC motor model is linear (rpm = duty × 140, no inertia); the stepper moves at constant speed with no acceleration.
-- The Component library still shows sample text on display glass, by design.
+- The Component library still shows sample text on display glass, by design; the lab never does.
+- There is no resistor part. Adding one (with the circuit check working out the current from its value) would let the LED tip become a check rather than an assumption.
+- The DC motor has no load or inertia model, and its shaft angle is computed from the current speed (a speed change shifts the phase; the angle isn't drawn).
+- Taking a stepper over from the simulated sweep starts its count at 0, not where the sweep left it.
+- The Activity log doesn't record input changes, so it can't show when you changed a value.

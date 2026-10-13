@@ -277,6 +277,35 @@ describe("Engineering Lab", () => {
     expect(screen.getByTestId("run-toggle")).toHaveTextContent("Stop");
   });
 
+  it("the Inspector's preview of an LCD shows what the sketch wrote, as the canvas does, never the library's sample text", async () => {
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    fireEvent.click(screen.getByTestId("quick-arduino-uno"));
+    fireEvent.click(screen.getByRole("button", { name: "Show components panel" }));
+    for (const q of ["dht11", "lcd"]) {
+      const search = screen.getByTestId("lab-search");
+      fireEvent.change(search, { target: { value: q } });
+      fireEvent.keyDown(search, { key: "Enter" });
+    }
+    const [, dht, lcd] = useLab.getState().sessions[0].nodes;
+    act(() => {
+      useLab.getState().setInput(dht.id, "temperatureC", 50);
+      useLab.getState().setInput(dht.id, "humidity", 70);
+    });
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    const card = (await screen.findAllByTestId("lab-node")).find((el) => el.getAttribute("data-part") === "lcd-16x2")!;
+    fireEvent.click(within(card).getByText(lcd.label));
+    fireEvent.click(screen.getByRole("button", { name: "Show inspector" }));
+    const inspector = await screen.findByTestId("node-inspector");
+    const glassText = (root: HTMLElement) => [...root.querySelectorAll("svg text")].map((e) => e.textContent ?? "").filter((t) => /Temp|Hum|Hello|24\.5/.test(t));
+    await waitFor(() => expect(within(inspector).getAllByText("Temp: 50.0 °C").length).toBeGreaterThan(0));
+    expect(within(inspector).getAllByText("Hum: 70 %").length).toBeGreaterThan(0);
+    expect(within(inspector).queryByText("Temp: 24.5 C")).toBeNull();
+    expect(within(inspector).queryByText("Hello, Kiungo!")).toBeNull();
+    expect(glassText(card).join("|")).not.toMatch(/24\.5 C|Hello/);
+    fireEvent.click(screen.getByTestId("run-toggle"));
+  });
+
   it("takes commands in the terminal", async () => {
     render(<EngineeringLab />);
     await screen.findByTestId("lab-empty");

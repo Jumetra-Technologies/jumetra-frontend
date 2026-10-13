@@ -105,6 +105,15 @@ function nameOf(node: LabNode) {
 const BUS_FN: Partial<Record<PinRole, string>> = { sda: "sda", scl: "scl", mosi: "mosi", miso: "miso", sck: "sck" };
 const OPPOSITE: Partial<Record<PinRole, string>> = { sda: "scl", scl: "sda" };
 
+/** A red 5 mm LED's forward voltage, and the series resistor the lab assumes (it has no resistor part). */
+export const LED_FORWARD_V = 2;
+export const LED_SERIES_OHMS = 220;
+
+/** Current through an LED and the assumed 220 Ω from a pin at `pinV` volts, in mA. */
+export function ledCurrentMa(pinV: number): number {
+  return (Math.max(0, pinV - LED_FORWARD_V) / LED_SERIES_OHMS) * 1000;
+}
+
 export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const pinouts = new Map<string, Pinout>(nodes.map((n) => [n.id, getPinout(n.partId)]));
@@ -348,6 +357,8 @@ export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
     const hasVcc = pinout.pins.some((p) => p.role === "vcc");
     const hasGnd = pinout.pins.some((p) => p.role === "gnd");
     let driven = false;
+    /** The voltage on the part's drive pin when it is on: a rail's, or the board's logic level. */
+    let driveV: number | null = null;
 
     // Supply first: a part's output level depends on what powers it.
     const ordered = [...pinout.pins].sort((a, b) => (a.role === "vcc" ? 0 : 1) - (b.role === "vcc" ? 0 : 1));
@@ -393,6 +404,7 @@ export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
         case "cs": {
           if (net.kind === "power") {
             driven = true;
+            driveV ??= net.voltage ?? null;
             if (pin.role === "drive" && isWired) fault("tip", `always-on:${pin.id}`, `${pin.label} is always on`, `${pin.label} sits on the ${net.voltage} V rail, so ${name} is on all the time and the board can't switch it.`, [], net.wires);
           } else if (net.kind === "ground") {
             if (isWired) fault("warning", `held-low:${pin.id}`, `${pin.label} is held at ground`, `${name} never switches on with ${pin.label} on GND. Wire it to an output pin.`, [], net.wires);
@@ -401,6 +413,7 @@ export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
               fault("error", `input-only:${pin.id}`, `${boardPin.label} can't drive outputs`, `${boardName} ${boardPin.label} is input-only. Move ${pin.label} to an output-capable pin.`, [boardRef.node], net.wires);
             } else {
               driven = true;
+              driveV ??= board.logic;
               if (pin.role === "pwm" && !boardPin.fns?.includes("pwm")) {
                 fault("warning", `no-pwm:${pin.id}`, `${boardPin.label} has no PWM`, `${name} ${pin.label} needs PWM for ${node.partId === "servo" ? "angles" : "dimming and speed"}; ${boardPin.label} can only switch fully on or off. Use a ~ pin.`, [boardRef.node], net.wires);
               }
@@ -495,7 +508,16 @@ export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
         fault("error", "no-ground", "No path to ground", `${name} ${g.label} isn't on GND, so no current can flow through it. Wire it to a GND pin.`);
       }
       if (node.partId === "led" && driven && grounded) {
-        fault("tip", "resistor", "Add a 220 Ω resistor in a real build", "An LED straight on a pin draws too much current. The simulation assumes a 220 Ω resistor in series.");
+        // The lab has no resistor part, so the model assumes the 220 Ω a real build needs; the LED's
+        // Live panel shows the same current (ledCurrentMa). Advisory, not a fault.
+        const v = driveV ?? 5;
+        const ma = ledCurrentMa(v).toFixed(1);
+        fault(
+          "tip",
+          "resistor",
+          "Assumed: 220 Ω resistor in series",
+          `The lab has no resistor part, so it models this LED as if a 220 Ω resistor sat between the ${v} V pin and the anode: about ${ma} mA when on. On a real board, add that resistor; an LED wired straight to a pin draws too much current and can damage the LED and the pin.`,
+        );
       }
     }
 

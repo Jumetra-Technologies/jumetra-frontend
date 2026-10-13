@@ -10,6 +10,24 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.4.0] - 2026-10-13
+
+### Added
+- Skeleton loading on every page. The app frame (sidebar and top bar) now lives in the root layout, so it paints at once and stays put between pages; each route has a loading view that shows the page's real title and a skeleton shaped like its content (stat tiles, cards, lists, tables, charts, articles, the Embedded Studio, the lab) until the data arrives. Measured against a 4-second API: the frame and title appear in under 0.2 s.
+- A small "i" on each view option in the Engineering Lab and the Component library explains the view in a sentence or two.
+- Engineering Lab problems can be copied: double-click one to copy it, or right-click for Copy problem, Copy all problems and Show the part. The text can also be selected. Copied text reads "Fault: …", the explanation, and the parts involved.
+
+### Changed
+- View options renamed: "3D model", "Top view" and "Current flow" are now **3D**, **2D** and **Trace**, everywhere (lab, library, Inspector, lessons).
+- The Engineering Lab opens with only the canvas: the parts panel and the Inspector start hidden behind their buttons in the top bar (or "/" and right-click → Search parts / Inspect).
+- Experiment records, reports and the code editor show skeletons instead of a spinner while they load.
+- The company is credited as Kiungo Labs Technologies (footer description, copyright, structured data, legal drafts, API error text) instead of Jumetra Technologies. Repository names and the GitHub organization link are unchanged.
+- The current page is marked for screen readers in the sidebar (`aria-current`).
+
+### Fixed
+- View-switcher icons could shrink to a few pixels wide when space was tight (the Trace/Current-flow icon looked like a dot).
+- Moving between pages no longer redraws the sidebar, and each new page starts at the top.
+
 ## [1.3.0] - 2026-10-12
 
 ### Added
@@ -74,6 +92,7 @@ Versions before 1.2.0 were assigned after the fact to the pull requests already 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.4.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.2.1...v1.2.2

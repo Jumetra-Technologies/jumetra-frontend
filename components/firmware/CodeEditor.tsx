@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { KiungoLoader } from "@/components/brand/KiungoMark";
+import { CodeSkeleton } from "@/components/ui/page-skeletons";
 
 type Props = {
   value: string;
@@ -14,11 +14,7 @@ type Props = {
 
 const Monaco = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
-  loading: () => (
-    <div className="dark flex h-full items-center justify-center bg-[#1e1e1e]" data-theme="dark">
-      <KiungoLoader label="Loading the editor" />
-    </div>
-  ),
+  loading: () => <CodeSkeleton />,
 });
 
 function langFromPath(path?: string, fallback = "cpp"): string {
@@ -81,11 +77,7 @@ export function CodeEditor({ value, language, path, onChange, readOnly }: Props)
         scrollbar: { verticalScrollbarSize: 6, horizontalScrollbarSize: 6, useShadows: false },
       }}
       onChange={(v) => onChange?.(v ?? "")}
-      loading={
-        <div className="flex h-full items-center justify-center bg-[#1e1e1e]" data-theme="dark">
-          <KiungoLoader label="Loading the editor" />
-        </div>
-      }
+      loading={<CodeSkeleton />}
     />
   );
 }

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { Breadcrumbs, CategoryTabs } from "@/components/learning/Navigation";
 import { ModuleStatus } from "@/components/learning/ProgressControls";
 import {
@@ -38,7 +37,7 @@ export default async function DocsCategoryPage({ params }: CategoryPageProps) {
   const articles = isTutorials ? [] : getArticlesByCategory(category.id);
 
   return (
-    <DashboardShell activePath="/docs">
+    <>
       <Breadcrumbs
         items={[
           { label: "Documentation", href: "/docs" },
@@ -89,6 +88,6 @@ export default async function DocsCategoryPage({ params }: CategoryPageProps) {
               </li>
             ))}
       </ul>
-    </DashboardShell>
+    </>
   );
 }

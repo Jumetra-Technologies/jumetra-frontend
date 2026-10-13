@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { api } from "@/lib/api-client";
@@ -15,7 +14,7 @@ export default async function DevicesPage() {
   }
 
   return (
-    <DashboardShell activePath="/devices">
+    <>
       <div className="mb-8">
         <h2 className="text-2xl font-bold">Devices</h2>
         <p className="mt-1 text-zinc-500">Connected hardware and observed virtual devices</p>
@@ -59,6 +58,6 @@ export default async function DevicesPage() {
           ))}
         </div>
       )}
-    </DashboardShell>
+    </>
   );
 }

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { ContentRenderer } from "@/components/learning/ContentRenderer";
 import { Breadcrumbs, PrevNext } from "@/components/learning/Navigation";
 import { TableOfContents } from "@/components/learning/TableOfContents";
@@ -42,7 +41,7 @@ export default async function DocsArticlePage({ params }: ArticlePageProps) {
   const related = resolveRelatedArticles(article.related);
 
   return (
-    <DashboardShell activePath="/docs">
+    <>
       <Breadcrumbs
         items={[
           { label: "Documentation", href: "/docs" },
@@ -89,6 +88,6 @@ export default async function DocsArticlePage({ params }: ArticlePageProps) {
           </div>
         </aside>
       </div>
-    </DashboardShell>
+    </>
   );
 }

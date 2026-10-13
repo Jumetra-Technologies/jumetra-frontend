@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { SyncOffsetChart } from "@/components/charts/charts";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -28,7 +27,7 @@ export default async function DeviceDetailPage({
   }));
 
   return (
-    <DashboardShell activePath="/devices">
+    <>
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">{device.device_id}</h2>
@@ -74,6 +73,6 @@ export default async function DeviceDetailPage({
           </ul>
         )}
       </Card>
-    </DashboardShell>
+    </>
   );
 }

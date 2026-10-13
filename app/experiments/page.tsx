@@ -1,4 +1,3 @@
-import { DashboardShell } from "@/components/layout/sidebar";
 import { ExperimentJournal } from "@/components/experiments/ExperimentJournal";
 
 export default async function ExperimentsPage({
@@ -9,12 +8,12 @@ export default async function ExperimentsPage({
   const params = await searchParams;
 
   return (
-    <DashboardShell activePath="/experiments">
+    <>
       <ExperimentJournal
         initialProjectId={params.project}
         initialRecordId={params.record}
         simulationRuns={[]}
       />
-    </DashboardShell>
+    </>
   );
 }

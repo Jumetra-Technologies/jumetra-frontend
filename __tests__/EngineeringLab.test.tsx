@@ -68,6 +68,7 @@ describe("Engineering Lab", () => {
     fireEvent.click(screen.getByTestId("quick-arduino-uno"));
     await waitFor(() => expect(useLab.getState().sessions[0].nodes).toHaveLength(1));
 
+    fireEvent.click(screen.getByRole("button", { name: "Show components panel" }));
     const search = screen.getByTestId("lab-search");
     fireEvent.change(search, { target: { value: "led" } });
     fireEvent.keyDown(search, { key: "Enter" });
@@ -94,6 +95,20 @@ describe("Engineering Lab", () => {
     expect(log).toEqual(expect.arrayContaining(["Run started with 2 parts", expect.stringMatching(/^LED flashes on \(Arduino Uno D13 SCK\)$/), expect.stringMatching(/^Run stopped after \d+\.\d s/)]));
     expect(useLab.getState().sessions[0].runMs).toBeGreaterThan(0);
     vi.useRealTimers();
+  });
+
+  it("opens with only the canvas: the parts panel and the inspector wait behind their buttons", async () => {
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    expect(screen.queryByTestId("lab-search")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show components panel" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Show inspector" })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Show components panel" }));
+    expect(screen.getByTestId("lab-search")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Hide components panel" }));
+    expect(screen.queryByTestId("lab-search")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show inspector" }));
+    expect(screen.getByRole("button", { name: "Hide inspector" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("Stop halts the clock and a rerun continues it at the same rate: no duplicate timers", async () => {
@@ -124,12 +139,29 @@ describe("Engineering Lab", () => {
     vi.useRealTimers();
   });
 
+  it("explains each view from a small i button, one at a time", async () => {
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    const views = screen.getByRole("radiogroup", { name: "Canvas view" });
+    for (const name of ["3D", "2D", "Trace"]) expect(within(views).getByRole("button", { name: `About ${name}` })).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(within(views).getByRole("button", { name: "About Trace" }));
+    expect(screen.getByRole("note")).toHaveTextContent(/Where the flow stops is where the circuit is broken/);
+    // The i doesn't change the view.
+    expect(useLab.getState().sessions[0].view).toBe("top");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+    fireEvent.click(within(views).getByRole("button", { name: "About 2D" }));
+    expect(screen.getByRole("note")).toHaveTextContent(/every pin, port and LED labelled/);
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  });
+
   it("switches between the three views and keeps the choice with the session", async () => {
     render(<EngineeringLab />);
     await screen.findByTestId("lab-empty");
     const views = screen.getByRole("radiogroup", { name: "Canvas view" });
-    expect(within(views).getAllByRole("radio").map((r) => r.textContent)).toEqual(["3D model", "Top view", "Current flow"]);
-    fireEvent.click(within(views).getByRole("radio", { name: /^Current flow/ }));
+    expect(within(views).getAllByRole("radio").map((r) => r.textContent)).toEqual(["3D", "2D", "Trace"]);
+    fireEvent.click(within(views).getByRole("radio", { name: /^Trace/ }));
     expect(useLab.getState().sessions[0].view).toBe("flow");
   });
 
@@ -139,6 +171,7 @@ describe("Engineering Lab", () => {
     await screen.findByTestId("lab-empty");
     const session = useLab.getState().sessions[0];
     expect(session).toMatchObject({ name: "Smart greenhouse lab", projectId: "local-project-gh" });
+    fireEvent.click(screen.getByRole("button", { name: "Show components panel" }));
     expect(screen.getByText("Suggested for this project")).toBeInTheDocument();
     const rows = screen.getAllByTestId("lab-add-row").map((r) => r.textContent ?? "");
     expect(rows.some((t) => t.includes("Soil moisture sensor") && t.includes("hardware list"))).toBe(true);
@@ -155,6 +188,29 @@ describe("Engineering Lab", () => {
     });
     fireEvent.click(screen.getByRole("tab", { name: /Problems/ }));
     expect(within(screen.getByTestId("lab-dock")).getByText("No path to ground")).toBeInTheDocument();
+  });
+
+  it("copies a problem on double-click, and from the right-click menu", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    act(() => {
+      const uno = useLab.getState().addNode("arduino-uno", { x: 0, y: 0 })!;
+      const led = useLab.getState().addNode("led", { x: 500, y: 0 })!;
+      useLab.getState().addWire({ node: uno.id, pin: "D13" }, { node: led.id, pin: "A" });
+    });
+    fireEvent.click(screen.getByRole("tab", { name: /Problems/ }));
+    const item = within(screen.getByTestId("lab-dock")).getByText("No path to ground").closest("button")!;
+    fireEvent.doubleClick(item);
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(writeText.mock.calls[0][0]).toMatch(/^Fault: No path to ground\n.+\nParts: LED$/);
+    expect(await screen.findByTestId("fault-copied")).toHaveTextContent("Copied");
+    fireEvent.contextMenu(item, { clientX: 40, clientY: 40 });
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getAllByRole("menuitem").map((m) => m.textContent)).toEqual(expect.arrayContaining(["Copy problem", "Show the part"]));
+    fireEvent.click(within(menu).getByRole("menuitem", { name: /Copy problem/ }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
   });
 
   it("takes commands in the terminal", async () => {

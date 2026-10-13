@@ -1,5 +1,4 @@
 import { Check, Clock3, Compass } from "lucide-react";
-import { DashboardShell } from "@/components/layout/sidebar";
 
 const milestones = [
   {
@@ -26,7 +25,7 @@ const milestones = [
 
 export default function RoadmapPage() {
   return (
-    <DashboardShell activePath="/roadmap">
+    <>
       <div className="mb-8 max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Product direction</p>
         <h2 className="mt-1 text-2xl font-bold">Kiungo roadmap</h2>
@@ -56,6 +55,6 @@ export default function RoadmapPage() {
         })}
       </div>
       <p className="mt-5 max-w-4xl text-xs leading-relaxed text-muted">Current project journals are stored in the browser and are not shared or backed up. Durable authenticated storage is the next prerequisite for team collaboration.</p>
-    </DashboardShell>
+    </>
   );
 }

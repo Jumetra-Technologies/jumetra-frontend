@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { LandingPage } from "@/components/landing/LandingPage";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { SEO, structuredData } from "@/lib/landing/content";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
@@ -26,9 +25,9 @@ export const metadata: Metadata = {
 export default function HomePage() {
   const jsonLd = JSON.stringify(structuredData(siteUrl));
   return (
-    <DashboardShell activePath="/" fullBleed>
+    <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
       <LandingPage />
-    </DashboardShell>
+    </>
   );
 }

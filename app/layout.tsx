@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { AuthBootstrap } from "@/components/auth/auth-bootstrap";
+import { AppShell } from "@/components/layout/sidebar";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ElasticScrollbars } from "@/components/ui/ElasticScrollbars";
 import "./globals.css";
@@ -41,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <AuthBootstrap />
           <ElasticScrollbars />
-          {children}
+          <AppShell>{children}</AppShell>
         </ThemeProvider>
       </body>
     </html>

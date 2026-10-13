@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { ComponentLibrary } from "@/components/library/ComponentLibrary";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { api } from "@/lib/api-client";
 import { PARTS, getPart } from "@/lib/parts";
 
@@ -34,7 +33,7 @@ export default async function ComponentsPage({ searchParams }: { searchParams: P
   const compatibility = await loadCompatibility();
 
   return (
-    <DashboardShell activePath="/components">
+    <>
       <div className="mb-8 max-w-3xl">
         <h2 className="text-3xl font-bold tracking-tight">Component library</h2>
         <p className="mt-2 text-base leading-7 text-muted">
@@ -43,6 +42,6 @@ export default async function ComponentsPage({ searchParams }: { searchParams: P
         </p>
       </div>
       <ComponentLibrary initialPart={params.part} initialQuery={params.q ?? ""} compatibility={compatibility} />
-    </DashboardShell>
+    </>
   );
 }

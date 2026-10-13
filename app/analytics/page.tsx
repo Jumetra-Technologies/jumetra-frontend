@@ -1,4 +1,3 @@
-import { DashboardShell } from "@/components/layout/sidebar";
 import { Card } from "@/components/ui/card";
 import { api } from "@/lib/api-client";
 import { formatMs, formatPercent } from "@/lib/utils";
@@ -12,7 +11,7 @@ export default async function AnalyticsPage() {
   }
 
   return (
-    <DashboardShell activePath="/analytics">
+    <>
       <div className="mb-8">
         <h2 className="text-2xl font-bold">Analytics</h2>
         <p className="mt-1 text-muted">Aggregated research metrics across all experiments</p>
@@ -77,6 +76,6 @@ export default async function AnalyticsPage() {
           </div>
         </>
       )}
-    </DashboardShell>
+    </>
   );
 }

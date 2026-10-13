@@ -83,7 +83,7 @@ export const SIGN_UP = {
 
 export const FOOTER = {
   about:
-    "Kiungo (formerly HHIP) is a web platform for learning, simulating and building robotics and IoT projects. Students, technicians, instructors, clubs and schools use it to design circuits, test them with virtual Arduino, ESP32 and sensor components, document experiments and, when the real parts are on the bench, run physical and simulated hardware together. Kiungo is built by Jumetra Technologies and is in its first phase: a web proof of concept ahead of a desktop application for offline work and direct device control.",
+    "Kiungo (formerly HHIP) is a web platform for learning, simulating and building robotics and IoT projects. Students, technicians, instructors, clubs and schools use it to design circuits, test them with virtual Arduino, ESP32 and sensor components, document experiments and, when the real parts are on the bench, run physical and simulated hardware together. Kiungo is built by Kiungo Labs Technologies and is in its first phase: a web proof of concept ahead of a desktop application for offline work and direct device control.",
   columns: [
     {
       title: "Product",
@@ -129,7 +129,7 @@ export const FOOTER = {
   ],
   trademarks:
     "Arduino is a trademark of Arduino SA. ESP32 is a trademark of Espressif Systems. Raspberry Pi is a trademark of Raspberry Pi Ltd. STM32 is a trademark of STMicroelectronics. Kiungo is not affiliated with or endorsed by any of them.",
-  copyright: `© ${new Date().getFullYear()} Jumetra Technologies. Kiungo is a Phase One proof of concept.`,
+  copyright: `© ${new Date().getFullYear()} Kiungo Labs Technologies. Kiungo is a Phase One proof of concept.`,
 };
 
 /** Structured data for search engines (schema.org SoftwareApplication). */
@@ -144,7 +144,7 @@ export function structuredData(origin?: string) {
     ...(origin ? { url: origin } : {}),
     description: SEO.description,
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-    author: { "@type": "Organization", name: "Jumetra Technologies", url: "https://github.com/Jumetra-Technologies" },
+    author: { "@type": "Organization", name: "Kiungo Labs Technologies", url: "https://github.com/Jumetra-Technologies" },
     featureList: [
       "Virtual Arduino Uno, ESP32, Raspberry Pi Pico and STM32 boards",
       `${COUNTS.parts}-part component library with pinouts and specifications`,

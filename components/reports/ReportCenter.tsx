@@ -11,7 +11,8 @@ import {
   readRoboticsData,
   subscribeToRoboticsData,
 } from "@/lib/robotics-data";
-import { KiungoLoader } from "@/components/brand/KiungoMark";
+import { SkeletonRegion } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/ui/page-skeletons";
 
 function downloadMarkdown(filename: string, content: string) {
   const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
@@ -87,7 +88,9 @@ export function ReportCenter() {
       </div>
 
       {!data ? (
-        <KiungoLoader label="Loading report records" className="py-12" />
+        <SkeletonRegion label="Loading report records">
+          <ListSkeleton rows={4} />
+        </SkeletonRegion>
       ) : records.length === 0 ? (
         <Card>
           <h3 className="font-medium">No reportable experiment records</h3>

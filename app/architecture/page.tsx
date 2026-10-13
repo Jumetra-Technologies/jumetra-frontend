@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArchitectureExplorer } from "@/components/architecture/ArchitectureExplorer";
-import { DashboardShell } from "@/components/layout/sidebar";
 
 export const metadata: Metadata = {
   title: "System architecture",
@@ -18,7 +17,7 @@ const FURTHER_READING = [
 
 export default function ArchitecturePage() {
   return (
-    <DashboardShell activePath="/architecture">
+    <>
       <div className="mb-6 max-w-3xl">
         <h2 className="text-3xl font-bold tracking-tight">How Kiungo fits together</h2>
         <p className="mt-2 text-sm leading-6 text-muted">
@@ -41,6 +40,6 @@ export default function ArchitecturePage() {
           ))}
         </ul>
       </nav>
-    </DashboardShell>
+    </>
   );
 }

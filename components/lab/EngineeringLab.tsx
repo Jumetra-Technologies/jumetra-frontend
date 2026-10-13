@@ -48,6 +48,7 @@ import { backendReachable, reconcile, type RuntimeStatus } from "@/lib/lab/runti
 import { flushLab, useActiveSession, useLab } from "@/lib/lab/store";
 import type { LabNode, LabView } from "@/lib/lab/types";
 import { getServerRoboticsDataSnapshot, readRoboticsData, subscribeToRoboticsData } from "@/lib/robotics-data";
+import { VIEW_COPY } from "@/lib/ui/views";
 import { cn } from "@/lib/utils";
 import { AddPanel, TEMPLATES, type AddPanelHandle } from "./AddPanel";
 import { Inspector } from "./Inspector";
@@ -57,9 +58,9 @@ import { LabDock, type DockTab } from "./LabDock";
 import { LabSkeleton } from "./LabSkeleton";
 
 const VIEW_OPTIONS = [
-  { id: "reality" as const, label: "3D model", icon: <Box className="size-4" aria-hidden />, description: "the parts as they sit on the bench" },
-  { id: "top" as const, label: "Top view", icon: <Grid2x2 className="size-4" aria-hidden />, description: "every part from above, with labelled pins" },
-  { id: "flow" as const, label: "Current flow", icon: <Zap className="size-4" aria-hidden />, description: "where current and data go, and where they stop" },
+  { id: "reality" as const, label: VIEW_COPY["3d"].label, icon: <Box className="size-4" aria-hidden />, description: VIEW_COPY["3d"].description, info: VIEW_COPY["3d"].info },
+  { id: "top" as const, label: VIEW_COPY["2d"].label, icon: <Grid2x2 className="size-4" aria-hidden />, description: VIEW_COPY["2d"].description, info: VIEW_COPY["2d"].info },
+  { id: "flow" as const, label: VIEW_COPY.trace.label, icon: <Zap className="size-4" aria-hidden />, description: VIEW_COPY.trace.description, info: VIEW_COPY.trace.info },
 ];
 
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
@@ -103,8 +104,11 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
   // Panels
   // Panels start open where there's room for them beside the canvas.
   const fits = (query: string) => typeof window === "undefined" || typeof window.matchMedia !== "function" || window.matchMedia(query).matches;
-  const [leftOpen, setLeftOpenRaw] = useState(() => fits("(min-width: 1024px)"));
-  const [rightOpen, setRightOpenRaw] = useState(() => fits("(min-width: 1280px)"));
+  // The canvas gets the whole screen when a session opens; the parts panel
+  // and the inspector wait behind their buttons in the top bar (and "/" or
+  // right-click → Search parts / Inspect).
+  const [leftOpen, setLeftOpenRaw] = useState(false);
+  const [rightOpen, setRightOpenRaw] = useState(false);
   const [dockOpen, setDockOpen] = useState(() => fits("(min-height: 720px) and (min-width: 768px)"));
   const [dockTab, setDockTab] = useState<DockTab>("activity");
   const [dockHeight, setDockHeight] = useState(200);
@@ -581,7 +585,7 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
             ) : null}
           </div>
 
-          <SegmentedControl value={session.view} onChange={(v) => store.getState().setView(v)} options={VIEW_OPTIONS} label="Canvas view" size="sm" className="order-last mx-auto w-full sm:order-none sm:w-auto [&_button]:px-3" />
+          <SegmentedControl value={session.view} onChange={(v) => store.getState().setView(v)} options={VIEW_OPTIONS} label="Canvas view" size="sm" className="order-last mx-auto w-full sm:order-none sm:w-auto [&_[role=radio]]:pl-3 [&_[role=radio]]:pr-5" />
 
           <div className="ml-auto flex items-center gap-1.5">
             <Button size="sm" onClick={running ? stopRun : startRun} variant={running ? "secondary" : "default"} className="min-w-[5.5rem]" data-testid="run-toggle" title={running ? "Stop (⌘↵)" : "Run the default sketch (⌘↵)"}>

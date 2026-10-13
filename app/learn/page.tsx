@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { Inline } from "@/components/learning/Inline";
 import { DocsSearch } from "@/components/learning/DocsSearch";
 import { ModuleStatus, PathProgress } from "@/components/learning/ProgressControls";
@@ -29,7 +28,7 @@ export default function LearningCenterPage() {
   const hardwareReference = getArticlesByCategory("hardware-knowledge");
 
   return (
-    <DashboardShell activePath="/learn">
+    <>
       <div className="mb-8 max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Learning Center</p>
         <h2 className="mt-2 text-3xl font-bold tracking-tight">Learn hardware by building</h2>
@@ -132,6 +131,6 @@ export default function LearningCenterPage() {
           ))}
         </dl>
       </section>
-    </DashboardShell>
+    </>
   );
 }

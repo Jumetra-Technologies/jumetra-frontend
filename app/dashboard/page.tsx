@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { MetricTiles } from "@/components/charts/charts";
 import { RoboticsDashboard } from "@/components/dashboard/RoboticsDashboard";
 import { LiveOperationsPanel } from "@/components/live/live-panel";
@@ -18,7 +17,7 @@ export default async function DashboardPage() {
 
   if (!overview) {
     return (
-      <DashboardShell activePath="/dashboard">
+      <>
         <div className="mb-8">
           <h2 className="text-2xl font-bold">System diagnostics</h2>
           <p className="mt-1 text-sm text-muted">Connected device and simulation metrics.</p>
@@ -27,12 +26,12 @@ export default async function DashboardPage() {
         <Card>
           <p className="text-sm text-muted">Connected diagnostics are unavailable. Check the API connection in Settings.</p>
         </Card>
-      </DashboardShell>
+      </>
     );
   }
 
   return (
-    <DashboardShell activePath="/dashboard">
+    <>
       <div className="mb-8">
         <h2 className="text-2xl font-bold">System diagnostics</h2>
         <p className="mt-1 text-muted">Robotics projects first; connected system metrics below.</p>
@@ -127,6 +126,6 @@ export default async function DashboardPage() {
         <h3 className="mb-4 text-lg font-semibold">Live Operations</h3>
         <LiveOperationsPanel />
       </div>
-    </DashboardShell>
+    </>
   );
 }

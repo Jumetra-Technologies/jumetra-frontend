@@ -280,7 +280,7 @@ void loop() {
       { type: "h2", text: "Try it in Kiungo" },
       {
         type: "p",
-        text: "Open the [Engineering Lab](/laboratory/workspace), add an Arduino Uno, then search for “led” and add it: it wires itself to pin 13 and GND. Press Run and watch it blink, then switch to the Current flow view to see the current go round. The lab assumes the 220 Ω resistor a real build needs. Compare the wiring with your real breadboard, then record what you observed in [Experiment Records](/experiments).",
+        text: "Open the [Engineering Lab](/laboratory/workspace), add an Arduino Uno, then search for “led” and add it: it wires itself to pin 13 and GND. Press Run and watch it blink, then switch to the Trace view to see the current go round. The lab assumes the 220 Ω resistor a real build needs. Compare the wiring with your real breadboard, then record what you observed in [Experiment Records](/experiments).",
       },
     ],
   },

@@ -240,12 +240,12 @@ describe("PartDetail", () => {
     render(<PartDetail part={getPart("servo")!} compatible={["Arduino Uno", "ESP32"]} />);
     expect(screen.getByRole("heading", { level: 2, name: "Servo, SG90" })).toBeInTheDocument();
     expect(screen.getByTestId("part-3d")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("radio", { name: /Top view/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /^2D/ }));
     expect(screen.getByTestId("part-plan")).toBeInTheDocument();
     expect(screen.queryByTestId("part-3d")).toBeNull();
     fireEvent.mouseEnter(screen.getByRole("button", { name: "Mechanical Horn" }));
     expect(screen.getByText(/Screws onto the splined shaft/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("radio", { name: /Current flow/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /^Trace/ }));
     expect(screen.getByTestId("part-flow")).toBeInTheDocument();
     const power = screen.getByTestId("power-switch");
     expect(power).toHaveAttribute("aria-checked", "true");

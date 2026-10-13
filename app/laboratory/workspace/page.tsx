@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { EngineeringLab } from "@/components/lab/EngineeringLab";
 
 export const metadata: Metadata = {
@@ -11,8 +10,8 @@ export default async function LaboratoryWorkspacePage({ searchParams }: { search
   const params = await searchParams;
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   return (
-    <DashboardShell activePath="/laboratory/workspace" fullBleed>
+    <>
       <EngineeringLab sessionId={one(params.session)} newForProject={one(params.project)} />
-    </DashboardShell>
+    </>
   );
 }

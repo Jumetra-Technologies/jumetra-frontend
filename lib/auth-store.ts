@@ -55,9 +55,19 @@ type BackendSession = {
   token_type?: string;
 } & BackendUser;
 
-async function responseError(response: Response, fallback: string): Promise<Error> {
+export class AuthApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly detail: string,
+  ) {
+    super(detail);
+    this.name = "AuthApiError";
+  }
+}
+
+async function responseError(response: Response, fallback: string): Promise<AuthApiError> {
   const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
-  return new Error(payload?.detail ?? fallback);
+  return new AuthApiError(response.status, payload?.detail ?? fallback);
 }
 
 function normalizeUser(payload: BackendUser | (BackendSession & { user?: BackendUser }), previous?: AuthUser | null): AuthUser {

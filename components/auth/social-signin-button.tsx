@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Code2, LoaderCircle } from "lucide-react";
 import { GoogleLogo } from "@/components/auth/google-logo";
-import { useAuthStore } from "@/lib/auth-store";
+import { AuthApiError, useAuthStore } from "@/lib/auth-store";
 import { describeSignInError, prepareGoogleSignIn, signInWithGitHub, signInWithGoogle } from "@/lib/firebase-auth";
 import { cn } from "@/lib/utils";
 import { openProviderLink, openWelcome } from "@/lib/account-dialogs";
@@ -53,6 +53,17 @@ export function SocialSignInButton({
         openProviderLink();
       }
     } catch (signInError) {
+      const providerErrorCode =
+        typeof signInError === "object" && signInError && "code" in signInError
+          ? String(signInError.code)
+          : undefined;
+      console.error("Sign-in failed.", {
+        provider,
+        stage: signInError instanceof AuthApiError ? "backend-token-exchange" : "provider-authentication",
+        ...(signInError instanceof AuthApiError ? { status: signInError.status, detail: signInError.detail } : {}),
+        ...(providerErrorCode ? { code: providerErrorCode } : {}),
+        ...(signInError instanceof Error ? { message: signInError.message.slice(0, 300) } : {}),
+      });
       if (mounted.current) setError(describeSignInError(signInError, providerName));
     } finally {
       if (mounted.current) setIsSubmitting(false);

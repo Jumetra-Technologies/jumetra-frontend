@@ -165,7 +165,7 @@ export function ExperimentJournal({
       <section className="mt-12" aria-labelledby="simulation-runs-heading">
         <div className="mb-3">
           <h3 id="simulation-runs-heading" className="text-lg font-semibold">Simulation runs</h3>
-          <p className="text-sm text-muted">Live and synchronization runs supplied by the connected API.</p>
+          <p className="text-sm text-muted">Live and synchronization runs recorded by Kiungo.</p>
         </div>
         {connectedRuns.length === 0 ? (
           <p className="border-y border-border py-4 text-sm text-muted">No connected simulation runs available.</p>

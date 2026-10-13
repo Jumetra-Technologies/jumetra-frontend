@@ -91,3 +91,20 @@ describe("How it looks", () => {
     expect(readDiagnostics().errors.at(-1)).toMatchObject({ source: "render", message: "Minified React error #31", shown: "Something went wrong" });
   });
 });
+
+describe("No developer details in what people read", () => {
+  it("screens and messages don't mention the API, the backend, servers, sockets or addresses", async () => {
+    const { execSync } = await import("node:child_process");
+    // Admin-only diagnostics and the architecture docs are meant to be technical.
+    const hits = execSync(
+      String.raw`grep -rnE "(\"|>|')[^\"'<>]*(\bAPI\b|[Bb]ackend|Kiungo server|WebSocket|127\.0\.0\.1|NEXT_PUBLIC|cloudfunctions|\bruntime\b|gateway)[^\"'<>]*(\"|<|')" app components lib/errors.ts lib/profile.ts lib/firebase-auth.ts lib/legal --include=*.ts --include=*.tsx || true`,
+      { encoding: "utf8" },
+    )
+      .split("\n")
+      .filter(Boolean)
+      .filter((line) => !/^(components\/diagnostics|app\/system|components\/architecture)\//.test(line))
+      .filter((line) => !/^\S+:\d+:\s*(\/\/|\*|\/\*|import )/.test(line))
+      .filter((line) => !/process\.env|typeof |new WebSocket|WebSocket \| null|ApiError|isAuthError|RuntimeStatus|"runtime-status"|data-testid|runtime [!=]==/.test(line));
+    expect(hits).toEqual([]);
+  });
+});

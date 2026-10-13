@@ -160,7 +160,7 @@ export async function saveProfile(user: AuthUser, token: string, next: ProfileFi
       body: JSON.stringify(body),
     });
   } catch {
-    throw new Error("Couldn't reach the Kiungo server. Your changes weren't saved.");
+    throw new Error("Your changes weren't saved. Check your connection and try again.");
   }
 
   if (UNSUPPORTED.has(response.status)) {
@@ -192,10 +192,10 @@ export async function deleteAccount(user: AuthUser, token: string): Promise<Dele
   try {
     response = await fetch(`${API_BASE}/auth/me`, { method: "DELETE", headers: { Accept: "application/json", ...buildAuthHeaders(token) } });
   } catch {
-    return { deleted: false, reason: "Couldn't reach the Kiungo server. Nothing was deleted." };
+    return { deleted: false, reason: "Nothing was deleted. Check your connection and try again." };
   }
   if (UNSUPPORTED.has(response.status)) {
-    return { deleted: false, reason: "Account deletion isn't switched on in Kiungo's server yet. Nothing was deleted; you can still clear your details." };
+    return { deleted: false, reason: "Deleting accounts isn't available yet. Nothing was deleted; you can still clear your details." };
   }
   if (!response.ok) return { deleted: false, reason: await detail(response, "Your account wasn't deleted. Try again.") };
   clearDeviceProfile(user.id);

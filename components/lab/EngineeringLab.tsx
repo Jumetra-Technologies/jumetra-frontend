@@ -609,10 +609,10 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
 
   const runtimePill =
     runtime === "online" || runtime === "syncing"
-      ? { icon: <Server className="size-3.5" aria-hidden />, text: runtime === "syncing" ? "Syncing runtime" : "Runtime connected", tone: "text-success", title: "Mirrored to the Kiungo backend for hybrid hardware" }
+      ? { icon: <Server className="size-3.5" aria-hidden />, text: runtime === "syncing" ? "Saving" : "Online", tone: "text-success", title: "Connected: real boards can join this session" }
       : runtime === "checking"
-        ? { icon: <Server className="size-3.5" aria-hidden />, text: "Checking runtime", tone: "text-muted", title: "Looking for the Kiungo backend" }
-        : { icon: <CloudOff className="size-3.5" aria-hidden />, text: "Offline mode", tone: "text-muted", title: "The backend isn't reachable. Everything works and is saved in this browser; hybrid hardware needs the backend." };
+        ? { icon: <Server className="size-3.5" aria-hidden />, text: "Connecting", tone: "text-muted", title: "Connecting to Kiungo" }
+        : { icon: <CloudOff className="size-3.5" aria-hidden />, text: "Offline mode", tone: "text-muted", title: "Working offline. Everything works and is saved in this browser; connecting real boards needs Kiungo online." };
 
   const panelLeft = (
     <AddPanel

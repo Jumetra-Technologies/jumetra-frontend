@@ -176,7 +176,7 @@ function NodeInspector({ id }: { id: string }) {
             <option value="physical">Physical (real hardware)</option>
           </select>
         </label>
-        <p className="mt-2 text-[11.5px] leading-4 text-muted">Physical and hybrid parts bind to real hardware through the Kiungo runtime when it is connected.</p>
+        <p className="mt-2 text-[11.5px] leading-4 text-muted">Physical and hybrid parts use a real board when it is plugged in and Kiungo is online.</p>
         {part ? (
           <Link href={partHref(part.id)} className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline">
             <BookOpen className="size-3.5" aria-hidden /> Open in Component library

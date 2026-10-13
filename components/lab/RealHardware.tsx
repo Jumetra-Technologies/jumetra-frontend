@@ -36,7 +36,7 @@ export function RealHardware() {
   if (runtime !== "online" && runtime !== "syncing") {
     return (
       <p className="text-[12.5px] leading-5 text-muted">
-        Real boards on USB join the canvas through the Kiungo runtime, which isn&apos;t running. Everything else works offline.{" "}
+        Real boards on USB join the canvas when Kiungo is online. It can&apos;t be reached right now; everything else works offline.{" "}
         <Link href="/docs/technical-guides/run-locally" className="font-medium text-primary hover:underline">
           Run it locally
         </Link>

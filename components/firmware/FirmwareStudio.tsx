@@ -267,7 +267,7 @@ export function FirmwareStudio() {
       const queued = await api.queueFirmwareBuild({ project_id: project.project_id, use_cache: false });
       const deadline = Date.now() + 10 * 60 * 1000;
       let job = queued;
-      setBuild({ logs: [`Build ${job.status} · ${job.job_id}`] });
+      setBuild({ logs: [`Build ${job.status}…`] });
 
       while (job.status === "queued" || job.status === "running") {
         if (Date.now() >= deadline) {
@@ -276,7 +276,7 @@ export function FirmwareStudio() {
         await wait(500);
         job = await api.getBackgroundJob(queued.job_id);
         if (job.status === "queued" || job.status === "running") {
-          setBuild({ logs: [`Build ${job.status} · ${job.job_id}`] });
+          setBuild({ logs: [`Build ${job.status}…`] });
         }
       }
 
@@ -501,9 +501,9 @@ function ConnectionBar({ connection, onRetry }: { connection: Connection; onRetr
   const tone = connection.state === "offline" ? "text-danger" : "text-muted";
   const text =
     connection.state === "connecting"
-      ? "Connecting to the Kiungo server…"
+      ? "Connecting…"
       : connection.state === "slow"
-        ? "The Kiungo server is waking up. After it has been idle this can take up to half a minute."
+        ? "Kiungo is getting ready. After a quiet spell this can take up to half a minute."
         : connection.message;
   return (
     <div role="status" aria-live="polite" data-testid="connection-bar" data-state={connection.state} className={cn("flex shrink-0 items-center gap-2 border-b border-border bg-canvas px-3 py-1 text-[11px]", tone)}>

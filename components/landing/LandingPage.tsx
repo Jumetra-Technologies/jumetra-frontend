@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { HERO, HYBRID, LEARN, LIBRARY, SIMULATE, SIGN_UP } from "@/lib/landing/content";
 import { cn } from "@/lib/utils";
+import { HeroActions } from "./HeroActions";
 import { HeroBoard } from "./HeroBoard";
 import { HybridSwitch } from "./HybridSwitch";
 import { LearningPathStrip } from "./LearningPathStrip";
@@ -84,10 +85,7 @@ export function LandingPage() {
               ))}
             </h1>
             <p className="mt-7 max-w-[50ch] text-lg leading-8 text-muted sm:text-xl sm:leading-9">{HERO.lead}</p>
-            <div className="mt-9 flex flex-wrap items-center gap-3">
-              <CallToAction href={HERO.primary.href} label={HERO.primary.label} />
-              <CallToAction href={HERO.secondary.href} label={HERO.secondary.label} primary={false} />
-            </div>
+            <HeroActions />
             <p className="mt-7 max-w-[50ch] text-sm leading-6 text-muted">{HERO.facts}</p>
           </div>
           <div className="mx-auto w-full max-w-[460px] lg:mx-0 lg:justify-self-end">

@@ -43,6 +43,8 @@ export const HERO = {
     "The sensor is on back order. The board is in the school cupboard. The servo costs more than the project. Start anyway: Kiungo gives you working virtual parts today and lets real ones join when they arrive.",
   primary: { label: "Build a robot now", href: "/laboratory/workspace" },
   secondary: { label: "Take the learning path", href: "/learn" },
+  /** Shown instead of the learning path to people who aren't signed in: opens Log in (Continue with Google). */
+  login: { label: "Log in" },
   facts: "Virtual Arduino Uno, ESP32, Raspberry Pi Pico and STM32 boards. Free for students, clubs and schools.",
   boardHint: "Drag to turn the board. Click the LED to run Blink.",
 };

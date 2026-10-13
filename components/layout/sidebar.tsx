@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { recordError, recordPageView } from "@/lib/diagnostics/store";
+import { SiteFooter } from "@/components/landing/SiteFooter";
 import { KiungoLogo, KiungoMark } from "@/components/brand/KiungoMark";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -257,6 +258,7 @@ export function Sidebar({
 }) {
   return (
     <aside
+      data-sidebar
       className={cn(
         "flex h-full shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground",
         collapsed ? "w-[4.5rem]" : "w-64",
@@ -395,6 +397,7 @@ export function DashboardShell({
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Phones and tablets only: the sidebar is a drawer, so something has to open it. */}
         <div
+          data-sidebar
           className="flex h-14 shrink-0 items-center gap-2 border-b bg-sidebar px-3 text-sidebar-foreground lg:hidden"
           style={{ borderColor: "var(--sidebar-border)" }}
         >
@@ -420,7 +423,10 @@ export function DashboardShell({
           {fullBleed ? (
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
           ) : (
-            <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">{children}</div>
+            <>
+              <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">{children}</div>
+              {FOOTER_ROUTES.includes(activePath) ? <SiteFooter className="mt-8" /> : null}
+            </>
           )}
         </main>
       </div>
@@ -431,6 +437,9 @@ export function DashboardShell({
 }
 
 /** Pages that fill the whole content area themselves (no padding, no page scroll). */
+/** Pages that close with the brand footer (Home has its own, inside the landing page). */
+export const FOOTER_ROUTES: readonly string[] = ["/learn", "/docs"];
+
 export const FULL_BLEED_ROUTES: readonly string[] = ["/", "/firmware", "/laboratory/workspace"];
 
 /**

@@ -10,6 +10,21 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.13.0] - 2026-10-13
+
+### Added
+- **Log in on the Home page.** Next to **Build a robot now**, signed-out visitors get **Log in**, which opens Continue with Google. Once signed in, that button becomes **Take the learning path**. Build a robot now still goes straight to the lab: nobody has to sign in to try Kiungo.
+
+### Changed
+- **The footer is in the brand's colors:** teal deepening to navy, like the logo. It has white headings, soft teal-white links and a reversed logo, so it closes the page with weight instead of blending into the white. It also now closes the Learning Center and Documentation home pages.
+- **The Blue, Red and Green themes are redesigned for clarity.** The sidebar was a 40 % mix of the color into slate gray: a hazy mid-tone with white text at about 2.5:1 contrast, the "foggy" look. Cards and text were tinted too, and the muted text was as strong as the main text. Each theme now has:
+  - a deep, solid sidebar with white text: navy blue `#0f2557`, crimson `#4c0f1b`, forest `#0b3b2a` (contrast ≥ 10:1)
+  - a reversed logo
+  - crisp white cards on a faintly tinted page
+  - near-black text with a real muted gray
+  - a stronger accent: blue `#2563eb`, rose `#be123c`, emerald `#047857`
+  - Settings swatches updated to match.
+
 ## [1.12.0] - 2026-10-13
 
 ### Removed
@@ -203,6 +218,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.13.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.9.0...v1.10.0

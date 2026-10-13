@@ -148,97 +148,114 @@
   --scrollbar: #ffffff;
 }
 
+/*
+ * Colour themes (v1.13.0). One deep, saturated colour for the sidebar with white
+ * text, clean white surfaces, and near-black text with a real muted grey, so the
+ * hierarchy reads as clearly as the default theme. (The earlier versions mixed the
+ * hue 40% into slate, which gave a hazy mid-tone sidebar with low-contrast text.)
+ */
 [data-theme="blue"] {
-  --background: #eff6ff;
-  --foreground: #1e3a8a;
-  --surface: #dbeafe;
-  --canvas: #eff6ff;
-  --header: color-mix(in srgb, #1e3a8a 42%, #e2e8f0 58%);
-  --header-foreground: #f8fafc;
-  --sidebar: color-mix(in srgb, #1e3a8a 42%, #e2e8f0 58%);
-  --sidebar-foreground: #f8fafc;
-  --sidebar-muted: #dbeafe;
-  --sidebar-hover: rgba(255, 255, 255, 0.12);
-  --sidebar-border: rgba(30, 58, 138, 0.12);
+  --background: #f4f7fc;
+  --foreground: #0f1d36;
+  --surface: #ffffff;
+  --canvas: #fafcff;
+  --header: #ffffff;
+  --header-foreground: #0f1d36;
+  --sidebar: #0f2557;
+  --sidebar-foreground: #ffffff;
+  --sidebar-muted: #b9c8ea;
+  --sidebar-hover: rgba(255, 255, 255, 0.09);
+  --sidebar-border: rgba(255, 255, 255, 0.1);
   --primary: #2563eb;
   --primary-foreground: #ffffff;
-  --success: #059669;
+  --success: #047857;
   --success-foreground: #ecfdf5;
-  --warning: #d97706;
+  --warning: #b45309;
   --warning-foreground: #fffbeb;
   --danger: #dc2626;
   --danger-foreground: #fef2f2;
-  --border: #bfdbfe;
-  --muted: #1e40af;
-  --muted-bg: #dbeafe;
-  --accent: #dbeafe;
+  --border: #dbe3f1;
+  --muted: #55637d;
+  --muted-bg: #edf2fb;
+  --accent: #e6eefd;
   --ring: #2563eb;
-  --shadow-sm: 0 1px 2px rgba(30, 58, 138, 0.1);
-  --shadow-md: 0 4px 16px rgba(30, 58, 138, 0.12);
-  --canvas-grid: rgba(30, 58, 138, 0.1);
-  --scrollbar: #93c5fd;
+  --shadow-sm: 0 1px 2px rgba(15, 37, 87, 0.06), 0 3px 10px rgba(15, 37, 87, 0.04);
+  --shadow-md: 0 12px 32px rgba(15, 37, 87, 0.1);
+  --canvas-grid: rgba(37, 99, 235, 0.08);
+  --scrollbar: #a9bde6;
 }
 
 [data-theme="red"] {
-  --background: #fef2f2;
-  --foreground: #7f1d1d;
-  --surface: #fee2e2;
-  --canvas: #fef2f2;
-  --header: color-mix(in srgb, #7f1d1d 40%, #f1f5f9 60%);
-  --header-foreground: #fef2f2;
-  --sidebar: color-mix(in srgb, #7f1d1d 40%, #f1f5f9 60%);
-  --sidebar-foreground: #fef2f2;
-  --sidebar-muted: #fecaca;
-  --sidebar-hover: rgba(255, 255, 255, 0.12);
-  --sidebar-border: rgba(127, 29, 29, 0.12);
-  --primary: #dc2626;
+  --background: #fcf6f7;
+  --foreground: #2a1015;
+  --surface: #ffffff;
+  --canvas: #fffbfb;
+  --header: #ffffff;
+  --header-foreground: #2a1015;
+  --sidebar: #4c0f1b;
+  --sidebar-foreground: #ffffff;
+  --sidebar-muted: #efbdc7;
+  --sidebar-hover: rgba(255, 255, 255, 0.09);
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --primary: #be123c;
   --primary-foreground: #ffffff;
-  --success: #059669;
+  --success: #047857;
   --success-foreground: #ecfdf5;
-  --warning: #d97706;
+  --warning: #b45309;
   --warning-foreground: #fffbeb;
-  --danger: #991b1b;
+  --danger: #b91c1c;
   --danger-foreground: #fef2f2;
-  --border: #fecaca;
-  --muted: #991b1b;
-  --muted-bg: #fee2e2;
-  --accent: #fee2e2;
-  --ring: #dc2626;
-  --shadow-sm: 0 1px 2px rgba(127, 29, 29, 0.1);
-  --shadow-md: 0 4px 16px rgba(127, 29, 29, 0.12);
-  --canvas-grid: rgba(127, 29, 29, 0.1);
-  --scrollbar: #fca5a5;
+  --border: #f1dde1;
+  --muted: #7b5a61;
+  --muted-bg: #f9eff1;
+  --accent: #fce8ec;
+  --ring: #be123c;
+  --shadow-sm: 0 1px 2px rgba(76, 15, 27, 0.06), 0 3px 10px rgba(76, 15, 27, 0.04);
+  --shadow-md: 0 12px 32px rgba(76, 15, 27, 0.1);
+  --canvas-grid: rgba(190, 18, 60, 0.07);
+  --scrollbar: #e4b1bd;
 }
 
 [data-theme="green"] {
-  --background: #f0fdf4;
-  --foreground: #14532d;
-  --surface: #dcfce7;
-  --canvas: #f0fdf4;
-  --header: color-mix(in srgb, #14532d 40%, #e2e8f0 60%);
-  --header-foreground: #f0fdf4;
-  --sidebar: color-mix(in srgb, #14532d 40%, #e2e8f0 60%);
-  --sidebar-foreground: #f0fdf4;
-  --sidebar-muted: #bbf7d0;
-  --sidebar-hover: rgba(255, 255, 255, 0.12);
-  --sidebar-border: rgba(20, 83, 45, 0.12);
-  --primary: #16a34a;
+  --background: #f4f9f6;
+  --foreground: #0c2117;
+  --surface: #ffffff;
+  --canvas: #fafdfb;
+  --header: #ffffff;
+  --header-foreground: #0c2117;
+  --sidebar: #0b3b2a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-muted: #b2d8c4;
+  --sidebar-hover: rgba(255, 255, 255, 0.09);
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --primary: #047857;
   --primary-foreground: #ffffff;
   --success: #15803d;
   --success-foreground: #f0fdf4;
-  --warning: #d97706;
+  --warning: #b45309;
   --warning-foreground: #fffbeb;
   --danger: #dc2626;
   --danger-foreground: #fef2f2;
-  --border: #bbf7d0;
-  --muted: #166534;
-  --muted-bg: #dcfce7;
-  --accent: #dcfce7;
-  --ring: #16a34a;
-  --shadow-sm: 0 1px 2px rgba(20, 83, 45, 0.1);
-  --shadow-md: 0 4px 16px rgba(20, 83, 45, 0.12);
-  --canvas-grid: rgba(20, 83, 45, 0.1);
-  --scrollbar: #86efac;
+  --border: #d6e8de;
+  --muted: #50695c;
+  --muted-bg: #ecf5f0;
+  --accent: #e1f3e8;
+  --ring: #047857;
+  --shadow-sm: 0 1px 2px rgba(11, 59, 42, 0.06), 0 3px 10px rgba(11, 59, 42, 0.04);
+  --shadow-md: 0 12px 32px rgba(11, 59, 42, 0.1);
+  --canvas-grid: rgba(4, 120, 87, 0.08);
+  --scrollbar: #9fcfb6;
+}
+
+/* On the coloured sidebars the logo reverses: white stem and word, light teal arms. */
+[data-theme="blue"] [data-sidebar],
+[data-theme="red"] [data-sidebar],
+[data-theme="green"] [data-sidebar] {
+  --kiungo-stem: #ffffff;
+  --kiungo-cut: var(--sidebar);
+  --kiungo-word: #ffffff;
+  --kiungo-teal: #3cc8c4;
+  --kiungo-teal-text: #9fe9e5;
 }
 
 @theme inline {
@@ -732,4 +749,20 @@ pre {
   to {
     transform: rotateY(360deg);
   }
+}
+
+/* The site footer: the brand's teal, deepening to navy (the logo's two colours). */
+.kiungo-footer {
+  --footer-ink: #ffffff;
+  --footer-soft: rgba(225, 250, 248, 0.78);
+  --footer-line: rgba(255, 255, 255, 0.14);
+  --kiungo-stem: #ffffff;
+  --kiungo-cut: #06666a;
+  --kiungo-word: #ffffff;
+  --kiungo-teal: #5fe0db;
+  --kiungo-teal-text: #b9f3ef;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(95, 224, 219, 0.18) 0%, transparent 55%),
+    linear-gradient(160deg, #077a7d 0%, #05636a 45%, #033d55 85%, #01224b 100%);
+  color: var(--footer-ink);
 }

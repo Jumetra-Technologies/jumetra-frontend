@@ -19,6 +19,8 @@ const nextConfig = {
       // Architecture and Roadmap moved into Documentation (v1.8.0).
       { source: "/architecture", destination: "/docs/architecture", permanent: true },
       { source: "/roadmap", destination: "/docs/roadmap", permanent: true },
+      // Reports moved: export from Experiment Records; the full report center is in System Diagnostics (v1.10.0).
+      { source: "/reports", destination: "/experiments", permanent: true },
     ];
   },
   env: {

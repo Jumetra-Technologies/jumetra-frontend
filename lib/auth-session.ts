@@ -4,7 +4,13 @@ export type AuthUser = {
   display_name: string;
   google_sub?: string;
   picture_url?: string | null;
+  /** What the person says they are (student, instructor…), from their profile. Not a permission. */
   role?: string | null;
+  /**
+   * The platform permission the server grants (ADMIN, RESEARCHER, TEACHER, STUDENT, VIEWER).
+   * Only the server sets it; the profile can't change it. System Diagnostics needs ADMIN.
+   */
+  platform_role?: string | null;
   organization?: string | null;
   location?: string | null;
   bio?: string | null;

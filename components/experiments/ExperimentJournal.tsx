@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { FilePlus2, Pencil, Trash2 } from "lucide-react";
+import { Download, FilePlus2, Pencil, Trash2 } from "lucide-react";
+import { exportExperiment } from "@/lib/reports";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -150,7 +151,9 @@ export function ExperimentJournal({
                   <div className="flex gap-2 md:col-span-2">
                     <Button size="sm" variant="secondary" onClick={() => startEdit(record)}><Pencil className="size-3.5" aria-hidden /> Edit</Button>
                     <Button size="sm" variant="ghost" onClick={() => deleteRecord(record)}><Trash2 className="size-3.5" aria-hidden /> Delete</Button>
-                    <Link href="/reports" className="ml-auto self-center text-xs text-primary hover:underline">Export report</Link>
+                    <Button size="sm" variant="ghost" className="ml-auto" onClick={() => exportExperiment(record, project)}>
+                      <Download className="size-3.5" aria-hidden /> Export report
+                    </Button>
                   </div>
                 </div>
               </details>

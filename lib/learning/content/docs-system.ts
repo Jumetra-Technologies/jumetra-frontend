@@ -73,7 +73,7 @@ export const SYSTEM_OVERVIEW_ARTICLES: DocArticle[] = [
           ["1. Define", "Capture the purpose, objectives, contributors, and category of the project.", "[Projects](/workspace)"],
           ["2. Select hardware", "Check specifications, pins, interfaces, and controller compatibility.", "[Component library](/components)"],
           ["3. Assemble and test", "Place components, wire pins, and run the system virtually, physically, or both.", "[Engineering Lab](/laboratory/workspace)"],
-          ["4. Record", "Save procedure, observations, results, and notes; export Markdown reports.", "[Experiment Records](/experiments) and [Reports](/reports)"],
+          ["4. Record", "Save procedure, observations, results, and notes; export each record as a Markdown report.", "[Experiment Records](/experiments)"],
         ],
       },
       { type: "h2", text: "The layers underneath" },

@@ -10,6 +10,25 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.10.0] - 2026-10-13
+
+### Added
+- **System Diagnostics for administrators** at an unlisted address. The way in is hidden: a small Arduino turns beside the version number in Settings, and seven quick clicks open the page. Opened any other way, the page looks like a broken link. Once in, it checks the platform role the server reports: administrators get the full page, and other accounts or signed-out visitors see "Administrators only". The server doesn't report roles yet, so for now the page opens with a notice saying it can't confirm the role.
+- What the page shows:
+  - **Overview:** system health, registered and online users, errors in the last 24 hours, service status, activity.
+  - **Health:** live checks of the backend and the live-updates connection, admin statistics and analytics; this build's version, environment and service addresses; this browser's network and storage.
+  - **Performance:** request times, the slowest endpoints, page load, the backend's own latency, synchronization figures.
+  - **Usage:** registered, online, active and new users, and the most visited pages, for all users and for this browser.
+  - **Errors:** every failed request and uncaught error, with page, time and details; copy as JSON, clear.
+  - **Architecture:** the deployment chain with live status, and the layers.
+  - **Reports:** the report center.
+- The app now records request times, failures, uncaught errors and page visits in this browser for the page, capped and never sent anywhere.
+- `docs/system-diagnostics.md`: how access works, where each number comes from, and the backend contract still to build: `platform_role` on `/auth/me`, `GET /admin/stats`, `POST /telemetry/page-view`, `POST /telemetry/error` and `GET /admin/errors`, with the server enforcing ADMIN.
+
+### Changed
+- **Reports** is no longer a page of its own. Its report center lives in System Diagnostics. Each experiment record now has an **Export report** button in Experiment Records, so everyone can still save their work as Markdown. `/reports` redirects to Experiment Records.
+- An administrator permission (`platform_role`) is kept apart from the profile's self-described role, so editing a profile can never grant access.
+
 ## [1.9.0] - 2026-10-13
 
 ### Changed
@@ -153,6 +172,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.10.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.6.1...v1.7.0

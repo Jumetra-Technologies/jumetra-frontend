@@ -12,7 +12,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "where-saved",
     question: "Where are my projects and experiment records saved?",
     answer:
-      "In your browser's local storage. They are not yet backed up, synced between devices, or shared with teammates, and clearing site data deletes them. Export a Markdown report from [Reports](/reports) to keep a copy.",
+      "In your browser's local storage. They are not yet backed up, synced between devices, or shared with teammates, and clearing site data deletes them. Export a Markdown report from [Experiment Records](/experiments) to keep a copy.",
     tags: ["storage", "projects", "experiments", "backup", "local storage", "data"],
   },
   {

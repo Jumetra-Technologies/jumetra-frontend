@@ -26,7 +26,7 @@ import type {
 } from "./types";
 import type { WorkspaceNode, WorkspaceState } from "./workspace-types";
 import { coerceWorkspaceState } from "./workspace-snapshot";
-import { recordError, recordRequest } from "./diagnostics/store";
+import { recordError, recordRequest, setTelemetryEndpoint } from "./diagnostics/store";
 
 function getStoredAuthSessionSafe(): { access_token?: string } | null {
   if (typeof window === "undefined") {
@@ -69,6 +69,7 @@ export const FIREBASE_WS_URL = "wss://api-aoxa3kagvq-ez.a.run.app";
 const DEFAULT_API_BASE =
   process.env.NODE_ENV === "production" ? FIREBASE_API_URL : "http://127.0.0.1:8000";
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_BASE).replace(/\/+$/, "");
+setTelemetryEndpoint(`${API_BASE}/telemetry/error`);
 const ENGINEERING_WORKSPACE_REQUEST_TIMEOUT_MS = 15_000;
 
 function buildQuery(params: Record<string, string | number | undefined | null>): string {
@@ -95,7 +96,9 @@ async function fetchJson<T>(path: string, init?: RequestInit, timeoutMs?: number
     recordRequest({ method, path, status, ms: Math.round(performance.now() - started) });
     // A missing sign-in is expected, not a fault.
     if (status !== 401 && status !== 403) {
-      recordError({ source: "request", message: err instanceof Error ? err.message : String(err), detail: `${method} ${path}${err instanceof ApiError && err.detail ? `: ${err.detail}` : ""}` });
+      const entry = recordError({ source: "request", message: err instanceof Error ? err.message : String(err), detail: `${method} ${path}${err instanceof ApiError && err.detail ? `: ${err.detail}` : ""}` });
+      // So the screen that shows this error adds what it told the person, instead of logging it twice.
+      if (err && typeof err === "object") (err as Record<symbol, string>)[Symbol.for("kiungo.diagnostics.id")] = entry.id;
     }
     throw err;
   }

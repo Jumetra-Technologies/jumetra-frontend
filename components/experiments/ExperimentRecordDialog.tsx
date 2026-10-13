@@ -1,5 +1,7 @@
 "use client";
 
+import { storageError } from "@/lib/errors";
+import { ErrorNotice } from "@/components/ui/error-notice";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -67,13 +69,13 @@ export function ExperimentRecordDialog({
           : item),
       };
       if (!writeRoboticsData(next)) {
-        setError("Could not save to browser storage.");
+        setError(storageError("The record wasn't saved"));
         return;
       }
     } else {
       const newRecord = createExperimentRecord({ ...draft, hardware });
       if (!writeRoboticsData({ ...current, experiments: [newRecord, ...current.experiments] })) {
-        setError("Could not save to browser storage.");
+        setError(storageError("The record wasn't saved"));
         return;
       }
     }
@@ -123,7 +125,7 @@ export function ExperimentRecordDialog({
           Notes
           <textarea value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} className="mt-1.5 min-h-14 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm" />
         </label>
-        {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+        {error ? <ErrorNotice message={error} /> : null}
         <div className="flex justify-end gap-2 border-t border-border pt-4">
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
           <Button type="submit">{record ? "Save record" : "Save experiment"}</Button>

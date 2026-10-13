@@ -1,5 +1,7 @@
 "use client";
 
+import { ErrorNotice } from "@/components/ui/error-notice";
+import { describeError } from "@/lib/errors";
 import Link from "next/link";
 import { useState } from "react";
 import { LoaderCircle, Plug, Usb } from "lucide-react";
@@ -49,7 +51,7 @@ export function RealHardware() {
       const result = await api.scanDiscovery();
       setDevices(result.devices);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Scan failed");
+      setError(describeError(err, "No boards could be found"));
     } finally {
       setBusy(false);
     }
@@ -60,7 +62,7 @@ export function RealHardware() {
       <Button size="sm" variant="secondary" onClick={scan} disabled={busy}>
         {busy ? <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> : <Usb className="size-3.5" aria-hidden />} Scan USB ports
       </Button>
-      {error ? <p className="text-[12px] text-danger">{error}</p> : null}
+      {error ? <ErrorNotice message={error} size="sm" /> : null}
       {devices && !devices.length ? <p className="text-[12.5px] text-muted">No boards found. Plug one in and scan again.</p> : null}
       {devices?.map((device) => {
         const partId = BOARD_PART[device.board_type];

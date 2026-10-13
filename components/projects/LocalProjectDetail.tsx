@@ -1,5 +1,7 @@
 "use client";
 
+import { storageError } from "@/lib/errors";
+import { ErrorNotice } from "@/components/ui/error-notice";
 import { useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -77,7 +79,7 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
     const data = readRoboticsData();
     const next = { ...data, projects: data.projects.map((item) => item.id === updated.id ? updated : item) };
     if (!writeRoboticsData(next)) {
-      setError("Could not save changes to browser storage.");
+      setError(storageError("Your changes weren't saved"));
       return;
     }
     setEditing(false);
@@ -92,7 +94,7 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
       experiments: data.experiments.filter((item) => item.projectId !== project.id),
     });
     if (!saved) {
-      setError("Could not delete this project from browser storage.");
+      setError(storageError("The project wasn't deleted"));
       return;
     }
     // Its lab sessions stay, unlinked.
@@ -123,7 +125,7 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
           </Button>
         </div>
       </div>
-      {error && !editing ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+      {error && !editing ? <ErrorNotice message={error} /> : null}
 
       {editing ? (
         <Card>
@@ -134,7 +136,7 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
             <label className="text-sm font-medium md:col-span-2">Description<textarea name="description" defaultValue={project.description} className="mt-1.5 min-h-20 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm" /></label>
             <label className="text-sm font-medium md:col-span-2">Objectives<textarea name="objectives" defaultValue={project.objectives} className="mt-1.5 min-h-20 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm" /></label>
             <label className="text-sm font-medium md:col-span-2">Hardware<textarea value={hardwareText} onChange={(event) => setHardwareText(event.target.value)} className="mt-1.5 min-h-16 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm" /></label>
-            {error ? <p role="alert" className="text-sm text-danger md:col-span-2">{error}</p> : null}
+            {error ? <ErrorNotice message={error} className="md:col-span-2" /> : null}
             <div className="flex justify-end md:col-span-2"><Button type="submit">Save changes</Button></div>
           </form>
         </Card>

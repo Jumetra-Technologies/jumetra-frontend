@@ -1,5 +1,7 @@
 "use client";
 
+import { ErrorNotice } from "@/components/ui/error-notice";
+import { describeError } from "@/lib/errors";
 import { useState } from "react";
 import { Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,7 +36,7 @@ export function HybridConnectionDialog({ deviceId, physicalPinId, onCreated }: P
       });
       onCreated(conn);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Connection failed");
+      setError(describeError(err, "The board didn't connect"));
     } finally {
       setSaving(false);
     }
@@ -80,7 +82,7 @@ export function HybridConnectionDialog({ deviceId, physicalPinId, onCreated }: P
         <p className="text-[11px] text-muted">
           Physical: {deviceId ?? "—"} · Pin: {physicalPinId ?? "—"}
         </p>
-        {error ? <p className="text-xs text-danger">{error}</p> : null}
+        {error ? <ErrorNotice message={error} size="sm" /> : null}
         <Button
           className="w-full"
           disabled={!deviceId || !physicalPinId || !virtualNodeId || saving}

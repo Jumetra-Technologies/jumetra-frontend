@@ -1,5 +1,7 @@
 "use client";
 
+import { ErrorNotice } from "@/components/ui/error-notice";
+import { describeError } from "@/lib/errors";
 import { useEffect, useState } from "react";
 import { Cable } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +32,7 @@ export function PinExplorer({ deviceId, selectedPinId, onSelectPin }: Props) {
       })
       .catch((err) => {
         setPins([]);
-        setError(err instanceof Error ? err.message : "Failed to load pins");
+        setError(describeError(err, "The pins couldn't be loaded"));
       });
   }, [deviceId]);
 
@@ -51,7 +53,7 @@ export function PinExplorer({ deviceId, selectedPinId, onSelectPin }: Props) {
           {pins.length} pins
         </Badge>
       </div>
-      {error ? <p className="mt-2 text-xs text-danger">{error}</p> : null}
+      {error ? <ErrorNotice message={error} size="sm" className="mt-2" /> : null}
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {pins.map((pin) => (
           <button

@@ -1,5 +1,7 @@
 "use client";
 
+import { ErrorNotice } from "@/components/ui/error-notice";
+import { describeError } from "@/lib/errors";
 import { FormEvent, useState } from "react";
 import { CircuitCanvas } from "@/components/laboratory/circuit-canvas";
 import { Badge } from "@/components/ui/badge";
@@ -43,7 +45,7 @@ export function LaboratoryPanel({
       setLab(result);
       setStatus("created");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create laboratory");
+      setError(describeError(err, "The laboratory wasn't created"));
     } finally {
       setLoading(false);
     }
@@ -58,7 +60,7 @@ export function LaboratoryPanel({
       setLab(result.laboratory);
       setStatus(result.status);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start simulation");
+      setError(describeError(err, "The simulation didn't start"));
     } finally {
       setLoading(false);
     }
@@ -145,7 +147,7 @@ export function LaboratoryPanel({
             </a>
           </div>
         ) : null}
-        {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+        {error ? <ErrorNotice message={error} className="mt-3" /> : null}
         <p className="mt-4 font-mono text-xs text-muted">API: {API_BASE}</p>
       </Card>
 

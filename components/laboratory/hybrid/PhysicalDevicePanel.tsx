@@ -1,5 +1,7 @@
 "use client";
 
+import { ErrorNotice } from "@/components/ui/error-notice";
+import { describeError } from "@/lib/errors";
 import { useCallback, useEffect, useState } from "react";
 import { Cpu, Plug, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +32,7 @@ export function PhysicalDevicePanel({ selectedDeviceId, onSelect, onConnected }:
       setDevices(hybrid.devices);
       setDiscovered(disc.devices.filter((d) => d.status === "connected"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load devices");
+      setError(describeError(err, "Your devices couldn't be loaded"));
     }
   }, []);
 
@@ -54,7 +56,7 @@ export function PhysicalDevicePanel({ selectedDeviceId, onSelect, onConnected }:
       onSelect(device.device_id);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Connect failed");
+      setError(describeError(err, "The device didn't connect"));
     } finally {
       setConnecting(null);
     }
@@ -69,7 +71,7 @@ export function PhysicalDevicePanel({ selectedDeviceId, onSelect, onConnected }:
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
-      {error ? <p className="mt-2 text-xs text-danger">{error}</p> : null}
+      {error ? <ErrorNotice message={error} size="sm" className="mt-2" /> : null}
 
       <div className="mt-3 space-y-2">
         <p className="text-[11px] font-medium uppercase tracking-wide text-muted">Connected in Kiungo</p>

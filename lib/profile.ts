@@ -127,7 +127,8 @@ export function clearDeviceProfile(userId: string): void {
 /** The server's user with any on-device edits laid over it. */
 export function withDeviceProfile(user: AuthUser): AuthUser {
   const local = readDeviceProfile(user.id);
-  return local ? { ...user, ...local, display_name: local.display_name || user.display_name } : user;
+  // The permission stays the server's: on-device edits can't change it.
+  return local ? { ...user, ...local, display_name: local.display_name || user.display_name, platform_role: user.platform_role } : user;
 }
 
 /* ----- Backend calls ----- */

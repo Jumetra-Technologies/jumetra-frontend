@@ -26,6 +26,7 @@ import type {
 } from "./types";
 import type { WorkspaceNode, WorkspaceState } from "./workspace-types";
 import { coerceWorkspaceState } from "./workspace-snapshot";
+import { recordError, recordRequest } from "./diagnostics/store";
 
 function getStoredAuthSessionSafe(): { access_token?: string } | null {
   if (typeof window === "undefined") {
@@ -80,7 +81,27 @@ function buildQuery(params: Record<string, string | number | undefined | null>):
   return query ? `?${query}` : "";
 }
 
+/** Every browser request goes to System Diagnostics: its time and status, and failures as errors. */
 async function fetchJson<T>(path: string, init?: RequestInit, timeoutMs?: number): Promise<T> {
+  if (typeof window === "undefined") return fetchJsonRaw<T>(path, init, timeoutMs);
+  const started = performance.now();
+  const method = init?.method ?? "GET";
+  try {
+    const result = await fetchJsonRaw<T>(path, init, timeoutMs);
+    recordRequest({ method, path, status: 200, ms: Math.round(performance.now() - started) });
+    return result;
+  } catch (err) {
+    const status = err instanceof ApiError ? err.status : /timed out/.test(String((err as Error)?.message)) ? -1 : 0;
+    recordRequest({ method, path, status, ms: Math.round(performance.now() - started) });
+    // A missing sign-in is expected, not a fault.
+    if (status !== 401 && status !== 403) {
+      recordError({ source: "request", message: err instanceof Error ? err.message : String(err), detail: `${method} ${path}${err instanceof ApiError && err.detail ? `: ${err.detail}` : ""}` });
+    }
+    throw err;
+  }
+}
+
+async function fetchJsonRaw<T>(path: string, init?: RequestInit, timeoutMs?: number): Promise<T> {
   const session = typeof window !== "undefined" ? getStoredAuthSessionSafe() : null;
   const headers = new Headers(init?.headers ?? undefined);
 
@@ -163,7 +184,19 @@ function coerceWorkspaceNode(raw: unknown): WorkspaceNode {
   };
 }
 
+/** Platform-wide numbers for System Diagnostics. The backend serves these to admins only (docs/system-diagnostics.md). */
+export interface AdminStats {
+  registered_users: number;
+  online_users: number;
+  signups_7d?: number;
+  active_users_24h?: number;
+  top_pages?: Array<{ path: string; views: number }>;
+}
+
 export const api = {
+  /** The backend's liveness check. */
+  getHealth: () => fetchJson<{ status: string; version?: string }>("/health", undefined, 8000),
+  getAdminStats: () => fetchJson<AdminStats>("/admin/stats", undefined, 8000),
   getDashboardOverview: () => fetchJson<DashboardOverview>("/analytics/dashboard"),
   getExperiments: () => fetchJson<ExperimentSummary[]>("/experiments"),
   getExperiment: (id: string) => fetchJson<ExperimentDetail>(`/experiments/${id}`),

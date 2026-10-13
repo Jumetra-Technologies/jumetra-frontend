@@ -35,6 +35,7 @@ type BackendUser = {
   google_sub?: string;
   firebase_uid?: string | null;
   role?: string | null;
+  platform_role?: string | null;
   organization?: string | null;
   location?: string | null;
   bio?: string | null;
@@ -62,6 +63,7 @@ function normalizeUser(payload: BackendUser | (BackendSession & { user?: Backend
     // Keep the photo we already have if this response leaves it out.
     picture_url: u.photo_url ?? u.picture_url ?? previous?.picture_url ?? null,
     role: u.role ?? null,
+    ...(u.platform_role !== undefined ? { platform_role: u.platform_role } : {}),
     organization: u.organization ?? null,
     location: u.location ?? null,
     bio: u.bio ?? null,

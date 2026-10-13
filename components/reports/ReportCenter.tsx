@@ -12,23 +12,11 @@ import {
   subscribeToRoboticsData,
 } from "@/lib/robotics-data";
 import { SkeletonRegion } from "@/components/ui/skeleton";
+import { downloadMarkdown, safeFilename } from "@/lib/reports";
 import { ListSkeleton } from "@/components/ui/page-skeletons";
 
-function downloadMarkdown(filename: string, content: string) {
-  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function safeFilename(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "kiungo-report";
-}
-
-export function ReportCenter() {
+/** Markdown reports of the experiment records in this browser. `embedded`: inside System Diagnostics, without the page title. */
+export function ReportCenter({ embedded = false }: { embedded?: boolean } = {}) {
   const data = useSyncExternalStore(
     subscribeToRoboticsData,
     readRoboticsData,
@@ -66,11 +54,15 @@ export function ReportCenter() {
 
   return (
     <>
-      <div className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Robotics workspace</p>
-        <h2 className="mt-1 text-2xl font-bold">Reports</h2>
-        <p className="mt-1 max-w-2xl text-sm text-muted">Export reproducible project and experiment notes as portable Markdown files.</p>
-      </div>
+      {embedded ? (
+        <p className="mb-4 max-w-2xl text-sm text-muted">Export project and experiment records stored in this browser as Markdown files.</p>
+      ) : (
+        <div className="mb-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Robotics workspace</p>
+          <h2 className="mt-1 text-2xl font-bold">Reports</h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted">Export reproducible project and experiment notes as portable Markdown files.</p>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
         <label className="flex items-center gap-2 text-sm">

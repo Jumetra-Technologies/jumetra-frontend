@@ -5,7 +5,6 @@ import {
   Boxes,
   CircuitBoard,
   Cpu,
-  FileText,
   FlaskConical,
   GraduationCap,
   Home,
@@ -44,7 +43,6 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Test and report",
     items: [
       { href: "/experiments", label: "Experiment Records", icon: FlaskConical },
-      { href: "/reports", label: "Reports", icon: FileText },
       { href: "/analytics", label: "Advanced Analytics", icon: BarChart3 },
     ],
   },

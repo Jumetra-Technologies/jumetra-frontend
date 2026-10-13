@@ -723,3 +723,13 @@ pre {
     animation: none;
   }
 }
+
+/* The board beside the version number in Settings turns slowly (System Diagnostics' way in). */
+@keyframes kiungo-board-spin {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { recordError, recordPageView } from "@/lib/diagnostics/store";
 import { KiungoLogo, KiungoMark } from "@/components/brand/KiungoMark";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -317,7 +318,25 @@ export function DashboardShell({
   // The shell stays mounted between pages, so start each new page at the top.
   useEffect(() => {
     mainRef.current?.scrollTo?.({ top: 0 });
+    recordPageView(activePath);
   }, [activePath]);
+
+  // Uncaught errors anywhere in the app go to System Diagnostics.
+  useEffect(() => {
+    const onError = (e: ErrorEvent) => {
+      recordError({ source: "page", message: e.message || "Script error", detail: e.error instanceof Error ? e.error.stack : `${e.filename}:${e.lineno}` });
+    };
+    const onRejection = (e: PromiseRejectionEvent) => {
+      const reason = e.reason as unknown;
+      recordError({ source: "promise", message: reason instanceof Error ? reason.message : String(reason), detail: reason instanceof Error ? reason.stack : undefined });
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, []);
 
   useEffect(() => {
     try {

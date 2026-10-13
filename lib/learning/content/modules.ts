@@ -51,7 +51,7 @@ export const LEARNING_MODULES: LearningModule[] = [
         type: "callout",
         tone: "note",
         title: "Your work is saved in this browser",
-        text: "Projects and experiment records are stored in your browser's local storage. They are not backed up or shared yet, so export a Markdown report from [Reports](/reports) for anything important.",
+        text: "Projects and experiment records are stored in your browser's local storage. They are not backed up or shared yet, so export a Markdown report from [Experiment Records](/experiments) for anything important.",
       },
       {
         type: "p",
@@ -714,7 +714,7 @@ void loop() {
           "**Prototype virtually.** In the [Engineering Lab](/laboratory/workspace), place components and wire them. The laboratory checks wiring against rules such as voltage, protocol, and duplicate pin use.",
           "**Run and observe.** Start the simulation and watch how the system behaves. Fix wiring and logic problems here, where mistakes are free.",
           "**Bring in hardware.** Connect real devices as you get them, then select each component and change its device mode from Virtual to Physical in the Inspector.",
-          "**Record.** Write the procedure, observations, and results in [Experiment Records](/experiments), and export a report from [Reports](/reports).",
+          "**Record.** Write the procedure, observations, and results in [Experiment Records](/experiments), and export it as a report.",
         ],
       },
       { type: "h2", text: "What simulation cannot tell you" },

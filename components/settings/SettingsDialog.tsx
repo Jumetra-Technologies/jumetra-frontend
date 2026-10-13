@@ -3,6 +3,7 @@
 import { useId, type ReactNode } from "react";
 import { Palette, Server, X } from "lucide-react";
 import { ProfileTile } from "@/components/account/ProfileTile";
+import { SpinningBoard } from "@/components/diagnostics/SpinningBoard";
 import { ThemeSettings } from "@/components/theme/theme-settings";
 import { API_BASE, wsUrl } from "@/lib/api-client";
 import { closeSettings, useSettingsOpen } from "@/lib/settings-dialog";
@@ -103,7 +104,10 @@ export function SettingsDialog() {
       </div>
 
       <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-3 text-xs text-muted">
-        <span data-testid="app-version">Kiungo v{APP_VERSION}</span>
+        <span className="inline-flex items-center gap-1.5">
+          <SpinningBoard onOpen={closeSettings} />
+          <span data-testid="app-version">Kiungo v{APP_VERSION}</span>
+        </span>
         <span>Kiungo Labs Technologies</span>
       </footer>
     </ModalShell>

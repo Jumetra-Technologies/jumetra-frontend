@@ -35,7 +35,23 @@ export interface NodeLive {
   text?: string[];
   /** Short state for the node badge: "ON", "23.4 °C", "90°". */
   badge?: string;
+  /**
+   * What a sounder is being driven with, for the audio engine: its pitch and
+   * the pin's on/off pattern in simulated time (on while
+   * ((t + phase) mod period) < period × duty). Null when silent.
+   */
+  tone?: { hz: number; pattern: PinPattern } | null;
 }
+
+/** A pin switched on and off at a steady rate, as `square()` draws it. */
+export interface PinPattern {
+  period: number;
+  duty: number;
+  phase: number;
+}
+
+/** An active buzzer's own oscillator: one fixed pitch, near its piezo's resonance. */
+export const ACTIVE_BUZZER_HZ = 2300;
 
 export type WireFlow = "power" | "ground" | "signal" | "data" | "idle" | "fault";
 
@@ -211,9 +227,17 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
         break;
       }
       case "buzzer": {
-        const level = go ? (plan.alertSensor ? (plan.alert ? square(t, 0.3, 0.5) : 0) : square(t, period, 0.15, k * 0.2)) : 0;
+        // The sketch beeps the pin: fast while an alert holds, a chirp per blink period otherwise.
+        const pattern: PinPattern | null = !go ? null : plan.alertSensor ? (plan.alert ? { period: 0.3, duty: 0.5, phase: 0 } : null) : { period, duty: 0.15, phase: k * 0.2 };
+        const level = pattern ? square(t, pattern.period, pattern.duty, pattern.phase) : 0;
         setLinks(() => level);
-        live[node.id] = { on: level > 0, level, readings: [{ label: "Tone", value: level ? "2.3 kHz beep" : plan.alertSensor && plan.alert ? "Beeping" : "Silent" }], badge: level ? "BEEP" : plan.alertSensor && plan.alert && go ? "Beeping" : "Quiet" };
+        live[node.id] = {
+          on: level > 0,
+          level,
+          readings: [{ label: "Tone", value: level ? "2.3 kHz beep" : pattern ? "Beeping" : "Silent" }],
+          badge: level ? "BEEP" : pattern ? "Beeping" : "Quiet",
+          tone: pattern ? { hz: ACTIVE_BUZZER_HZ, pattern } : null,
+        };
         break;
       }
       case "relay": {

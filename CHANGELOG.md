@@ -10,6 +10,12 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.5.0] - 2026-10-13
+
+### Added
+- Buzzers you can hear. In the Engineering Lab, a buzzer now sounds through the speakers exactly when the sketch drives its pin: a 12 mm active buzzer's fixed ~2.3 kHz tone (a square wave through the piezo's resonance, with its millisecond attack and short ring), fast 150 ms beeps while an alarm condition holds (ultrasonic obstacle too close, motion, gas…), or a 150 ms chirp per blink period with no sensor. Beeps are scheduled on the sound card's clock, so they stay crisp and in step at any simulation speed; two buzzers are slightly detuned and beat against each other as real ones do. Silent when stopped, when the sketch isn't driving the pin, or in a background tab.
+- A sound button in the lab's top bar mutes and unmutes the buzzers; the choice is remembered in this browser. Sound starts with the first Run, as browsers require a click before audio plays.
+
 ## [1.4.0] - 2026-10-13
 
 ### Added
@@ -92,6 +98,7 @@ Versions before 1.2.0 were assigned after the fact to the pull requests already 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.5.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.2.2...v1.2.3

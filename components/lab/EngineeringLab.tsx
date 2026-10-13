@@ -32,6 +32,8 @@ import {
   SkipForward,
   Trash2,
   Undo2,
+  Volume2,
+  VolumeX,
   Wand2,
   Zap,
 } from "lucide-react";
@@ -41,6 +43,8 @@ import { Button } from "@/components/ui/button";
 import { getPart, partHref } from "@/lib/parts";
 import { analyze, type Analysis } from "@/lib/lab/circuit";
 import { frameAt, serialLine } from "@/lib/lab/simulate";
+import { LabSound } from "@/lib/lab/sound";
+import { setLabSound, useLabSound } from "@/lib/lab/sound-pref";
 import { describeChanges, RunRecorder } from "@/lib/lab/activity";
 import { planAutoWire, placeNode } from "@/lib/lab/autowire";
 import { getPinout } from "@/lib/lab/pinout";
@@ -243,13 +247,37 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
     for (const d of recorder.current?.frame(frame, analysis) ?? []) store.getState().log(d.kind, d.text, d.nodes);
   }, [frame, running, session, nodes, analysis, store]);
 
+  // Sound: buzzers you can hear. The engine is made on first use; browsers
+  // only allow audio after a click, so Run and the sound button unlock it.
+  const soundOn = useLabSound();
+  const sound = useRef<LabSound | null>(null);
+  const soundEngine = useCallback(() => (sound.current ??= new LabSound()), []);
+  useEffect(() => () => sound.current?.dispose(), []);
+  useEffect(() => {
+    sound.current?.setEnabled(soundOn);
+  }, [soundOn]);
+  useEffect(() => {
+    const voices = Object.entries(frame.nodes).flatMap(([id, live]) => (live.tone ? [{ id, hz: live.tone.hz, pattern: live.tone.pattern }] : []));
+    sound.current?.update({ running, t: frame.t, speed, voices });
+  }, [frame, running, speed]);
+  const toggleSound = useCallback(() => {
+    const next = !soundOn;
+    setLabSound(next);
+    const engine = soundEngine();
+    engine.setEnabled(next);
+    if (next) engine.unlock();
+  }, [soundOn, soundEngine]);
+
   const startRun = useCallback(() => {
     if (running || !session) return;
+    const engine = soundEngine();
+    engine.setEnabled(soundOn);
+    engine.unlock();
     recorder.current = new RunRecorder(nodes);
     recorder.current.start(t);
     store.getState().log("run", `Run started${nodes.length ? ` with ${nodes.length} part${nodes.length === 1 ? "" : "s"}` : ""}`);
     setRunning(true);
-  }, [running, session, nodes, t, store]);
+  }, [running, session, nodes, t, store, soundEngine, soundOn]);
 
   const stopRun = useCallback(() => {
     if (!running) return;
@@ -609,6 +637,9 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
                   </option>
                 ))}
               </select>
+              <button type="button" onClick={toggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Mute buzzers" : "Turn buzzer sound on"} title={soundOn ? "Sound on: buzzers beep out loud" : "Sound off"} className={cn("flex size-8 items-center justify-center rounded-[8px] hover:bg-muted-bg", soundOn ? "text-foreground" : "text-muted")} data-testid="sound-toggle">
+                {soundOn ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+              </button>
             </div>
             <span className="mx-1 hidden h-6 w-px bg-border md:block" aria-hidden />
             <div className="hidden items-center gap-0.5 sm:flex">

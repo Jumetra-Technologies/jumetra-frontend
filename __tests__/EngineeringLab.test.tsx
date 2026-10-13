@@ -213,6 +213,17 @@ describe("Engineering Lab", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
   });
 
+  it("has a sound button that mutes the buzzers and remembers the choice", async () => {
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    const button = screen.getByTestId("sound-toggle");
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(button);
+    expect(screen.getByTestId("sound-toggle")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByTestId("sound-toggle")).toHaveAccessibleName("Turn buzzer sound on");
+    expect(window.localStorage.getItem("hhip-lab-sound")).toBe("off");
+  });
+
   it("takes commands in the terminal", async () => {
     render(<EngineeringLab />);
     await screen.findByTestId("lab-empty");

@@ -1,6 +1,7 @@
 "use client";
 
 import { describeError } from "@/lib/errors";
+import { API_BASE } from "@/lib/api-client";
 import { getApp, getApps, initializeApp } from "firebase/app";
 import {
   GithubAuthProvider,
@@ -18,19 +19,40 @@ type FirebaseWebConfig = {
   appId: string;
 };
 
-export function firebaseWebConfig(): FirebaseWebConfig {
+export async function firebaseWebConfig(): Promise<FirebaseWebConfig> {
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
-  if (!apiKey || !projectId || !appId) {
-    throw new Error("Sign-in isn't available right now. Please try again later.");
+  if (process.env.NODE_ENV !== "production" && apiKey && projectId && appId) {
+    return {
+      apiKey,
+      projectId,
+      appId,
+      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || `${projectId}.firebaseapp.com`,
+    };
   }
-  return {
-    apiKey,
-    projectId,
-    appId,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || `${projectId}.firebaseapp.com`,
-  };
+
+  const response = await fetch(`${API_BASE}/auth/config`, { headers: { Accept: "application/json" } });
+  if (!response.ok) {
+    throw new Error(`Couldn't load sign-in configuration from the backend (HTTP ${response.status}).`);
+  }
+  const config: unknown = await response.json();
+  if (
+    typeof config !== "object" ||
+    config === null ||
+    !("apiKey" in config) ||
+    typeof config.apiKey !== "string" ||
+    !("projectId" in config) ||
+    typeof config.projectId !== "string" ||
+    !("appId" in config) ||
+    typeof config.appId !== "string"
+  ) {
+    throw new Error("The backend returned an invalid sign-in configuration.");
+  }
+  const authDomain = "authDomain" in config && typeof config.authDomain === "string"
+    ? config.authDomain
+    : `${config.projectId}.firebaseapp.com`;
+  return { apiKey: config.apiKey, projectId: config.projectId, appId: config.appId, authDomain };
 }
 
 export type GoogleSignInResult = {
@@ -50,7 +72,8 @@ function getFirebaseAuth(): Promise<Auth> {
 }
 
 async function initializeFirebaseAuth(): Promise<Auth> {
-  const app = getApps().length ? getApp() : initializeApp(firebaseWebConfig());
+  const config = await firebaseWebConfig();
+  const app = getApps().length ? getApp() : initializeApp(config);
   return getAuth(app);
 }
 

@@ -61,7 +61,7 @@ export const PRODUCTION_WS_URL = "wss://api-aoxa3kagvq-ez.a.run.app";
 
 const DEFAULT_API_BASE =
   process.env.NODE_ENV === "production" ? PRODUCTION_API_URL : "http://127.0.0.1:8000";
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_BASE).replace(/\/+$/, "");
+export const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_BASE).replace(/\/+$/, "");
 const ENGINEERING_WORKSPACE_REQUEST_TIMEOUT_MS = 15_000;
 
 type UserProjectPayload = {
@@ -831,5 +831,3 @@ export function getWiringWsUrl(): string {
 export function getFirmwareWsUrl(): string {
   return wsUrl("/ws/firmware");
 }
-
-export { API_BASE };

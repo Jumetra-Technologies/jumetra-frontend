@@ -1,13 +1,25 @@
-import { KiungoLoader } from "@/components/brand/KiungoMark";
-import { DashboardShell } from "@/components/layout/sidebar";
+"use client";
 
-/** Any page without its own loading screen shows the Kiungo mark while it streams in. */
+import { usePathname } from "next/navigation";
+import { CardGridSkeleton, LandingSkeleton, PageHeaderSkeleton, PageLoading } from "@/components/ui/page-skeletons";
+
+/**
+ * The fallback for any page without its own loading view, shown inside the
+ * app frame: the landing page's shape on Home, a generic page elsewhere.
+ */
 export default function Loading() {
+  const pathname = usePathname();
+  if (pathname === "/") {
+    return (
+      <PageLoading label="Loading Kiungo">
+        <LandingSkeleton />
+      </PageLoading>
+    );
+  }
   return (
-    <DashboardShell activePath="">
-      <div className="flex min-h-[60svh] items-center justify-center">
-        <KiungoLoader label="Loading" size="lg" />
-      </div>
-    </DashboardShell>
+    <PageLoading label="Loading">
+      <PageHeaderSkeleton />
+      <CardGridSkeleton count={4} />
+    </PageLoading>
   );
 }

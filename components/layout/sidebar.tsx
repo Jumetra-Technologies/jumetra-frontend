@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { KiungoLogo, KiungoMark } from "@/components/brand/KiungoMark";
-import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { Menu, PanelLeftClose, PanelLeftOpen, Settings, Star, User, X } from "lucide-react";
 import {
   NAV_SECTIONS,
@@ -39,6 +40,7 @@ function NavLink({
         href={item.href}
         title={item.label}
         onClick={onNavigate}
+        aria-current={active ? "page" : undefined}
         className={cn(
           "relative flex size-10 items-center justify-center rounded-lg transition-colors",
           active
@@ -58,6 +60,7 @@ function NavLink({
   return (
     <Link
       href={item.href}
+      aria-current={active ? "page" : undefined}
       onClick={onNavigate}
       className={cn(
         "group flex items-center gap-3 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors",
@@ -309,6 +312,12 @@ export function DashboardShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [ready, setReady] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+
+  // The shell stays mounted between pages, so start each new page at the top.
+  useEffect(() => {
+    mainRef.current?.scrollTo?.({ top: 0 });
+  }, [activePath]);
 
   useEffect(() => {
     try {
@@ -382,6 +391,8 @@ export function DashboardShell({
         </div>
 
         <main
+          ref={mainRef}
+          data-testid="app-main"
           className={cn(
             "min-h-0 min-w-0 flex-1 bg-canvas",
             fullBleed ? "flex flex-col overflow-hidden" : "overflow-y-auto",
@@ -397,5 +408,23 @@ export function DashboardShell({
       <SettingsDialog />
       <AccountDialogs />
     </div>
+  );
+}
+
+/** Pages that fill the whole content area themselves (no padding, no page scroll). */
+export const FULL_BLEED_ROUTES: readonly string[] = ["/", "/firmware", "/laboratory/workspace"];
+
+/**
+ * The app frame, mounted once in the root layout so it paints before any
+ * page's data arrives and stays put while pages change. The active nav item
+ * comes from the URL (nav items match by prefix, so /devices/abc lights
+ * Devices); each route's loading.tsx fills the content area meanwhile.
+ */
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname() ?? "/";
+  return (
+    <DashboardShell activePath={pathname} fullBleed={FULL_BLEED_ROUTES.includes(pathname)}>
+      {children}
+    </DashboardShell>
   );
 }

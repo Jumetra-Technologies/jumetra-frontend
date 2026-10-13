@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { Breadcrumbs } from "@/components/learning/Navigation";
 import { DRAFT_NOTICE, LEGAL_DOCUMENTS } from "@/lib/legal/content";
 
@@ -12,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function LegalIndexPage() {
   return (
-    <DashboardShell activePath="/legal">
+    <>
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Legal" }]} />
       <div className="max-w-3xl">
         <h2 className="text-3xl font-bold tracking-tight">Legal</h2>
@@ -37,6 +36,6 @@ export default function LegalIndexPage() {
           ))}
         </ul>
       </div>
-    </DashboardShell>
+    </>
   );
 }

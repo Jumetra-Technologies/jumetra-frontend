@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { LocalProjectDetail } from "@/components/projects/LocalProjectDetail";
@@ -15,9 +14,9 @@ export default async function ProjectDetailPage({
   const { id } = await params;
   if (id.startsWith("local-project-")) {
     return (
-      <DashboardShell activePath="/workspace">
+      <>
         <LocalProjectDetail projectId={id} />
-      </DashboardShell>
+      </>
     );
   }
 
@@ -29,7 +28,7 @@ export default async function ProjectDetailPage({
   }
 
   return (
-    <DashboardShell activePath="/workspace">
+    <>
       <div className="mb-8">
         <h2 className="text-2xl font-bold">{project.name}</h2>
         <p className="mt-1 text-muted">{project.organization}</p>
@@ -117,6 +116,6 @@ export default async function ProjectDetailPage({
           )}
         </Card>
       </div>
-    </DashboardShell>
+    </>
   );
 }

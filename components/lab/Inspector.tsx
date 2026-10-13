@@ -12,6 +12,7 @@ import { getPart, partHref } from "@/lib/parts";
 import { getPinout, pinTone } from "@/lib/lab/pinout";
 import { useLab } from "@/lib/lab/store";
 import type { DeviceMode } from "@/lib/lab/types";
+import { VIEW_COPY } from "@/lib/ui/views";
 import { cn } from "@/lib/utils";
 import { FaultList } from "./FaultList";
 import { InputsPanel } from "./InputsPanel";
@@ -98,9 +99,9 @@ function NodeInspector({ id }: { id: string }) {
               size="sm"
               className="mt-3 w-full"
               options={[
-                { id: "model", label: "3D", icon: <Box className="size-3.5" aria-hidden />, description: "3D model" },
-                { id: "plan", label: "Top", icon: <Grid2x2 className="size-3.5" aria-hidden />, description: "Top view" },
-                { id: "flow", label: "Flow", icon: <Zap className="size-3.5" aria-hidden />, description: "Current flow" },
+                { id: "model", label: VIEW_COPY["3d"].label, icon: <Box className="size-3.5" aria-hidden />, description: VIEW_COPY["3d"].description },
+                { id: "plan", label: VIEW_COPY["2d"].label, icon: <Grid2x2 className="size-3.5" aria-hidden />, description: VIEW_COPY["2d"].description },
+                { id: "flow", label: VIEW_COPY.trace.label, icon: <Zap className="size-3.5" aria-hidden />, description: VIEW_COPY.trace.description },
               ]}
             />
             <div className="mt-2 h-52 overflow-hidden rounded-[12px] border border-border bg-canvas">
@@ -268,7 +269,7 @@ function Overview() {
       </div>
       <Section title={`Problems${analysis.faults.length ? ` · ${analysis.faults.length}` : ""}`}>
         <FaultList faults={analysis.faults} />
-        {errors ? <p className="mt-2 text-[11.5px] text-muted">Switch to Current flow to see where current stops.</p> : null}
+        {errors ? <p className="mt-2 text-[11.5px] text-muted">Switch to Trace to see where current stops.</p> : null}
       </Section>
       <Section title="Real hardware">
         <RealHardware />

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { LaboratoryPanel } from "@/components/laboratory/laboratory-panel";
 import { api } from "@/lib/api-client";
 import type { ComponentSearchHit, ControllerSpec } from "@/lib/types";
@@ -18,7 +17,7 @@ export default async function LaboratoryPage() {
   }
 
   return (
-    <DashboardShell activePath="/laboratory">
+    <>
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">Laboratory</h2>
@@ -40,6 +39,6 @@ export default async function LaboratoryPage() {
         </Link>
       </div>
       <LaboratoryPanel controllers={controllers} componentHits={components} />
-    </DashboardShell>
+    </>
   );
 }

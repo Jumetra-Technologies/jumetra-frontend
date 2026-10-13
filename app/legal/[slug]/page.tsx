@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { ContentRenderer } from "@/components/learning/ContentRenderer";
 import { Breadcrumbs } from "@/components/learning/Navigation";
 import { TableOfContents } from "@/components/learning/TableOfContents";
@@ -34,7 +33,7 @@ export default async function LegalPage({ params }: LegalPageProps) {
   const others = LEGAL_DOCUMENTS.filter((item) => item.slug !== document.slug);
 
   return (
-    <DashboardShell activePath="/legal">
+    <>
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Legal", href: "/legal" }, { label: document.title }]} />
 
       <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_14rem]">
@@ -77,6 +76,6 @@ export default async function LegalPage({ params }: LegalPageProps) {
           </div>
         </aside>
       </div>
-    </DashboardShell>
+    </>
   );
 }

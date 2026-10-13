@@ -5,7 +5,7 @@ import type { Block } from "@/lib/learning/types";
  *
  * These are drafts written to match how Kiungo works today (browser storage,
  * Google sign-in, a backend that can drive real hardware). Each page shows a
- * notice that they are not yet in force until Jumetra Technologies has
+ * notice that they are not yet in force until Kiungo Labs Technologies has
  * reviewed them.
  */
 export interface LegalDocument {
@@ -18,9 +18,9 @@ export interface LegalDocument {
 }
 
 export const DRAFT_NOTICE =
-  "This is a draft prepared for review by Jumetra Technologies. It describes how Kiungo works today and is not yet in force.";
+  "This is a draft prepared for review by Kiungo Labs Technologies. It describes how Kiungo works today and is not yet in force.";
 
-const CONTACT = "Questions go to Jumetra Technologies through [github.com/Jumetra-Technologies](https://github.com/Jumetra-Technologies).";
+const CONTACT = "Questions go to Kiungo Labs Technologies through [github.com/Jumetra-Technologies](https://github.com/Jumetra-Technologies).";
 
 export const LEGAL_DOCUMENTS: LegalDocument[] = [
   {
@@ -32,7 +32,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       { type: "h2", text: "What Kiungo is" },
       {
         type: "p",
-        text: "Kiungo (formerly HHIP, the Universal Hybrid Hardware Simulation System) is a web platform made by Jumetra Technologies for learning, simulating and building robotics and IoT projects. It is in its first phase, a proof of concept. Features may change, move or be removed as the platform develops.",
+        text: "Kiungo (formerly HHIP, the Universal Hybrid Hardware Simulation System) is a web platform made by Kiungo Labs Technologies for learning, simulating and building robotics and IoT projects. It is in its first phase, a proof of concept. Features may change, move or be removed as the platform develops.",
       },
       { type: "h2", text: "Using Kiungo" },
       {
@@ -47,7 +47,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       { type: "h2", text: "Your work" },
       {
         type: "p",
-        text: "Projects, circuits, code, experiment records and reports you create are yours. Jumetra Technologies does not claim ownership of them. Where Kiungo stores them on your behalf, you give us permission to keep, display and process them so the platform can work, and nothing more.",
+        text: "Projects, circuits, code, experiment records and reports you create are yours. Kiungo Labs Technologies does not claim ownership of them. Where Kiungo stores them on your behalf, you give us permission to keep, display and process them so the platform can work, and nothing more.",
       },
       { type: "h2", text: "Real hardware" },
       {
@@ -59,7 +59,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       { type: "h2", text: "No warranty" },
       {
         type: "p",
-        text: "Kiungo is provided as it is, without warranties of any kind. We do not promise that it will be available, accurate or free of errors, or that simulated behaviour matches real components. To the extent the law allows, Jumetra Technologies is not liable for loss or damage arising from your use of Kiungo, including damage to hardware.",
+        text: "Kiungo is provided as it is, without warranties of any kind. We do not promise that it will be available, accurate or free of errors, or that simulated behaviour matches real components. To the extent the law allows, Kiungo Labs Technologies is not liable for loss or damage arising from your use of Kiungo, including damage to hardware.",
       },
       { type: "h2", text: "Changes and ending" },
       {
@@ -103,7 +103,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       { type: "h2", text: "Content you upload" },
       {
         type: "p",
-        text: "Anything you upload stays yours. By uploading it you confirm you have the right to, and you give Jumetra Technologies a licence to store and process it so Kiungo can show it back to you and to anyone you share it with. That licence ends when you delete the content or close your account, except for copies in routine backups, which expire on their own.",
+        text: "Anything you upload stays yours. By uploading it you confirm you have the right to, and you give Kiungo Labs Technologies a licence to store and process it so Kiungo can show it back to you and to anyone you share it with. That licence ends when you delete the content or close your account, except for copies in routine backups, which expire on their own.",
       },
       { type: "h2", text: "Closing your account" },
       {

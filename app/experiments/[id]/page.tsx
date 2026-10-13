@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { DriftChart, SyncOffsetChart } from "@/components/charts/charts";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -40,7 +39,7 @@ export default async function ExperimentDetailPage({
   }));
 
   return (
-    <DashboardShell activePath="/experiments">
+    <>
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">{experiment.name}</h2>
@@ -109,6 +108,6 @@ export default async function ExperimentDetailPage({
           </div>
         )}
       </Card>
-    </DashboardShell>
+    </>
   );
 }

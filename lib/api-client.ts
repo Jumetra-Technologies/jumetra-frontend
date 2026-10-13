@@ -113,7 +113,7 @@ async function fetchJson<T>(path: string, init?: RequestInit, timeoutMs?: number
       }
       const hint =
         typeof window !== "undefined"
-          ? `Cannot reach the Jumetra API at ${API_BASE}. Check that the backend is running and that NEXT_PUBLIC_API_URL is correct.`
+          ? `Cannot reach the Kiungo API at ${API_BASE}. Check that the backend is running and that NEXT_PUBLIC_API_URL is correct.`
           : "";
       const message = err instanceof Error ? err.message : "Network error";
       throw new Error(hint ? `${message}. ${hint}` : message);

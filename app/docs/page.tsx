@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BookOpen, Cable, FileText, Workflow } from "lucide-react";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { CategoryIcon } from "@/components/learning/CategoryIcon";
 import { DocsSearch } from "@/components/learning/DocsSearch";
 import { Card } from "@/components/ui/card";
@@ -28,7 +27,7 @@ const START_HERE = [
 
 export default function DocumentationPage() {
   return (
-    <DashboardShell activePath="/docs">
+    <>
       <div className="mb-8 max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Documentation Center</p>
         <h2 className="mt-2 text-3xl font-bold tracking-tight">Kiungo documentation</h2>
@@ -97,6 +96,6 @@ export default function DocumentationPage() {
           ))}
         </div>
       </section>
-    </DashboardShell>
+    </>
   );
 }

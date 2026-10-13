@@ -1,4 +1,3 @@
-import { DashboardShell } from "@/components/layout/sidebar";
 import { ComparisonBarChart } from "@/components/charts/charts";
 import { Card } from "@/components/ui/card";
 import { api } from "@/lib/api-client";
@@ -48,7 +47,7 @@ export default async function ComparisonPage() {
       : "Run both fixed and adaptive experiments to enable comparison.";
 
   return (
-    <DashboardShell activePath="/comparison">
+    <>
       <div className="mb-8">
         <h2 className="text-2xl font-bold">Fixed vs Adaptive Comparison</h2>
         <p className="mt-1 text-zinc-500">Research comparison between synchronization strategies</p>
@@ -106,6 +105,6 @@ export default async function ComparisonPage() {
           </Card>
         </>
       )}
-    </DashboardShell>
+    </>
   );
 }

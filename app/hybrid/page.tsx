@@ -1,4 +1,3 @@
-import { DashboardShell } from "@/components/layout/sidebar";
 import { HybridPanel } from "@/components/hybrid/hybrid-panel";
 import { api } from "@/lib/api-client";
 import type { ComponentSearchHit, ControllerSpec } from "@/lib/types";
@@ -17,7 +16,7 @@ export default async function HybridPage() {
   }
 
   return (
-    <DashboardShell activePath="/hybrid">
+    <>
       <div className="mb-8">
         <h2 className="text-2xl font-bold">Hybrid Hardware Bridge</h2>
         <p className="mt-1 text-muted">
@@ -25,6 +24,6 @@ export default async function HybridPage() {
         </p>
       </div>
       <HybridPanel controllers={controllers} componentHits={components} />
-    </DashboardShell>
+    </>
   );
 }

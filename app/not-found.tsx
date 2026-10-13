@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { KiungoMark } from "@/components/brand/KiungoMark";
-import { DashboardShell } from "@/components/layout/sidebar";
 
 /** A broken link, drawn with the mark: the two links of the K come apart. */
 export default function NotFound() {
   return (
-    <DashboardShell activePath="">
+    <>
       <div className="mx-auto flex min-h-[70svh] max-w-lg flex-col items-center justify-center text-center" data-testid="not-found">
         <KiungoMark state="broken" className="size-32" title="The Kiungo mark, its two links pulled apart" />
         <p className="mt-8 font-mono text-xs font-semibold uppercase tracking-[0.16em] text-muted">404</p>
@@ -25,6 +24,6 @@ export default function NotFound() {
           </Link>
         </div>
       </div>
-    </DashboardShell>
+    </>
   );
 }

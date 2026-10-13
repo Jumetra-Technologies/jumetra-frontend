@@ -242,7 +242,7 @@ npm run dev                      # http://localhost:3000`,
         head: ["Symptom", "Likely cause and fix"],
         rows: [
           [
-            "\"Cannot reach the Jumetra API\"",
+            "\"Cannot reach the Kiungo API\"",
             "The backend is not running, or `NEXT_PUBLIC_API_URL` points somewhere else. Start the backend and restart the frontend.",
           ],
           [

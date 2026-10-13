@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckCircle2, Clock } from "lucide-react";
-import { DashboardShell } from "@/components/layout/sidebar";
 import { ContentRenderer } from "@/components/learning/ContentRenderer";
 import { Breadcrumbs, PrevNext } from "@/components/learning/Navigation";
 import { MarkCompleteButton } from "@/components/learning/ProgressControls";
@@ -43,7 +42,7 @@ export default async function LearningModulePage({ params }: ModulePageProps) {
   const relatedDocs = resolveRelatedArticles(lesson.relatedDocs);
 
   return (
-    <DashboardShell activePath="/learn">
+    <>
       <Breadcrumbs
         items={[
           { label: "Learning Center", href: "/learn" },
@@ -123,6 +122,6 @@ export default async function LearningModulePage({ params }: ModulePageProps) {
           </div>
         </aside>
       </div>
-    </DashboardShell>
+    </>
   );
 }

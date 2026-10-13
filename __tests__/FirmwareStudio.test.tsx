@@ -62,7 +62,7 @@ describe("Embedded Studio opening", () => {
     expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(expect.arrayContaining(["Blink", "DHT11", "MQTT"]));
   });
 
-  it("says the server is waking up when nothing has answered after a few seconds", async () => {
+  it("says Kiungo is getting ready when nothing has answered after a few seconds", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     routes["/firmware/projects"] = never;
     routes["/firmware/templates"] = never;
@@ -71,7 +71,7 @@ describe("Embedded Studio opening", () => {
       vi.advanceTimersByTime(4100);
     });
     expect(screen.getByTestId("connection-bar")).toHaveAttribute("data-state", "slow");
-    expect(screen.getByTestId("connection-bar")).toHaveTextContent(/waking up/);
+    expect(screen.getByTestId("connection-bar")).toHaveTextContent(/getting ready/);
   });
 
   it("shows each list as it lands, then clears the bar, and remembers the lists for next time", async () => {

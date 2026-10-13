@@ -10,6 +10,26 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.12.0] - 2026-10-13
+
+### Removed
+- The **Platform** tile in Settings (API URL, WebSocket address, workspace product). Settings now has Appearance and Profile. The same details are in System Diagnostics, for administrators.
+
+### Changed
+- Screens and messages no longer show technical details. Each change below says the same thing in plain words:
+  - **Engineering Lab:** the status pill reads Online, Saving, Connecting or Offline mode. It no longer mentions a "runtime" or a "backend". The Inspector and Real hardware notes say real boards join when Kiungo is online.
+  - **Firmware:** reads "Connecting…" and "Kiungo is getting ready…", not "the Kiungo server is waking up". Build progress no longer shows job ids.
+  - **Laboratory:** no longer prints the API address.
+  - **Projects:** "Read-only API records" is now "Shared records (read-only)".
+  - **Experiment Records:** no longer mentions "the connected API".
+  - **Profile and sign-in:** messages no longer mention "Kiungo's server".
+  - **Legal pages:** say "Kiungo's servers" instead of "the Kiungo backend".
+  - **Documentation home:** the "Run Kiungo locally" card says it's for contributors.
+- Developer documentation (Run locally, API and environment, Architecture) and the administrators' System Diagnostics keep their technical content on purpose.
+
+### Added
+- A test that fails if user-facing code mentions the API, the backend, servers, sockets, runtime, gateways or service addresses (outside System Diagnostics and the architecture docs).
+
 ## [1.11.0] - 2026-10-13
 
 ### Changed
@@ -183,6 +203,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.12.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.8.0...v1.9.0

@@ -199,7 +199,7 @@ export function ProjectHub({ serverProjects, startCreating = false }: { serverPr
         <section className="mt-10" aria-labelledby="connected-projects-heading">
           <div className="mb-3 flex items-center justify-between">
             <h3 id="connected-projects-heading" className="text-sm font-semibold">Connected platform projects</h3>
-            <span className="text-xs text-muted">Read-only API records</span>
+            <span className="text-xs text-muted">Shared records (read-only)</span>
           </div>
           <div className="divide-y divide-border border-y border-border">
             {serverProjects.map((project) => (

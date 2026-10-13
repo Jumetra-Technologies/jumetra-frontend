@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 type Notice = { tone: "ok" | "info" | "error"; text: string } | null;
 type Confirm = "clear" | "delete" | null;
 
-const DEVICE_NOTE = "Saved on this device. Kiungo's server can't store profile details yet, so they won't follow you to other devices until it can.";
+const DEVICE_NOTE = "Saved on this device. For now, profile details stay on the device where you entered them.";
 
 /**
  * The signed-in user's profile: view, edit and save, clear details, or

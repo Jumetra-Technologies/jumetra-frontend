@@ -86,7 +86,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         type: "ul",
         items: [
           "Projects, experiment records and reports are saved in your browser's local storage on the device you use. They are not uploaded unless a feature says so. Clearing site data removes them, and they do not follow you to another device.",
-          "Engineering Lab workspaces, simulations, firmware projects and hybrid experiments are processed by the Kiungo backend so they can run.",
+          "Engineering Lab workspaces, simulations, firmware projects and hybrid experiments are processed by Kiungo's servers so they can run.",
           "Learning progress and your theme choice are saved in your browser.",
         ],
       },
@@ -108,7 +108,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       { type: "h2", text: "Closing your account" },
       {
         type: "p",
-        text: "Ask us to close your account at any time. We will remove your account record and the data tied to it from the backend within 30 days. Work saved in your browser is yours to delete by clearing site data for Kiungo.",
+        text: "Ask us to close your account at any time. We will remove your account record and the data tied to it from Kiungo's servers within 30 days. Work saved in your browser is yours to delete by clearing site data for Kiungo.",
       },
       { type: "h2", text: "Contact" },
       { type: "p", text: CONTACT },
@@ -139,7 +139,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         items: [
           "Use Kiungo to control hardware that could injure someone or damage property without the safeguards a competent person would expect: fuses, current limits, emergency stops, supervision.",
           "Upload or run firmware designed to damage a board, bypass its protections, or attack other devices or networks.",
-          "Probe, overload or interfere with the Kiungo backend or other users' sessions.",
+          "Probe, overload or interfere with Kiungo's servers or other users' sessions.",
           "Use Kiungo to break the law, infringe copyright, or harass anyone.",
           "Scrape or bulk-download the component library, documentation or other users' content for redistribution.",
         ],
@@ -153,7 +153,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       { type: "h2", text: "Enforcement" },
       {
         type: "p",
-        text: "We may remove content, suspend accounts or block access to the backend to stop a breach of this policy. Serious or repeated breaches may lead to a closed account. Where we can, we will tell you what happened and why.",
+        text: "We may remove content, suspend accounts or block access to Kiungo to stop a breach of this policy. Serious or repeated breaches may lead to a closed account. Where we can, we will tell you what happened and why.",
       },
       { type: "h2", text: "Contact" },
       { type: "p", text: CONTACT },
@@ -174,11 +174,11 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         type: "table",
         head: ["Data", "Where it comes from", "Why", "Where it is kept"],
         rows: [
-          ["Name, email address, profile picture", "Google, when you sign in", "To identify you inside Kiungo", "Kiungo backend and your browser's local storage"],
+          ["Name, email address, profile picture", "Google, when you sign in", "To identify you inside Kiungo", "Kiungo's servers and your browser's local storage"],
           ["Projects, experiment records, reports", "You", "So you can plan and document your work", "Your browser's local storage only"],
-          ["Workspaces, simulations, firmware projects, hybrid experiments", "You, while using the Engineering Lab", "To run them", "Kiungo backend"],
+          ["Workspaces, simulations, firmware projects, hybrid experiments", "You, while using the Engineering Lab", "To run them", "Kiungo's servers"],
           ["Theme, sidebar state, learning progress", "You", "To remember your preferences", "Your browser's local storage only"],
-          ["Technical logs (requests, errors)", "Your browser's requests to the backend", "To keep Kiungo running and find faults", "Kiungo backend, for a limited time"],
+          ["Technical logs (requests, errors)", "Your browser's requests to Kiungo", "To keep Kiungo running and find faults", "Kiungo's servers, for a limited time"],
         ],
         caption: "Everything Kiungo collects",
       },
@@ -200,7 +200,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         type: "ul",
         items: [
-          "Use Kiungo without signing in. Only the features that need the backend will ask you to.",
+          "Use Kiungo without signing in. Only the features that need an account will ask you to.",
           "Delete work saved in your browser by clearing site data for Kiungo.",
           "Ask us to close your account and remove the data tied to it. See the [User Agreement](/legal/user-agreement).",
           "Ask us what we hold about you, and to correct it.",
@@ -228,7 +228,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
     blocks: [
       {
         type: "p",
-        text: "Kiungo does not set cookies. It keeps a small number of values in your browser's local storage so the app can remember you and your preferences between visits. Local storage never leaves your device unless a feature sends it to the Kiungo backend, and nothing in it is used for advertising or tracking.",
+        text: "Kiungo does not set cookies. It keeps a small number of values in your browser's local storage so the app can remember you and your preferences between visits. Local storage never leaves your device unless a feature sends it to Kiungo's servers, and nothing in it is used for advertising or tracking.",
       },
       { type: "h2", text: "What Kiungo keeps in your browser" },
       {

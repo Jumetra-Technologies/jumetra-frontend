@@ -22,7 +22,7 @@ const WORKFLOW = [
 const START_HERE = [
   { href: "/docs/system-overview/what-is-kiungo", title: "What is Kiungo?", text: "The purpose and vision of the platform." },
   { href: "/learn", title: "Learning Center", text: "A guided path from first circuit to hybrid projects." },
-  { href: "/docs/technical-guides/run-locally", title: "Run Kiungo locally", text: "Start the backend and frontend on your machine." },
+  { href: "/docs/technical-guides/run-locally", title: "Run Kiungo locally", text: "For contributors: run Kiungo on your own machine." },
 ];
 
 export default function DocumentationPage() {

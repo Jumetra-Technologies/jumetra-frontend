@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
-import { API_BASE, api } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import type { ComponentSearchHit, ControllerSpec, LaboratorySession } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -148,7 +148,6 @@ export function LaboratoryPanel({
           </div>
         ) : null}
         {error ? <ErrorNotice message={error} className="mt-3" /> : null}
-        <p className="mt-4 font-mono text-xs text-muted">API: {API_BASE}</p>
       </Card>
 
       <div>

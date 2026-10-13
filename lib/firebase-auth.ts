@@ -35,7 +35,7 @@ async function initializeFirebaseAuth(): Promise<Auth> {
       headers: { Accept: "application/json" },
     });
   } catch {
-    throw new Error("Couldn't reach the Kiungo server to start Google sign-in. Check your connection and try again.");
+    throw new Error("Google sign-in couldn't start. Check your connection and try again.");
   }
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as { detail?: string } | null;

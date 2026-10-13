@@ -30,14 +30,16 @@ describe("SettingsDialog", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("opens as a modal with appearance, platform and profile tiles", () => {
+  it("opens as a modal with appearance and profile tiles, and no technical details", () => {
     renderDialog();
     act(() => openSettings());
     const dialog = screen.getByRole("dialog", { name: "Settings" });
     expect(dialog).toHaveAttribute("aria-modal", "true");
-    for (const name of ["Appearance", "Platform", "Profile"]) {
+    for (const name of ["Appearance", "Profile"]) {
       expect(within(dialog).getByRole("heading", { name })).toBeInTheDocument();
     }
+    expect(within(dialog).queryByRole("heading", { name: "Platform" })).toBeNull();
+    expect(dialog.textContent).not.toMatch(/API|WebSocket|https?:\/\/|wss?:\/\/|cloudfunctions|run\.app/);
     expect(within(dialog).getByText("Not signed in")).toBeInTheDocument();
     expect(within(dialog).getByTestId("app-version")).toHaveTextContent(/^Kiungo v/);
     expect(within(dialog).getAllByRole("radio").length).toBeGreaterThanOrEqual(7);

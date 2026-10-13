@@ -1,11 +1,10 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
-import { Palette, Server, X } from "lucide-react";
+import { Palette, X } from "lucide-react";
 import { ProfileTile } from "@/components/account/ProfileTile";
 import { SpinningBoard } from "@/components/diagnostics/SpinningBoard";
 import { ThemeSettings } from "@/components/theme/theme-settings";
-import { API_BASE, wsUrl } from "@/lib/api-client";
 import { closeSettings, useSettingsOpen } from "@/lib/settings-dialog";
 import { ModalShell } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
@@ -36,26 +35,6 @@ function Tile({
   );
 }
 
-function PlatformDetails() {
-  const ws = wsUrl("/").replace(/\/$/, "");
-  return (
-    <dl className="space-y-3 text-sm">
-      <div>
-        <dt className="text-xs text-muted">API URL</dt>
-        <dd className="mt-0.5 break-all font-mono text-[13px] text-foreground">{API_BASE}</dd>
-      </div>
-      <div>
-        <dt className="text-xs text-muted">Live updates (WebSocket)</dt>
-        <dd className="mt-0.5 break-all font-mono text-[13px] text-foreground">{ws}</dd>
-      </div>
-      <div>
-        <dt className="text-xs text-muted">Workspace product</dt>
-        <dd className="mt-0.5 text-foreground">Kiungo Engineering Laboratory</dd>
-      </div>
-    </dl>
-  );
-}
-
 /**
  * Settings as a modal over the current page: the page dims behind it and
  * the settings appear as a grid of tiles. Escape, the close button or a
@@ -75,7 +54,7 @@ export function SettingsDialog() {
             Settings
           </h2>
           <p id={descriptionId} className="mt-0.5 text-sm text-muted">
-            Appearance, platform connection and your profile.
+            Appearance and your profile.
           </p>
         </div>
         <button
@@ -96,9 +75,6 @@ export function SettingsDialog() {
           className="md:col-span-2"
         >
           <ThemeSettings className="sm:grid-cols-2 lg:grid-cols-4" />
-        </Tile>
-        <Tile icon={Server} title="Platform" description="Where this app sends requests and listens for live updates.">
-          <PlatformDetails />
         </Tile>
         <ProfileTile />
       </div>

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArchitectureExplorer } from "@/components/architecture/ArchitectureExplorer";
+import { Breadcrumbs } from "@/components/learning/Navigation";
 
 export const metadata: Metadata = {
-  title: "System architecture",
+  title: "System architecture · Kiungo Documentation",
   description:
     "How the Kiungo web platform, the future desktop app, the communication layer and virtual and physical hardware connect, from Phase One to Phase Two.",
 };
@@ -12,12 +13,13 @@ const FURTHER_READING = [
   { href: "/docs/system-overview/how-kiungo-works", label: "How Kiungo works" },
   { href: "/docs/technical-guides/device-modes", label: "Device modes" },
   { href: "/docs/system-overview/development-phases", label: "Development phases" },
-  { href: "/roadmap", label: "Roadmap" },
+  { href: "/docs/roadmap", label: "Roadmap and phases" },
 ];
 
 export default function ArchitecturePage() {
   return (
     <>
+      <Breadcrumbs items={[{ label: "Documentation", href: "/docs" }, { label: "Architecture" }]} />
       <div className="mb-6 max-w-3xl">
         <h2 className="text-3xl font-bold tracking-tight">How Kiungo fits together</h2>
         <p className="mt-2 text-sm leading-6 text-muted">

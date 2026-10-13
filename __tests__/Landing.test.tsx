@@ -5,6 +5,7 @@ import { HeroBoard } from "@/components/landing/HeroBoard";
 import { HybridSwitch } from "@/components/landing/HybridSwitch";
 import { LandingPage } from "@/components/landing/LandingPage";
 import { NAV_ITEMS } from "@/components/layout/nav-items";
+import { DOC_PAGES } from "@/lib/learning/doc-pages";
 import { HARDWARE_ASSETS } from "@/lib/hardware/asset-data";
 import { COUNTS, FOOTER, HERO, HYBRID, LEARN, LIBRARY, SEO, SIGN_UP, SIMULATE, structuredData } from "@/lib/landing/content";
 import { ARTICLES, DOC_CATEGORIES, FAQ_ITEMS, MODULES, getArticle, getModule } from "@/lib/learning";
@@ -15,7 +16,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
 }));
 
-const STATIC_ROUTES = new Set([...NAV_ITEMS.map((item) => item.href), "/legal"]);
+const STATIC_ROUTES = new Set([...NAV_ITEMS.map((item) => item.href), ...DOC_PAGES.map((page) => page.href), "/legal"]);
 
 /** True when an internal href points at a page or anchor that exists. */
 export function routeExists(href: string): boolean {

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Cable, FileText, Workflow } from "lucide-react";
+import { ArrowRight, BookOpen, Cable, FileText, Map as MapIcon, Network, Workflow } from "lucide-react";
 import { CategoryIcon } from "@/components/learning/CategoryIcon";
 import { DocsSearch } from "@/components/learning/DocsSearch";
 import { Card } from "@/components/ui/card";
-import { DOC_CATEGORIES, MODULES, getArticlesByCategory } from "@/lib/learning";
+import { DOC_CATEGORIES, DOC_PAGES, MODULES, getArticlesByCategory } from "@/lib/learning";
 
 export const metadata: Metadata = {
   title: "Documentation Center",
@@ -57,6 +57,31 @@ export default function DocumentationPage() {
               <ArrowRight className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden />
             </Link>
           ))}
+        </div>
+      </section>
+
+      <section className="mb-12" aria-labelledby="platform-heading">
+        <h3 id="platform-heading" className="mb-4 text-lg font-semibold">The platform</h3>
+        <div className="grid gap-3 md:grid-cols-2">
+          {DOC_PAGES.map((page) => {
+            const Icon = page.href === "/docs/architecture" ? Network : MapIcon;
+            return (
+              <Link
+                key={page.href}
+                href={page.href}
+                className="group flex items-start gap-4 rounded-[14px] border border-border bg-surface p-5 shadow-[var(--shadow-sm)] transition-colors hover:bg-muted-bg"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-primary/10 text-primary">
+                  <Icon className="size-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">{page.title}</span>
+                  <span className="mt-1 block text-xs leading-5 text-muted">{page.summary}</span>
+                </span>
+                <ArrowRight className="mt-1 size-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden />
+              </Link>
+            );
+          })}
         </div>
       </section>
 

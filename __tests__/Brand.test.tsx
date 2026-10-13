@@ -52,11 +52,13 @@ describe("rename", () => {
     expect(JSON.stringify(article?.blocks)).toContain("Swahili for a link");
   });
 
-  it("leaves HHIP only where it names the old product or a backend setting", () => {
+  it("leaves HHIP only where it names the old product, the rename, or a backend setting", () => {
     const hits = execSync("grep -rnw HHIP app components lib --include=*.ts --include=*.tsx || true", { encoding: "utf8" })
       .split("\n")
       .filter(Boolean)
-      .filter((line) => !/formerly HHIP|became Kiungo|alternateName/.test(line));
+      // lib/roadmap.ts is the project's history, which records the rename (agreed by the team, v1.8.0).
+      .filter((line) => !line.startsWith("lib/roadmap.ts:"))
+      .filter((line) => !/formerly HHIP|became Kiungo|alternateName|until it was renamed|from HHIP to Kiungo/.test(line));
     expect(hits).toEqual([]);
   });
 });

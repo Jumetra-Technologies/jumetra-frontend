@@ -16,6 +16,9 @@ const nextConfig = {
       { source: "/learn/getting-started-with-hhip", destination: "/learn/getting-started-with-kiungo", permanent: true },
       // System Diagnostics was removed (v1.6.1); its metrics are in Advanced Analytics.
       { source: "/dashboard", destination: "/analytics", permanent: true },
+      // Architecture and Roadmap moved into Documentation (v1.8.0).
+      { source: "/architecture", destination: "/docs/architecture", permanent: true },
+      { source: "/roadmap", destination: "/docs/roadmap", permanent: true },
     ];
   },
   env: {

@@ -191,7 +191,9 @@ describe("simulation", () => {
     const analysis = analyze([esp, dht, oled], wires);
     const frame = frameAt([esp, dht, oled], wires, analysis, 3, true);
     expect(frame.nodes[dht.id].readings[0].label).toBe("Temperature");
-    expect(frame.nodes[oled.id].text?.[0]).toMatch(/^DHT22 \d+\.\d °C$/);
+    // The display shows the sensor's readings as the sketch formats them, one per line.
+    expect(frame.nodes[oled.id].text?.[0]).toMatch(/^Temp: \d+\.\d °C$/);
+    expect(frame.nodes[oled.id].text?.[1]).toMatch(/^Hum: \d+ %$/);
     expect(serialLine([esp, dht, oled], frame)).toMatch(/^\[3\.0s\] DHT22: .* °C/);
   });
 

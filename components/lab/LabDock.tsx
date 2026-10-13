@@ -214,9 +214,9 @@ function Signals() {
     const t1 = frame.t;
     return Array.from({ length: SAMPLES + 1 }, (_, i) => {
       const t = Math.max(0, t1 - WINDOW + (i * WINDOW) / SAMPLES);
-      return frameAt(session.nodes, session.wires, analysis, t, running || frame.t > 0).pins;
+      return frameAt(session.nodes, session.wires, analysis, t, running || frame.t > 0, session.inputs).pins;
     });
-  }, [traces.length, frame.t, session.nodes, session.wires, analysis, running]);
+  }, [traces.length, frame.t, session.nodes, session.wires, session.inputs, analysis, running]);
 
   if (!traces.length) {
     return <p className="p-4 text-[13px] text-muted">Wire a part to a board to see its signals over time, like a logic analyser.</p>;

@@ -16,11 +16,12 @@ import {
   type Edge,
   type Node,
   type NodeChange,
-  type OnSelectionChangeParams,
+  type EdgeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { getPinout, pinTone, type LabPin } from "@/lib/lab/pinout";
 import { nodeLayout } from "@/lib/lab/layout";
+import { nextSelection } from "@/lib/lab/selection";
 import { useLab } from "@/lib/lab/store";
 import type { LabNode, LabWire } from "@/lib/lab/types";
 import { useLabContext } from "./lab-context";
@@ -139,14 +140,35 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
     [flow, session.nodes],
   );
 
+  // Selection: React Flow reports what the user did, the lab owns the result
+  // (see lib/lab/selection.ts for why onSelectionChange isn't used). The ref
+  // holds the latest selection so node and edge changes from one click
+  // compose instead of the second overwriting the first.
+  const selectionRef = useRef({ nodes: selectedNodes, wire: selectedWire, select });
+  useEffect(() => {
+    selectionRef.current = { nodes: selectedNodes, wire: selectedWire, select };
+  }, [selectedNodes, selectedWire, select]);
+  const applySelection = useCallback((nodeChanges: NodeChange[], edgeChanges: EdgeChange[]) => {
+    const current = selectionRef.current;
+    const next = nextSelection(current, nodeChanges, edgeChanges);
+    if (!next) return;
+    selectionRef.current = { ...current, ...next };
+    current.select(next.nodes, next.wire);
+  }, []);
+
   const onNodesChange = useCallback(
     (changes: NodeChange<Node<PartNodeData>>[]) => {
       // Removal goes through the store (with undo), not React Flow's own state.
       const kept = changes.filter((c) => c.type !== "remove");
       if (kept.length) onNodesChangeBase(kept);
+      applySelection(kept, []);
     },
-    [onNodesChangeBase],
+    [onNodesChangeBase, applySelection],
   );
+
+  // Wires live in the store; only their selection comes from React Flow
+  // (deleting goes through onEdgesDelete).
+  const onEdgesChange = useCallback((changes: EdgeChange[]) => applySelection([], changes), [applySelection]);
 
   const onConnect = useCallback(
     (c: Connection) => {
@@ -157,18 +179,6 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
     },
     [addWire, select],
   );
-
-  // A stable handler: React Flow re-reports its (possibly stale) selection
-  // whenever this callback changes identity, which would fight our state.
-  const selectionRef = useRef({ nodes: selectedNodes, wire: selectedWire, select });
-  selectionRef.current = { nodes: selectedNodes, wire: selectedWire, select };
-  const onSelectionChange = useCallback(({ nodes: ns, edges: es }: OnSelectionChangeParams) => {
-    const current = selectionRef.current;
-    const ids = ns.map((n) => n.id);
-    const wire = ids.length ? null : (es[0]?.id ?? null);
-    if (ids.join() === current.nodes.join() && wire === current.wire) return;
-    current.select(ids, wire);
-  }, []);
 
   return (
     <div
@@ -194,10 +204,10 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         connectionMode={ConnectionMode.Loose}
         connectionRadius={22}
-        onSelectionChange={onSelectionChange}
         onNodeDragStop={(_, node, dragged) => {
           for (const n of dragged?.length ? dragged : [node]) moveNode(n.id, n.position.x, n.position.y);
         }}

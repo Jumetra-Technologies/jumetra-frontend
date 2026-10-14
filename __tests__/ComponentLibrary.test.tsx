@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { PartThumb } from "@/components/library/PartThumb";
 import { ComponentLibrary } from "@/components/library/ComponentLibrary";
 import { PartDetail } from "@/components/library/PartDetail";
 import { analyze } from "@/lib/lab/circuit";
@@ -308,13 +311,36 @@ describe("ComponentLibrary", () => {
 
   it("filters the list by search and says how many match", () => {
     render(<ComponentLibrary initialQuery="nrf24" />);
-    expect(screen.getByText(/1 part matches/)).toBeInTheDocument();
+    expect(screen.getByText(/part matches “nrf24”/).parentElement).toHaveTextContent("1part matches “nrf24”");
     const nav = screen.getByRole("navigation");
     expect(within(nav).getAllByRole("button")).toHaveLength(1);
     fireEvent.change(screen.getByRole("searchbox", { name: /Search parts/ }), { target: { value: "no such part" } });
     expect(screen.getByText(/Nothing matches/)).toBeInTheDocument();
     fireEvent.change(screen.getByRole("searchbox", { name: /Search parts/ }), { target: { value: "" } });
     expect(screen.getByText(/35 parts in 6 groups, most common first/)).toBeInTheDocument();
+  });
+
+  it("has one clear button, removes the search icon while typing, and clears on Escape", () => {
+    render(<ComponentLibrary />);
+    const box = screen.getByRole("searchbox", { name: /Search parts/ });
+    expect(screen.getByTestId("library-search-icon")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear search" })).toBeNull();
+    fireEvent.change(box, { target: { value: "bre" } });
+    expect(screen.queryByTestId("library-search-icon")).toBeNull();
+    expect(box.className).toMatch(/pl-3\.5/);
+    expect(screen.getAllByRole("button", { name: "Clear search" })).toHaveLength(1);
+    expect(screen.getByText(/parts match “bre”/)).toBeInTheDocument();
+    fireEvent.keyDown(box, { key: "Escape" });
+    expect(box).toHaveValue("");
+    expect(screen.getByTestId("library-search-icon")).toBeInTheDocument();
+    // The browser's own × is hidden for every search box, so ours is the only one.
+    const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+    expect(css).toMatch(/input\[type="search"\]::-webkit-search-cancel-button[\s\S]*?display: none/);
+  });
+
+  it("draws a breadboard's thumbnail with its holes and rail stripes, not a blank slab", () => {
+    const { container } = render(<PartThumb model={getPart("breadboard")!} />);
+    expect(container.querySelectorAll("path").length).toBeGreaterThan(3);
   });
 
   it("falls back to the first part when the address names one that does not exist", () => {

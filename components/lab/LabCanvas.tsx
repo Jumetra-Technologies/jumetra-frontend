@@ -78,7 +78,7 @@ function wireMeta(wire: LabWire, nodes: LabNode[]): WireEdgeData {
   return { tone, reverse: !forward, label };
 }
 
-const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x: number; y: number }) => void }>(function Inner({ onDropPart }, ref) {
+const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x: number; y: number }) => void; onDropFile?: (file: File) => void }>(function Inner({ onDropPart, onDropFile }, ref) {
   const { session, selectedNodes, selectedWire, select, openContextMenu, view } = useLabContext();
   const moveNode = useLab((s) => s.moveNode);
   const addWire = useLab((s) => s.addWire);
@@ -195,12 +195,19 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
       className="hhip-lab-canvas relative h-full w-full"
       data-view={view}
       onDragOver={(e) => {
-        if (e.dataTransfer.types.includes("application/hhip-part")) {
+        if (e.dataTransfer.types.includes("application/hhip-part") || (onDropFile && e.dataTransfer.types.includes("Files"))) {
           e.preventDefault();
           e.dataTransfer.dropEffect = "copy";
         }
       }}
       onDrop={(e) => {
+        // A saved build (.kiungo.json) dropped from the desktop opens as a session.
+        const file = onDropFile ? e.dataTransfer.files?.[0] : undefined;
+        if (file) {
+          e.preventDefault();
+          onDropFile!(file);
+          return;
+        }
         const partId = e.dataTransfer.getData("application/hhip-part");
         if (!partId) return;
         e.preventDefault();
@@ -257,7 +264,7 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
   );
 });
 
-export const LabCanvas = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x: number; y: number }) => void }>(function LabCanvas(props, ref) {
+export const LabCanvas = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x: number; y: number }) => void; onDropFile?: (file: File) => void }>(function LabCanvas(props, ref) {
   return (
     <ReactFlowProvider>
       <Inner {...props} ref={ref} />

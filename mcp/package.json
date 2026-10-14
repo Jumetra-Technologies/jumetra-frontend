@@ -1,0 +1,23 @@
+{
+  "name": "kiungo-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP server that lets AI models build circuits and robots in the Kiungo Engineering Lab and export them as .kiungo.json files.",
+  "type": "module",
+  "scripts": {
+    "start": "tsx --tsconfig tsconfig.json src/server.ts",
+    "start:http": "tsx --tsconfig tsconfig.json src/server.ts --http",
+    "call": "tsx --tsconfig tsconfig.json src/call.ts",
+    "test": "tsx --tsconfig tsconfig.json src/selftest.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "tsx": "^4.23.15",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5"
+  }
+}

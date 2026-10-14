@@ -10,6 +10,11 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.13.1] - 2026-10-14
+
+### Fixed
+- Engineering Lab: the Inspector's **Trace** preview showed overlapping text for every part. The Trace view was built for the Component library's large panel: a diagram, then a hover note, then the numbered steps. Squeezed into the Inspector's small fixed-height preview box, the diagram collapsed to nothing and the note and steps were drawn over each other. In the Inspector, Trace now fills the box with the diagram and shows the hover note as one line along its foot. The steps sit underneath in a collapsible "How it works". The box is a little taller in Trace. The Component library's Trace view is unchanged.
+
 ## [1.13.0] - 2026-10-13
 
 ### Added
@@ -218,6 +223,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.13.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.10.0...v1.11.0

@@ -85,7 +85,16 @@ function linkPath(link: CircuitLink, blocks: PartModel["circuit"]["blocks"]): { 
   return { d: `M ${x1} ${y1} C ${x1 + c} ${y1}, ${x2 - c} ${y2}, ${x2} ${y2}`, label: { x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 10 } };
 }
 
-export function PartFlowView({ model, powered, className }: { model: PartModel; powered: boolean; className?: string }) {
+/**
+ * How a part works inside, as blocks and the current between them.
+ *
+ * The full layout (Component library) has the diagram, a hover note and the
+ * numbered steps. `compact` is for small fixed-height boxes like the lab's
+ * Inspector: the diagram fills the box and the hover note is one line laid
+ * over its foot; the steps are left to the host to show elsewhere. (Without
+ * it, the note and steps were squeezed into the box and drawn over each other.)
+ */
+export function PartFlowView({ model, powered, className, compact = false }: { model: PartModel; powered: boolean; className?: string; compact?: boolean }) {
   const [hover, setHover] = useState<string | null>(null);
   const { blocks, links, steps } = model.circuit;
   const cols = Math.max(...blocks.map((block) => block.col)) + 1;
@@ -96,8 +105,8 @@ export function PartFlowView({ model, powered, className }: { model: PartModel; 
   const touches = (link: CircuitLink) => hover === null || link.from === hover || link.to === hover;
 
   return (
-    <div className={cn("flex h-full flex-col", className)} data-testid="part-flow">
-      <div className="min-h-0 flex-1 overflow-auto rounded-[12px] bg-canvas">
+    <div className={cn("flex h-full flex-col", compact && "relative", className)} data-testid="part-flow" data-compact={compact || undefined}>
+      <div className={cn("min-h-0 flex-1 rounded-[12px] bg-canvas", compact ? "overflow-hidden p-1.5 pb-8" : "overflow-auto")}>
         <svg viewBox={`0 0 ${width} ${height}`} className="mx-auto h-full w-full" style={{ maxWidth: width * 1.4 }} role="img" aria-label={`How the ${model.name} works inside: ${blocks.length} blocks and ${links.length} connections`}>
           <defs>
             {(Object.keys(LINK_TONE) as LinkKind[]).map((kind) => (
@@ -161,26 +170,40 @@ export function PartFlowView({ model, powered, className }: { model: PartModel; 
         </svg>
       </div>
 
-      <div className="mt-3 min-h-[3.25rem] rounded-[10px] border border-border bg-surface px-4 py-2.5 text-sm leading-6" aria-live="polite">
-        {hovered ? (
-          <>
-            <span className="font-semibold">{hovered.label}.</span> <span className="text-muted">{hovered.note}</span>
-          </>
-        ) : (
-          <span className="text-muted">Hover a block to see what it does. {powered ? "Current is flowing along the highlighted paths." : "Switch the power on to see current flow."}</span>
-        )}
-      </div>
+      {compact ? (
+        <p className="absolute inset-x-0 bottom-0 truncate rounded-b-[12px] border-t border-border bg-surface/95 px-3 py-1.5 text-[11.5px] leading-4 backdrop-blur" aria-live="polite" title={hovered ? `${hovered.label}. ${hovered.note}` : undefined} data-testid="part-flow-note">
+          {hovered ? (
+            <>
+              <span className="font-semibold">{hovered.label}.</span> <span className="text-muted">{hovered.note}</span>
+            </>
+          ) : (
+            <span className="text-muted">{powered ? "Current flows along the highlighted paths. Hover a block." : "Hover a block to see what it does."}</span>
+          )}
+        </p>
+      ) : (
+        <div className="mt-3 min-h-[3.25rem] shrink-0 rounded-[10px] border border-border bg-surface px-4 py-2.5 text-sm leading-6" aria-live="polite">
+          {hovered ? (
+            <>
+              <span className="font-semibold">{hovered.label}.</span> <span className="text-muted">{hovered.note}</span>
+            </>
+          ) : (
+            <span className="text-muted">Hover a block to see what it does. {powered ? "Current is flowing along the highlighted paths." : "Switch the power on to see current flow."}</span>
+          )}
+        </div>
+      )}
 
-      <ol className="mt-4 space-y-2 text-sm leading-6" aria-label="How it works">
-        {steps.map((step, i) => (
-          <li key={i} className="flex gap-3">
-            <span aria-hidden className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-muted-bg font-mono text-xs font-semibold text-foreground">
-              {i + 1}
-            </span>
-            <span className="text-muted">{step}</span>
-          </li>
-        ))}
-      </ol>
+      {compact ? null : (
+        <ol className="mt-4 shrink-0 space-y-2 text-sm leading-6" aria-label="How it works">
+          {steps.map((step, i) => (
+            <li key={i} className="flex gap-3">
+              <span aria-hidden className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-muted-bg font-mono text-xs font-semibold text-foreground">
+                {i + 1}
+              </span>
+              <span className="text-muted">{step}</span>
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }

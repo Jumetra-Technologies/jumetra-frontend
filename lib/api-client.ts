@@ -26,24 +26,17 @@ import type {
 } from "./types";
 import type { WorkspaceNode, WorkspaceState } from "./workspace-types";
 import { coerceWorkspaceState } from "./workspace-snapshot";
-import { recordError, recordRequest, setTelemetryEndpoint } from "./diagnostics/store";
+import { recordError, recordRequest } from "./diagnostics/store";
+import { getStoredAuthSession } from "./auth-session";
+import type {
+  ExperimentRecord,
+  NewProject,
+  ProjectTeammate,
+  RoboticsProject,
+} from "./robotics-data";
 
 function getStoredAuthSessionSafe(): { access_token?: string } | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const raw = window.localStorage.getItem("hhip-auth-session");
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(raw) as { access_token?: string } | null;
-    return parsed && parsed.access_token ? parsed : null;
-  } catch {
-    return null;
-  }
+  return getStoredAuthSession();
 }
 
 /** A response the API answered with an error status. `status` lets callers tell "sign in" (401) from "server down". */
@@ -63,14 +56,90 @@ export function isAuthError(error: unknown): error is ApiError {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
 }
 
-export const FIREBASE_API_URL = "https://europe-west4-hhipsystemv0.cloudfunctions.net/api";
-export const FIREBASE_WS_URL = "wss://api-aoxa3kagvq-ez.a.run.app";
+export const PRODUCTION_API_URL = "https://europe-west4-hhipsystemv0.cloudfunctions.net/api";
+export const PRODUCTION_WS_URL = "wss://api-aoxa3kagvq-ez.a.run.app";
 
 const DEFAULT_API_BASE =
-  process.env.NODE_ENV === "production" ? FIREBASE_API_URL : "http://127.0.0.1:8000";
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_BASE).replace(/\/+$/, "");
-setTelemetryEndpoint(`${API_BASE}/telemetry/error`);
+  process.env.NODE_ENV === "production" ? PRODUCTION_API_URL : "http://127.0.0.1:8000";
+export const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_BASE).replace(/\/+$/, "");
 const ENGINEERING_WORKSPACE_REQUEST_TIMEOUT_MS = 15_000;
+
+type UserProjectPayload = {
+  id: string;
+  owner_id: string;
+  name: string;
+  description: string;
+  objectives: string;
+  contributors: string;
+  category: RoboticsProject["category"];
+  hardware: string[];
+  teammates: ProjectTeammate[];
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type UserSearchResult = ProjectTeammate;
+
+type UserProjectExperimentPayload = {
+  id: string;
+  project_id: string;
+  title: string;
+  objective: string;
+  hardware: string[];
+  procedure: string;
+  observations: string;
+  results: string;
+  notes: string;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type UserProjectExperimentInput = Omit<ExperimentRecord, "id" | "createdAt" | "updatedAt">;
+
+function normalizeUserProjectExperiment(record: UserProjectExperimentPayload): ExperimentRecord {
+  const now = new Date().toISOString();
+  return {
+    id: record.id,
+    projectId: record.project_id,
+    title: record.title,
+    objective: record.objective,
+    hardware: record.hardware,
+    procedure: record.procedure,
+    observations: record.observations,
+    results: record.results,
+    notes: record.notes,
+    createdAt: record.created_at ?? now,
+    updatedAt: record.updated_at ?? record.created_at ?? now,
+  };
+}
+
+function normalizeUserProject(project: UserProjectPayload): RoboticsProject {
+  const now = new Date().toISOString();
+  return {
+    id: project.id,
+    name: project.name,
+    description: project.description,
+    objectives: project.objectives,
+    contributors: project.contributors,
+    category: project.category,
+    hardware: project.hardware,
+    teammates: project.teammates ?? [],
+    createdAt: project.created_at ?? now,
+    updatedAt: project.updated_at ?? project.created_at ?? now,
+  };
+}
+
+function serializeUserProject(project: NewProject) {
+  return {
+    name: project.name,
+    description: project.description,
+    objectives: project.objectives,
+    contributors: project.contributors,
+    category: project.category,
+    hardware: project.hardware,
+    teammate_ids: (project.teammates ?? []).map((teammate) => teammate.id),
+  };
+}
 
 function buildQuery(params: Record<string, string | number | undefined | null>): string {
   const qs = new URLSearchParams();
@@ -225,6 +294,56 @@ export const api = {
   getComparison: () => fetchJson<ComparisonResult>("/analytics/comparison"),
   getProjects: () => fetchJson<ProjectSummary[]>("/workspace/projects"),
   getProject: (id: string) => fetchJson<ProjectDetail>(`/workspace/projects/${id}`),
+  getMyProjects: async () => (await fetchJson<UserProjectPayload[]>("/auth/me/projects")).map(normalizeUserProject),
+  getMyProject: async (id: string) => normalizeUserProject(await fetchJson<UserProjectPayload>(`/auth/me/projects/${encodeURIComponent(id)}`)),
+  searchUsers: (query: string) =>
+    fetchJson<UserSearchResult[]>(`/auth/users/search${buildQuery({ q: query })}`),
+  getMyProjectExperiments: async (projectId: string) =>
+    (await fetchJson<UserProjectExperimentPayload[]>(`/auth/me/projects/${encodeURIComponent(projectId)}/experiments`))
+      .map(normalizeUserProjectExperiment),
+  createMyProjectExperiment: async (projectId: string, record: UserProjectExperimentInput) =>
+    normalizeUserProjectExperiment(await fetchJson<UserProjectExperimentPayload>(
+      `/auth/me/projects/${encodeURIComponent(projectId)}/experiments`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          title: record.title,
+          objective: record.objective,
+          hardware: record.hardware,
+          procedure: record.procedure,
+          observations: record.observations,
+          results: record.results,
+          notes: record.notes,
+        }),
+      },
+    )),
+  updateMyProjectExperiment: async (projectId: string, recordId: string, record: UserProjectExperimentInput) =>
+    normalizeUserProjectExperiment(await fetchJson<UserProjectExperimentPayload>(
+      `/auth/me/projects/${encodeURIComponent(projectId)}/experiments/${encodeURIComponent(recordId)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          title: record.title,
+          objective: record.objective,
+          hardware: record.hardware,
+          procedure: record.procedure,
+          observations: record.observations,
+          results: record.results,
+          notes: record.notes,
+        }),
+      },
+    )),
+  deleteMyProjectExperiment: (projectId: string, recordId: string) =>
+    fetchJson<{ deleted: boolean }>(
+      `/auth/me/projects/${encodeURIComponent(projectId)}/experiments/${encodeURIComponent(recordId)}`,
+      { method: "DELETE" },
+    ),
+  createMyProject: async (project: NewProject) =>
+    normalizeUserProject(await fetchJson<UserProjectPayload>("/auth/me/projects", { method: "POST", body: JSON.stringify(serializeUserProject(project)) })),
+  updateMyProject: async (id: string, project: NewProject) =>
+    normalizeUserProject(await fetchJson<UserProjectPayload>(`/auth/me/projects/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(serializeUserProject(project)) })),
+  deleteMyProject: (id: string) =>
+    fetchJson<{ deleted: boolean }>(`/auth/me/projects/${encodeURIComponent(id)}`, { method: "DELETE" }),
   searchComponents: (
     params: {
       q?: string;
@@ -679,7 +798,7 @@ function wsBase(): string {
     return process.env.NEXT_PUBLIC_WS_URL.replace(/\/+$/, "");
   }
   if (process.env.NODE_ENV === "production") {
-    return FIREBASE_WS_URL;
+    return PRODUCTION_WS_URL;
   }
   return API_BASE.replace(/^http/, "ws");
 }
@@ -712,5 +831,3 @@ export function getWiringWsUrl(): string {
 export function getFirmwareWsUrl(): string {
   return wsUrl("/ws/firmware");
 }
-
-export { API_BASE };

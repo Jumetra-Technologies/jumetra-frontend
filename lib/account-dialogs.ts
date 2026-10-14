@@ -9,7 +9,12 @@ import { useSyncExternalStore } from "react";
  * show together.
  */
 export type AuthMode = "login" | "signup";
-export type AccountDialog = { kind: "auth"; mode: AuthMode } | { kind: "profile" } | null;
+export type AccountDialog =
+  | { kind: "auth"; mode: AuthMode }
+  | { kind: "profile" }
+  | { kind: "welcome" }
+  | { kind: "provider-link" }
+  | null;
 
 let current: AccountDialog = null;
 const listeners = new Set<() => void>();
@@ -21,6 +26,8 @@ function set(next: AccountDialog) {
 
 export const openAuth = (mode: AuthMode = "login") => set({ kind: "auth", mode });
 export const openProfile = () => set({ kind: "profile" });
+export const openWelcome = () => set({ kind: "welcome" });
+export const openProviderLink = () => set({ kind: "provider-link" });
 export const closeAccountDialog = () => {
   if (current) set(null);
 };

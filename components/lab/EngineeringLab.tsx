@@ -13,6 +13,7 @@ import {
   Cpu,
   Download,
   FilePlus2,
+  FileUp,
   FolderKanban,
   FolderOpen,
   Grid2x2,
@@ -50,6 +51,7 @@ import { planAutoWire, placeNode } from "@/lib/lab/autowire";
 import { getPinout } from "@/lib/lab/pinout";
 import { backendReachable, reconcile, type RuntimeStatus } from "@/lib/lab/runtime";
 import { flushLab, useActiveSession, useLab } from "@/lib/lab/store";
+import { parseSessionFile, SESSION_FILE_EXTENSION, sessionFileName, SessionFileError, toSessionFile } from "@/lib/lab/session-file";
 import type { LabNode, LabView } from "@/lib/lab/types";
 import { getServerRoboticsDataSnapshot, readRoboticsData, subscribeToRoboticsData } from "@/lib/robotics-data";
 import { VIEW_COPY } from "@/lib/ui/views";
@@ -397,6 +399,29 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
     window.setTimeout(() => setToast((cur) => (cur === text ? null : cur)), 3200);
   }, []);
 
+  // ----- open a saved build (.kiungo.json), from the menu or dropped on the canvas
+  const fileInput = useRef<HTMLInputElement>(null);
+  const openFile = useCallback(
+    async (file: File) => {
+      if (file.size > 5_000_000) {
+        showToast("That file is too large to be a lab session.");
+        return;
+      }
+      try {
+        const { session: opened, warnings } = parseSessionFile(await file.text());
+        const made = store.getState().importSession(opened, file.name);
+        setSelectedNodes([]);
+        setSelectedWire(null);
+        showToast(warnings.length ? `Opened “${made.name}” (${warnings.length} item${warnings.length === 1 ? "" : "s"} skipped)` : `Opened “${made.name}”: ${made.nodes.length} parts, ${made.wires.length} wires`);
+        if (warnings.length) for (const w of warnings) store.getState().log("note", `Import: ${w}`);
+        window.setTimeout(() => canvasApi?.fit?.(), 50);
+      } catch (error) {
+        showToast(error instanceof SessionFileError ? error.message : "Couldn't open that file.");
+      }
+    },
+    [store, showToast, canvasApi],
+  );
+
   const select = useCallback((ids: string[], wire: string | null = null) => {
     setSelectedNodes(ids);
     setSelectedWire(wire);
@@ -530,11 +555,11 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
   const errors = analysis.faults.filter((f) => f.severity === "error").length;
 
   const exportJson = () => {
-    const blob = new Blob([JSON.stringify({ format: "kiungo-lab-session", version: 1, session }, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(toSessionFile(session, "Kiungo Engineering Lab"), null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${session.name.replace(/[^\w-]+/g, "-").toLowerCase() || "lab"}.kiungo.json`;
+    a.download = sessionFileName(session);
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -547,6 +572,7 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
       icon: <FolderOpen />,
       items: sessions.slice(0, 14).map((s) => ({ id: s.id, label: s.name, hint: `${s.nodes.length} parts · ${relative(s.updatedAt)}`, checked: s.id === session.id, onSelect: () => store.getState().openSession(s.id) })),
     },
+    { id: "import", label: "Open from file…", icon: <FileUp />, hint: SESSION_FILE_EXTENSION, onSelect: () => fileInput.current?.click() },
     { id: "rename", label: "Rename", icon: <Pencil />, onSelect: () => setRenaming(true) },
     { id: "dup", label: "Duplicate session", icon: <Copy />, onSelect: () => store.getState().duplicateSession(session.id) },
     {
@@ -617,7 +643,7 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
       ? { icon: <Server className="size-3.5" aria-hidden />, text: runtime === "syncing" ? "Saving" : "Online", tone: "text-success", title: "Connected: real boards can join this session" }
       : runtime === "checking"
         ? { icon: <Server className="size-3.5" aria-hidden />, text: "Connecting", tone: "text-muted", title: "Connecting to Kiungo" }
-        : { icon: <CloudOff className="size-3.5" aria-hidden />, text: "Offline mode", tone: "text-muted", title: "Working offline. Everything works and is saved in this browser; connecting real boards needs Kiungo online." };
+        : { icon: <CloudOff className="size-3.5" aria-hidden />, text: "Offline mode", tone: "text-muted", title: "Simulation works offline, but this lab session isn't saved to your account. Connecting real boards needs Kiungo online." };
 
   const panelLeft = (
     <AddPanel
@@ -725,12 +751,8 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
               {runtimePill.icon}
               <span className="hidden 2xl:inline">{runtimePill.text}</span>
             </span>
-            <span className={cn("hidden items-center gap-1 text-[11.5px] lg:inline-flex", saveError ? "text-danger" : "text-muted")} title={saveError ? "Browser storage is full or blocked: changes aren't being saved" : "Saved in this browser"} aria-label={saveError ? "Not saved" : "Saved in this browser"} data-testid="save-status">
-              {saveError ? "Not saved" : (
-                <>
-                  <Check className="size-3.5 text-success" aria-hidden /> <span className="hidden 2xl:inline">Saved</span>
-                </>
-              )}
+            <span className={cn("hidden items-center gap-1 text-[11.5px] lg:inline-flex", saveError ? "text-danger" : "text-muted")} title={saveError ? "The lab session couldn't be synchronized with the server." : "Lab sessions are not currently saved to your account."} aria-label={saveError ? "Not synchronized" : "Session only"} data-testid="save-status">
+              {saveError ? "Not synchronized" : "Session only"}
             </span>
             <button type="button" onClick={() => setRightOpen(!showRight)} aria-pressed={showRight} aria-label={showRight ? "Hide inspector" : "Show inspector"} title="Inspector" className={cn("flex size-9 items-center justify-center rounded-[10px] transition-colors", showRight ? "bg-muted-bg text-foreground" : "text-muted hover:bg-muted-bg")}>
               <PanelRight className="size-4" />
@@ -751,7 +773,19 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
 
           {/* Canvas */}
           <main className="relative min-h-0 min-w-0 flex-1 bg-canvas" aria-label="Circuit canvas">
-            <LabCanvas ref={setCanvasApi} onDropPart={(partId, at) => addPart(partId, { at, autowire })} />
+            <LabCanvas ref={setCanvasApi} onDropPart={(partId, at) => addPart(partId, { at, autowire })} onDropFile={(file) => void openFile(file)} />
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              data-testid="lab-open-file"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) void openFile(file);
+              }}
+            />
 
             {session.nodes.length === 0 ? (
               <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
@@ -777,6 +811,13 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
                   </div>
                   <p className="mt-4 text-[11.5px] text-muted">
                     Press <kbd className="rounded border border-border px-1 font-mono">/</kbd> to search parts, or drag them in from the left.
+                  </p>
+                  <p className="mt-1.5 text-[11.5px] text-muted">
+                    Have a build file?{" "}
+                    <button type="button" onClick={() => fileInput.current?.click()} className="font-medium text-primary hover:underline" data-testid="empty-open-file">
+                      Open a {SESSION_FILE_EXTENSION} file
+                    </button>{" "}
+                    or drop it here.
                   </p>
                 </div>
               </div>

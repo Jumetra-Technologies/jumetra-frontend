@@ -24,7 +24,7 @@ export function ProfileTile() {
           Profile
         </h3>
         <p className="mt-4 text-sm font-medium text-foreground">Not signed in</p>
-        <p className="mt-1 text-sm leading-6 text-muted">Projects and experiment records are saved in this browser. Sign in to keep them with you on any device.</p>
+        <p className="mt-1 text-sm leading-6 text-muted">Sign in to create and access projects saved to your account.</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button onClick={() => openAuth("login")} data-testid="settings-login">
             Log in

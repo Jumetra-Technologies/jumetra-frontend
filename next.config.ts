@@ -1,13 +1,20 @@
 import { readFileSync } from "node:fs";
+import { networkInterfaces } from "node:os";
 import { join } from "node:path";
 
 // The app version, from package.json (see CHANGELOG.md for how it's bumped).
 const APP_VERSION = (JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as { version: string }).version;
-const FIREBASE_API_URL = "https://europe-west4-hhipsystemv0.cloudfunctions.net/api";
-const FIREBASE_WS_URL = "wss://api-aoxa3kagvq-ez.a.run.app";
+const PRODUCTION_API_URL = "https://europe-west4-hhipsystemv0.cloudfunctions.net/api";
+const PRODUCTION_WS_URL = "wss://api-aoxa3kagvq-ez.a.run.app";
+const localDevOrigins = Object.values(networkInterfaces()).flatMap((addresses) =>
+  (addresses ?? [])
+    .filter((address) => address.family === "IPv4" && !address.internal)
+    .map((address) => address.address),
+);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  allowedDevOrigins: ["localhost", "127.0.0.1", ...localDevOrigins],
   // Pages renamed in the Kiungo rebrand keep their old addresses working.
   async redirects() {
     return [
@@ -27,11 +34,11 @@ const nextConfig = {
     NEXT_PUBLIC_APP_VERSION: APP_VERSION,
     NEXT_PUBLIC_API_URL:
       process.env.NODE_ENV === "production"
-        ? FIREBASE_API_URL
+        ? PRODUCTION_API_URL
         : process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000",
     NEXT_PUBLIC_WS_URL:
       process.env.NODE_ENV === "production"
-        ? FIREBASE_WS_URL
+        ? PRODUCTION_WS_URL
         : process.env.NEXT_PUBLIC_WS_URL ?? "ws://127.0.0.1:8000",
   },
 };

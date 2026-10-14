@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { GoogleSignInButton } from "@/components/auth/google-signin-button";
+import { GitHubSignInButton } from "@/components/auth/github-signin-button";
 import { Button } from "@/components/ui/button";
 import { SIGN_UP } from "@/lib/landing/content";
 import { useAuthStore } from "@/lib/auth-store";
@@ -33,6 +34,7 @@ export function SignUpSection() {
       <p className="text-base leading-7 text-muted">{SIGN_UP.body}</p>
       <div className="mt-6 max-w-xs">
         <GoogleSignInButton disabled={isLoading} />
+        <GitHubSignInButton disabled={isLoading} className="mt-3" />
       </div>
       <p className="mt-3 text-xs leading-5 text-muted">
         {SIGN_UP.fineprint}{" "}

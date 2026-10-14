@@ -20,7 +20,7 @@ export const NEXT_STEP: Record<ErrorKind, string> = {
   "not-found": "It may have been moved or deleted.",
   "too-big": "It's too large. Try something smaller.",
   busy: "Kiungo is busy right now. Try again in a minute.",
-  fault: "We've logged the problem and will look into it. Try again in a moment.",
+  fault: "Something unexpected happened. Please try again in a moment.",
 };
 
 export function errorKind(err: unknown): ErrorKind {

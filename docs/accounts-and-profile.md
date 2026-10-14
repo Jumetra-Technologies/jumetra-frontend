@@ -4,18 +4,16 @@ How sign-in, the profile and account deletion work in the Kiungo frontend, and t
 
 ## 1. What the user sees
 
-### Google button (everywhere sign-in appears)
+### Provider buttons (everywhere sign-in appears)
 
-Follows Google's sign-in branding: the official four-colour "G" on a neutral pill.
+Google follows Google's sign-in branding: the official four-colour "G" on a neutral pill. GitHub uses its mark on a high-contrast dark button.
 
-| | Light | Dark |
+| Provider | Light | Dark |
 |---|---|---|
-| Fill | `#FFFFFF` | `#131314` |
-| Border | `#747775` | `#8E918F` |
-| Label | `#1F1F1F`, 14px medium | `#E3E3E3` |
-| Hover | 4% grey wash + shadow | 8% white wash |
+| Google | Neutral white button and official four-colour mark | Neutral near-black button and official mark |
+| GitHub | GitHub dark button with white mark and label | Same high-contrast GitHub button |
 
-The button no longer greys itself out while the Firebase config loads. It stays at full contrast; if the config isn't ready when clicked, the click waits for it. A small spinner replaces the "G" only while sign-in is actually running.
+The Firebase popup is prepared before use; a small spinner replaces the provider mark while sign-in is running. GitHub opens a secure popup through Firebase and can reuse an existing GitHub browser session. Errors explain blocked popups, network problems and providers that have not been enabled.
 
 ### Sign-in modal (`Log in` / `Sign up`)
 
@@ -28,15 +26,21 @@ The button no longer greys itself out while the Firebase config loads. It stays 
 │  sessions on any device.             │
 │                                      │
 │  ( G  Continue with Google        )  │
+│                 or                   │
+│  ( ◉  Continue with GitHub        )  │
 │                                      │
 │  New to Kiungo? Sign up              │  ← switches mode in place
 │  ──────────────────────────────────  │
-│  We keep your name, email and photo  │
-│  from Google. Privacy Policy.        │
+│  We use your name, email and photo   │
+│  from your provider. Privacy Policy. │
 └──────────────────────────────────────┘
 ```
 
-Sign-up mode reads "Create your Kiungo account" with "Already have an account? Log in". Both modes use the same Google flow (Google accounts are created on first sign-in). The modal closes itself on success.
+Sign-up mode reads "Create your Kiungo account" with "Already have an account? Log in". Both providers create a Kiungo account on first sign-in. The modal closes itself on success.
+
+### First profile setup
+
+After sign-in, people without a profile role see a welcome card. It asks them to choose Student, Researcher, Instructor, or Other; Other opens a custom role field. The card also offers secure provider linking so Google and GitHub can sign in to the same Kiungo account. For complete profiles, a separate optional recommendation appears after sign-in. Linking proves access to both providers through Firebase; an email address is never used alone to merge accounts. Organisation and location are optional. Location may be typed, or requested only after the person presses "Use my location" and approves the browser prompt; approved coordinates are saved as editable profile text. "Not now" defers setup until a later sign-in.
 
 ### Settings → Profile tile (replaces "Account")
 
@@ -63,7 +67,7 @@ Signed in: the whole tile is one button that opens the profile modal on top of S
 
 ### Sidebar account row
 
-- Shows the Google profile photo (falls back to initials if the photo fails to load).
+- Shows the provider profile photo (falls back to initials if the photo fails to load).
 - The name/email area is a button: signed in → profile modal; signed out → sign-in modal.
 - The gear still opens Settings.
 - Collapsed sidebar: the avatar opens the profile (or sign-in when signed out).
@@ -75,10 +79,11 @@ Signed in: the whole tile is one button that opens the profile modal on top of S
 │ Profile                           ✕  │
 │ (photo 72px)  Brad Robinson          │
 │               bradr3671@gmail.com    │
-│               [G] Signed in with Google
+│               [✓] Secure sign-in enabled
+│ Sign-in methods    Google Connected  GitHub Connect
 │ ──────────────────────────────────── │
 │ Name           Brad Robinson         │
-│ Email          bradr…  (managed by Google)
+│ Email          bradr…  (managed by provider)
 │ Role           Instructor            │
 │ Organisation   Strathmore University │
 │ Location       Nairobi               │
@@ -102,19 +107,22 @@ app/layout.tsx
 components/layout/sidebar.tsx
 ├── AccountRow                  avatar + name → profile or sign-in
 ├── SettingsDialog              (ModalShell) → ProfileTile
-└── AccountDialogs              mounts AuthDialog + ProfileDialog
+└── AccountDialogs              mounts AuthDialog + WelcomeDialog + ProfileDialog
+components/account/ProviderConnections   links Google/GitHub to the active account
 components/ui/modal.tsx         ModalShell: focus trap, Escape, backdrop, stacking
 components/auth/
-├── google-signin-button.tsx    branded button, error mapping
+├── social-signin-button.tsx    shared Firebase popup, session and error handling
+├── google-signin-button.tsx    Google branded provider wrapper
+├── github-signin-button.tsx    GitHub branded provider wrapper
 ├── google-logo.tsx             official four-colour G
 └── AuthDialog.tsx              log in / sign up modal
 components/account/
-├── Avatar.tsx                  Google photo with initials fallback
+├── Avatar.tsx                  Provider photo with initials fallback
 ├── ProfileTile.tsx             Settings preview
 └── ProfileDialog.tsx           view / edit / delete
 lib/account-dialogs.ts          open/close state (same pattern as settings-dialog)
-lib/profile.ts                  types, validation, API calls, device fallback
-lib/auth-store.ts               session + user; keeps the Google photo
+lib/profile.ts                  types, validation and API calls
+lib/auth-store.ts               provider token exchange, session + user
 ```
 
 Modals stack: the profile opens on top of Settings, and Escape closes only the top one.
@@ -123,18 +131,23 @@ Modals stack: the profile opens on top of Settings, and Escape closes only the t
 
 ```
 Sign in
-  GoogleButton ─▶ Firebase popup ─▶ { idToken, photoURL }
-               ─▶ POST /auth/google { id_token } ─▶ session
-               ─▶ store (picture_url = backend's, else Firebase photoURL)
+  ProviderButton ─▶ Firebase popup ─▶ { idToken, photoURL }
+                 ─▶ POST /auth/{google|github} { id_token } ─▶ session
+                 ─▶ one User record with provider identities + managed session
+                 ─▶ store (picture_url = backend's, else Firebase photoURL)
+                 ─▶ WelcomeDialog if the profile role is not set
+
+Link a sign-in method
+  ProviderConnections ─▶ Firebase linkWithPopup (active Firebase UID)
+                      ─▶ POST /auth/link-provider { id_token, provider }
+                      ─▶ backend verifies same UID and records linked identity
 
 Load
   AuthBootstrap ─▶ localStorage session ─▶ GET /auth/me (or /auth/refresh)
                ─▶ user merged; photo kept if the backend returns none
 
 Edit
-  ProfileDialog ─▶ PATCH /auth/me { changed fields } ─▶ updated user
-               └▶ 405/404/501: saved on this device (hhip-profile:<user id>)
-                   and the dialog says so
+  ProfileDialog   ─▶ PATCH /auth/me { editable profile fields } ─▶ updated user
 
 Delete
   ProfileDialog ─▶ DELETE /auth/me ─▶ 204 ─▶ clear local profile, sign out
@@ -144,6 +157,16 @@ Delete
 ## 4. Backend contract
 
 All routes take `Authorization: Bearer <access_token>`. Errors use FastAPI's `{ "detail": "…" }`.
+
+### `POST /auth/google` and `POST /auth/github`
+
+Both routes accept a Firebase ID token and create or resume the same managed Kiungo session. GitHub tokens must identify `github.com` as the Firebase sign-in provider; GitHub emails need not be verified to authenticate. Only verified email claims can match an existing account by email; unverified emails are never used to merge accounts. Provider identity or Firebase UID is used for account continuity, and provider linking requires the same Firebase UID. Access and refresh tokens are signed credentials returned to the client and are not stored as Firestore documents or in separate token/session collections.
+
+Enable GitHub in Firebase Console → Authentication → Sign-in method, configure the GitHub OAuth app's Authorization callback URL as `https://hhipsystemv0.firebaseapp.com/__/auth/handler`, and enable the `user:email` scope. The Firebase SDK uses the configured Firebase `authDomain` to construct the OAuth callback for provider popups; for this project it must be `hhipsystemv0.firebaseapp.com`. This is a shared Firebase setting, not a GitHub-only frontend redirect, so keep it aligned with the existing Google configuration. The GitHub OAuth Client ID and Client Secret configured in Firebase must belong to the GitHub OAuth App with that exact callback. Keep the GitHub client secret in Firebase Console, never in the frontend or this backend. Add each app host (including localhost for development) to Firebase Authorized domains.
+
+### `POST /auth/link-provider`
+
+Requires the active Kiungo bearer token and a Firebase ID token for the same Firebase UID, after the user links the additional provider with Firebase. The backend confirms that the requested provider identity is present in the verified token and is not attached to a different user, then updates the existing user record. Email-only requests cannot merge accounts.
 
 ### `GET /auth/me` (exists; extend the response)
 
@@ -160,34 +183,31 @@ All routes take `Authorization: Bearer <access_token>`. Errors use FastAPI's `{ 
 }
 ```
 
-`picture_url` should come from the Google ID token's `picture` claim on every sign-in.
+`picture_url` comes from the selected provider's Firebase ID token `picture` claim.
 
-### `PATCH /auth/me` (new)
+### `PATCH /auth/me`
 
 Body: any subset of the editable fields. `null` or `""` clears a field.
 
 | Field | Type | Rule |
 |---|---|---|
 | `display_name` | string | 1–80 chars, required if sent |
-| `role` | enum or null | `student`, `technician`, `instructor`, `club_lead`, `school_admin`, `hobbyist` |
+| `role` | enum or null | `student`, `researcher`, `instructor`, `technician`, `club_lead`, `school_admin`, `hobbyist`, `other` |
+| `role_other` | string or null | ≤ 80 chars; required when role is `other` |
 | `organization` | string or null | ≤ 120 chars |
 | `location` | string or null | ≤ 80 chars |
 | `bio` | string or null | ≤ 280 chars |
 
-`email` and `picture_url` aren't editable (Google owns them). Returns the full user (as `GET /auth/me`). `422` on validation errors.
+`email` and `picture_url` aren't editable (the identity provider owns them). Returns the full user (as `GET /auth/me`), including connected sign-in methods. `422` on validation errors.
 
 ### `DELETE /auth/me` (new)
 
 Deletes the user and their personal data, returns `204`. Tokens for that user must stop working afterwards (`401` from `/auth/me`).
 
-### Until the backend ships these
-
-The frontend treats `404`, `405` and `501` from `PATCH`/`DELETE /auth/me` as "not supported yet":
-
-- Edits are saved in this browser under `hhip-profile:<user id>` and overlaid on the server user. The dialog says "Saved on this device". The next successful `PATCH` sends them to the server and clears the local copy.
+The user's self-described role is stored separately from the backend authorization role. The frontend cannot change the authorization role. The dialog says "Saved on this device". The next successful `PATCH` sends them to the server and clears the local copy.
 - Delete shows "Account deletion isn't available on the server yet" and deletes nothing.
 
-Firebase Authentication must list every domain that serves the app (`jumetra-frontend.vercel.app`, `localhost`) under Authorized domains, or the popup fails with `auth/unauthorized-domain`. The button shows that error in plain words.
+Firebase Authentication must list every domain that serves the app (`jumetra-frontend.vercel.app`, `localhost`) under Authorized domains, or the popup fails with `auth/unauthorized-domain`. Both buttons show provider-specific errors in plain words.
 
 ## 5. Versioning
 

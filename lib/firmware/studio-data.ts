@@ -3,7 +3,7 @@
 /**
  * Data the Embedded Studio needs to open, loaded without blocking the page.
  *
- * The Kiungo API runs as a Firebase function that starts cold after it has
+ * The Kiungo API may take time to respond after being idle:
  * been idle: the first request can take tens of seconds. So the studio
  * paints at once from what it already knows (the last lists it saw in this
  * tab, and the built-in template list), and swaps in the server's answer
@@ -36,7 +36,7 @@ export const BOARDS = ["esp32", "esp8266", "arduino-uno", "arduino-mega", "stm32
 
 /** How long a request may take before the studio says the server is probably waking up. */
 export const SLOW_AFTER_MS = 4000;
-/** Give a cold Firebase function time to start; beyond this, report the API as unreachable. */
+/** Allow time for an idle service to respond before reporting it as unreachable. */
 export const REQUEST_TIMEOUT_MS = 60_000;
 
 const CACHE_KEY = "hhip-firmware-studio:v1";

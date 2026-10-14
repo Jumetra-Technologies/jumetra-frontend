@@ -1,11 +1,17 @@
 export type AuthUser = {
   id: string;
   email: string;
+  email_verified?: boolean;
   display_name: string;
   google_sub?: string;
+  firebase_uid?: string | null;
+  auth_provider?: "google" | "github" | null;
+  linked_providers?: Array<"google" | "github">;
   picture_url?: string | null;
   /** What the person says they are (student, instructor…), from their profile. Not a permission. */
   role?: string | null;
+  role_other?: string | null;
+  profile_complete?: boolean;
   /**
    * The platform permission the server grants (ADMIN, RESEARCHER, TEACHER, STUDENT, VIEWER).
    * Only the server sets it; the profile can't change it. System Diagnostics needs ADMIN.
@@ -26,46 +32,44 @@ export type AuthSession = {
 export const AUTH_STORAGE_KEY = "hhip-auth-session";
 
 export function getStoredAuthSession(): AuthSession | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+  if (!raw) return null;
 
   try {
-    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) {
-      return null;
+    const session: unknown = JSON.parse(raw);
+    if (
+      typeof session === "object" &&
+      session !== null &&
+      "access_token" in session &&
+      typeof session.access_token === "string" &&
+      "user" in session &&
+      typeof session.user === "object" &&
+      session.user !== null &&
+      "id" in session.user &&
+      typeof session.user.id === "string"
+    ) {
+      return session as AuthSession;
     }
-
-    const parsed = JSON.parse(raw) as Partial<AuthSession>;
-    if (!parsed.access_token || !parsed.user) {
-      return null;
-    }
-
-    return parsed as AuthSession;
-  } catch {
-    return null;
+  } catch (error) {
+    console.error("Could not read the saved sign-in session.", error);
+    throw error;
   }
+  window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  return null;
 }
 
 export function setStoredAuthSession(session: AuthSession | null): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  if (!session) {
+  if (typeof window === "undefined") return;
+  if (session) {
+    window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  } else {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
-    return;
   }
-
-  window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
 }
 
 export function clearStoredAuthSession(): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  setStoredAuthSession(null);
 }
 
 export function getStoredAccessToken(): string | null {

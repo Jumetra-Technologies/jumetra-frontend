@@ -15,6 +15,8 @@ import {
   type Theme,
 } from "@/components/theme/theme-options";
 
+const THEME_STORAGE_KEY = "hhip-theme";
+
 type ThemeContextValue = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
@@ -22,7 +24,6 @@ type ThemeContextValue = {
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
-const STORAGE_KEY = "hhip-theme";
 
 export function applyTheme(theme: Theme) {
   const root = document.documentElement;
@@ -34,16 +35,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    const initial = isTheme(stored) ? stored : DEFAULT_THEME;
-    setThemeState(initial);
-    applyTheme(initial);
+    try {
+      const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+      if (isTheme(savedTheme)) setThemeState(savedTheme);
+    } catch (error) {
+      console.error("Could not read the saved appearance preference.", error);
+    }
   }, []);
+
+  useEffect(() => applyTheme(theme), [theme]);
 
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);
-    window.localStorage.setItem(STORAGE_KEY, next);
     applyTheme(next);
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, next);
+    } catch (error) {
+      console.error("Could not save the appearance preference.", error);
+    }
   }, []);
 
   const toggleTheme = useCallback(() => {

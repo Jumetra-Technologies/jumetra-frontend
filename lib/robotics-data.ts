@@ -2,6 +2,12 @@ export const ROBOTICS_DATA_KEY = "hhip-robotics-workspace:v1";
 
 export type ProjectCategory = "robotics" | "embedded" | "autonomy" | "iot" | "other";
 
+export type ProjectTeammate = {
+  id: string;
+  display_name: string;
+  email: string;
+};
+
 export type RoboticsProject = {
   id: string;
   name: string;
@@ -10,6 +16,7 @@ export type RoboticsProject = {
   contributors: string;
   category: ProjectCategory;
   hardware: string[];
+  teammates?: ProjectTeammate[];
   createdAt: string;
   updatedAt: string;
 };
@@ -41,9 +48,17 @@ export const EMPTY_ROBOTICS_DATA: RoboticsWorkspaceData = {
   experiments: [],
 };
 
-let cachedSerialized: string | null = null;
 let cachedData = EMPTY_ROBOTICS_DATA;
 const listeners = new Set<() => void>();
+
+function clearLegacyWorkspaceData(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(ROBOTICS_DATA_KEY);
+  } catch (error) {
+    console.error("Could not clear previously stored workspace data.", error);
+  }
+}
 
 function createId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -64,25 +79,8 @@ export function createExperimentRecord(
 }
 
 export function readRoboticsData(): RoboticsWorkspaceData {
-  if (typeof window === "undefined") return EMPTY_ROBOTICS_DATA;
-
-  try {
-    const serialized = window.localStorage.getItem(ROBOTICS_DATA_KEY) ?? "null";
-    if (serialized === cachedSerialized) return cachedData;
-    cachedSerialized = serialized;
-    const parsed = JSON.parse(serialized) as
-      | Partial<RoboticsWorkspaceData>
-      | null;
-    cachedData = {
-      projects: Array.isArray(parsed?.projects) ? parsed.projects : [],
-      experiments: Array.isArray(parsed?.experiments) ? parsed.experiments : [],
-    };
-    return cachedData;
-  } catch {
-    cachedSerialized = null;
-    cachedData = EMPTY_ROBOTICS_DATA;
-    return cachedData;
-  }
+  clearLegacyWorkspaceData();
+  return cachedData;
 }
 
 export function getServerRoboticsDataSnapshot(): null {
@@ -91,30 +89,16 @@ export function getServerRoboticsDataSnapshot(): null {
 
 export function subscribeToRoboticsData(listener: () => void): () => void {
   listeners.add(listener);
-  const handleStorage = () => {
-    cachedSerialized = null;
-    listener();
-  };
-  if (typeof window !== "undefined") window.addEventListener("storage", handleStorage);
   return () => {
     listeners.delete(listener);
-    if (typeof window !== "undefined") window.removeEventListener("storage", handleStorage);
   };
 }
 
 export function writeRoboticsData(data: RoboticsWorkspaceData): boolean {
-  if (typeof window === "undefined") return false;
-
-  try {
-    const serialized = JSON.stringify(data);
-    window.localStorage.setItem(ROBOTICS_DATA_KEY, serialized);
-    cachedSerialized = serialized;
-    cachedData = data;
-    listeners.forEach((listener) => listener());
-    return true;
-  } catch {
-    return false;
-  }
+  clearLegacyWorkspaceData();
+  cachedData = data;
+  listeners.forEach((listener) => listener());
+  return true;
 }
 
 export function formatExperimentReport(

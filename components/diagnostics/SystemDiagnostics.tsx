@@ -301,7 +301,7 @@ function Dashboard({ roleUnknown }: { roleUnknown: boolean }) {
           <>
             <Section title="Services">
               <ul className="divide-y divide-border">
-                <CheckRow name="Backend (Firebase function)" what={`${API_BASE}/health`} check={apiCheck} />
+                <CheckRow name="Backend service" what={`${API_BASE}/health`} check={apiCheck} />
                 <CheckRow name="Live updates (WebSocket)" what={getWsUrl()} check={wsCheck} />
                 <CheckRow name="Admin statistics" what={`${API_BASE}/admin/stats`} check={stats.state === "loading" ? { state: "checking" } : stats.state === "ok" ? { state: "ok" } : { state: "down", note: stats.state === "missing" ? "Not built yet" : stats.note }} />
                 <CheckRow name="Experiment analytics" what={`${API_BASE}/analytics`} check={analytics.state === "loading" ? { state: "checking" } : analytics.state === "ok" ? { state: "ok" } : { state: "down", note: analytics.state === "missing" ? "Not found" : analytics.note }} />
@@ -525,7 +525,7 @@ function Architecture({ apiCheck, wsCheck }: { apiCheck: Check; wsCheck: Check }
           {[
             { name: "Browser", text: "Kiungo web app, this device", ok: true },
             { name: "Frontend", text: `Vercel · v${APP_VERSION}`, ok: true },
-            { name: "Backend", text: "Firebase Cloud Function (FastAPI), europe-west4", ok: apiCheck.state === "ok" },
+            { name: "Backend", text: "Application API", ok: apiCheck.state === "ok" },
             { name: "Live updates", text: "Cloud Run WebSocket service", ok: wsCheck.state === "ok" },
           ].map((n, i) => (
             <li key={n.name} className="relative rounded-[12px] border border-border p-3">

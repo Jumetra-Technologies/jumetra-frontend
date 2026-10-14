@@ -77,7 +77,7 @@ export const LAYERS: Layer[] = [
     ],
     code: {
       status: "live",
-      text: "Next.js app in jumetra-frontend. Projects and experiment records are saved in your browser; the lab, firmware and hybrid screens call the backend.",
+      text: "Next.js app in jumetra-frontend. Projects and experiment records are saved to the signed-in account through authenticated backend APIs; lab sessions are temporary.",
       links: [
         { href: "/learn", label: "Learning Center" },
         { href: "/workspace", label: "Projects" },

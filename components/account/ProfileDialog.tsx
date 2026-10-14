@@ -2,9 +2,9 @@
 
 import { describeError } from "@/lib/errors";
 import { useEffect, useId, useState, type ReactNode } from "react";
-import { Check, Info, LogOut, Pencil, Trash2, X } from "lucide-react";
+import { Check, Info, LogOut, Pencil, ShieldCheck, Trash2, X } from "lucide-react";
 import { Avatar } from "@/components/account/Avatar";
-import { GoogleLogo } from "@/components/auth/google-logo";
+import { ProviderConnections } from "@/components/account/ProviderConnections";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { ModalShell } from "@/components/ui/modal";
@@ -28,7 +28,6 @@ import { cn } from "@/lib/utils";
 type Notice = { tone: "ok" | "info" | "error"; text: string } | null;
 type Confirm = "clear" | "delete" | null;
 
-const DEVICE_NOTE = "Saved on this device. For now, profile details stay on the device where you entered them.";
 
 /**
  * The signed-in user's profile: view, edit and save, clear details, or
@@ -72,7 +71,7 @@ export function ProfileDialog({ open }: { open: boolean }) {
       updateUser(result.user);
       setEditing(false);
       setConfirm(null);
-      setNotice(result.savedTo === "server" ? { tone: "ok", text: done } : { tone: "info", text: DEVICE_NOTE });
+      setNotice({ tone: "ok", text: done });
     } catch (error) {
       setNotice({ tone: "error", text: describeError(error, "Your changes weren't saved") });
     } finally {
@@ -123,10 +122,14 @@ export function ProfileDialog({ open }: { open: boolean }) {
             </p>
             <p className="truncate text-sm text-muted">{user.email}</p>
             <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-canvas px-2.5 py-1 text-[11px] font-medium text-muted">
-              <GoogleLogo className="size-3" />
-              Signed in with Google
+              <ShieldCheck className="size-3" aria-hidden />
+              Secure sign-in enabled
             </p>
           </div>
+        </section>
+
+        <section className="px-6 pb-5">
+          <ProviderConnections />
         </section>
 
         {notice ? <NoticeLine notice={notice} /> : null}
@@ -145,7 +148,7 @@ export function ProfileDialog({ open }: { open: boolean }) {
                 <Input id={id} aria-describedby={describedBy} aria-invalid={Boolean(errors.display_name)} value={form.display_name} autoComplete="name" onChange={(e) => set("display_name", e.target.value)} />
               )}
             </Field>
-            <Field label="Email" hint="Managed by your Google account.">
+            <Field label="Email" hint="Managed by your sign-in provider.">
               {(id, describedBy) => <Input id={id} aria-describedby={describedBy} value={user.email} readOnly disabled className="opacity-70" />}
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -161,6 +164,13 @@ export function ProfileDialog({ open }: { open: boolean }) {
                   </Select>
                 )}
               </Field>
+              {form.role === "other" ? (
+                <Field label="Your role" error={errors.role_other} count={[form.role_other?.length ?? 0, LIMITS.role_other]}>
+                  {(id, describedBy) => (
+                    <Input id={id} aria-describedby={describedBy} value={form.role_other ?? ""} onChange={(e) => set("role_other", e.target.value)} />
+                  )}
+                </Field>
+              ) : null}
               <Field label="Location" error={errors.location}>
                 {(id, describedBy) => (
                   <Input id={id} aria-describedby={describedBy} value={form.location ?? ""} placeholder="e.g. Nairobi" autoComplete="address-level2" onChange={(e) => set("location", e.target.value)} />
@@ -209,7 +219,7 @@ export function ProfileDialog({ open }: { open: boolean }) {
             <dl className="mx-6 divide-y divide-border rounded-[12px] border border-border" data-testid="profile-details">
               <Row label="Name" value={user.display_name} />
               <Row label="Email" value={user.email} note="Managed by Google" />
-              <Row label="Role" value={roleLabel(current.role)} />
+              <Row label="Role" value={current.role === "other" ? current.role_other || roleLabel(current.role) : roleLabel(current.role)} />
               <Row label="Organisation" value={current.organization} />
               <Row label="Location" value={current.location} />
               <Row label="About" value={current.bio} multiline />
@@ -239,7 +249,7 @@ export function ProfileDialog({ open }: { open: boolean }) {
               {confirm === null ? (
                 <>
                   <p className="mt-1 text-xs leading-5 text-muted">
-                    Clear the details you added, or delete your Kiungo account. Projects saved in this browser stay here either way.
+                    Clear the details you added, or delete your Kiungo account. Projects are stored with your account.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button variant="secondary" size="sm" onClick={() => setConfirm("clear")} disabled={!hasDetails(current)} data-testid="profile-clear">

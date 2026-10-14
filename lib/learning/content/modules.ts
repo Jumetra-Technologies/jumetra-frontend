@@ -50,8 +50,8 @@ export const LEARNING_MODULES: LearningModule[] = [
       {
         type: "callout",
         tone: "note",
-        title: "Your work is saved in this browser",
-        text: "Projects and experiment records are stored in your browser's local storage. They are not backed up or shared yet, so export a Markdown report from [Experiment Records](/experiments) for anything important.",
+        title: "Your work is saved to your account",
+        text: "Projects and experiment records require sign-in and are saved to your account. Export a Markdown report from [Experiment Records](/experiments) when you need a portable copy.",
       },
       {
         type: "p",

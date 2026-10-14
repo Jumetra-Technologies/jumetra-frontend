@@ -95,7 +95,7 @@ export function FirmwareStudio() {
    * Load the project and template lists side by side, in the background.
    * Each list lands as soon as it arrives; a failure in one doesn't blank
    * the other. After a few seconds with no answer, say the server is
-   * probably starting up (it's a Firebase function that sleeps when idle).
+   * probably starting up after being idle.
    */
   const connect = useCallback(() => {
     const id = ++boot.current;

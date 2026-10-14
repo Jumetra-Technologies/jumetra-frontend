@@ -108,9 +108,26 @@ function NodeInspector({ id }: { id: string }) {
                 { id: "flow", label: VIEW_COPY.trace.label, icon: <Zap className="size-3.5" aria-hidden />, description: VIEW_COPY.trace.description },
               ]}
             />
-            <div className="mt-2 h-52 overflow-hidden rounded-[12px] border border-border bg-canvas">
-              {preview === "model" ? <PartModel3D model={shown!} powered={!!live?.on || (pinout.controller && !!report?.powered)} /> : preview === "plan" ? <PartPlanView model={shown!} powered={!!live?.on} activeFeature={feature} onFeature={setFeature} className="h-full" /> : <PartFlowView model={shown!} powered={!!live?.on || (pinout.controller && !!report?.powered)} className="h-full" />}
+            <div className={cn("mt-2 overflow-hidden rounded-[12px] border border-border bg-canvas", preview === "flow" ? "h-64" : "h-52")}>
+              {preview === "model" ? <PartModel3D model={shown!} powered={!!live?.on || (pinout.controller && !!report?.powered)} /> : preview === "plan" ? <PartPlanView model={shown!} powered={!!live?.on} activeFeature={feature} onFeature={setFeature} className="h-full" /> : <PartFlowView model={shown!} powered={!!live?.on || (pinout.controller && !!report?.powered)} className="h-full" compact />}
             </div>
+            {preview === "flow" && part.circuit.steps.length ? (
+              <details className="group mt-2 rounded-[10px] border border-border bg-surface px-3 py-2" data-testid="inspector-flow-steps">
+                <summary className="cursor-pointer list-none text-[12px] font-medium text-foreground marker:hidden">
+                  How it works <span className="text-muted">· {part.circuit.steps.length} steps</span>
+                </summary>
+                <ol className="mt-2 space-y-1.5 text-[12px] leading-5">
+                  {part.circuit.steps.map((step, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span aria-hidden className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-muted-bg font-mono text-[10px] font-semibold">
+                        {i + 1}
+                      </span>
+                      <span className="text-muted">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            ) : null}
           </>
         ) : null}
         <div className="mt-3 flex flex-wrap gap-1.5">

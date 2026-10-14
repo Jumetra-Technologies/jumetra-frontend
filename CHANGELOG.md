@@ -10,6 +10,17 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.15.1] - 2026-10-14
+
+### Fixed
+- **Component library search:**
+  - **One clear button.** The browser drew its own × inside the search box next to ours. The browser's × is now hidden for every search box in the app, including Documentation search.
+  - **No icon while typing.** The magnifying glass goes away once you type, and the text moves into its place.
+  - **Breadboard thumbnail.** The list showed the breadboard as a blank cream rectangle, because thumbnails drew bodies only. Thumbnails now draw printed paths too, so the breadboard shows its holes and red and blue rail stripes.
+
+### Changed
+- **The library search is redesigned.** It's a taller, rounded field that turns teal with a soft ring on focus, and it stays pinned at the top of the parts list while you scroll. The clear button is round. A `/` hint shows when the box is empty, and `/` jumps to search from anywhere on the page. Escape clears the search. The match count is a pill with your query beside it ("2 parts match "bre"").
+
 ## [1.15.0] - 2026-10-14
 
 ### Added
@@ -244,6 +255,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.15.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.15.0...v1.15.1
 [1.15.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.13.1...v1.14.0
 [1.13.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.13.0...v1.13.1

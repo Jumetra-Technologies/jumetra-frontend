@@ -10,7 +10,7 @@
 
 import { Position } from "@xyflow/react";
 import { getPart } from "@/lib/parts";
-import { project, projectAngle } from "@/lib/parts/geometry";
+import { project, projectAngle, type View3D } from "@/lib/parts/geometry";
 import type { CanvasSpec, PartModel } from "@/lib/parts/types";
 import type { LabView } from "./types";
 
@@ -43,6 +43,8 @@ export interface BoardGeometry {
   usb: { x: number; y: number; angle: number } | null;
   /** Caption bar height, above the board. */
   caption: number;
+  /** The still 3D view the part is drawn at. */
+  view: View3D;
 }
 
 /** The mm box the part occupies, including anything overhanging the PCB (the USB jack). */
@@ -87,12 +89,14 @@ function usbAngle(from: NonNullable<CanvasSpec["usb"]>["from"]): number {
 /** Geometry of a bare board for one view, or null when the part isn't drawn bare. */
 export function boardGeometry(partId: string, view: LabView): BoardGeometry | null {
   const model = getPart(partId);
-  if (!model?.canvas || view === "flow") return null;
+  if (!model?.canvas || (view === "flow" && !model.canvas.trace)) return null;
   const s = BOARD_SCALE;
+  const v3: View3D = model.canvas.view ?? BOARD_VIEW;
+  const holeZ = model.canvas.pinZ ?? HOLE_Z;
   const fp = footprint(model);
   // The 3D bounding box decides the node's size in both views.
   const corners: Array<{ x: number; y: number }> = [];
-  for (const x of [fp.x1, fp.x2]) for (const y of [fp.y1, fp.y2]) for (const z of [0, model.size.d]) corners.push(project(model, s, BOARD_VIEW, { x, y, z }));
+  for (const x of [fp.x1, fp.x2]) for (const y of [fp.y1, fp.y2]) for (const z of [0, model.size.d]) corners.push(project(model, s, v3, { x, y, z }));
   const minX = Math.min(...corners.map((c) => c.x));
   const maxX = Math.max(...corners.map((c) => c.x));
   const minY = Math.min(...corners.map((c) => c.y));
@@ -108,23 +112,23 @@ export function boardGeometry(partId: string, view: LabView): BoardGeometry | nu
     const sh = h - CAPTION;
     const graphic = { left: -(minX + maxX) / 2, top: CAPTION - (minY + maxY) / 2, width: sw, height: sh };
     const at = (p: { x: number; y: number; z: number }) => {
-      const q = project(model, s, BOARD_VIEW, p);
+      const q = project(model, s, v3, p);
       return { x: graphic.left + sw / 2 + q.x, y: graphic.top + sh / 2 + q.y };
     };
     const pins: BoardGeometry["pins"] = {};
-    for (const [id, spec] of Object.entries(model.canvas.pins)) pins[id] = { ...at({ ...spec, z: HOLE_Z }), position: sideOf(spec, model) };
+    for (const [id, spec] of Object.entries(model.canvas.pins)) pins[id] = { ...at({ ...spec, z: holeZ }), position: sideOf(spec, model) };
     const u = model.canvas.usb;
     const usb = u
       ? (() => {
           const dir = u.from === "left" ? { x: -1, y: 0 } : u.from === "right" ? { x: 1, y: 0 } : u.from === "top" ? { x: 0, y: -1 } : { x: 0, y: 1 };
           // The lead's own axis points into the socket, so its angle is the direction it comes from, turned 90°.
-          return { ...at({ x: u.x, y: u.y, z: u.z }), angle: projectAngle(model, s, BOARD_VIEW, dir) + 90 };
+          return { ...at({ x: u.x, y: u.y, z: u.z }), angle: projectAngle(model, s, v3, dir) + 90 };
         })()
       : null;
-    return { w, h, scale: s, graphic, pins, usb, caption: CAPTION };
+    return { w, h, scale: s, graphic, pins, usb, caption: CAPTION, view: v3 };
   }
 
-  // 2D: the plan graphic, flat, centred in the same box.
+  // 2D (and Trace, for parts drawn bare there): the plan graphic, flat, centered in the same box.
   const pad = planPad(model);
   const vx = fp.x1 - pad;
   const vy = fp.y1 - pad;
@@ -138,7 +142,7 @@ export function boardGeometry(partId: string, view: LabView): BoardGeometry | nu
   const pins: BoardGeometry["pins"] = {};
   for (const [id, spec] of Object.entries(model.canvas.pins)) pins[id] = { ...at(spec), position: sideOf(spec, model) };
   const usb = model.canvas.usb ? { ...at(model.canvas.usb), angle: usbAngle(model.canvas.usb.from) } : null;
-  return { w, h, scale: s, graphic: { left, top, width, height }, pins, usb, caption: CAPTION };
+  return { w, h, scale: s, graphic: { left, top, width, height }, pins, usb, caption: CAPTION, view: v3 };
 }
 
 /** The node box a bare board takes, the same in 2D and 3D. */

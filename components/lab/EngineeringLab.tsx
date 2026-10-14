@@ -426,9 +426,14 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
       const wiredPins = new Set(current.wires.flatMap((w) => [w.from, w.to]).filter((r) => r.node === id).map((r) => r.pin));
       const fresh = plan.wires.filter((w) => !wiredPins.has(w.to.pin));
       if (!fresh.length) return 0;
-      const bp = getPinout(plan.board.partId);
       const pp = getPinout(node.partId);
-      const desc = fresh.map((w) => `${pp.pins.find((p) => p.id === w.to.pin)?.label ?? w.to.pin} → ${bp.pins.find((p) => p.id === w.from.pin)?.label ?? w.from.pin}`).join(", ");
+      // The far end is a board pin, or a breadboard rail hole ("Breadboard Top + 3").
+      const far = (ref: { node: string; pin: string }) => {
+        const other = current.nodes.find((n) => n.id === ref.node);
+        const label = (other ? getPinout(other.partId).pins.find((p) => p.id === ref.pin)?.label : undefined) ?? ref.pin;
+        return other && other.id !== plan.board!.id ? `${other.label} ${label}` : label;
+      };
+      const desc = fresh.map((w) => `${pp.pins.find((p) => p.id === w.to.pin)?.label ?? w.to.pin} → ${far(w.from)}`).join(", ");
       s.addWires(fresh, `Auto-wired ${node.label} to ${plan.board.label}: ${desc}`);
       if (plan.skipped.length) showToast(`${plan.board.label} has no free pin for ${plan.skipped.join(", ")}`);
       return fresh.length;

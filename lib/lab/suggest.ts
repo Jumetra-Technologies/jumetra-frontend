@@ -49,6 +49,7 @@ const INTENTS: Array<{ words: RegExp; parts: string[]; why: string }> = [
   { words: /\b(sound|beep|alert|buzz|notify|siren)/i, parts: ["buzzer"], why: "Makes an audible alert" },
   { words: /\b(colou?r|rgb|mood|status light|indicator)/i, parts: ["rgb-led", "led"], why: "Shows status in colour" },
   { words: /\b(camera|vision|linux|python|ai|machine learning|server)/i, parts: ["raspberry-pi-4"], why: "Runs Linux, Python and a camera" },
+  { words: /\b(breadboard|prototyp\w*|solderless|power rail)/i, parts: ["breadboard"], why: "Shares the board's 5 V and GND with every part" },
   { words: /\b(classroom|beginner|school|learn|first)/i, parts: ["arduino-uno", "microbit", "led"], why: "Easy first steps" },
 ];
 
@@ -80,6 +81,11 @@ function boardsOn(nodes: LabNode[]) {
 export function fitFor(partId: string, nodes: LabNode[]): Suggestion["fit"] {
   const board = boardsOn(nodes)[0];
   const pinout = getPinout(partId);
+  if (pinout.passive) {
+    if (!board) return { tone: "ok", text: "Shares one 5 V pin with every part" };
+    const boardName = getPart(board.partId)?.name.split(" ")[0] ?? "the board";
+    return { tone: "ok", text: `Shares the ${boardName} ${getPinout(board.partId).logic} V and GND with every part` };
+  }
   if (!board) return pinout.controller ? undefined : { tone: "warn", text: "Add a board to drive it" };
   if (pinout.controller) return { tone: "ok", text: "A second board: link them over serial or I²C" };
   const bp = getPinout(board.partId);
@@ -169,6 +175,10 @@ export function suggest(query: string, nodes: LabNode[], project?: ProjectContex
     const pick = intent.parts.find((id) => !(getPinout(id).controller && hasBoard));
     if (pick) add(list, pick, `${intent.why}, for “${project?.name ?? "your project"}”`, "project");
   }
+
+  // Several parts each wanting 5 V and GND: the board has one 5 V pin, a breadboard rail has 25 holes.
+  const powered = nodes.filter((n) => getPinout(n.partId).pins.some((p) => p.role === "vcc")).length;
+  if (hasBoard && powered >= 2 && !onCanvas.has("breadboard")) add(list, "breadboard", `${powered} parts need 5 V and GND: feed them from a power rail`, "missing");
 
   for (const node of nodes) {
     for (const pair of PAIRS[node.partId] ?? []) if (!onCanvas.has(pair.part)) add(list, pair.part, `${pair.why} with your ${node.label}`, "pairs");

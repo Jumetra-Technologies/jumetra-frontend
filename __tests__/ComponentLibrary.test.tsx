@@ -40,6 +40,7 @@ const CATALOGUE_IDS = [
   "raspberry-pi-4", "raspberry-pi-pico",
   "am2302", "bmp280", "dht11", "dht22", "ds18b20", "hc-sr04", "ldr", "mpu6050", "mq2", "pir", "soil-moisture",
   "stm32",
+  "breadboard",
 ];
 
 function footprintOf(solid: Solid): { x1: number; y1: number; x2: number; y2: number } | null {
@@ -60,17 +61,17 @@ afterEach(() => {
 });
 
 describe("part models", () => {
-  it("covers all 34 catalogue parts with unique ids", () => {
+  it("covers all 35 catalogue parts with unique ids", () => {
     const ids = PARTS.map((part) => part.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(34);
+    expect(ids).toHaveLength(35);
     for (const id of CATALOGUE_IDS) expect(getPart(id), id).toBeDefined();
   });
 
-  it("orders groups as boards, sensors, outputs, displays, radios with the most common part first", () => {
+  it("orders groups as boards, breadboards, sensors, outputs, displays, radios with the most common part first", () => {
     const groups = getPartsByGroup();
-    expect(groups.map((entry) => entry.group.id)).toEqual(["boards", "sensors", "outputs", "displays", "radios"]);
-    expect(groups.map((entry) => entry.parts[0].id)).toEqual(["arduino-uno", "dht11", "led", "lcd-16x2", "hc-05"]);
+    expect(groups.map((entry) => entry.group.id)).toEqual(["boards", "prototyping", "sensors", "outputs", "displays", "radios"]);
+    expect(groups.map((entry) => entry.parts[0].id)).toEqual(["arduino-uno", "breadboard", "dht11", "led", "lcd-16x2", "hc-05"]);
     for (const entry of groups) {
       const ranks = entry.parts.map((part) => part.rank);
       expect(ranks, entry.group.id).toEqual([...ranks].sort((a, b) => a - b));
@@ -148,7 +149,7 @@ describe("part models", () => {
   });
 
   it("searches by name, alias, tag and interface, best match first", () => {
-    expect(searchParts("")).toHaveLength(34);
+    expect(searchParts("")).toHaveLength(35);
     expect(searchParts("uno")[0].id).toBe("arduino-uno");
     expect(searchParts("GY-521")[0].id).toBe("mpu6050");
     expect(searchParts("photoresistor")[0].id).toBe("ldr");
@@ -295,7 +296,7 @@ describe("ComponentLibrary", () => {
     expect(screen.getByRole("heading", { level: 2, name: /DHT11/ })).toBeInTheDocument();
     const nav = screen.getByRole("navigation");
     const groupHeadings = within(nav).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
-    expect(groupHeadings).toEqual(["Boards", "Sensors", "Outputs and motors", "Displays", "Radios"]);
+    expect(groupHeadings).toEqual(["Boards", "Breadboards", "Sensors", "Outputs and motors", "Displays", "Radios"]);
     const boards = within(nav).getByRole("region", { name: "Boards" });
     expect(within(boards).getAllByRole("button")[0]).toHaveTextContent("Arduino Uno");
     expect(replace).toHaveBeenLastCalledWith("/components?part=dht11", { scroll: false });
@@ -313,7 +314,7 @@ describe("ComponentLibrary", () => {
     fireEvent.change(screen.getByRole("searchbox", { name: /Search parts/ }), { target: { value: "no such part" } });
     expect(screen.getByText(/Nothing matches/)).toBeInTheDocument();
     fireEvent.change(screen.getByRole("searchbox", { name: /Search parts/ }), { target: { value: "" } });
-    expect(screen.getByText(/34 parts in 5 groups, most common first/)).toBeInTheDocument();
+    expect(screen.getByText(/35 parts in 6 groups, most common first/)).toBeInTheDocument();
   });
 
   it("falls back to the first part when the address names one that does not exist", () => {

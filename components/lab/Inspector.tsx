@@ -10,6 +10,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Button } from "@/components/ui/button";
 import { getPart, hasScreen, partHref, withScreenText } from "@/lib/parts";
 import { getPinout, pinTone } from "@/lib/lab/pinout";
+import { breadboardUse } from "@/lib/lab/breadboard";
 import { useLab } from "@/lib/lab/store";
 import type { DeviceMode } from "@/lib/lab/types";
 import { VIEW_COPY } from "@/lib/ui/views";
@@ -169,31 +170,43 @@ function NodeInspector({ id }: { id: string }) {
         <FaultList faults={report?.faults ?? []} empty={status === "idle" ? "Not wired yet. Drag from a pin, or use Auto-wire." : "No problems with this part."} />
       </Section>
 
-      <Section title="Pins">
-        <ul className="divide-y divide-border/70 text-[12.5px]" data-testid="pin-table">
-          {pinout.pins.map((pin) => {
-            const ends = otherEnd(pin.id);
-            return (
-              <li key={pin.id} className="flex items-start gap-2 py-1.5" title={pin.note}>
-                <span className="mt-1 size-2.5 shrink-0 rounded-full border-2" style={{ borderColor: TONE_VAR[pinTone(pin)], background: ends.length ? TONE_VAR[pinTone(pin)] : "transparent" }} aria-hidden />
-                <span className="w-24 shrink-0 font-mono text-[11.5px] text-foreground">{pin.label}</span>
-                <span className={cn("min-w-0 flex-1 truncate", ends.length ? "text-foreground" : pin.required ? "text-warning" : "text-muted")}>{ends.length ? ends.join(", ") : pin.required ? "Needs a wire" : pin.note ?? "—"}</span>
-              </li>
-            );
-          })}
-        </ul>
-      </Section>
+      {pinout.passive ? (
+        <Section title="Strips in use">
+          <BreadboardStrips nodeId={node.id} />
+        </Section>
+      ) : (
+        <Section title="Pins">
+          <ul className="divide-y divide-border/70 text-[12.5px]" data-testid="pin-table">
+            {pinout.pins.map((pin) => {
+              const ends = otherEnd(pin.id);
+              return (
+                <li key={pin.id} className="flex items-start gap-2 py-1.5" title={pin.note}>
+                  <span className="mt-1 size-2.5 shrink-0 rounded-full border-2" style={{ borderColor: TONE_VAR[pinTone(pin)], background: ends.length ? TONE_VAR[pinTone(pin)] : "transparent" }} aria-hidden />
+                  <span className="w-24 shrink-0 font-mono text-[11.5px] text-foreground">{pin.label}</span>
+                  <span className={cn("min-w-0 flex-1 truncate", ends.length ? "text-foreground" : pin.required ? "text-warning" : "text-muted")}>{ends.length ? ends.join(", ") : pin.required ? "Needs a wire" : pin.note ?? "—"}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </Section>
+      )}
 
       <Section title="Device">
-        <label className="flex items-center justify-between gap-3 text-[13px]">
-          <span className="text-foreground">Mode</span>
-          <select value={node.mode} onChange={(e) => setNodeMode(node.id, e.target.value as DeviceMode)} className="h-8 rounded-[8px] border border-border bg-surface px-2 text-[13px]" aria-label="Device mode">
-            <option value="virtual">Virtual (simulated)</option>
-            <option value="hybrid">Hybrid (real + simulated)</option>
-            <option value="physical">Physical (real hardware)</option>
-          </select>
-        </label>
-        <p className="mt-2 text-[11.5px] leading-4 text-muted">Physical and hybrid parts use a real board when it is plugged in and Kiungo is online.</p>
+        {pinout.passive ? (
+          <p className="text-[12.5px] leading-5 text-muted">A breadboard has no electronics of its own: it only joins what you plug into it, in the lab and on the bench alike.</p>
+        ) : (
+          <>
+            <label className="flex items-center justify-between gap-3 text-[13px]">
+              <span className="text-foreground">Mode</span>
+              <select value={node.mode} onChange={(e) => setNodeMode(node.id, e.target.value as DeviceMode)} className="h-8 rounded-[8px] border border-border bg-surface px-2 text-[13px]" aria-label="Device mode">
+                <option value="virtual">Virtual (simulated)</option>
+                <option value="hybrid">Hybrid (real + simulated)</option>
+                <option value="physical">Physical (real hardware)</option>
+              </select>
+            </label>
+            <p className="mt-2 text-[11.5px] leading-4 text-muted">Physical and hybrid parts use a real board when it is plugged in and Kiungo is online.</p>
+          </>
+        )}
         {part ? (
           <Link href={partHref(part.id)} className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline">
             <BookOpen className="size-3.5" aria-hidden /> Open in Component library
@@ -201,6 +214,30 @@ function NodeInspector({ id }: { id: string }) {
         ) : null}
       </Section>
     </div>
+  );
+}
+
+/** A breadboard's wired strips: what each carries and what else is on it. 400 holes would make a useless pin table. */
+function BreadboardStrips({ nodeId }: { nodeId: string }) {
+  const { analysis, session } = useLabContext();
+  const use = useMemo(() => breadboardUse(nodeId, analysis, session.nodes), [nodeId, analysis, session.nodes]);
+  if (!use.length) {
+    return <p className="text-[12.5px] leading-5 text-muted">Nothing wired yet. Run the board&apos;s 5V and GND to the top + and − rails, then take each part&apos;s VCC and GND from the rails.</p>;
+  }
+  const tone = (kind: string) => (kind === "power" ? TONE_VAR.power : kind === "ground" ? TONE_VAR.ground : kind === "short" || kind === "conflict" ? "var(--lab-fault)" : kind === "open" ? TONE_VAR.muted : TONE_VAR.digital);
+  return (
+    <ul className="divide-y divide-border/70 text-[12.5px]" data-testid="strip-table">
+      {use.map((u) => (
+        <li key={u.id} className="flex items-start gap-2 py-1.5">
+          <span className="mt-1 size-2.5 shrink-0 rounded-full" style={{ background: tone(u.kind) }} aria-hidden />
+          <span className="w-28 shrink-0 text-foreground">
+            {u.name}
+            <span className="block font-mono text-[10.5px] text-muted">{u.kind === "power" ? u.net : u.kind === "ground" ? "GND" : u.kind === "open" ? "No other end" : u.net}</span>
+          </span>
+          <span className="min-w-0 flex-1 text-muted">{u.ends.length ? u.ends.join(", ") : "Only this strip"}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

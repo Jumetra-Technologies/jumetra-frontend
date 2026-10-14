@@ -8,6 +8,8 @@
  * what the part expects from the other end of the wire.
  */
 
+import { BREADBOARD_HOLES, BREADBOARD_STRIPS, RAILS } from "@/lib/parts/models/breadboard";
+
 export type PinFn = "power" | "ground" | "digital" | "analog" | "pwm" | "sda" | "scl" | "tx" | "rx" | "mosi" | "miso" | "sck" | "cs" | "led";
 
 /** What a peripheral pin expects from the far end of its wire. */
@@ -57,6 +59,13 @@ export interface Pinout {
   /** Peripheral supply range in volts. */
   supply?: [number, number];
   pins: LabPin[];
+  /**
+   * A passive part that only joins pins (a breadboard): it has no supply, no
+   * signals and nothing to check, and its `strips` are joined inside it.
+   */
+  passive?: boolean;
+  /** Groups of pin ids joined inside the part, as a breadboard's strips are. */
+  strips?: readonly string[][];
 }
 
 // ----- helpers ---------------------------------------------------------------
@@ -420,7 +429,36 @@ const PERIPHERALS: Pinout[] = [
   peripheral("lora", 3.3, [1.8, 3.7], [pp("VCC", "3.3V", "vcc"), pp("GND", "GND", "gnd"), pp("NSS", "NSS", "cs"), pp("MOSI", "MOSI", "mosi"), pp("MISO", "MISO", "miso"), pp("SCK", "SCK", "sck"), pp("RST", "RST", "opt", false), pp("DIO0", "DIO0", "opt", false, "Packet interrupt"), pp("DIO1", "DIO1", "opt", false)]),
 ];
 
-const ALL: Pinout[] = [UNO, ESP32, PICO, MEGA, ESP8266, STM32, PI4, MICROBIT, TEENSY, ...PERIPHERALS];
+// ----- prototyping -------------------------------------------------------------
+
+function terminalNote(id: string): string {
+  const col = id.slice(1);
+  const [first, last] = "abcde".includes(id[0]) ? ["a", "e"] : ["f", "j"];
+  return `Joined to ${first}${col}–${last}${col}: one five-hole strip`;
+}
+
+/** Every hole is a pin; the strips say which holes share a clip. */
+const BREADBOARD: Pinout = {
+  partId: "breadboard",
+  controller: false,
+  passive: true,
+  logic: 5,
+  tolerates5V: true,
+  pins: BREADBOARD_HOLES.map((h): LabPin => {
+    const rail = h.rail ? RAILS[h.rail] : null;
+    return {
+      id: h.id,
+      label: h.label,
+      side: h.y < 27 ? L : R,
+      fns: rail ? [rail.sign === "+" ? "power" : "ground"] : undefined,
+      role: rail ? undefined : "opt",
+      note: rail ? `${rail.label} rail: all 25 holes are joined` : terminalNote(h.id),
+    };
+  }),
+  strips: BREADBOARD_STRIPS,
+};
+
+const ALL: Pinout[] = [UNO, ESP32, PICO, MEGA, ESP8266, STM32, PI4, MICROBIT, TEENSY, BREADBOARD, ...PERIPHERALS];
 
 const BY_ID = new Map(ALL.map((p) => [p.partId, p]));
 

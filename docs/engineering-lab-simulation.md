@@ -116,7 +116,17 @@ As in section 3, with these additions:
 4. **PIR gate:** None, Detected, Detected, None, twice: LED OFF/ON, servo 0°/90°, steady. Stop: servo holds; Run: follows again.
 5. **Motors:** DC 0/25/50/75 % forward → 0/35/70/105 rpm; 75 % reverse → 105 rpm Reverse. Stepper at 100 steps/s: Move 100, Go → Done "100 of 100", Position (steps) 100; Move 200, Go → 300; Move −100 → 200; Zero → 0; Move 2000, Go, Stop after a second → "N of 2000, stopped" and it stays there; Move 50, Go → N + 50.
 
-## 5. Known limits and remaining work
+## 5. Breadboard (v1.15.0)
+
+A real Uno has one 5 V pin and three GND pins, and each header hole takes one jumper. The breadboard (`lib/parts/models/breadboard.ts`) is how a bench build shares them, and the lab now models it the same way.
+
+- **Layout.** A half-size, 400-point board: 30 columns, rows a–e and f–j either side of a 0.3" center channel, and four 25-hole rails (Top +, Top −, Bottom −, Bottom +, + outermost as printed). Every hole is a pin (`a12`, `TP7`, …).
+- **Connectivity.** The pinout is `passive` with `strips` (`lib/lab/pinout.ts`): the five holes of a half-column are one strip, and each rail is one strip end to end. `analyze()` joins each strip into one net before the wires, so a part's VCC in `TP9` and the Uno's 5V in `TP1` are on the same 5 V net. The channel separates `e12` from `f12`; the top and bottom rails aren't joined unless you bridge them.
+- **Checks.** A breadboard has no supply, signals or status of its own; it is never a load, so a rail with nothing on it carries no current in Trace. A short made on a strip is the usual short-circuit error. GND on a + rail, or a supply on a − rail, is a warning: it works, but the stripes then lie. A part whose VCC or GND is on a strip nothing feeds says so ("on the breadboard's Bottom + rail, which has no supply yet").
+- **Auto-wire.** Adding a breadboard to a build with a board wires the board's logic-level supply (Uno: 5V) to the Top + rail and a GND to the Top − rail, one wire each, from the end nearer the board. After that, auto-wired parts take VCC and GND from free rail holes when a rail already carries the voltage they need from the same board; signals still go straight to board pins. A 3.3 V part on a 5 V rail falls back to the board's 3.3V pin. The lab suggests a breadboard once two or more parts need 5 V.
+- **Canvas.** Drawn as itself in all three views (no 400-row card): 3D square-on with a 35° tilt so the 0.1" holes stay at least 8 px apart, 2D flat, and Trace as its strips. A strip lights in its net's color once wired (red supply, slate ground, blue signal), with moving dashes while current flows. The caption badge says what the rails carry ("5 V · GND"). The Inspector lists the strips in use instead of 400 pins.
+
+## 6. Known limits and remaining work
 
 - Inputs are not mirrored to the backend workspace; they live in the browser session like the rest of the build.
 - The sketch rules are fixed. Writing your own firmware for a lab build (the Firmware page's projects) is not connected to the lab's simulation; that needs a backend-run or browser-run interpreter and is out of scope here.
@@ -126,3 +136,5 @@ As in section 3, with these additions:
 - The DC motor has no load or inertia model, and its shaft angle is computed from the current speed (a speed change shifts the phase; the angle isn't drawn).
 - Taking a stepper over from the simulated sweep starts its count at 0, not where the sweep left it.
 - The Activity log doesn't record input changes, so it can't show when you changed a value.
+- Parts don't plug into the breadboard: they connect to holes with jumpers. Dropping a part's legs straight into a strip (and a DIP chip straddling the channel) would need each part's leg spacing on the canvas.
+- Only the half-size breadboard exists. A full 830-point board and a mini 170-point one are the same model with more or fewer columns.

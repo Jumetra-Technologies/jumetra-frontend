@@ -31,9 +31,12 @@ describe("pinouts", () => {
     expect(PINOUTS).toHaveLength(PARTS.length);
   });
 
-  it("gives every board a supply and a ground, and every peripheral a role per pin", () => {
+  it("gives every board a supply and a ground, every peripheral a role per pin, and every breadboard hole a strip", () => {
     for (const pinout of PINOUTS) {
-      if (pinout.controller) {
+      if (pinout.passive) {
+        const inStrips = new Set(pinout.strips!.flat());
+        expect(pinout.pins.every((p) => inStrips.has(p.id)), pinout.partId).toBe(true);
+      } else if (pinout.controller) {
         expect(pinout.pins.some((p) => p.supplies), pinout.partId).toBe(true);
         expect(pinout.pins.some((p) => p.fns?.includes("ground")), pinout.partId).toBe(true);
       } else {

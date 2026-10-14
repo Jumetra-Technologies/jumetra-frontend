@@ -3,7 +3,6 @@ import {
   barrelJack,
   capacitor,
   chip,
-  dip,
   header,
   maleHeader,
   microUsb,
@@ -17,9 +16,9 @@ import {
   usbB,
   usbC,
 } from "../build";
-import type { PartModel, PinInfo, Solid } from "../types";
+import type { PartModel, Solid } from "../types";
+import { ARDUINO_UNO } from "./arduino-uno";
 
-const DIGITAL_PINS = ["0 (RX)", "1 (TX)", "2", "~3", "4", "~5", "~6", "7", "8", "~9", "~10", "~11", "12", "13"];
 
 /** The zig-zag PCB antenna printed on Wi-Fi modules. */
 function pcbAntenna(x: number, y: number, w: number, h: number): Solid {
@@ -32,115 +31,9 @@ function pcbAntenna(x: number, y: number, w: number, h: number): Solid {
   return { kind: "path", d, color: MATERIAL.gold, width: 0.5 };
 }
 
-const UNO_PINS: PinInfo[] = [
-  ...DIGITAL_PINS.map((name) => ({ name: `D${name}`, role: name.startsWith("~") ? "pwm" : "digital", note: name.startsWith("~") ? "Digital, with PWM output" : "Digital input/output" }) as PinInfo),
-  { name: "A0–A5", role: "analog", note: "10-bit analog inputs; A4 is SDA and A5 is SCL for I2C" },
-  { name: "5V", role: "power", note: "5 V output from the regulator or USB, up to about 500 mA" },
-  { name: "3.3V", role: "power", note: "3.3 V output, 50 mA max" },
-  { name: "GND", role: "ground", note: "Three ground pins; all connected" },
-  { name: "VIN", role: "power", note: "Unregulated input, 7–12 V" },
-  { name: "RESET", role: "other", note: "Pull low to reset" },
-  { name: "AREF", role: "other", note: "External reference for the analog inputs" },
-];
 
 export const BOARDS: PartModel[] = [
-  {
-    id: "arduino-uno",
-    name: "Arduino Uno",
-    aka: ["Uno R3", "ATmega328P board"],
-    group: "boards",
-    rank: 1,
-    summary: "The board most people start on: 14 digital pins, 6 analog inputs, 5 V logic, USB-B programming, and forgiving of mistakes.",
-    size: { w: 68.6, h: 53.4, d: 12.6 },
-    solids: [
-      pcb(68.6, 53.4, MATERIAL.pcbBlue, MATERIAL.pcbBlueEdge),
-      usbB(-6, 5.5),
-      barrelJack(-3, 39),
-      header(18.5, 1.6, 10, "x"),
-      header(44.6, 1.6, 8, "x"),
-      header(24, 49.3, 8, "x"),
-      header(46.5, 49.3, 6, "x"),
-      header(62, 21, 3, "y", 2),
-      ...dip(30, 34, 14, "ATMEGA328P"),
-      chip(14.5, 17.5, 4.4, 4.4, undefined, 0.9),
-      { kind: "cyl", cx: 21, cy: 37, r: 1.6, d: 2.5, z: 1.6, top: MATERIAL.steel, side: MATERIAL.steelSide, segments: 12 },
-      ...tactileButton(12.5, 6, 4.5),
-      capacitor(20.5, 30.5, 1.6, 4, 1.6),
-      capacitor(24.5, 30.5, 1.6, 4, 1.6),
-      { kind: "box", x: 13.5, y: 40, w: 5, h: 7, d: 2, z: 1.6, top: "linear-gradient(90deg,#b9bdc3 0 30%,#1b1c1f 30%)", side: MATERIAL.icSide, fill: MATERIAL.ic },
-      smdLed(30, 8.6, "#ffb020", "led-l"),
-      smdLed(30, 11.6, "#ffb020", "led-tx"),
-      smdLed(30, 14.6, "#ffb020", "led-rx"),
-      smdLed(36, 22, "#3ddc84", "led-on"),
-      mountHole(2.5, 25),
-      mountHole(66, 11),
-      mountHole(66, 49),
-      silk(38.5, 25.5, "Kiungo", 4.6, MATERIAL.silk, { weight: 800 }),
-      silk(37.5, 29, "UNO-LAYOUT  5V", 1.4),
-      silk(25, 13.5, "DIGITAL (PWM~)", 1.3),
-      silk(24, 48.4, "POWER", 1.3),
-      silk(50, 48.4, "ANALOG IN", 1.3),
-      silk(33.5, 9, "L", 1.2),
-      silk(33.5, 12, "TX", 1.2),
-      silk(33.5, 15, "RX", 1.2),
-      silk(39.5, 22.6, "ON", 1.2),
-      silk(62, 19.8, "ICSP", 1.1),
-      silk(12, 12.5, "RESET", 1.1),
-    ],
-    features: [
-      { id: "digital", label: "Digital pins 0–13", kind: "pins", x: 18.5, y: 1.6, w: 46.4, h: 2.54, note: "14 digital inputs and outputs at 5 V. Pins marked ~ can output PWM. 0 and 1 are also the serial port, so leave them free while uploading." },
-      { id: "analog", label: "Analog inputs A0–A5", kind: "pins", x: 46.5, y: 49.3, w: 15.2, h: 2.54, note: "Six 10-bit analog inputs, 0–5 V. They can also be used as digital pins." },
-      { id: "power", label: "Power pins", kind: "power", x: 24, y: 49.3, w: 20.3, h: 2.54, note: "5 V and 3.3 V out, two GND, VIN in (7–12 V) and RESET." },
-      { id: "usb", label: "USB-B port", kind: "port", x: -6, y: 5.5, w: 16, h: 12, note: "Programming and serial over USB; also powers the board at 5 V." },
-      { id: "jack", label: "Barrel jack", kind: "port", x: -3, y: 39, w: 14, h: 9, note: "7–12 V DC in. The onboard regulator makes 5 V from it." },
-      { id: "mcu", label: "ATmega328P", kind: "chip", x: 30, y: 34, w: 35.6, h: 7.6, note: "The microcontroller: 16 MHz, 32 KB flash, 2 KB RAM. Socketed, so it can be replaced." },
-      { id: "led-l", label: "L LED (pin 13)", kind: "led", x: 29.5, y: 8, w: 2.6, h: 1.8, note: "Wired to digital pin 13. Blink makes this one flash." },
-      { id: "led-on", label: "Power LED", kind: "led", x: 35.5, y: 21.4, w: 2.6, h: 1.8, note: "Lit whenever the board has 5 V." },
-      { id: "reset", label: "Reset button", kind: "button", x: 12.5, y: 6, w: 4.5, h: 4.5, note: "Restarts the sketch from the top." },
-      { id: "icsp", label: "ICSP header", kind: "pins", x: 62, y: 21, w: 5.1, h: 7.6, note: "In-circuit programming of the ATmega328P with an external programmer." },
-    ],
-    pins: UNO_PINS,
-    circuit: {
-      blocks: [
-        { id: "usb", label: "USB-B", sub: "5 V in, serial", kind: "connector", col: 0, row: 0, note: "The computer supplies 5 V and talks serial through the USB bridge." },
-        { id: "jack", label: "Barrel jack", sub: "7–12 V in", kind: "connector", col: 0, row: 2, note: "An external supply when USB is not plugged in." },
-        { id: "bridge", label: "USB bridge", sub: "ATmega16U2", kind: "ic", col: 1, row: 0, note: "Turns USB into the serial signals the main chip understands." },
-        { id: "reg", label: "5 V regulator", sub: "NCP1117", kind: "regulator", col: 1, row: 2, note: "Drops VIN to a steady 5 V. A second regulator makes 3.3 V." },
-        { id: "mcu", label: "ATmega328P", sub: "16 MHz", kind: "mcu", col: 2, row: 1, note: "Runs your sketch. Every pin on the headers is one of its pins." },
-        { id: "digital", label: "Digital pins", sub: "D0–D13", kind: "pin", col: 3, row: 0, note: "Switch between 0 V and 5 V, source up to 20 mA each." },
-        { id: "analog", label: "Analog inputs", sub: "A0–A5", kind: "pin", col: 3, row: 1, note: "Read 0–5 V as 0–1023." },
-        { id: "power", label: "Power pins", sub: "5V, 3.3V, GND", kind: "power", col: 3, row: 2, note: "Feed your sensors and modules." },
-      ],
-      links: [
-        { from: "usb", to: "bridge", kind: "data", label: "USB" },
-        { from: "usb", to: "reg", kind: "power", label: "5 V" },
-        { from: "jack", to: "reg", kind: "power", label: "VIN" },
-        { from: "bridge", to: "mcu", kind: "data", label: "TX/RX", both: true },
-        { from: "reg", to: "mcu", kind: "power", label: "5 V" },
-        { from: "reg", to: "power", kind: "power" },
-        { from: "mcu", to: "digital", kind: "signal", both: true },
-        { from: "analog", to: "mcu", kind: "analog" },
-      ],
-      steps: [
-        "Power arrives from USB (5 V) or the barrel jack (7–12 V); the regulator settles it at 5 V for the whole board.",
-        "The USB bridge chip converts the computer's USB traffic into serial for the ATmega328P, which is how sketches are uploaded.",
-        "The ATmega328P runs your sketch at 16 MHz and drives the header pins directly: digital pins switch between 0 and 5 V, analog pins read voltages.",
-        "The power pins pass the regulated 5 V and 3.3 V to your sensors and modules; all GND pins join the same ground.",
-      ],
-    },
-    facts: [
-      { label: "Logic", value: "5 V" },
-      { label: "Clock", value: "16 MHz" },
-      { label: "Memory", value: "32 KB flash, 2 KB RAM" },
-      { label: "Pins", value: "14 digital (6 PWM), 6 analog" },
-      { label: "Input", value: "USB 5 V or 7–12 V DC" },
-      { label: "Size", value: "68.6 × 53.4 mm" },
-    ],
-    animate: { lit: ["led-on", "led-l"] },
-    experiment: { title: "Blink", idea: "Flash the pin-13 LED once a second, then change the timing and watch the serial monitor count the blinks." },
-    docs: "/docs/hardware-knowledge/arduino-uno",
-    tags: ["arduino", "uno", "atmega328p", "5v", "beginner", "mcu", "board"],
-  },
+  ARDUINO_UNO,
 
   {
     id: "esp32",

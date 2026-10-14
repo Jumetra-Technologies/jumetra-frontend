@@ -2,25 +2,13 @@
 
 import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
 import { flatColor, shade } from "@/lib/parts/build";
+import { SIN_TILT, TILT, dropBelow, stageLift } from "@/lib/parts/geometry";
 import type { PartModel, Solid } from "@/lib/parts/types";
 import { useTurntable } from "@/lib/ui/use-turntable";
 import { cn } from "@/lib/utils";
 import styles from "./part-model.module.css";
 
 const MAX_SCALE = 40;
-
-const TILT = 56;
-const SIN_TILT = Math.sin((TILT * Math.PI) / 180);
-
-/** How far the part reaches below its base plane: hanging pins and legs. */
-function dropBelow(model: PartModel): number {
-  let below = 0;
-  for (const solid of model.solids) {
-    if (solid.kind === "pins" && solid.len < 0) below = Math.max(below, -((solid.z ?? 0) + solid.len));
-    else if ((solid.kind === "box" || solid.kind === "cyl") && (solid.z ?? 0) < 0) below = Math.max(below, -(solid.z ?? 0));
-  }
-  return below;
-}
 
 /** Pixels per millimetre so the part, turned to any angle, fits the stage. */
 function fitScale(width: number, height: number, model: PartModel): number {
@@ -305,6 +293,8 @@ export function PartModel3D({
   className,
   still,
   lit: litOverride,
+  scale: fixedScale,
+  flat = false,
 }: {
   model: PartModel;
   powered: boolean;
@@ -313,35 +303,39 @@ export function PartModel3D({
   still?: { spin: number; tilt: number };
   /** Light only these solids (overrides the model's own list while powered). */
   lit?: string[];
+  /** Pixels per millimetre, instead of fitting the stage. The lab uses this so it knows where every pin lands. */
+  scale?: number;
+  /** No perspective: an affine projection, which lib/parts/geometry.ts can reproduce exactly. */
+  flat?: boolean;
 }) {
   const sceneRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(() => fitScale(520, 360, model));
+  const [fitted, setFitted] = useState(() => fitScale(520, 360, model));
   useTurntable(sceneRef, { spin: -24, tilt: TILT, speed: 9, enabled: !still });
 
   useEffect(() => {
     const scene = sceneRef.current;
-    if (!scene) return;
-    const measure = () => setScale(fitScale(scene.clientWidth || 520, scene.clientHeight || 360, model));
+    if (!scene || fixedScale) return;
+    const measure = () => setFitted(fitScale(scene.clientWidth || 520, scene.clientHeight || 360, model));
     measure();
     if (typeof ResizeObserver !== "function") return;
     const observer = new ResizeObserver(measure);
     observer.observe(scene);
     return () => observer.disconnect();
-  }, [model]);
+  }, [model, fixedScale]);
 
-  const s = scale;
+  const s = fixedScale ?? fitted;
   const surface = surfaceHeight(model);
   const lit = new Set(powered ? (litOverride ?? model.animate?.lit ?? []) : []);
   const spin = new Set(powered ? model.animate?.spin ?? [] : []);
   const sweep = new Set(powered ? model.animate?.sweep ?? [] : []);
   const motionFor = (id?: string) => (id && spin.has(id) ? "spin" : id && sweep.has(id) ? "sweep" : undefined);
   // Put the middle of the part, not its base plane, at the middle of the stage.
-  const lift = ((model.size.d - dropBelow(model)) / 2) * SIN_TILT * s;
+  const lift = stageLift(model, s);
 
   return (
     <div
       ref={sceneRef}
-      className={cn(styles.scene, still && styles.still, className)}
+      className={cn(styles.scene, still && styles.still, flat && styles.flat, className)}
       style={still ? ({ "--spin": `${still.spin}deg`, "--tilt": `${still.tilt}deg` } as CSSProperties) : undefined}
       {...(still
         ? { role: "img", "aria-label": `${model.name}, 3D view` }

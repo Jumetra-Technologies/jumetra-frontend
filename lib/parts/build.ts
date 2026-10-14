@@ -12,6 +12,9 @@ export const MATERIAL = {
   pcbGreenEdge: "#0f3a2e",
   pcbBlue: "#1d4f91",
   pcbBlueEdge: "#0f2b52",
+  /** The teal of a genuine Uno R3. */
+  pcbTeal: "#0f8b8e",
+  pcbTealEdge: "#085557",
   pcbBlack: "#1f2124",
   pcbBlackEdge: "#0a0b0c",
   pcbRed: "#8e1c2a",

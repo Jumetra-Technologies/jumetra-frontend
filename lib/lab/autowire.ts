@@ -4,7 +4,7 @@
  * ground, and each signal on a free pin that can do the job.
  */
 
-import { nodeLayout } from "./layout";
+import { nodeFootprint } from "./layout";
 import { getPinout, type LabPin, type PinFn, type Pinout } from "./pinout";
 import type { LabNode, LabWire, PinRef } from "./types";
 
@@ -154,8 +154,7 @@ export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], 
 
 /** Node footprint on the canvas, for placement (matches the node renderer). */
 export function nodeBox(partId: string): { w: number; h: number } {
-  const { w, h } = nodeLayout(partId);
-  return { w, h };
+  return nodeFootprint(partId);
 }
 
 /** A free spot: right of the board for peripherals, in rows; boards stack to the left. */

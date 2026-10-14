@@ -23,7 +23,7 @@ import { getPinout, pinTone, type LabPin } from "@/lib/lab/pinout";
 import { nodeLayout } from "@/lib/lab/layout";
 import { nextSelection } from "@/lib/lab/selection";
 import { useLab } from "@/lib/lab/store";
-import type { LabNode, LabWire } from "@/lib/lab/types";
+import type { LabNode, LabView, LabWire } from "@/lib/lab/types";
 import { useLabContext } from "./lab-context";
 import { PartNode, type PartNodeData } from "./PartNode";
 import { WireEdge, type WireEdgeData } from "./WireEdge";
@@ -49,8 +49,8 @@ function layerOf(node: LabNode, all: LabNode[]): number {
   return 1 + all.filter((n) => n.y > node.y || (n.y === node.y && n.id > node.id)).length;
 }
 
-function toFlowNode(node: LabNode, selected: boolean, all: LabNode[] = [node]): Node<PartNodeData> {
-  const { w, h } = nodeLayout(node.partId);
+function toFlowNode(node: LabNode, selected: boolean, all: LabNode[] = [node], view?: LabView): Node<PartNodeData> {
+  const { w, h } = nodeLayout(node.partId, view);
   return { id: node.id, type: "part", position: { x: node.x, y: node.y }, data: { node }, selected, width: w, height: h, style: { width: w, height: h }, zIndex: layerOf(node, all) };
 }
 
@@ -88,11 +88,11 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
   const wrapper = useRef<HTMLDivElement>(null);
   const fittedFor = useRef<string | null>(null);
 
-  const [nodes, setNodes, onNodesChangeBase] = useNodesState<Node<PartNodeData>>(session.nodes.map((n) => toFlowNode(n, selectedNodes.includes(n.id), session.nodes)));
+  const [nodes, setNodes, onNodesChangeBase] = useNodesState<Node<PartNodeData>>(session.nodes.map((n) => toFlowNode(n, selectedNodes.includes(n.id), session.nodes, view)));
 
   useEffect(() => {
-    setNodes(session.nodes.map((n) => toFlowNode(n, selectedNodes.includes(n.id), session.nodes)));
-  }, [session.nodes, selectedNodes, setNodes]);
+    setNodes(session.nodes.map((n) => toFlowNode(n, selectedNodes.includes(n.id), session.nodes, view)));
+  }, [session.nodes, selectedNodes, setNodes, view]);
 
   const edges = useMemo<Edge[]>(
     () =>
@@ -118,7 +118,7 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
       focus: (id: string) => {
         const node = session.nodes.find((n) => n.id === id);
         if (!node) return;
-        const { w, h } = nodeLayout(node.partId);
+        const { w, h } = nodeLayout(node.partId, view);
         flow.setCenter(node.x + w / 2, node.y + h / 2, { zoom: Math.max(flow.getZoom(), 0.9), duration: 450 });
       },
       show: (ids: string[]) => {
@@ -146,7 +146,7 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
       },
       toFlow: (screen) => flow.screenToFlowPosition(screen),
     }),
-    [flow, session.nodes],
+    [flow, session.nodes, view],
   );
 
   // Selection: React Flow reports what the user did, the lab owns the result

@@ -127,6 +127,18 @@ export type Solid =
       ring?: { color: string; width: number };
     };
 
+/**
+ * How a part sits on the Engineering Lab canvas when it is drawn as itself
+ * (no card around it): where each pinout pin's hole is on the board, in mm,
+ * so jumper wires land on the real header, and where the USB lead plugs in.
+ */
+export interface CanvasSpec {
+  /** Pinout pin id → hole centre on the board (mm, top-left origin). */
+  pins: Record<string, { x: number; y: number }>;
+  /** The USB socket's mouth: where the lead's plug seats, and the side it comes in from. */
+  usb?: { x: number; y: number; z: number; from: "left" | "right" | "top" | "bottom" };
+}
+
 export type FeatureKind = "pin" | "pins" | "port" | "led" | "button" | "chip" | "antenna" | "sensor" | "connector" | "power" | "mechanical" | "other";
 
 /** Something a person would point at in the top view. */
@@ -213,4 +225,6 @@ export interface PartModel {
   /** Reference article in the Documentation Center, when one exists. */
   docs?: string;
   tags: string[];
+  /** Set for parts the lab draws as themselves on the canvas, with wires on their real pins. */
+  canvas?: CanvasSpec;
 }

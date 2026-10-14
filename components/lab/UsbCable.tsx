@@ -21,7 +21,7 @@ export function connectorFor(partId: string): UsbConnector {
   return CONNECTOR[partId] ?? "micro-usb";
 }
 
-const NAME: Record<UsbConnector, string> = { "usb-b": "USB-B", "micro-usb": "Micro-USB", "usb-c": "USB-C" };
+export const CONNECTOR_NAME: Record<UsbConnector, string> = { "usb-b": "USB-B", "micro-usb": "Micro-USB", "usb-c": "USB-C" };
 
 /** off: no lead · plugging: dropping in, then the click · on: seated and powering · unplugging: pulled out. */
 export type PowerState = "off" | "plugging" | "on" | "unplugging";
@@ -32,8 +32,37 @@ export type PowerState = "off" | "plugging" | "on" | "unplugging";
  * port), and 5 V runs down the cable to the board. Drawn as SVG above the
  * part card, so it works in every view.
  */
-export function UsbCable({ connector, state }: { connector: UsbConnector; state: PowerState }) {
+/** Where the lead's socket point is in the drawing: 166 of 170 viewBox units down, centred. */
+const SEAT = { x: 0.5, y: 166 / 170 };
+const LEAD = { w: 84, h: 238 };
+
+export function UsbCable({
+  connector,
+  state,
+  anchor,
+  socket = true,
+}: {
+  connector: UsbConnector;
+  state: PowerState;
+  /**
+   * Plug into a point on the part (px from the part's top-left) at an angle
+   * (0 = coming down from above, -90 = coming in from the left). Without it,
+   * the lead drops into the top edge of a card, with a socket drawn for it.
+   */
+  anchor?: { x: number; y: number; angle: number };
+  /** Draw a socket at the seat; off when the part draws its own jack. */
+  socket?: boolean;
+}) {
   const fade = useId();
+  const placed = anchor
+    ? {
+        left: anchor.x - LEAD.w * SEAT.x,
+        top: anchor.y - LEAD.h * SEAT.y,
+        bottom: "auto",
+        transform: `rotate(${anchor.angle}deg)`,
+        transformOrigin: `${SEAT.x * 100}% ${SEAT.y * 100}%`,
+      }
+    : undefined;
   // The plug's metal tip and the socket on the card, per connector.
   const tip = connector === "usb-b" ? { w: 16, h: 13 } : connector === "usb-c" ? { w: 14, h: 9 } : { w: 12, h: 7 };
   const body = connector === "usb-b" ? { w: 24, h: 30 } : { w: 18, h: 26 };
@@ -43,7 +72,7 @@ export function UsbCable({ connector, state }: { connector: UsbConnector; state:
   const bodyTop = tipTop - body.h + 2;
 
   return (
-    <div className={styles.lead} data-state={state} data-testid="usb-cable" data-connector={connector} aria-hidden>
+    <div className={styles.lead} style={placed} data-state={state} data-testid="usb-cable" data-connector={connector} data-anchored={anchor ? "true" : undefined} aria-hidden>
       <svg className={styles.svg} viewBox="0 0 60 170" width="84" height="238">
         <defs>
           <linearGradient id={`${fade}-cable`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="140">
@@ -73,8 +102,12 @@ export function UsbCable({ connector, state }: { connector: UsbConnector; state:
 
         {/* The socket on the board: always there while the lead is, so the plug has somewhere to go. */}
         <g className={styles.socket}>
-          <rect x={cx - tip.w / 2 - 2} y={seatY - 4} width={tip.w + 4} height={8} rx={connector === "usb-c" ? 4 : 1.2} fill="#7d8792" />
-          <rect x={cx - tip.w / 2} y={seatY - 3} width={tip.w} height={5} rx={connector === "usb-c" ? 2.5 : 0.8} fill="#2a2e34" />
+          {socket ? (
+            <>
+              <rect x={cx - tip.w / 2 - 2} y={seatY - 4} width={tip.w + 4} height={8} rx={connector === "usb-c" ? 4 : 1.2} fill="#7d8792" />
+              <rect x={cx - tip.w / 2} y={seatY - 3} width={tip.w} height={5} rx={connector === "usb-c" ? 2.5 : 0.8} fill="#2a2e34" />
+            </>
+          ) : null}
           <circle className={styles.ring} cx={cx} cy={seatY} r={tip.w / 2 + 6} fill="none" stroke="var(--primary)" strokeWidth="2" />
         </g>
 
@@ -104,9 +137,11 @@ export function UsbCable({ connector, state }: { connector: UsbConnector; state:
           </g>
         </g>
       </svg>
-      <span className={cn(styles.tag, "font-mono")}>
-        {NAME[connector]} · 5 V
-      </span>
+      {anchor ? null : (
+        <span className={cn(styles.tag, "font-mono")}>
+          {CONNECTOR_NAME[connector]} · 5 V
+        </span>
+      )}
     </div>
   );
 }

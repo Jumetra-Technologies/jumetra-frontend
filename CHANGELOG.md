@@ -15,6 +15,7 @@ Versions before 1.2.0 were assigned after the fact to the pull requests already 
 ### Fixed
 - **Component library search:**
   - **One clear button.** The browser drew its own × inside the search box next to ours. The browser's × is now hidden for every search box in the app, including Documentation search.
+  - **Focus ring clipped on the left.** The scrolling parts list cut off the left edge of the focus ring. The list now leaves room for the ring on every side, and the search box still lines up with the parts below it.
   - **No icon while typing.** The magnifying glass goes away once you type, and the text moves into its place.
   - **Breadboard thumbnail.** The list showed the breadboard as a blank cream rectangle, because thumbnails drew bodies only. Thumbnails now draw printed paths too, so the breadboard shows its holes and red and blue rail stripes.
 

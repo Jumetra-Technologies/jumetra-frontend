@@ -7,12 +7,14 @@ import { PartModel3D } from "@/components/library/views/PartModel3D";
 import { PartPlanGraphic } from "@/components/library/views/PartPlanView";
 import { getPart, hasScreen, withScreenText } from "@/lib/parts";
 import { getPinout, pinTone, type LabPin, type PinTone } from "@/lib/lab/pinout";
+import type { PowerState } from "./UsbCable";
 import { NODE, nodeLayout, pinY } from "@/lib/lab/layout";
 import type { PartStatus } from "@/lib/lab/circuit";
 import type { LabNode } from "@/lib/lab/types";
 import { cn } from "@/lib/utils";
 import { useLabContext } from "./lab-context";
-import { UsbCable, connectorFor } from "./UsbCable";
+import { CONNECTOR_NAME, UsbCable, connectorFor } from "./UsbCable";
+import type { BoardGeometry } from "@/lib/lab/board-geometry";
 
 export type PartNodeData = { node: LabNode };
 
@@ -156,7 +158,7 @@ function PartNodeView({ id, data, selected }: NodeProps & { data: PartNodeData }
   const node = data.node;
   const part = getPart(node.partId);
   const pinout = getPinout(node.partId);
-  const layout = nodeLayout(node.partId);
+  const layout = nodeLayout(node.partId, view);
   const report = analysis.nodes[id];
   const status: PartStatus = report?.status ?? "idle";
   const live = frame.nodes[id];
@@ -211,6 +213,30 @@ function PartNodeView({ id, data, selected }: NodeProps & { data: PartNodeData }
   const screen = !!part && hasScreen(part);
   const text = live?.text;
   const shown = useMemo(() => (part && screen ? withScreenText(part, text ?? []) : part), [part, screen, text]);
+
+  if (layout.bare && part) {
+    return (
+      <BareBoard
+        id={id}
+        node={node}
+        part={part}
+        geometry={layout.bare}
+        status={status}
+        badge={live?.badge}
+        errors={errors}
+        warnings={warnings}
+        selected={selected}
+        flashed={flash.includes(id)}
+        view={view}
+        lit={!!lit}
+        litIds={litIds}
+        power={power}
+        connections={connections}
+        faultyPins={faultyPins}
+        pinLive={pinLive}
+      />
+    );
+  }
 
   return (
     <div
@@ -283,6 +309,141 @@ function PartNodeView({ id, data, selected }: NodeProps & { data: PartNodeData }
       {layout.right.map((pin, i) => (
         <PinRow key={pin.id} pin={pin} index={i} side="right" nodeId={id} connected={connections.get(pin.id) ?? null} faulty={faultyPins.has(pin.id)} live={pinLive(pin.id)} w={layout.w} partLabel={node.label} />
       ))}
+    </div>
+  );
+}
+
+/**
+ * A board drawn as itself: the 3D or 2D model with no card around it. Each
+ * header hole carries a handle, so jumper wires land on the real pin, and the
+ * USB lead plugs into the real jack. A small caption above carries the name,
+ * status and badge the card's header used to.
+ */
+function BareBoard({
+  id,
+  node,
+  part,
+  geometry,
+  status,
+  badge,
+  errors,
+  warnings,
+  selected,
+  flashed,
+  view,
+  lit,
+  litIds,
+  power,
+  connections,
+  faultyPins,
+  pinLive,
+}: {
+  id: string;
+  node: LabNode;
+  part: NonNullable<ReturnType<typeof getPart>>;
+  geometry: BoardGeometry;
+  status: PartStatus;
+  badge?: string;
+  errors: number;
+  warnings: number;
+  selected?: boolean;
+  flashed: boolean;
+  view: string;
+  lit: boolean;
+  litIds?: string[];
+  power: PowerState;
+  connections: Map<string, string>;
+  faultyPins: Set<string>;
+  pinLive: (pin: string) => boolean;
+}) {
+  const pinout = getPinout(node.partId);
+  const on = status === "ready" || lit;
+  const connector = connectorFor(node.partId);
+  return (
+    <div
+      className={cn("group relative", flashed && "rounded-[14px] ring-4 ring-warning/60")}
+      style={{ width: geometry.w, height: geometry.h }}
+      data-testid="lab-node"
+      data-part={node.partId}
+      data-status={status}
+      data-bare="true"
+    >
+      {/* Caption: what the card's header said, floating above the board. */}
+      <div className="absolute left-0 top-0 flex h-[30px] max-w-full items-center gap-2 px-1" data-testid="board-caption">
+        <span className={cn("size-2.5 shrink-0 rounded-full", STATUS_DOT[status], status === "ready" && lit && "shadow-[0_0_0_3px_color-mix(in_srgb,var(--success)_25%,transparent)]")} title={STATUS_TEXT[status]} />
+        <p className="truncate text-[13px] font-semibold leading-4">{node.label}</p>
+        <p className="truncate text-[10.5px] leading-4 text-muted">
+          {STATUS_TEXT[status]}
+          {node.mode !== "virtual" ? ` · ${node.mode}` : ""}
+        </p>
+        {errors || warnings ? (
+          <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold", errors ? "bg-danger/12 text-danger" : "bg-warning/15 text-warning")} title={`${errors} errors, ${warnings} warnings`}>
+            <AlertTriangle className="size-3" aria-hidden />
+            {errors + warnings}
+          </span>
+        ) : null}
+        {badge ? (
+          <span className={cn("max-w-[7.5rem] shrink-0 truncate rounded-full px-2 py-0.5 font-mono text-[10.5px] font-semibold tabular-nums transition-colors", on ? "bg-success/12 text-success" : "bg-muted-bg text-muted")} data-testid="node-badge">
+            {badge}
+          </span>
+        ) : null}
+      </div>
+
+      {/* The board. A selection shows as a glow round its outline, not a box. */}
+      <div
+        className={cn("pointer-events-none absolute transition-[filter] duration-200", selected && "[filter:drop-shadow(0_0_2px_var(--primary))_drop-shadow(0_0_10px_color-mix(in_srgb,var(--primary)_55%,transparent))]", !selected && status === "fault" && "[filter:drop-shadow(0_0_2px_var(--danger))_drop-shadow(0_0_8px_color-mix(in_srgb,var(--danger)_45%,transparent))]")}
+        style={{ left: geometry.graphic.left, top: geometry.graphic.top, width: geometry.graphic.width, height: geometry.graphic.height }}
+      >
+        {view === "reality" ? (
+          <PartModel3D model={part} powered={lit} lit={litIds} still={{ spin: -24, tilt: 50 }} scale={geometry.scale} flat className="!h-full !w-full" />
+        ) : (
+          <PartPlanGraphic model={part} powered={lit} lit={litIds} className="h-full w-full drop-shadow-[0_4px_10px_rgba(15,23,42,0.22)]" />
+        )}
+      </div>
+
+      {/* The USB lead, into the real jack. */}
+      {pinout.controller && geometry.usb ? <UsbCable connector={connector} state={power} anchor={geometry.usb} socket={false} /> : null}
+      {pinout.controller && geometry.usb && power === "on" ? (
+        <span className="pointer-events-none absolute whitespace-nowrap rounded-full border border-border bg-surface px-1.5 py-px font-mono text-[10px] font-semibold text-primary" style={{ left: geometry.usb.x - 8, top: geometry.usb.y + 18 }} data-testid="usb-tag">
+          {CONNECTOR_NAME[connector]} · 5 V
+        </span>
+      ) : null}
+
+      {/* Pins: a handle on every header hole. Labels show on hover or when selected. */}
+      {pinout.pins.map((pin) => {
+        const spot = geometry.pins[pin.id];
+        if (!spot) return null;
+        const tone = pinTone(pin);
+        const color = TONE_VAR[tone];
+        const connected = connections.get(pin.id) ?? null;
+        const faulty = faultyPins.has(pin.id);
+        const live = pinLive(pin.id);
+        const title = [`${node.label} ${pin.label}`, pin.note, connected ? `Wired to ${connected}` : "Not wired: drag from here to another pin"].filter(Boolean).join("\n");
+        const above = spot.position === Position.Top;
+        return (
+          <Handle
+            key={pin.id}
+            id={pin.id}
+            type="source"
+            position={spot.position}
+            title={title}
+            aria-label={`${pin.label} pin`}
+            data-pin={pin.id}
+            data-node={id}
+            className={cn("!size-[9px] !rounded-full !border-2 !transition-transform hover:!scale-150", faulty && "hhip-fault-pulse")}
+            style={{
+              top: spot.y,
+              left: spot.x,
+              transform: "translate(-50%, -50%)",
+              background: connected ? color : "color-mix(in srgb, var(--surface) 70%, transparent)",
+              borderColor: faulty ? "var(--lab-fault)" : color,
+              boxShadow: live ? `0 0 0 3px color-mix(in srgb, ${color} 35%, transparent)` : connected ? undefined : "0 0 0 1px rgba(0,0,0,0.25)",
+              ["--pin-label" as string]: `"${pin.label.replace(/"/g, "")}"`,
+              ["--pin-label-y" as string]: above ? "-16px" : "16px",
+            }}
+          />
+        );
+      })}
     </div>
   );
 }

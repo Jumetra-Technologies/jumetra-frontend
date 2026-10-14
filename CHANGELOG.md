@@ -10,6 +10,16 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.14.0] - 2026-10-14
+
+### Changed
+- **The Arduino Uno is the real R3.** The 3D, 2D and Trace views now draw the board as it is on the bench, measured from the Rev3 reference: 68.6 × 53.4 mm teal PCB; USB-B jack and barrel jack on the left edge; the digital headers along the top with their 0.16" gap; power and analog headers along the bottom; the socketed ATmega328P bottom right; the 16U2 USB bridge, its 2 × 3 ICSP and the 16 MHz crystal top left; the main ICSP on the right edge; the two 47 µF capacitors by the jack; the regulator; the L, TX, RX and ON LEDs; four mounting holes; and the traces between them. The silkscreen carries the real markings (DIGITAL (PWM~), POWER, ANALOG IN, every pin name, L, TX, RX, ON, ICSP, RESET). The Kiungo branding is gone from it. The Arduino name and logo are Arduino SA's trademarks, so the board carries no logo or wordmark.
+- **On the lab canvas the Uno is itself, not a card.** In the 3D and 2D views there is no white box or pin rails around it: jumper wires now land on the real header holes (D0–D13, A0–A5, 5V, 3.3V, GND, VIN, the ICSP's 5 V), with a small handle on each. The name, status and badge sit in a caption above the board, and a selected board glows instead of getting a frame. Hover a pin for its name. The Trace view keeps the card, as before.
+- **The USB lead plugs into the real jack.** On Run, the lead comes in from the left and seats in the USB-B jack, in 3D and in 2D, instead of dropping into the top of a card. Other boards keep the card and the lead on top for now.
+
+### Added
+- The 3D renderer can draw at a fixed scale without perspective, and `lib/parts/geometry.ts` reproduces its projection, so the lab knows exactly where every pin of a tilted board lands. A part declares `canvas.pins` and `canvas.usb` (`lib/parts/types.ts`) to be drawn bare; the Uno is the first.
+
 ## [1.13.1] - 2026-10-14
 
 ### Fixed
@@ -223,6 +233,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.14.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.13.1...v1.14.0
 [1.13.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.11.0...v1.12.0

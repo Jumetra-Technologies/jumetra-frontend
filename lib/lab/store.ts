@@ -152,6 +152,8 @@ export interface LabState {
   renameSession: (id: string, name: string) => void;
   linkProject: (id: string, projectId: string | null, projectName?: string) => void;
   duplicateSession: (id: string) => LabSession | null;
+  /** Open a session read from a `.kiungo.json` file (see `session-file.ts`) as a new session. */
+  importSession: (session: LabSession, source?: string) => LabSession;
   deleteSession: (id: string) => void;
   setView: (view: LabView) => void;
   addNode: (partId: string, at?: { x: number; y: number }, label?: string) => LabNode | null;
@@ -242,6 +244,14 @@ export const useLab = create<LabState>((set, get) => {
       const copy: LabSession = { ...newSession({ name: `${source.name} (copy)`, projectId: source.projectId }), nodes: source.nodes.map((n) => ({ ...n })), wires: source.wires.map((w) => ({ ...w })), view: source.view };
       set((state) => ({ sessions: [copy, ...state.sessions], activeId: copy.id, past: [], future: [] }));
       return copy;
+    },
+
+    importSession: (session, source) => {
+      const taken = new Set(get().sessions.map((s) => s.id));
+      const id = taken.has(session.id) ? makeId("lab") : session.id;
+      const opened: LabSession = { ...session, id, runtime: null, updatedAt: now(), log: [...session.log, logEntry("session", `Opened from ${source ?? "a file"}`)] };
+      set((state) => ({ sessions: [opened, ...state.sessions], activeId: opened.id, past: [], future: [] }));
+      return opened;
     },
 
     deleteSession: (id) =>

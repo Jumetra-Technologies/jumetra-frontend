@@ -10,6 +10,11 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.15.2] - 2026-10-14
+
+### Fixed
+- **Component library search: the focus ring was clipped on the left.** The scrolling parts list cut off the left edge of the teal ring around the search box. The list now leaves room for the ring on every side, and the search box still lines up with the parts below it. This fix missed the 1.15.1 merge.
+
 ## [1.15.1] - 2026-10-14
 
 ### Fixed
@@ -255,6 +260,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.15.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.15.1...v1.15.2
 [1.15.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.15.0...v1.15.1
 [1.15.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.13.1...v1.14.0

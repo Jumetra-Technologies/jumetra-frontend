@@ -1,4 +1,5 @@
 import { BOARDS } from "./models/boards";
+import { PROTOTYPING } from "./models/breadboard";
 import { DISPLAYS } from "./models/displays";
 import { OUTPUTS } from "./models/outputs";
 import { RADIOS } from "./models/radios";
@@ -9,6 +10,7 @@ export type { PartModel, PartGroup, PartGroupId } from "./types";
 
 export const PART_GROUPS: PartGroup[] = [
   { id: "boards", title: "Boards", blurb: "The microcontroller or computer that runs your code. Everything else connects to one of these." },
+  { id: "prototyping", title: "Breadboards", blurb: "What a build sits on: strips that join parts without solder, and power rails that share one 5 V pin with every part." },
   { id: "sensors", title: "Sensors", blurb: "Parts that turn the world into numbers: temperature, distance, motion, light, gas, tilt, pressure." },
   { id: "outputs", title: "Outputs and motors", blurb: "Parts that do something you can see or hear: light up, buzz, turn, switch a load." },
   { id: "displays", title: "Displays", blurb: "Screens for showing readings and messages without a computer attached." },
@@ -16,7 +18,7 @@ export const PART_GROUPS: PartGroup[] = [
 ];
 
 /** All parts, grouped in display order with the most common first inside each group. */
-export const PARTS: PartModel[] = [...BOARDS, ...SENSORS, ...OUTPUTS, ...DISPLAYS, ...RADIOS].sort(
+export const PARTS: PartModel[] = [...BOARDS, ...PROTOTYPING, ...SENSORS, ...OUTPUTS, ...DISPLAYS, ...RADIOS].sort(
   (a, b) => PART_GROUPS.findIndex((g) => g.id === a.group) - PART_GROUPS.findIndex((g) => g.id === b.group) || a.rank - b.rank,
 );
 

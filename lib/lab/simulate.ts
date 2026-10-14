@@ -13,6 +13,7 @@
 
 import type { Analysis } from "./circuit";
 import { ledCurrentMa, pinKey } from "./circuit";
+import { breadboardUse, railSummary } from "./breadboard";
 import { inputOf, isSet, isSensorPart } from "./controls";
 import { getPinout } from "./pinout";
 import { boardSettings, displayLines, planBoard, sampleSensor, type BoardPlan, type Inputs, type SensorSample } from "./sketch";
@@ -195,6 +196,17 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
     if (live[node.id]) continue;
     const report = analysis.nodes[node.id];
     const pinout = getPinout(node.partId);
+    if (pinout.passive) {
+      // A breadboard runs nothing; its panel says what each wired strip carries.
+      const use = breadboardUse(node.id, analysis, nodes);
+      live[node.id] = {
+        on: false,
+        level: 0,
+        readings: use.slice(0, 6).map((u) => ({ label: u.name, value: u.kind === "power" ? u.net : u.kind === "ground" ? "GND" : u.kind === "short" ? "Short!" : u.kind === "open" ? "Not connected" : u.net })),
+        badge: railSummary(use),
+      };
+      continue;
+    }
     if (pinout.controller) {
       const powered = report?.powered ?? true;
       const { settings, samples, alertSensor, alert } = planFor(node.id);
@@ -415,7 +427,7 @@ export function serialLine(nodes: LabNode[], frame: Frame): string | null {
   }
   for (const node of nodes) {
     const l = frame.nodes[node.id];
-    if (!l || isSensorPart(node.partId) || getPinout(node.partId).controller || !l.badge) continue;
+    if (!l || isSensorPart(node.partId) || getPinout(node.partId).controller || getPinout(node.partId).passive || !l.badge) continue;
     parts.push(`${node.label}: ${l.badge}`);
   }
   if (!parts.length) return null;

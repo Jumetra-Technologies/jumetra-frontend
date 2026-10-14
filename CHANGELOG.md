@@ -10,6 +10,17 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.15.0] - 2026-10-14
+
+### Added
+- **Breadboard.** A 400-point half-size solderless breadboard is in the Component library, under a new **Breadboards** group, and in the Engineering Lab. An Uno has one 5 V pin. Wire it to the breadboard's + rail once, and every part can take its power from the rail, as on the bench. In the lab:
+  - **It works like the real thing.** The five holes of each half-column are one strip. The channel splits a–e from f–j. Each of the four rails (+ and − along the top and the bottom) is one strip end to end. Wires can go into any of the 400 holes.
+  - **Auto-wire uses it.** Adding a breadboard to a build with a board wires the board's 5V to the top + rail and GND to the top − rail. Every part added afterwards takes VCC and GND from free rail holes, and its signals still go to board pins. 3.3 V parts stay on the board's 3.3V pin while the rail carries 5 V.
+  - **You can see what's joined.** A strip lights in its net's color once wired: red for supply, slate for ground, blue for a signal. In Trace the breadboard is drawn as its strips, with current running along the ones in use. The caption shows what the rails carry ("5 V · GND"), and the Inspector lists the strips in use and what is on each.
+  - **It's checked.** A short made on a strip is caught. GND on a + rail, or 5 V on a − rail, gets a warning. A part on a rail that nothing feeds is told so.
+  - **It's suggested** once two or more parts need 5 V.
+- The breadboard is drawn as itself in all three views, Trace included. In 3D it is square-on with a gentler tilt, so its 0.1" holes stay far enough apart to aim a wire at.
+
 ## [1.14.0] - 2026-10-14
 
 ### Changed
@@ -233,6 +244,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.15.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.13.1...v1.14.0
 [1.13.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.12.0...v1.13.0

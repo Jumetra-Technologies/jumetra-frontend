@@ -4,6 +4,8 @@
  * ground, and each signal on a free pin that can do the job.
  */
 
+import { RAILS, RAIL_HOLES, type RailId } from "@/lib/parts/models/breadboard";
+import { analyze, type Analysis } from "./circuit";
 import { nodeFootprint } from "./layout";
 import { getPinout, type LabPin, type PinFn, type Pinout } from "./pinout";
 import type { LabNode, LabWire, PinRef } from "./types";
@@ -39,9 +41,75 @@ function pickBoard(nodes: LabNode[], wires: LabWire[], prefer?: string): LabNode
   })[0];
 }
 
+/** Wires already in a breadboard hole. */
+function usedHoles(nodeId: string, wires: LabWire[]): Set<string> {
+  return usedPins(nodeId, wires);
+}
+
+/** Holes of a rail, starting from the end nearer `towardsX` (canvas x), so wires stay short. */
+function railHoles(rail: RailId, fromRight: boolean): string[] {
+  const all = Array.from({ length: RAIL_HOLES }, (_, i) => `${rail}${i + 1}`);
+  return fromRight ? all.reverse() : all;
+}
+
+/**
+ * A breadboard added to a build with a board: the board's supply goes to the
+ * top + rail and its GND to the top − rail, with one wire each, so every part
+ * after it can take power from the rails.
+ */
+function planBreadboard(breadboard: LabNode, nodes: LabNode[], wires: LabWire[], preferBoard?: string): { board: LabNode | null; wires: PlannedWire[]; skipped: string[] } {
+  const board = pickBoard(nodes.filter((n) => n.id !== breadboard.id), wires, preferBoard);
+  if (!board) return { board: null, wires: [], skipped: [] };
+  const bp = getPinout(board.partId);
+  const used = usedHoles(breadboard.id, wires);
+  const fromRight = board.x > breadboard.x;
+  const planned: PlannedWire[] = [];
+  const skipped: string[] = [];
+  const supply = bp.pins.find((p) => p.supplies === bp.logic && p.id !== "VIN") ?? bp.pins.find((p) => p.supplies);
+  const ground = bp.pins.find((p) => p.fns?.includes("ground"));
+  for (const [rail, pin] of [["TP", supply], ["TN", ground]] as const) {
+    const holes = railHoles(rail, fromRight);
+    if (holes.some((h) => used.has(h))) continue; // Already fed.
+    if (!pin) {
+      skipped.push(`${RAILS[rail].label} rail`);
+      continue;
+    }
+    planned.push({ from: { node: board.id, pin: pin.id }, to: { node: breadboard.id, pin: holes[0] } });
+  }
+  return { board, wires: planned, skipped };
+}
+
+/**
+ * A free hole on a breadboard rail that already carries what a pin needs:
+ * `volts` on a + rail, or this board's ground on a − rail. Null when no
+ * breadboard has one, and the pin then goes to the board directly.
+ */
+function railHole(want: { kind: "power"; volts: number } | { kind: "ground" }, board: LabNode, part: LabNode, nodes: LabNode[], wires: LabWire[], analysis: Analysis, taken: Set<string>): PinRef | null {
+  const boardGround = getPinout(board.partId).pins.find((p) => p.fns?.includes("ground"));
+  const groundNet = boardGround ? analysis.netOfPin.get(`${board.id}:${boardGround.id}`) : undefined;
+  for (const bb of nodes.filter((n) => getPinout(n.partId).passive)) {
+    const used = usedHoles(bb.id, wires);
+    const rails = (Object.keys(RAILS) as RailId[]).filter((r) => (want.kind === "power" ? RAILS[r].sign === "+" : RAILS[r].sign === "−"));
+    for (const rail of rails) {
+      const netId = analysis.netOfPin.get(`${bb.id}:${rail}1`);
+      const net = analysis.nets.find((n) => n.id === netId);
+      if (!net) continue;
+      const ok = want.kind === "power" ? net.kind === "power" && net.voltage === want.volts && net.pins.some((p) => p.node === board.id) : net.kind === "ground" && netId === groundNet;
+      if (!ok) continue;
+      const hole = railHoles(rail, part.x > bb.x + nodeFootprint(bb.partId).w / 2).find((h) => !used.has(h) && !taken.has(`${bb.id}:${h}`));
+      if (hole) {
+        taken.add(`${bb.id}:${hole}`);
+        return { node: bb.id, pin: hole };
+      }
+    }
+  }
+  return null;
+}
+
 export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], preferBoard?: string): { board: LabNode | null; wires: PlannedWire[]; skipped: string[] } {
   const pinout = getPinout(part.partId);
   if (pinout.controller) return { board: null, wires: [], skipped: [] };
+  if (pinout.passive) return planBreadboard(part, nodes, wires, preferBoard);
   const board = pickBoard(nodes.filter((n) => n.id !== part.id), wires, preferBoard);
   if (!board) return { board: null, wires: [], skipped: [] };
   const bp: Pinout = getPinout(board.partId);
@@ -71,6 +139,10 @@ export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], 
     // Prefer the ground on the side facing the part, then the least used.
     return [...grounds].sort((a, b) => Number(b.side === facing) - Number(a.side === facing) || count(a.id) - count(b.id))[0];
   };
+
+  // With a breadboard fed by this board, supply and ground come from its rails, as on the bench.
+  const analysis = nodes.some((n) => getPinout(n.partId).passive) ? analyze(nodes, wires) : null;
+  const takenHoles = new Set<string>();
 
   const signalOrder = pinout.pins.filter((p) => p.role && !["opt", "load"].includes(p.role));
   // Of "any of" groups (soil A0/D0, RGB, motor IN/EN) wire the useful ones.
@@ -145,6 +217,13 @@ export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], 
     if (!target) {
       skipped.push(pin.label);
       continue;
+    }
+    if (analysis && (pin.role === "vcc" || pin.role === "gnd")) {
+      const hole = railHole(pin.role === "vcc" ? { kind: "power", volts: target.supplies ?? bp.logic } : { kind: "ground" }, board, part, nodes, wires, analysis, takenHoles);
+      if (hole) {
+        planned.push({ from: hole, to: { node: part.id, pin: pin.id } });
+        continue;
+      }
     }
     if (plain(target) && !SHARED_BUS.some((f) => target!.fns?.includes(f))) taken.add(target.id);
     planned.push({ from: { node: board.id, pin: target.id }, to: { node: part.id, pin: pin.id } });

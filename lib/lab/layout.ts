@@ -4,6 +4,7 @@
  */
 
 import { boardBox, boardGeometry, type BoardGeometry } from "./board-geometry";
+import { getPart } from "@/lib/parts";
 import { getPinout, type LabPin } from "./pinout";
 import type { LabView } from "./types";
 
@@ -37,12 +38,14 @@ export function pinY(index: number): number {
 
 /**
  * A part's box and pin positions on the canvas. Boards with a canvas spec are
- * drawn bare in the 3D and 2D views (`view` decides); everything else, and
- * every part in the Trace view, is a card with pin rails.
+ * drawn bare in the 3D and 2D views (`view` decides); a breadboard is bare in
+ * every view, Trace included. Everything else is a card with pin rails.
  */
 export function nodeLayout(partId: string, view?: LabView): NodeLayout {
   const pinout = getPinout(partId);
-  const bare = view ? boardGeometry(partId, view) : null;
+  // Parts that are always drawn as themselves (a breadboard) never get a card, view or not.
+  const always = !!getPart(partId)?.canvas?.trace;
+  const bare = view ? boardGeometry(partId, view) : always ? boardGeometry(partId, "reality") : null;
   if (bare) {
     const left = pinout.pins.filter((p) => p.side === "left");
     const right = pinout.pins.filter((p) => p.side === "right");

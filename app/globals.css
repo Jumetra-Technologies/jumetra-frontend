@@ -832,3 +832,29 @@ pre {
 [data-bare] .react-flow__handle:hover {
   z-index: 3;
 }
+
+/* Breadboard holes (components/lab/BreadboardNode.tsx): invisible over the drawn hole until hovered, aimed at, or wired. */
+.react-flow__handle.hhip-bb-hole {
+  width: 7px;
+  height: 7px;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 2px;
+  border: 1.5px solid transparent;
+  background: transparent;
+  transition: scale 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+.react-flow__handle.hhip-bb-hole:hover,
+.react-flow__handle.hhip-bb-hole.connectingto,
+.react-flow__handle.hhip-bb-hole.connectionindicator:hover {
+  scale: 1.7;
+  border-color: var(--primary) !important;
+  background: color-mix(in srgb, var(--primary) 35%, transparent) !important;
+}
+.react-flow__handle.hhip-bb-hole.valid {
+  border-color: var(--success) !important;
+  background: color-mix(in srgb, var(--success) 40%, transparent) !important;
+}
+.react-flow__handle.hhip-bb-hole[data-wired] {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+}

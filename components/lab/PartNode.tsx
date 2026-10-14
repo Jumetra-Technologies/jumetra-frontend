@@ -2,7 +2,7 @@
 
 import { memo, useMemo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { AlertTriangle, Cpu, Lightbulb, Monitor, Radio, Thermometer, Usb, Zap } from "lucide-react";
+import { AlertTriangle, Cpu, Grid3x3, Lightbulb, Monitor, Radio, Thermometer, Usb, Zap } from "lucide-react";
 import { PartModel3D } from "@/components/library/views/PartModel3D";
 import { PartPlanGraphic } from "@/components/library/views/PartPlanView";
 import { getPart, hasScreen, withScreenText } from "@/lib/parts";
@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useLabContext } from "./lab-context";
 import { CONNECTOR_NAME, UsbCable, connectorFor } from "./UsbCable";
 import type { BoardGeometry } from "@/lib/lab/board-geometry";
+import { BreadboardNode } from "./BreadboardNode";
 
 export type PartNodeData = { node: LabNode };
 
@@ -44,7 +45,7 @@ const STATUS_DOT: Record<PartStatus, string> = {
   fault: "bg-danger",
 };
 
-const GROUP_ICON = { boards: Cpu, sensors: Thermometer, outputs: Lightbulb, displays: Monitor, radios: Radio } as const;
+const GROUP_ICON = { boards: Cpu, prototyping: Grid3x3, sensors: Thermometer, outputs: Lightbulb, displays: Monitor, radios: Radio } as const;
 
 function PinRow({ pin, index, side, nodeId, connected, faulty, live, w, partLabel }: { pin: LabPin; index: number; side: "left" | "right"; nodeId: string; connected: string | null; faulty: boolean; live: boolean; w: number; partLabel: string }) {
   const tone = pinTone(pin);
@@ -214,6 +215,24 @@ function PartNodeView({ id, data, selected }: NodeProps & { data: PartNodeData }
   const text = live?.text;
   const shown = useMemo(() => (part && screen ? withScreenText(part, text ?? []) : part), [part, screen, text]);
 
+  if (layout.bare && part && pinout.passive) {
+    return (
+      <BreadboardNode
+        id={id}
+        node={node}
+        part={part}
+        geometry={layout.bare}
+        view={view}
+        status={status}
+        selected={selected}
+        flashed={flash.includes(id)}
+        caption={<BareCaption node={node} status={status} lit={false} errors={errors} warnings={warnings} badge={live?.badge} on={!!live?.badge} />}
+        connections={connections}
+        pinLive={pinLive}
+      />
+    );
+  }
+
   if (layout.bare && part) {
     return (
       <BareBoard
@@ -313,6 +332,31 @@ function PartNodeView({ id, data, selected }: NodeProps & { data: PartNodeData }
   );
 }
 
+/** The name, status and badge floating above a part drawn as itself. */
+function BareCaption({ node, status, lit, errors, warnings, badge, on = false }: { node: LabNode; status: PartStatus; lit: boolean; errors: number; warnings: number; badge?: string; on?: boolean }) {
+  return (
+    <div className="absolute left-0 top-0 flex h-[30px] max-w-full items-center gap-2 px-1" data-testid="board-caption">
+      <span className={cn("size-2.5 shrink-0 rounded-full", STATUS_DOT[status], status === "ready" && lit && "shadow-[0_0_0_3px_color-mix(in_srgb,var(--success)_25%,transparent)]")} title={STATUS_TEXT[status]} />
+      <p className="truncate text-[13px] font-semibold leading-4">{node.label}</p>
+      <p className="truncate text-[10.5px] leading-4 text-muted">
+        {STATUS_TEXT[status]}
+        {node.mode !== "virtual" ? ` · ${node.mode}` : ""}
+      </p>
+      {errors || warnings ? (
+        <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold", errors ? "bg-danger/12 text-danger" : "bg-warning/15 text-warning")} title={`${errors} errors, ${warnings} warnings`}>
+          <AlertTriangle className="size-3" aria-hidden />
+          {errors + warnings}
+        </span>
+      ) : null}
+      {badge ? (
+        <span className={cn("max-w-[7.5rem] shrink-0 truncate rounded-full px-2 py-0.5 font-mono text-[10.5px] font-semibold tabular-nums transition-colors", on ? "bg-success/12 text-success" : "bg-muted-bg text-muted")} data-testid="node-badge">
+          {badge}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * A board drawn as itself: the 3D or 2D model with no card around it. Each
  * header hole carries a handle, so jumper wires land on the real pin, and the
@@ -369,25 +413,7 @@ function BareBoard({
       data-bare="true"
     >
       {/* Caption: what the card's header said, floating above the board. */}
-      <div className="absolute left-0 top-0 flex h-[30px] max-w-full items-center gap-2 px-1" data-testid="board-caption">
-        <span className={cn("size-2.5 shrink-0 rounded-full", STATUS_DOT[status], status === "ready" && lit && "shadow-[0_0_0_3px_color-mix(in_srgb,var(--success)_25%,transparent)]")} title={STATUS_TEXT[status]} />
-        <p className="truncate text-[13px] font-semibold leading-4">{node.label}</p>
-        <p className="truncate text-[10.5px] leading-4 text-muted">
-          {STATUS_TEXT[status]}
-          {node.mode !== "virtual" ? ` · ${node.mode}` : ""}
-        </p>
-        {errors || warnings ? (
-          <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold", errors ? "bg-danger/12 text-danger" : "bg-warning/15 text-warning")} title={`${errors} errors, ${warnings} warnings`}>
-            <AlertTriangle className="size-3" aria-hidden />
-            {errors + warnings}
-          </span>
-        ) : null}
-        {badge ? (
-          <span className={cn("max-w-[7.5rem] shrink-0 truncate rounded-full px-2 py-0.5 font-mono text-[10.5px] font-semibold tabular-nums transition-colors", on ? "bg-success/12 text-success" : "bg-muted-bg text-muted")} data-testid="node-badge">
-            {badge}
-          </span>
-        ) : null}
-      </div>
+      <BareCaption node={node} status={status} lit={lit} errors={errors} warnings={warnings} badge={badge} on={on} />
 
       {/* The board. A selection shows as a glow round its outline, not a box. */}
       <div

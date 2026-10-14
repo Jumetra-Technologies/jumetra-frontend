@@ -12,7 +12,7 @@
  * and z runs up, out of the board. All lengths are in millimetres.
  */
 
-export type PartGroupId = "boards" | "sensors" | "outputs" | "displays" | "radios";
+export type PartGroupId = "boards" | "prototyping" | "sensors" | "outputs" | "displays" | "radios";
 
 export interface PartGroup {
   id: PartGroupId;
@@ -137,6 +137,12 @@ export interface CanvasSpec {
   pins: Record<string, { x: number; y: number }>;
   /** The USB socket's mouth: where the lead's plug seats, and the side it comes in from. */
   usb?: { x: number; y: number; z: number; from: "left" | "right" | "top" | "bottom" };
+  /** The still 3D view on the canvas, when the default three-quarter view would crowd the holes. */
+  view?: { spin: number; tilt: number };
+  /** Height (mm) of the hole tops wires land on. Defaults to a female header on a PCB. */
+  pinZ?: number;
+  /** Also draw the part as itself in the Trace view (a breadboard has too many holes for a card). */
+  trace?: boolean;
 }
 
 export type FeatureKind = "pin" | "pins" | "port" | "led" | "button" | "chip" | "antenna" | "sensor" | "connector" | "power" | "mechanical" | "other";

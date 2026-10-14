@@ -8,6 +8,7 @@
  */
 
 import { getPart } from "@/lib/parts";
+import { BREADBOARD_HOLES, RAILS, stripName } from "@/lib/parts/models/breadboard";
 import { getPinout, type LabPin, type PinRole, type Pinout } from "./pinout";
 import type { LabNode, LabWire, PinRef } from "./types";
 
@@ -133,6 +134,11 @@ export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
     for (const group of bySupply.values()) for (let i = 1; i < group.length; i++) set.union(`${node.id}:${group[0].id}`, `${node.id}:${group[i].id}`);
   }
 
+  // A breadboard's strips: every hole on one clip is one net.
+  for (const node of nodes) {
+    for (const strip of pinouts.get(node.id)!.strips ?? []) for (let i = 1; i < strip.length; i++) set.union(`${node.id}:${strip[0]}`, `${node.id}:${strip[i]}`);
+  }
+
   const validWires: LabWire[] = [];
   for (const wire of wires) {
     const a = pinKey(wire.from);
@@ -160,6 +166,7 @@ export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
 
   const pinOf = (ref: PinRef) => pinouts.get(ref.node)?.pins.find((p) => p.id === ref.pin);
   const isBoard = (id: string) => pinouts.get(id)?.controller ?? false;
+  const isPassive = (id: string) => pinouts.get(id)?.passive ?? false;
 
   const nets: Net[] = [];
   const netOfPin = new Map<string, string>();
@@ -185,7 +192,8 @@ export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
     else kind = netWires.length ? "signal" : "open";
     const voltage = supplies.size ? Math.max(...supplies) : undefined;
     const boardSignal = members.find((ref) => isBoard(ref.node) && !pinOf(ref)?.supplies && !pinOf(ref)?.fns?.includes("ground"));
-    const first = boardSignal ? pinOf(boardSignal) : pinOf(members[0]);
+    const named = members.find((ref) => !isPassive(ref.node)) ?? members[0];
+    const first = boardSignal ? pinOf(boardSignal) : pinOf(named);
     const label =
       kind === "power" || kind === "conflict"
         ? `${voltage} V rail`
@@ -339,10 +347,57 @@ export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
     }
   }
 
+  // Breadboards: nothing to power or check, but their rails should carry what they're marked with.
+  for (const node of nodes) {
+    const pinout = pinouts.get(node.id)!;
+    if (!pinout.passive) continue;
+    const wired = wiredPins.get(node.id) ?? new Set<string>();
+    const nodeFaults: Fault[] = [];
+    let supplyV: number | null = null;
+    let grounded = false;
+    const seen = new Set<string>();
+    for (const pin of pinout.pins) {
+      const net = netFor({ node: node.id, pin: pin.id });
+      if (!net || seen.has(net.id)) continue;
+      seen.add(net.id);
+      if (net.kind === "power" && net.voltage !== undefined) supplyV = Math.max(supplyV ?? 0, net.voltage);
+      if (net.kind === "ground") grounded = true;
+    }
+    for (const rail of Object.keys(RAILS) as Array<keyof typeof RAILS>) {
+      const net = netFor({ node: node.id, pin: `${rail}1` });
+      if (!net || !net.wires.length) continue;
+      const { sign, label } = RAILS[rail];
+      if (sign === "+" && net.kind === "ground") {
+        nodeFaults.push({ id: `rail-sign:${node.id}:${rail}`, severity: "warning", title: `GND on the ${label} rail`, detail: `The ${label} rail is printed red for supply, but it is wired to ground. It works, but anyone who trusts the stripes will wire parts backwards. Put GND on a − rail.`, nodes: [node.id], wires: net.wires });
+      } else if (sign === "−" && net.kind === "power") {
+        nodeFaults.push({ id: `rail-sign:${node.id}:${rail}`, severity: "warning", title: `${net.voltage} V on the ${label} rail`, detail: `The ${label} rail is printed blue for ground, but it carries ${net.voltage} V. Put the supply on a + rail and GND on this one, so the stripes tell the truth.`, nodes: [node.id], wires: net.wires });
+      }
+    }
+    reports[node.id] = {
+      // A breadboard draws no current itself, so it never counts as a load.
+      status: wired.size === 0 ? "idle" : "ready",
+      powered: false,
+      grounded,
+      supplyV,
+      links: [],
+      faults: nodeFaults,
+      wiredPins: wired,
+    };
+    faults.push(...nodeFaults);
+  }
+
+  /** Where a net passes through a breadboard: "Top + rail", or null. */
+  const breadboardStrip = (net: Net): string | null => {
+    const hole = net.pins.find((ref) => isPassive(ref.node));
+    if (!hole) return null;
+    const h = BREADBOARD_HOLES.find((x) => x.id === hole.pin);
+    return h ? stripName(h.strip) : null;
+  };
+
   // Peripherals.
   for (const node of nodes) {
     const pinout = pinouts.get(node.id)!;
-    if (pinout.controller) continue;
+    if (pinout.controller || pinout.passive) continue;
     const name = nameOf(node);
     const nodeFaults: Fault[] = [];
     const links: BoardLink[] = [];
@@ -501,11 +556,16 @@ export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
     if (wired.size > 0) {
       if (hasVcc && !poweredByRail && !nodeFaults.some((f) => f.id.startsWith("vcc-gnd"))) {
         const vcc = pinout.pins.find((p) => p.role === "vcc")!;
-        fault("error", "no-power", "No power", `${name} ${vcc.label} isn't on a supply. Wire it to ${pinout.supply && pinout.supply[1] < 4 ? "3.3 V" : pinout.supply && pinout.supply[0] > 3.6 ? "5 V" : "3.3 V or 5 V"}.`);
+        const want = pinout.supply && pinout.supply[1] < 4 ? "3.3 V" : pinout.supply && pinout.supply[0] > 3.6 ? "5 V" : "3.3 V or 5 V";
+        const vccNet = netFor({ node: node.id, pin: vcc.id });
+        const strip = vccNet ? breadboardStrip(vccNet) : null;
+        fault("error", "no-power", "No power", strip ? `${name} ${vcc.label} is on the breadboard's ${strip}, which has no supply yet. Wire a board's ${want} pin to it.` : `${name} ${vcc.label} isn't on a supply. Wire it to ${want}.`);
       }
       if (hasGnd && !grounded && !nodeFaults.some((f) => f.id.startsWith("gnd-vcc"))) {
         const g = pinout.pins.find((p) => p.role === "gnd")!;
-        fault("error", "no-ground", "No path to ground", `${name} ${g.label} isn't on GND, so no current can flow through it. Wire it to a GND pin.`);
+        const gNet = netFor({ node: node.id, pin: g.id });
+        const strip = gNet ? breadboardStrip(gNet) : null;
+        fault("error", "no-ground", "No path to ground", strip ? `${name} ${g.label} is on the breadboard's ${strip}, which isn't wired to GND. Wire a board's GND pin to it.` : `${name} ${g.label} isn't on GND, so no current can flow through it. Wire it to a GND pin.`);
       }
       if (node.partId === "led" && driven && grounded) {
         // The lab has no resistor part, so the model assumes the 220 Ω a real build needs; the LED's

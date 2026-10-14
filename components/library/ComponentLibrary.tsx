@@ -58,8 +58,8 @@ export function ComponentLibrary({ initialPart, initialQuery = "", compatibility
 
   return (
     <div className="grid gap-8 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-10">
-      <aside className="order-2 lg:order-1 lg:sticky lg:top-6 lg:max-h-[calc(100svh-3rem)] lg:overflow-y-auto lg:pr-3" aria-label="Parts">
-        <div role="search" className="sticky top-0 z-10 -mx-1 bg-canvas px-1 pb-3 pt-1">
+      <aside className="order-2 lg:order-1 lg:sticky lg:top-6 lg:max-h-[calc(100svh-3rem)] lg:-ml-1.5 lg:overflow-y-auto lg:pl-1.5 lg:pr-3" aria-label="Parts">
+        <div role="search" className="sticky top-0 z-10 bg-canvas pb-3 pt-1.5">
           <label className="group/search relative block">
             <span className="sr-only">Search parts</span>
             {typing ? null : (

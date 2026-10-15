@@ -21,6 +21,15 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Checks before a pull request
+
+```bash
+npm run check      # types, lint and every test (vitest)
+npm run build      # production build
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the same steps, plus the MCP server's typecheck and self-test, on every pull request and on `main`. A red check means the change isn't ready to merge. Tests live in `__tests__/`. Every pull request also bumps the version and adds a `CHANGELOG.md` entry, and `__tests__/Version.test.ts` checks it.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

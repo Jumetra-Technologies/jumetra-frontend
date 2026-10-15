@@ -51,7 +51,8 @@ export function SimulationPanel({
   }, [laboratoryId]);
 
   useEffect(() => {
-    refreshState().catch(() => undefined);
+    const t = window.setTimeout(() => void refreshState().catch(() => undefined), 0);
+    return () => window.clearTimeout(t);
   }, [refreshState]);
 
   async function runAction(action: () => Promise<{ status?: string; state?: SimulationState }>) {

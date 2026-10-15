@@ -49,7 +49,7 @@ export function BuildOutput({
         <p className="flex gap-2 border-b border-amber-400/20 bg-amber-400/10 px-2 py-1.5 font-sans text-[11.5px] leading-4 text-amber-200" data-testid="simulated-build-note">
           <AlertTriangle className="mt-px size-3.5 shrink-0" aria-hidden />
           <span>
-            <strong>Your code wasn&apos;t compiled.</strong> The Kiungo server has no compiler for this board yet, so it only checked the project&apos;s files. Mistakes in your code won&apos;t show up here, and the memory figures are estimates.
+            <strong>Your code wasn&apos;t compiled.</strong> Kiungo can&apos;t compile for this board yet, so it only checked the project&apos;s files. Mistakes in your code won&apos;t show up here, and the memory figures are estimates.
           </span>
         </p>
       ) : null}

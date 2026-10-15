@@ -16,14 +16,13 @@ type Props = {
 };
 
 export function PinExplorer({ deviceId, selectedPinId, onSelectPin }: Props) {
-  const [pins, setPins] = useState<HybridPhysicalPin[]>([]);
+  const [loaded, setPins] = useState<HybridPhysicalPin[]>([]);
+  // With no device chosen there are no pins to show, whatever was loaded before.
+  const pins = deviceId ? loaded : [];
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!deviceId) {
-      setPins([]);
-      return;
-    }
+    if (!deviceId) return;
     api
       .getHybridPhysicalPins(deviceId)
       .then((r) => {

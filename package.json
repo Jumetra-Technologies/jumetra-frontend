@@ -1,12 +1,16 @@
 {
   "name": "dashboard",
-  "version": "1.16.2",
+  "version": "1.16.3",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run lint && npm test",
     "release:patch": "npm version patch --no-git-tag-version",
     "release:minor": "npm version minor --no-git-tag-version",
     "release:major": "npm version major --no-git-tag-version"

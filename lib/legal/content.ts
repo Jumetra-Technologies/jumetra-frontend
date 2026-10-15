@@ -224,11 +224,11 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
     slug: "cookies",
     title: "Cookie Policy",
     summary: "Kiungo sets no cookies of its own. Here is what it stores in your browser instead.",
-    revised: "2026-10-06",
+    revised: "2026-10-15",
     blocks: [
       {
         type: "p",
-        text: "Kiungo does not set cookies of its own. It keeps your sign-in session and a small number of preferences in your browser's local storage. Project and experiment records are saved to your signed-in account, not browser storage.",
+        text: "Kiungo does not set cookies of its own. It keeps your sign-in session, your Engineering Lab sessions and a few preferences in your browser's storage. Project and experiment records are saved to your signed-in account, not browser storage.",
       },
       { type: "h2", text: "What Kiungo keeps in your browser" },
       {
@@ -237,11 +237,23 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         rows: [
           ["`hhip-auth-session`", "Your sign-in token and profile", "Until you sign out or clear site data"],
           ["`hhip-account`", "Account display details for the sidebar", "Until you sign out or clear site data"],
+          ["`kiungo.lab:v2:<account>`", "Your Engineering Lab sessions (parts, wires, settings and log), one entry per signed-in account, shown only to that account", "Until you delete the sessions or clear site data"],
           ["`hhip-learning-progress:v1`", "Which learning modules you have marked complete", "Until you clear site data"],
+          ["`hhip-lab-sound`", "Whether the Engineering Lab's sounds are on", "Until you change it or clear site data"],
+          ["`kiungo-diagnostics`", "A short log of failed requests and errors on this device, for administrators' System Diagnostics; it never leaves the browser", "The newest 300 requests and 150 errors; until you clear site data"],
           ["`hhip-theme`", "Your chosen theme", "Until you change it or clear site data"],
           ["`hhip-sidebar-collapsed`", "Whether the sidebar is collapsed", "Until you change it or clear site data"],
         ],
         caption: "Local storage keys used by Kiungo",
+      },
+      {
+        type: "table",
+        head: ["Key", "What it holds", "How long"],
+        rows: [
+          ["`hhip-firmware-studio:v1`", "The Firmware page's last list of your projects and starters, so the page opens quickly", "Until you close the tab"],
+          ["`kiungo-system-unlocked`", "Whether this tab opened System Diagnostics", "Until you close the tab"],
+        ],
+        caption: "Session storage keys used by Kiungo (cleared when the tab closes)",
       },
       { type: "h2", text: "Cookies set by others" },
       {

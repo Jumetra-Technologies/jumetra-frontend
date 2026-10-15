@@ -73,14 +73,15 @@ export function ProjectHub({ serverProjects, startCreating = false }: { serverPr
     };
   }, [isAuthenticated]);
 
+  // A search runs for two or more characters while signed in; otherwise nothing it found earlier is shown.
+  const searchActive = teammateQuery.trim().length >= 2 && isAuthenticated;
+  const shownResults = searchActive ? teammateResults : [];
+  const shownSearching = searchActive && searchingTeammates;
+  const shownSearchError = searchActive ? teammateSearchError : "";
+
   useEffect(() => {
     const query = teammateQuery.trim();
-    if (query.length < 2 || !isAuthenticated) {
-      setTeammateResults([]);
-      setSearchingTeammates(false);
-      setTeammateSearchError("");
-      return;
-    }
+    if (query.length < 2 || !isAuthenticated) return;
 
     let active = true;
     const timer = setTimeout(() => {
@@ -346,14 +347,14 @@ export function ProjectHub({ serverProjects, startCreating = false }: { serverPr
                 ))}
               </ul>
             ) : null}
-            {searchingTeammates ? <p role="status" className="text-xs text-muted">Searching users…</p> : null}
-            {teammateSearchError ? <ErrorNotice message={teammateSearchError} size="sm" /> : null}
-            {teammateQuery.trim().length >= 2 && !searchingTeammates && !teammateSearchError && teammateResults.length === 0 ? (
+            {shownSearching ? <p role="status" className="text-xs text-muted">Searching users…</p> : null}
+            {shownSearchError ? <ErrorNotice message={shownSearchError} size="sm" /> : null}
+            {teammateQuery.trim().length >= 2 && !shownSearching && !shownSearchError && shownResults.length === 0 ? (
               <p className="text-xs text-muted">No matching users found.</p>
             ) : null}
-            {teammateResults.length ? (
+            {shownResults.length ? (
               <ul className="max-h-40 overflow-y-auto rounded-md border border-border" aria-label="User search results">
-                {teammateResults.map((teammate) => (
+                {shownResults.map((teammate) => (
                   <li key={teammate.id}>
                     <button
                       type="button"

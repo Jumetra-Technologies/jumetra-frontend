@@ -1,6 +1,5 @@
 "use client";
 
-import { api } from "@/lib/api-client";
 import type { ComponentV2SearchHit } from "@/lib/types";
 import { HardwareComponentRenderer } from "./HardwareComponentRenderer";
 

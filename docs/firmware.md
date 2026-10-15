@@ -11,7 +11,7 @@ The Firmware page (`/firmware`, `components/firmware/`) is a small Arduino IDE i
 | **Your projects / Files** | Projects saved to the person's account on the Kiungo server (sign-in needed), and the files of the open one. |
 | **Editor** | Monaco, C++ for sketches and Python for Raspberry Pi. With nothing open, a short explanation of what firmware is and the four steps. |
 | **Compiler messages** | The build log, with a Compiled / Simulated / Failed badge. |
-| **Serial monitor** | **My board (USB)**: a board on this computer, read by the browser over Web Serial (Chrome and Edge on desktop). **Kiungo server**: the server's serial log. |
+| **Serial monitor** | **My board (USB)**: a board on this computer, read by the browser over Web Serial (Chrome and Edge on desktop). **Kiungo online**: the serial log for boards connected to Kiungo. |
 | **Memory** | Program storage (flash) and working memory (RAM) used, in KB and %. Marked as estimates after a simulated build. |
 | **Compilers** | Which compilers the server has. A missing one means builds for those boards are simulated. |
 | **Run it** | **In the Engineering Lab**: opens a lab session with the board and the parts the starter drives, wired up. **On a board**: Upload to a board attached to the server, with an optional server port. Then **Pin activity**. |

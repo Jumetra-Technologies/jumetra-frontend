@@ -4,10 +4,10 @@ import { EngineeringLab } from "@/components/lab/EngineeringLab";
 import { boardGeometry, BOARD_SCALE, BOARD_VIEW } from "@/lib/lab/board-geometry";
 import { nodeLayout } from "@/lib/lab/layout";
 import { getPinout } from "@/lib/lab/pinout";
-import { useLab } from "@/lib/lab/store";
 import { getPart } from "@/lib/parts";
 import { project, projectAngle, stageLift } from "@/lib/parts/geometry";
 import { ARDUINO_UNO } from "@/lib/parts/models/arduino-uno";
+import { freshLab } from "./helpers/lab";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 
@@ -114,7 +114,7 @@ describe("In the Engineering Lab", () => {
   });
   beforeEach(() => {
     window.localStorage.clear();
-    useLab.setState({ hydrated: false, sessions: [], activeId: null, past: [], future: [], saveError: false });
+    freshLab();
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
   });
   afterEach(() => vi.unstubAllGlobals());

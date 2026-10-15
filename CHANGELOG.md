@@ -10,6 +10,31 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.16.3] - 2026-10-15
+
+### Added
+- **Checks on every pull request.** GitHub Actions (`.github/workflows/ci.yml`) runs the typecheck, lint, every test and a production build, plus the MCP server's typecheck and self-test. `npm test`, `npm run typecheck` and `npm run check` are back in `package.json`.
+- **The test suite is back:** 38 files and 464 tests. The 29 files deleted in 507b93c are restored and updated to how the app works now:
+  - projects and experiment records live on the account;
+  - sign-in uses Google and GitHub;
+  - profiles are no longer kept on the device;
+  - errors aren't sent anywhere yet.
+  The project-creation tests are rewritten for the account-backed flow, including teammate search.
+
+### Fixed
+- **Learning progress:**
+  - Progress saved under the module's pre-rename slug counts again.
+  - Repeats are dropped.
+  - A browser that blocks storage no longer crashes the Learning Center.
+  All three were lost in 507b93c.
+- **Cookie policy.** It now lists every key the app stores: the per-account lab sessions, the lab sound setting, the System Diagnostics log, and the two session-storage keys. It no longer lists keys the app has stopped using.
+- **Developer wording.** "The backend returned an invalid sign-in configuration" now reads "Sign-in isn't set up correctly right now". The Firmware page's "Kiungo server" wording became "Kiungo online".
+- **Lint is clean** (it had 8 errors and 5 warnings):
+  - The sidebar's collapsed state and the theme are now read with `useSyncExternalStore`, so the effects no longer set state.
+  - The teammate search, the pin explorer and the component inspector derive what they show.
+  - Two effects that polled the server start on the next tick.
+  - Unused imports are removed.
+
 ## [1.16.2] - 2026-10-15
 
 ### Fixed
@@ -292,6 +317,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.16.3]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.2...v1.16.3
 [1.16.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.1...v1.16.2
 [1.16.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.0...v1.16.1
 [1.16.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.15.2...v1.16.0

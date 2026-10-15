@@ -5,7 +5,7 @@ import { recordError, recordPageView } from "@/lib/diagnostics/store";
 import { SiteFooter } from "@/components/landing/SiteFooter";
 import { KiungoLogo, KiungoMark } from "@/components/brand/KiungoMark";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Menu, PanelLeftClose, PanelLeftOpen, Settings, Star, User, X } from "lucide-react";
 import {
   NAV_SECTIONS,
@@ -21,6 +21,35 @@ import { SETTINGS_QUERY_FLAG, openSettings } from "@/lib/settings-dialog";
 import { cn } from "@/lib/utils";
 
 const COLLAPSE_KEY = "hhip-sidebar-collapsed";
+
+/** Whether the sidebar is collapsed: kept in the browser, with a memory copy for when storage is blocked. */
+let collapsedInMemory = false;
+const collapseListeners = new Set<() => void>();
+function readCollapsed(): boolean {
+  try {
+    const saved = window.localStorage.getItem(COLLAPSE_KEY);
+    return saved === null ? collapsedInMemory : saved === "1";
+  } catch {
+    return collapsedInMemory;
+  }
+}
+function subscribeCollapsed(listener: () => void): () => void {
+  collapseListeners.add(listener);
+  window.addEventListener("storage", listener);
+  return () => {
+    collapseListeners.delete(listener);
+    window.removeEventListener("storage", listener);
+  };
+}
+function writeCollapsed(next: boolean): void {
+  collapsedInMemory = next;
+  try {
+    window.localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
+  } catch {
+    /* storage blocked: the memory copy still works for this visit */
+  }
+  collapseListeners.forEach((listener) => listener());
+}
 
 function NavLink({
   item,
@@ -313,8 +342,7 @@ export function DashboardShell({
   fullBleed?: boolean;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-  const [ready, setReady] = useState(false);
+  const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
   const mainRef = useRef<HTMLElement>(null);
 
   // The shell stays mounted between pages, so start each new page at the top.
@@ -341,15 +369,6 @@ export function DashboardShell({
   }, []);
 
   useEffect(() => {
-    try {
-      setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === "1");
-    } catch {
-      /* ignore */
-    }
-    setReady(true);
-  }, []);
-
-  useEffect(() => {
     const url = new URL(window.location.href);
     if (!url.searchParams.has(SETTINGS_QUERY_FLAG)) return;
     url.searchParams.delete(SETTINGS_QUERY_FLAG);
@@ -357,22 +376,13 @@ export function DashboardShell({
     openSettings();
   }, []);
 
-  useEffect(() => {
-    if (!ready) return;
-    try {
-      window.localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
-  }, [collapsed, ready]);
-
   return (
     <div className="flex h-svh overflow-hidden bg-background">
       <div className="hidden h-full shrink-0 lg:flex">
         <Sidebar
           activePath={activePath}
           collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed((c) => !c)}
+          onToggleCollapse={() => writeCollapsed(!collapsed)}
         />
       </div>
 

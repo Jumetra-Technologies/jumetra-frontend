@@ -1,6 +1,5 @@
 "use client";
 
-import { storageError } from "@/lib/errors";
 import { ErrorNotice } from "@/components/ui/error-notice";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";

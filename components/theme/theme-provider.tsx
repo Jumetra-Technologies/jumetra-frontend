@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
 import {
   DEFAULT_THEME,
   DARK_SURFACE_THEMES,
@@ -31,28 +24,40 @@ export function applyTheme(theme: Theme) {
   root.classList.toggle("dark", DARK_SURFACE_THEMES.has(theme));
 }
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME);
+/** The saved theme, read as an external store: the browser's copy, with a memory copy for when storage is blocked. */
+let themeInMemory: Theme = DEFAULT_THEME;
+const themeListeners = new Set<() => void>();
+function readTheme(): Theme {
+  try {
+    const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return isTheme(saved) ? saved : themeInMemory;
+  } catch {
+    return themeInMemory;
+  }
+}
+function subscribeTheme(listener: () => void): () => void {
+  themeListeners.add(listener);
+  window.addEventListener("storage", listener);
+  return () => {
+    themeListeners.delete(listener);
+    window.removeEventListener("storage", listener);
+  };
+}
 
-  useEffect(() => {
-    try {
-      const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-      if (isTheme(savedTheme)) setThemeState(savedTheme);
-    } catch (error) {
-      console.error("Could not read the saved appearance preference.", error);
-    }
-  }, []);
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const theme = useSyncExternalStore(subscribeTheme, readTheme, () => DEFAULT_THEME);
 
   useEffect(() => applyTheme(theme), [theme]);
 
   const setTheme = useCallback((next: Theme) => {
-    setThemeState(next);
+    themeInMemory = next;
     applyTheme(next);
     try {
       window.localStorage.setItem(THEME_STORAGE_KEY, next);
     } catch (error) {
       console.error("Could not save the appearance preference.", error);
     }
+    themeListeners.forEach((listener) => listener());
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -72,7 +77,7 @@ export function useTheme() {
   if (!ctx) {
     return {
       theme: DEFAULT_THEME,
-      setTheme: (_: Theme) => undefined,
+      setTheme: () => undefined,
       toggleTheme: () => undefined,
     };
   }

@@ -1,0 +1,384 @@
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { EngineeringLab } from "@/components/lab/EngineeringLab";
+import { ProjectHub } from "@/components/projects/ProjectHub";
+import { LocalProjectDetail } from "@/components/projects/LocalProjectDetail";
+import { MenuList } from "@/components/ui/menu";
+import { useLab } from "@/lib/lab/store";
+import { EMPTY_ROBOTICS_DATA, writeRoboticsData } from "@/lib/robotics-data";
+import { api } from "@/lib/api-client";
+import { freshLab } from "./helpers/lab";
+
+const push = vi.fn();
+const replace = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push, replace }),
+}));
+
+beforeAll(() => {
+  // What React Flow needs from a browser.
+  class RO {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  vi.stubGlobal("ResizeObserver", RO);
+  class DOMMatrixReadOnlyStub {
+    m22 = 1;
+    constructor() {}
+  }
+  vi.stubGlobal("DOMMatrixReadOnly", DOMMatrixReadOnlyStub);
+  Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, get: () => 600 });
+  Object.defineProperty(HTMLElement.prototype, "offsetWidth", { configurable: true, get: () => 900 });
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({ matches: true, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn() }));
+});
+
+beforeEach(() => {
+  window.localStorage.clear();
+  freshLab();
+  writeRoboticsData(EMPTY_ROBOTICS_DATA);
+  // The backend isn't running in tests: the lab works offline.
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+  push.mockReset();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  vi.stubGlobal("ResizeObserver", class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  });
+  vi.stubGlobal("DOMMatrixReadOnly", class {
+    m22 = 1;
+  });
+});
+
+function project() {
+  const now = new Date().toISOString();
+  // Projects come from the account now (lib/robotics-data.ts keeps them in memory, not the browser).
+  writeRoboticsData({ projects: [{ id: "local-project-gh", name: "Smart greenhouse", description: "Watch soil moisture", objectives: "Water when dry", contributors: "", category: "iot", hardware: ["soil sensor"], createdAt: now, updatedAt: now }], experiments: [] });
+}
+
+describe("Engineering Lab", () => {
+  it("starts a session, adds a board and an auto-wired LED with one click each, and logs it", async () => {
+    render(<EngineeringLab />);
+    expect(await screen.findByTestId("lab-empty")).toBeInTheDocument();
+    expect(useLab.getState().sessions).toHaveLength(1);
+
+    fireEvent.click(screen.getByTestId("quick-arduino-uno"));
+    await waitFor(() => expect(useLab.getState().sessions[0].nodes).toHaveLength(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Show components panel" }));
+    const search = screen.getByTestId("lab-search");
+    fireEvent.change(search, { target: { value: "led" } });
+    fireEvent.keyDown(search, { key: "Enter" });
+    const session = useLab.getState().sessions[0];
+    expect(session.nodes.map((n) => n.partId)).toEqual(["arduino-uno", "led"]);
+    expect(session.wires).toHaveLength(2);
+    expect(session.log.map((e) => e.text)).toEqual(expect.arrayContaining(["Added Arduino Uno", "Added LED", expect.stringMatching(/^Auto-wired LED to Arduino Uno: Anode \(\+\) → D13 SCK, Cathode \(−\) → GND/)]));
+    expect(await screen.findByText(/LED is wired and powered on Arduino Uno D13 SCK/)).toBeInTheDocument();
+    expect(screen.getByTestId("runtime-status")).toHaveAttribute("aria-label", "Offline mode");
+  });
+
+  it("runs the sketch and records what happened", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    fireEvent.click(within(screen.getByTestId("lab-empty")).getByText("Blink an LED"));
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    await act(async () => {
+      vi.advanceTimersByTime(1200);
+    });
+    expect(screen.getByTestId("sim-time").textContent).not.toBe("0.0 s");
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    const log = useLab.getState().sessions[0].log.map((e) => e.text);
+    expect(log).toEqual(expect.arrayContaining(["Run started with 2 parts", expect.stringMatching(/^LED flashes on \(Arduino Uno D13 SCK\)$/), expect.stringMatching(/^Run stopped after \d+\.\d s/)]));
+    expect(useLab.getState().sessions[0].runMs).toBeGreaterThan(0);
+    vi.useRealTimers();
+  });
+
+  it("opens with only the canvas: the parts panel and the inspector wait behind their buttons", async () => {
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    expect(screen.queryByTestId("lab-search")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show components panel" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Show inspector" })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Show components panel" }));
+    expect(screen.getByTestId("lab-search")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Hide components panel" }));
+    expect(screen.queryByTestId("lab-search")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show inspector" }));
+    expect(screen.getByRole("button", { name: "Hide inspector" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("Stop halts the clock and a rerun continues it at the same rate: no duplicate timers", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    fireEvent.click(within(screen.getByTestId("lab-empty")).getByText("Blink an LED"));
+    const time = () => Number.parseFloat(screen.getByTestId("sim-time").textContent ?? "0");
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    const afterFirst = time();
+    expect(afterFirst).toBeGreaterThanOrEqual(0.9);
+    expect(afterFirst).toBeLessThanOrEqual(1.1);
+    fireEvent.click(screen.getByTestId("run-toggle")); // stop
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(time()).toBe(afterFirst);
+    fireEvent.click(screen.getByTestId("run-toggle")); // run again
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    // One second of real time is one second of simulated time, not two.
+    expect(time() - afterFirst).toBeGreaterThanOrEqual(0.9);
+    expect(time() - afterFirst).toBeLessThanOrEqual(1.1);
+    vi.useRealTimers();
+  });
+
+  it("explains each view from a small i button, one at a time", async () => {
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    const views = screen.getByRole("radiogroup", { name: "Canvas view" });
+    for (const name of ["3D", "2D", "Trace"]) expect(within(views).getByRole("button", { name: `About ${name}` })).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(within(views).getByRole("button", { name: "About Trace" }));
+    expect(screen.getByRole("note")).toHaveTextContent(/Where the flow stops is where the circuit is broken/);
+    // The i doesn't change the view.
+    expect(useLab.getState().sessions[0].view).toBe("top");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+    fireEvent.click(within(views).getByRole("button", { name: "About 2D" }));
+    expect(screen.getByRole("note")).toHaveTextContent(/every pin, port and LED labelled/);
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  });
+
+  it("switches between the three views and keeps the choice with the session", async () => {
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    const views = screen.getByRole("radiogroup", { name: "Canvas view" });
+    expect(within(views).getAllByRole("radio").map((r) => r.textContent)).toEqual(["3D", "2D", "Trace"]);
+    fireEvent.click(within(views).getByRole("radio", { name: /^Trace/ }));
+    expect(useLab.getState().sessions[0].view).toBe("flow");
+  });
+
+  it("opens a session for a project, with suggestions from its brief", async () => {
+    project();
+    render(<EngineeringLab newForProject="local-project-gh" />);
+    await screen.findByTestId("lab-empty");
+    const session = useLab.getState().sessions[0];
+    expect(session).toMatchObject({ name: "Smart greenhouse lab", projectId: "local-project-gh" });
+    fireEvent.click(screen.getByRole("button", { name: "Show components panel" }));
+    expect(screen.getByText("Suggested for this project")).toBeInTheDocument();
+    const rows = screen.getAllByTestId("lab-add-row").map((r) => r.textContent ?? "");
+    expect(rows.some((t) => t.includes("Soil moisture sensor") && t.includes("hardware list"))).toBe(true);
+  });
+
+  it("checks the circuit and lists problems with their parts", async () => {
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    const s = useLab.getState();
+    act(() => {
+      const uno = s.addNode("arduino-uno", { x: 0, y: 0 })!;
+      const led = useLab.getState().addNode("led", { x: 500, y: 0 })!;
+      useLab.getState().addWire({ node: uno.id, pin: "D13" }, { node: led.id, pin: "A" });
+    });
+    fireEvent.click(screen.getByRole("tab", { name: /Problems/ }));
+    expect(within(screen.getByTestId("lab-dock")).getByText("No path to ground")).toBeInTheDocument();
+  });
+
+  it("copies a problem on double-click, and from the right-click menu", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    act(() => {
+      const uno = useLab.getState().addNode("arduino-uno", { x: 0, y: 0 })!;
+      const led = useLab.getState().addNode("led", { x: 500, y: 0 })!;
+      useLab.getState().addWire({ node: uno.id, pin: "D13" }, { node: led.id, pin: "A" });
+    });
+    fireEvent.click(screen.getByRole("tab", { name: /Problems/ }));
+    const item = within(screen.getByTestId("lab-dock")).getByText("No path to ground").closest("button")!;
+    fireEvent.doubleClick(item);
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(writeText.mock.calls[0][0]).toMatch(/^Fault: No path to ground\n.+\nParts: LED$/);
+    expect(await screen.findByTestId("fault-copied")).toHaveTextContent("Copied");
+    fireEvent.contextMenu(item, { clientX: 40, clientY: 40 });
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getAllByRole("menuitem").map((m) => m.textContent)).toEqual(expect.arrayContaining(["Copy problem", "Show the part"]));
+    fireEvent.click(within(menu).getByRole("menuitem", { name: /Copy problem/ }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+  });
+
+  it("has a sound button that mutes the buzzers and remembers the choice", async () => {
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    const button = screen.getByTestId("sound-toggle");
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(button);
+    expect(screen.getByTestId("sound-toggle")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByTestId("sound-toggle")).toHaveAccessibleName("Turn buzzer sound on");
+    expect(window.localStorage.getItem("hhip-lab-sound")).toBe("off");
+  });
+
+  it("plugs a USB lead into the board on Run, then starts; unplugs on Stop", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    // Motion allowed: the lead animates.
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({ matches: !query.includes("reduced-motion"), media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn() }));
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    fireEvent.click(within(screen.getByTestId("lab-empty")).getByText("Blink an LED"));
+    const lead = () => screen.getByTestId("usb-cable");
+    expect(lead()).toHaveAttribute("data-state", "off");
+    expect(lead()).toHaveAttribute("data-connector", "usb-b");
+
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    expect(lead()).toHaveAttribute("data-state", "plugging");
+    expect(screen.getByTestId("run-toggle")).toHaveTextContent("Powering…");
+    expect(useLab.getState().sessions[0].log.map((e) => e.text)).not.toContain("Run started with 2 parts");
+
+    await act(async () => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(lead()).toHaveAttribute("data-state", "on");
+    expect(screen.getByTestId("run-toggle")).toHaveTextContent("Stop");
+    expect(useLab.getState().sessions[0].log.map((e) => e.text)).toContain("Run started with 2 parts");
+
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    expect(lead()).toHaveAttribute("data-state", "unplugging");
+    expect(screen.getByTestId("run-toggle")).toHaveTextContent("Run");
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(lead()).toHaveAttribute("data-state", "off");
+
+    // Stopping while it's still plugging in: nothing runs.
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    await act(async () => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(lead()).toHaveAttribute("data-state", "off");
+    expect(screen.getByTestId("run-toggle")).toHaveTextContent("Run");
+    vi.useRealTimers();
+    window.matchMedia = original;
+  });
+
+  it("starts at once, with the lead already in, for people who prefer less motion", async () => {
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    fireEvent.click(within(screen.getByTestId("lab-empty")).getByText("Blink an LED"));
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    expect(screen.getByTestId("usb-cable")).toHaveAttribute("data-state", "on");
+    expect(screen.getByTestId("run-toggle")).toHaveTextContent("Stop");
+  });
+
+  it("the Inspector's preview of an LCD shows what the sketch wrote, as the canvas does, never the library's sample text", async () => {
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    fireEvent.click(screen.getByTestId("quick-arduino-uno"));
+    fireEvent.click(screen.getByRole("button", { name: "Show components panel" }));
+    for (const q of ["dht11", "lcd"]) {
+      const search = screen.getByTestId("lab-search");
+      fireEvent.change(search, { target: { value: q } });
+      fireEvent.keyDown(search, { key: "Enter" });
+    }
+    const [, dht, lcd] = useLab.getState().sessions[0].nodes;
+    act(() => {
+      useLab.getState().setInput(dht.id, "temperatureC", 50);
+      useLab.getState().setInput(dht.id, "humidity", 70);
+    });
+    fireEvent.click(screen.getByTestId("run-toggle"));
+    const card = (await screen.findAllByTestId("lab-node")).find((el) => el.getAttribute("data-part") === "lcd-16x2")!;
+    fireEvent.click(within(card).getByText(lcd.label));
+    fireEvent.click(screen.getByRole("button", { name: "Show inspector" }));
+    const inspector = await screen.findByTestId("node-inspector");
+    const glassText = (root: HTMLElement) => [...root.querySelectorAll("svg text")].map((e) => e.textContent ?? "").filter((t) => /Temp|Hum|Hello|24\.5/.test(t));
+    await waitFor(() => expect(within(inspector).getAllByText("Temp: 50.0 °C").length).toBeGreaterThan(0));
+    expect(within(inspector).getAllByText("Hum: 70 %").length).toBeGreaterThan(0);
+    expect(within(inspector).queryByText("Temp: 24.5 C")).toBeNull();
+    expect(within(inspector).queryByText("Hello, Kiungo!")).toBeNull();
+    expect(glassText(card).join("|")).not.toMatch(/24\.5 C|Hello/);
+    fireEvent.click(screen.getByTestId("run-toggle"));
+  });
+
+  it("takes commands in the terminal", async () => {
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    fireEvent.click(screen.getByRole("tab", { name: /Terminal/ }));
+    const input = screen.getByTestId("terminal-input");
+    fireEvent.change(input, { target: { value: "add esp32" } });
+    fireEvent.submit(input.closest("form")!);
+    fireEvent.change(input, { target: { value: "add dht22" } });
+    fireEvent.submit(input.closest("form")!);
+    expect(useLab.getState().sessions[0].nodes.map((n) => n.partId)).toEqual(["esp32", "dht22"]);
+    expect(within(screen.getByTestId("lab-terminal")).getByText(/Added DHT22 and wired it to the board/)).toBeInTheDocument();
+  });
+});
+
+describe("Projects and the lab", () => {
+  it("lists lab sessions on the Projects page with a way back into the lab", async () => {
+    useLab.getState().hydrate();
+    const s = useLab.getState().createSession({ name: "Rover bench" });
+    useLab.getState().addNode("arduino-uno");
+    act(() => {
+      useLab.setState({ hydrated: true });
+    });
+    render(<ProjectHub serverProjects={[]} />);
+    const card = await screen.findByTestId("lab-session-card");
+    expect(within(card).getByText("Rover bench")).toBeInTheDocument();
+    expect(within(card).getByTestId("open-in-lab")).toHaveAttribute("href", `/laboratory/workspace?session=${s.id}`);
+  });
+
+  it("shows a project's lab sessions and the progress log the lab wrote", async () => {
+    // Projects live on the account: the detail page loads them from the server.
+    const now = new Date().toISOString();
+    const saved = { id: "user-project-gh", name: "Smart greenhouse", description: "Watch soil moisture", objectives: "Water when dry", contributors: "", category: "iot" as const, hardware: ["soil sensor"], createdAt: now, updatedAt: now };
+    vi.spyOn(api, "getMyProject").mockResolvedValue(saved);
+    vi.spyOn(api, "getMyProjectExperiments").mockResolvedValue([]);
+    useLab.getState().hydrate();
+    const s = useLab.getState().createSession({ name: "Greenhouse bench", projectId: "user-project-gh" });
+    useLab.getState().addNode("esp32");
+    useLab.getState().log("run", "Soil sensor reads 41 %");
+    render(<LocalProjectDetail projectId="user-project-gh" />);
+    const log = await screen.findByTestId("project-log");
+    expect(within(log).getByText("Soil sensor reads 41 %")).toBeInTheDocument();
+    expect(screen.getByTestId("project-open-lab")).toHaveAttribute("href", `/laboratory/workspace?session=${s.id}`);
+    expect(screen.getByTestId("new-project-session")).toHaveAttribute("href", "/laboratory/workspace?project=user-project-gh");
+    expect(within(screen.getByTestId("lab-hardware")).getByText("ESP32")).toBeInTheDocument();
+  });
+});
+
+describe("Menus", () => {
+  it("moves with arrow keys, jumps by letter and picks with Enter", () => {
+    const onClose = vi.fn();
+    const picked = vi.fn();
+    render(
+      <MenuList
+        at={{ x: 0, y: 0 }}
+        onClose={onClose}
+        items={[
+          { id: "a", label: "Alpha", onSelect: () => picked("a") },
+          { id: "b", label: "Bravo", onSelect: () => picked("b") },
+          { id: "c", label: "Charlie", disabled: true },
+        ]}
+      />,
+    );
+    const items = screen.getAllByRole("menuitem");
+    items[0].focus();
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "ArrowDown" });
+    expect(document.activeElement).toBe(items[1]);
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "a" });
+    expect(document.activeElement).toBe(items[0]);
+    fireEvent.keyDown(items[0], { key: "Enter" });
+    expect(picked).toHaveBeenCalledWith("a");
+    expect(onClose).toHaveBeenCalled();
+    expect(items[2]).toHaveAttribute("aria-disabled", "true");
+  });
+});

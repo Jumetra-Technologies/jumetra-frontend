@@ -37,9 +37,13 @@ export function PhysicalDevicePanel({ selectedDeviceId, onSelect, onConnected }:
   }, []);
 
   useEffect(() => {
-    refresh();
-    const interval = setInterval(refresh, 5000);
-    return () => clearInterval(interval);
+    // First load on the next tick, then every 5 s.
+    const first = window.setTimeout(() => void refresh(), 0);
+    const interval = window.setInterval(() => void refresh(), 5000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(interval);
+    };
   }, [refresh]);
 
   async function connectDiscovered(d: DiscoveredHardwareDevice) {

@@ -8,11 +8,11 @@ import { analyze } from "@/lib/lab/circuit";
 import { nodeFootprint, nodeLayout } from "@/lib/lab/layout";
 import { getPinout } from "@/lib/lab/pinout";
 import { frameAt, serialLine } from "@/lib/lab/simulate";
-import { useLab } from "@/lib/lab/store";
 import { suggest } from "@/lib/lab/suggest";
 import type { LabNode, LabWire } from "@/lib/lab/types";
 import { getPart } from "@/lib/parts";
 import { BREADBOARD_HOLES, BREADBOARD_STRIPS } from "@/lib/parts/models/breadboard";
+import { freshLab } from "./helpers/lab";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 
@@ -213,7 +213,7 @@ describe("In the Engineering Lab", () => {
   });
   beforeEach(() => {
     window.localStorage.clear();
-    useLab.setState({ hydrated: false, sessions: [], activeId: null, past: [], future: [], saveError: false });
+    freshLab();
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
   });
   afterEach(() => vi.unstubAllGlobals());

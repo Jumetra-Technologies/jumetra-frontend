@@ -47,7 +47,7 @@ export async function firebaseWebConfig(): Promise<FirebaseWebConfig> {
     !("appId" in config) ||
     typeof config.appId !== "string"
   ) {
-    throw new Error("The backend returned an invalid sign-in configuration.");
+    throw new Error("Sign-in isn't set up correctly right now. Please try again later.");
   }
   const authDomain = "authDomain" in config && typeof config.authDomain === "string"
     ? config.authDomain

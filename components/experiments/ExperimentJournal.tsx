@@ -40,7 +40,6 @@ export function ExperimentJournal({
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
     Promise.all([
       api.getMyProjects(),
       api.getExperiments(),

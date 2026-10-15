@@ -52,7 +52,7 @@ const UPLOAD_MESSAGE: Record<UploadOutcome, string> = {
   idle: "",
   running: "Uploading…",
   flashed: "Flashed and verified. The board has restarted with your program.",
-  simulated: "Simulated: no board was flashed. The Kiungo server has no board or flasher for this yet, so it went through the steps without sending anything.",
+  simulated: "Simulated: no board was flashed. Kiungo has no board or flasher connected for this yet, so it went through the steps without sending anything.",
   failed: "The upload didn't finish. Compile first, then check the port.",
 };
 
@@ -397,7 +397,7 @@ export function FirmwareStudio() {
           <Button size="sm" className="h-8 gap-1.5 text-[12px]" disabled={!project || buildBusy} onClick={() => void compile()} title="Turn your code into a program the board can run">
             <Hammer className="size-3.5" aria-hidden /> {buildBusy ? "Compiling…" : "Compile"}
           </Button>
-          <Button size="sm" variant="secondary" className="h-8 gap-1.5 text-[12px]" disabled={!project} onClick={() => void upload()} title="Send the compiled program to a board on the Kiungo server">
+          <Button size="sm" variant="secondary" className="h-8 gap-1.5 text-[12px]" disabled={!project} onClick={() => void upload()} title="Send the compiled program to a board connected to Kiungo online">
             <Upload className="size-3.5" aria-hidden /> Upload
           </Button>
         </div>
@@ -573,10 +573,10 @@ export function FirmwareStudio() {
             <p className="flex items-center gap-1.5 text-[12.5px] font-semibold">
               <Upload className="size-3.5 text-primary" aria-hidden /> On a board
             </p>
-            <p className="text-[11.5px] leading-4 text-muted">Upload sends the program to a board connected to the Kiungo server, not to your computer. To see a board on your own computer, use Serial monitor &gt; My board (USB).</p>
+            <p className="text-[11.5px] leading-4 text-muted">Upload sends the program to a board connected to Kiungo online, not to your computer. To see a board on your own computer, use Serial monitor &gt; My board (USB).</p>
             <label className="block text-[11.5px]">
-              <span className="mb-0.5 block text-muted">Port on the server (optional)</span>
-              <Input value={port} onChange={(e) => setPort(e.target.value)} className="h-7 font-mono text-[12px]" placeholder="e.g. /dev/ttyUSB0" aria-label="Port on the server" />
+              <span className="mb-0.5 block text-muted">Board port (optional)</span>
+              <Input value={port} onChange={(e) => setPort(e.target.value)} className="h-7 font-mono text-[12px]" placeholder="e.g. /dev/ttyUSB0" aria-label="Board port" />
             </label>
             <UploadProgress percent={uploadPct} message={uploadMsg} outcome={uploadOutcome} />
           </section>
@@ -584,7 +584,7 @@ export function FirmwareStudio() {
           <section>
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Pin activity</p>
             <ul className="max-h-48 space-y-1 overflow-auto font-mono text-[11px]">
-              {gpio.length === 0 && <li className="font-sans text-[11.5px] text-muted">Pins the board switches show here while it runs on the server.</li>}
+              {gpio.length === 0 && <li className="font-sans text-[11.5px] text-muted">Pins the board switches show here while it runs online.</li>}
               {gpio.map((g, i) => (
                 <li key={i}>
                   {String(g.pin)} = {String(g.logic || g.value)}

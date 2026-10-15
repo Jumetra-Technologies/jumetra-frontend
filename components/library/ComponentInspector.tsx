@@ -11,13 +11,12 @@ type Props = {
 };
 
 export function ComponentInspector({ componentId, fallback }: Props) {
-  const [detail, setDetail] = useState<ComponentV2Detail | null>(null);
+  const [loaded, setDetail] = useState<ComponentV2Detail | null>(null);
+  // With no component chosen, show the fallback straight away.
+  const detail = componentId ? loaded : ((fallback as ComponentV2Detail | null) ?? null);
 
   useEffect(() => {
-    if (!componentId) {
-      setDetail(fallback as ComponentV2Detail | null);
-      return;
-    }
+    if (!componentId) return;
     let cancelled = false;
     api
       .getComponentV2(componentId)

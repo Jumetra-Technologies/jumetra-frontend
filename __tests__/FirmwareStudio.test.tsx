@@ -37,6 +37,7 @@ import { FirmwareStudio } from "@/components/firmware/FirmwareStudio";
 import { boardName, labBuildFor, STARTERS } from "@/lib/firmware/boards";
 import { BUILT_IN_TEMPLATES } from "@/lib/firmware/studio-data";
 import { useLab } from "@/lib/lab/store";
+import { freshLab } from "./helpers/lab";
 
 class FakeSocket {
   onmessage: ((ev: { data: string }) => void) | null = null;
@@ -47,7 +48,7 @@ beforeEach(() => {
   vi.stubGlobal("WebSocket", FakeSocket);
   window.sessionStorage.clear();
   window.localStorage.clear();
-  useLab.setState({ hydrated: false, sessions: [], activeId: null, past: [], future: [], saveError: false });
+  freshLab();
   api.listFirmwareProjects.mockResolvedValue({ projects: [], count: 0 });
   api.listFirmwareTemplates.mockResolvedValue({ templates: BUILT_IN_TEMPLATES, count: BUILT_IN_TEMPLATES.length });
   api.createFirmwareProject.mockResolvedValue(project);

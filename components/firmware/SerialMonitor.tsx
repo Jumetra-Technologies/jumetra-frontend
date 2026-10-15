@@ -17,7 +17,7 @@ const MAX_LINES = 500;
  * What a board prints with Serial.println. Two places it can come from:
  *  - My board (USB): a board plugged into this computer, read by the browser
  *    itself (Web Serial, Chrome and Edge). Real output from real hardware.
- *  - Kiungo server: the serial log the server keeps for boards attached to it.
+ *  - Kiungo online: the serial log kept for boards connected to Kiungo.
  */
 export function SerialMonitorPanel() {
   const usbOk = webSerialSupported();
@@ -29,7 +29,7 @@ export function SerialMonitorPanel() {
           {(
             [
               ["usb", "My board (USB)"],
-              ["server", "Kiungo server"],
+              ["server", "Kiungo online"],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -101,7 +101,7 @@ function UsbSerial({ supported }: { supported: boolean }) {
   if (!supported) {
     return (
       <div className="p-3 font-sans text-[12px] leading-5 text-slate-300" data-testid="usb-unsupported">
-        Reading a board over USB works in <strong>Chrome</strong> or <strong>Edge</strong> on a computer. This browser can&apos;t open serial ports from a web page. Switch to Kiungo server, or open this page in Chrome.
+        Reading a board over USB works in <strong>Chrome</strong> or <strong>Edge</strong> on a computer. This browser can&apos;t open serial ports from a web page. Switch to Kiungo online, or open this page in Chrome.
       </div>
     );
   }
@@ -225,10 +225,10 @@ function ServerSerial() {
         >
           Export
         </Button>
-        {offline ? <span className="ml-auto text-[11px] text-amber-300">Can&apos;t reach the server right now.</span> : null}
+        {offline ? <span className="ml-auto text-[11px] text-amber-300">Can&apos;t reach Kiungo right now.</span> : null}
       </div>
-      <LineList lines={lines} empty="Output from boards attached to the Kiungo server shows here. For a board on your own computer, choose My board (USB)." />
-      <SendBar hint="Send a line through the server" onSend={async (line) => void (await api.postFirmwareSerial({ action: "write", line }).then(refresh, () => setOffline(true)))} />
+      <LineList lines={lines} empty="Output from boards connected to Kiungo online shows here. For a board on your own computer, choose My board (USB)." />
+      <SendBar hint="Send a line to the board" onSend={async (line) => void (await api.postFirmwareSerial({ action: "write", line }).then(refresh, () => setOffline(true)))} />
     </>
   );
 }

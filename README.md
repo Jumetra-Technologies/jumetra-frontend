@@ -25,7 +25,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ```bash
 npm run check      # types, lint and every test (vitest)
-npm run build      # production build
+npm run build      # production build (no internet needed: fonts and the code editor are bundled)
 ```
 
 GitHub Actions (`.github/workflows/ci.yml`) runs the same steps, plus the MCP server's typecheck and self-test, on every pull request and on `main`. A red check means the change isn't ready to merge. Tests live in `__tests__/`. Every pull request also bumps the version and adds a `CHANGELOG.md` entry, and `__tests__/Version.test.ts` checks it.

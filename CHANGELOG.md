@@ -10,6 +10,12 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.16.6] - 2026-10-15
+
+### Changed
+- **The code editor is served by Kiungo.** The Firmware page's editor (Monaco) used to download from a third-party CDN (jsDelivr), so a school network that blocked it got a plain text box. Monaco is now an npm dependency, and `scripts/copy-monaco.mjs` copies it into `public/monaco/vs` before every `dev` and `build`. The page loads it from there, with no outside requests. The copy is generated and git-ignored.
+- **Fonts are bundled with the app.** Inter and JetBrains Mono now come from npm (`@fontsource-variable/*`) through `next/font/local`, not from Google Fonts at build time. A build no longer needs internet access to Google: `npm run build` now completes in environments where it used to fail. The fonts look the same.
+
 ## [1.16.5] - 2026-10-15
 
 ### Changed
@@ -337,6 +343,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.16.6]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.5...v1.16.6
 [1.16.5]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.4...v1.16.5
 [1.16.4]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.3...v1.16.4
 [1.16.3]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.2...v1.16.3

@@ -10,6 +10,18 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.19.0] - 2026-10-15
+
+### Added
+- **The ESP32 and the Raspberry Pi Pico are drawn as themselves in the Engineering Lab.** In 3D and 2D they used to be cards with pin rails; now, like the Uno, the real board sits on the canvas and wires land in its header holes, in the real order:
+  - **ESP32 DevKit V1:** VIN, GND and GPIO13 nearest the USB on one header, 3V3, GND and GPIO15 on the other.
+  - **Pico:** GP0–GP15 (pins 1–20) along one edge, VBUS, VSYS, 3V3, the analog pins and GP16–22 (pins 40–21) along the other.
+  - Trace still shows them as cards.
+
+### Fixed
+- **The Pico's pads were off-center.** The 3D and 2D drawings put the first pad 4 mm from the USB end and the last one past the far edge. All 40 pads are now centered on the 51 mm board, as on the real one.
+- **Corrected the header descriptions for both boards** in the Component library. They had the two rows swapped.
+
 ## [1.18.0] - 2026-10-15
 
 ### Added
@@ -360,6 +372,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.19.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.18.0...v1.19.0
 [1.18.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.6...v1.17.0
 [1.16.6]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.5...v1.16.6

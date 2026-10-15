@@ -91,6 +91,9 @@ const SHORT: Record<string, string> = {
   mpu6050: "MPU-6050",
   bmp280: "BMP280",
   led: "LED",
+  resistor: "Resistor",
+  "breadboard-full": "Full breadboard",
+  "breadboard-mini": "Mini breadboard",
   "rgb-led": "RGB LED",
   buzzer: "Buzzer",
   servo: "Servo",
@@ -198,7 +201,8 @@ export interface LabState {
   removeNodes: (ids: string[]) => void;
   duplicateNodes: (ids: string[]) => LabNode[];
   addWire: (from: PinRef, to: PinRef, opts?: { silent?: boolean }) => LabWire | null;
-  addWires: (wires: Array<{ from: PinRef; to: PinRef }>, summary?: string) => LabWire[];
+  /** Add wires in one undo step; `replace` lists wires to take out in the same step (a resistor going in series). */
+  addWires: (wires: Array<{ from: PinRef; to: PinRef }>, summary?: string, replace?: string[]) => LabWire[];
   removeWires: (ids: string[]) => void;
   undo: () => void;
   redo: () => void;
@@ -429,12 +433,12 @@ export const useLab = create<LabState>((set, get) => {
       return wire;
     },
 
-    addWires: (list, summary) => {
+    addWires: (list, summary, replace = []) => {
       const session = active();
       if (!session || !list.length) return [];
       const made: LabWire[] = list.map((w) => ({ id: makeId("w"), from: w.from, to: w.to }));
       const nodes = [...new Set(list.flatMap((w) => [w.from.node, w.to.node]))];
-      update((s) => ({ ...s, wires: [...s.wires, ...made], log: summary ? [...s.log, logEntry("wire", summary, nodes)] : s.log }), { history: true });
+      update((s) => ({ ...s, wires: [...s.wires.filter((w) => !replace.includes(w.id)), ...made], log: summary ? [...s.log, logEntry("wire", summary, nodes)] : s.log }), { history: true });
       return made;
     },
 

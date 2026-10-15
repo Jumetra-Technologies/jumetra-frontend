@@ -4,7 +4,7 @@
  * Live panel and its Strips list in the Inspector.
  */
 
-import { BREADBOARD_HOLES, BREADBOARD_STRIPS, RAILS, stripName, type RailId } from "@/lib/parts/models/breadboard";
+import { RAILS, breadboardSpec, stripName, type RailId } from "@/lib/parts/models/breadboard";
 import type { Analysis, NetKind } from "./circuit";
 import { getPinout } from "./pinout";
 import type { LabNode } from "./types";
@@ -23,20 +23,21 @@ export interface StripUse {
   ends: string[];
 }
 
-const HOLE = new Map(BREADBOARD_HOLES.map((h) => [h.id, h]));
-
 /** Strips with a wire, rails first. */
 export function breadboardUse(nodeId: string, analysis: Analysis, nodes: LabNode[]): StripUse[] {
   const wired = analysis.nodes[nodeId]?.wiredPins ?? new Set<string>();
   const nets = new Map(analysis.nets.map((n) => [n.id, n]));
   const byId = new Map(nodes.map((n) => [n.id, n]));
+  const spec = breadboardSpec(byId.get(nodeId)?.partId ?? "");
+  if (!spec) return [];
+  const hole0 = new Map(spec.holes.map((h) => [h.id, h]));
   const out: StripUse[] = [];
-  for (const strip of BREADBOARD_STRIPS) {
+  for (const strip of spec.strips) {
     const holes = strip.filter((h) => wired.has(h));
     if (!holes.length) continue;
     const net = nets.get(analysis.netOfPin.get(`${nodeId}:${strip[0]}`) ?? "");
     if (!net) continue;
-    const hole = HOLE.get(strip[0])!;
+    const hole = hole0.get(strip[0])!;
     const ends = net.pins
       .filter((p) => p.node !== nodeId && analysis.nodes[p.node]?.wiredPins.has(p.pin))
       .map((p) => {

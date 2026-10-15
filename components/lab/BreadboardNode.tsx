@@ -8,7 +8,6 @@ import type { BoardGeometry } from "@/lib/lab/board-geometry";
 import type { NetKind } from "@/lib/lab/circuit";
 import { getPinout } from "@/lib/lab/pinout";
 import type { LabNode, LabView } from "@/lib/lab/types";
-import { BREADBOARD_STRIPS } from "@/lib/parts/models/breadboard";
 import type { PartModel } from "@/lib/parts/types";
 import { cn } from "@/lib/utils";
 import { useLabContext } from "./lab-context";
@@ -66,12 +65,12 @@ export function BreadboardNode({
 
   const strips = useMemo<StripState[]>(() => {
     const nets = new Map(analysis.nets.map((n) => [n.id, n]));
-    return BREADBOARD_STRIPS.map((holes) => {
+    return (pinout.strips ?? []).map((holes) => {
       const net = nets.get(analysis.netOfPin.get(`${id}:${holes[0]}`) ?? "");
       const color = net && net.wires.length ? (KIND_COLOR[net.kind] ?? "var(--lab-digital)") : null;
       return { holes, color, live: !!color && pinLive(holes[0]) };
     });
-  }, [analysis, id, pinLive]);
+  }, [analysis, id, pinLive, pinout.strips]);
 
   const colorOf = useMemo(() => {
     const map = new Map<string, string>();

@@ -33,7 +33,7 @@ export function StartExperimentButton({ part, className }: { part: PartModel; cl
       const node = useLab.getState().addNode(part.id, placeNode(part.id, current().nodes, board));
       if (node) {
         const plan = planAutoWire(node, current().nodes, current().wires);
-        if (plan.board && plan.wires.length) useLab.getState().addWires(plan.wires, `Auto-wired ${node.label} to ${plan.board.label}`);
+        if (plan.board && plan.wires.length) useLab.getState().addWires(plan.wires, `Auto-wired ${node.label} to ${plan.board.label}`, plan.remove);
       }
     }
     useLab.getState().log("note", `Started from the Component library: ${part.experiment.idea}`);

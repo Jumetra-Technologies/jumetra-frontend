@@ -22,7 +22,7 @@ export function openStarterInLab(projectName: string, boardId: string, templateI
     const node = useLab.getState().addNode(partId, placeNode(partId, current().nodes, boardNode));
     if (!node) continue;
     const plan = planAutoWire(node, current().nodes, current().wires);
-    if (plan.board && plan.wires.length) useLab.getState().addWires(plan.wires, `Auto-wired ${node.label} to ${plan.board.label}`);
+    if (plan.board && plan.wires.length) useLab.getState().addWires(plan.wires, `Auto-wired ${node.label} to ${plan.board.label}`, plan.remove);
   }
   useLab.getState().log("note", `Opened from the Firmware page: the “${templateId}” starter. The lab runs its built-in version of this starter, not the code in the editor.`);
   flushLab();

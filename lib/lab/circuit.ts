@@ -8,9 +8,10 @@
  */
 
 import { getPart } from "@/lib/parts";
-import { BREADBOARD_HOLES, RAILS, stripName } from "@/lib/parts/models/breadboard";
+import { breadboardSpec, stripName, type RailId } from "@/lib/parts/models/breadboard";
 import { getPinout, type LabPin, type PinRole, type Pinout } from "./pinout";
-import type { LabNode, LabWire, PinRef } from "./types";
+import { ohmsOf } from "./controls";
+import type { LabNode, LabWire, NodeInputs, PinRef } from "./types";
 
 export type Severity = "error" | "warning" | "tip";
 
@@ -55,6 +56,8 @@ export interface NodeReport {
   faults: Fault[];
   /** Pins with at least one wire. */
   wiredPins: Set<string>;
+  /** Resistance in series with the part's drive and ground (an LED's resistor), in ohms. 0 when there is none. */
+  seriesOhms?: number;
 }
 
 export interface BoardToBoard {
@@ -110,12 +113,16 @@ const OPPOSITE: Partial<Record<PinRole, string>> = { sda: "scl", scl: "sda" };
 export const LED_FORWARD_V = 2;
 export const LED_SERIES_OHMS = 220;
 
-/** Current through an LED and the assumed 220 Ω from a pin at `pinV` volts, in mA. */
-export function ledCurrentMa(pinV: number): number {
-  return (Math.max(0, pinV - LED_FORWARD_V) / LED_SERIES_OHMS) * 1000;
+/** An LED's current limit; above it the LED (and the pin) is overdriven. */
+export const LED_MAX_MA = 20;
+
+/** Current through an LED and `ohms` in series from a pin at `pinV` volts, in mA (220 Ω when no resistor is wired). */
+export function ledCurrentMa(pinV: number, ohms: number = LED_SERIES_OHMS): number {
+  return (Math.max(0, pinV - LED_FORWARD_V) / Math.max(1, ohms)) * 1000;
 }
 
-export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
+/** `inputs` carries the values set on parts; a resistor's is its resistance. */
+export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<string, NodeInputs>): Analysis {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const pinouts = new Map<string, Pinout>(nodes.map((n) => [n.id, getPinout(n.partId)]));
   const set = new DisjointSet();
@@ -363,10 +370,11 @@ export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
       if (net.kind === "power" && net.voltage !== undefined) supplyV = Math.max(supplyV ?? 0, net.voltage);
       if (net.kind === "ground") grounded = true;
     }
-    for (const rail of Object.keys(RAILS) as Array<keyof typeof RAILS>) {
+    const rails = breadboardSpec(node.partId)?.rails ?? {};
+    for (const rail of Object.keys(rails) as RailId[]) {
       const net = netFor({ node: node.id, pin: `${rail}1` });
       if (!net || !net.wires.length) continue;
-      const { sign, label } = RAILS[rail];
+      const { sign, label } = rails[rail]!;
       if (sign === "+" && net.kind === "ground") {
         nodeFaults.push({ id: `rail-sign:${node.id}:${rail}`, severity: "warning", title: `GND on the ${label} rail`, detail: `The ${label} rail is printed red for supply, but it is wired to ground. It works, but anyone who trusts the stripes will wire parts backwards. Put GND on a − rail.`, nodes: [node.id], wires: net.wires });
       } else if (sign === "−" && net.kind === "power") {
@@ -386,11 +394,27 @@ export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
     faults.push(...nodeFaults);
   }
 
+  const isResistor = (id: string) => byId.get(id)?.partId === "resistor";
+  /**
+   * A net that reaches no board pin, supply or ground on its own, followed
+   * through one resistor to the net on its other leg: an LED's anode on a
+   * resistor whose far leg is on D13 is driven by D13.
+   */
+  const throughResistor = (net: Net): { net: Net; ohms: number } => {
+    const reaches = net.kind === "power" || net.kind === "ground" || net.kind === "short" || net.pins.some((p) => isBoard(p.node));
+    if (reaches) return { net, ohms: 0 };
+    const leg = net.pins.find((p) => isResistor(p.node));
+    if (!leg) return { net, ohms: 0 };
+    const other = netFor({ node: leg.node, pin: leg.pin === "1" ? "2" : "1" });
+    if (!other || other.id === net.id) return { net, ohms: 0 };
+    return { net: other, ohms: ohmsOf(inputs, leg.node) };
+  };
+
   /** Where a net passes through a breadboard: "Top + rail", or null. */
   const breadboardStrip = (net: Net): string | null => {
-    const hole = net.pins.find((ref) => isPassive(ref.node));
+    const hole = net.pins.find((ref) => !!pinouts.get(ref.node)?.strips);
     if (!hole) return null;
-    const h = BREADBOARD_HOLES.find((x) => x.id === hole.pin);
+    const h = breadboardSpec(byId.get(hole.node)?.partId ?? "")?.holes.find((x) => x.id === hole.pin);
     return h ? stripName(h.strip) : null;
   };
 
@@ -415,12 +439,19 @@ export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
     /** The voltage on the part's drive pin when it is on: a rail's, or the board's logic level. */
     let driveV: number | null = null;
 
+    /** Resistance met on the way to the drive pin and to ground. */
+    let seriesOhms = 0;
+
     // Supply first: a part's output level depends on what powers it.
     const ordered = [...pinout.pins].sort((a, b) => (a.role === "vcc" ? 0 : 1) - (b.role === "vcc" ? 0 : 1));
     for (const pin of ordered) {
       const ref = { node: node.id, pin: pin.id };
-      const net = netFor(ref);
-      if (!net) continue;
+      const direct = netFor(ref);
+      if (!direct) continue;
+      // A supply is never taken through a resistor; everything else may be.
+      const hop = pin.role === "vcc" ? { net: direct, ohms: 0 } : throughResistor(direct);
+      const net = hop.net;
+      if (hop.ohms && (pin.role === "drive" || pin.role === "pwm" || pin.role === "gnd")) seriesOhms += hop.ohms;
       const boardRefs = net.pins.filter((r) => isBoard(r.node) && !pinOf(r)?.supplies && !pinOf(r)?.fns?.includes("ground"));
       const boardRef = boardRefs[0];
       const boardPin = boardRef ? pinOf(boardRef) : undefined;
@@ -568,16 +599,25 @@ export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
         fault("error", "no-ground", "No path to ground", strip ? `${name} ${g.label} is on the breadboard's ${strip}, which isn't wired to GND. Wire a board's GND pin to it.` : `${name} ${g.label} isn't on GND, so no current can flow through it. Wire it to a GND pin.`);
       }
       if (node.partId === "led" && driven && grounded) {
-        // The lab has no resistor part, so the model assumes the 220 Ω a real build needs; the LED's
-        // Live panel shows the same current (ledCurrentMa). Advisory, not a fault.
         const v = driveV ?? 5;
-        const ma = ledCurrentMa(v).toFixed(1);
-        fault(
-          "tip",
-          "resistor",
-          "Assumed: 220 Ω resistor in series",
-          `The lab has no resistor part, so it models this LED as if a 220 Ω resistor sat between the ${v} V pin and the anode: about ${ma} mA when on. On a real board, add that resistor; an LED wired straight to a pin draws too much current and can damage the LED and the pin.`,
-        );
+        if (seriesOhms > 0) {
+          // A real resistor: the current follows from its value.
+          const ma = ledCurrentMa(v, seriesOhms);
+          if (ma > LED_MAX_MA) {
+            const min = Math.ceil(((v - LED_FORWARD_V) / LED_MAX_MA) * 1000);
+            fault("warning", "too-much-current", `${ma.toFixed(0)} mA: more than the LED takes`, `With ${seriesOhms} Ω from a ${v} V pin, about ${ma.toFixed(1)} mA flows; an LED takes about ${LED_MAX_MA} mA. Use at least ${min} Ω (220 Ω is the usual choice).`);
+          }
+        } else {
+          // No resistor part wired: the model assumes the 220 Ω a real build needs; the LED's
+          // Live panel shows the same current (ledCurrentMa). Advisory, not a fault.
+          const ma = ledCurrentMa(v).toFixed(1);
+          fault(
+            "tip",
+            "resistor",
+            "Assumed: 220 Ω resistor in series",
+            `No resistor is wired, so the lab models this LED as if a 220 Ω resistor sat between the ${v} V pin and the anode: about ${ma} mA when on. Add a Resistor part between the pin and the anode; on a real board an LED wired straight to a pin draws too much current and can damage the LED and the pin.`,
+          );
+        }
       }
     }
 
@@ -590,7 +630,7 @@ export function analyze(nodes: LabNode[], wires: LabWire[]): Analysis {
     else if (powered) status = "partial";
     else status = "unpowered";
 
-    reports[node.id] = { status, powered: powered && (grounded || !hasGnd), grounded, supplyV, links, faults: nodeFaults, wiredPins: wired };
+    reports[node.id] = { status, powered: powered && (grounded || !hasGnd), grounded, supplyV, links, faults: nodeFaults, wiredPins: wired, seriesOhms };
     faults.push(...nodeFaults);
   }
 

@@ -134,15 +134,19 @@ export function boardGeometry(partId: string, view: LabView): BoardGeometry | nu
   const vy = fp.y1 - pad;
   const vw = fp.x2 - fp.x1 + pad * 2;
   const vh = fp.y2 - fp.y1 + pad * 2;
-  const width = vw * s;
-  const height = vh * s;
+  // A wide, gently tilted board (a breadboard) is taller and wider flat than in 3D:
+  // shrink the plan to fit below the caption instead of running over it.
+  const fit = Math.min(1, w / (vw * s), (h - CAPTION) / (vh * s));
+  const ps = s * fit;
+  const width = vw * ps;
+  const height = vh * ps;
   const left = (w - width) / 2;
   const top = CAPTION + (h - CAPTION - height) / 2;
-  const at = (p: { x: number; y: number }) => ({ x: left + (p.x - vx) * s, y: top + (p.y - vy) * s });
+  const at = (p: { x: number; y: number }) => ({ x: left + (p.x - vx) * ps, y: top + (p.y - vy) * ps });
   const pins: BoardGeometry["pins"] = {};
   for (const [id, spec] of Object.entries(model.canvas.pins)) pins[id] = { ...at(spec), position: sideOf(spec, model) };
   const usb = model.canvas.usb ? { ...at(model.canvas.usb), angle: usbAngle(model.canvas.usb.from) } : null;
-  return { w, h, scale: s, graphic: { left, top, width, height }, pins, usb, caption: CAPTION, view: v3 };
+  return { w, h, scale: ps, graphic: { left, top, width, height }, pins, usb, caption: CAPTION, view: v3 };
 }
 
 /** The node box a bare board takes, the same in 2D and 3D. */

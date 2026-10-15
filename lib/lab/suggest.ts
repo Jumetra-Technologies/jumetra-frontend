@@ -81,6 +81,7 @@ function boardsOn(nodes: LabNode[]) {
 export function fitFor(partId: string, nodes: LabNode[]): Suggestion["fit"] {
   const board = boardsOn(nodes)[0];
   const pinout = getPinout(partId);
+  if (partId === "resistor") return { tone: "ok", text: "Goes in series with an LED: 220 Ω at 5 V" };
   if (pinout.passive) {
     if (!board) return { tone: "ok", text: "Shares one 5 V pin with every part" };
     const boardName = getPart(board.partId)?.name.split(" ")[0] ?? "the board";
@@ -178,7 +179,7 @@ export function suggest(query: string, nodes: LabNode[], project?: ProjectContex
 
   // Several parts each wanting 5 V and GND: the board has one 5 V pin, a breadboard rail has 25 holes.
   const powered = nodes.filter((n) => getPinout(n.partId).pins.some((p) => p.role === "vcc")).length;
-  if (hasBoard && powered >= 2 && !onCanvas.has("breadboard")) add(list, "breadboard", `${powered} parts need 5 V and GND: feed them from a power rail`, "missing");
+  if (hasBoard && powered >= 2 && ![...onCanvas].some((id) => id.startsWith("breadboard"))) add(list, "breadboard", `${powered} parts need 5 V and GND: feed them from a power rail`, "missing");
 
   for (const node of nodes) {
     for (const pair of PAIRS[node.partId] ?? []) if (!onCanvas.has(pair.part)) add(list, pair.part, `${pair.why} with your ${node.label}`, "pairs");

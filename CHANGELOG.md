@@ -10,6 +10,23 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.18.0] - 2026-10-15
+
+### Added
+- **Two more breadboard sizes.** The Component library and the Engineering Lab now have a **full-size 830-point breadboard** (63 columns, four 50-hole rails) and a **mini 170-point breadboard** (17 columns, no rails), next to the half-size one. All three are drawn in 3D, 2D and Trace and have the same checks: strips and rails join their holes, a rail with the wrong sign gets a warning, and the Inspector lists the strips in use. Adding a full-size board feeds its top rails from the board, as with the half-size one. A mini has no rails, so it stays unwired until you feed a strip.
+
+### Fixed
+- **A breadboard's caption is no longer covered in 2D and Trace.** The flat drawing was taller than the 3D one and ran over the name and the "5 V · GND" badge. It is now scaled to fit below the caption.
+
+## [1.17.0] - 2026-10-15
+
+### Added
+- **Resistor part.** A through-hole resistor is in the Component library, under the renamed group **Breadboards and resistors**, and in the Engineering Lab. Its value is chosen in the Inspector: 100 Ω, 220 Ω, 330 Ω, 470 Ω, 1 kΩ, 2.2 kΩ, 4.7 kΩ or 10 kΩ. Its color bands change to match, in 3D, 2D and the Inspector preview. In the lab:
+  - **Current flows through it.** An LED whose anode (or cathode) goes through a resistor to a board pin is driven by that pin. The check and the LED's Live panel use the real value: 220 Ω from 5 V is 13.6 mA, and 1 kΩ is 3.0 mA. Below 150 Ω at 5 V you get a warning ("30 mA: more than the LED takes. Use at least 150 Ω").
+  - **Auto-wire puts it where it belongs.** Adding a resistor to a build with an LED wired straight to a pin takes that wire out and puts the resistor in series (pin → leg 1, leg 2 → anode), as one undo step.
+  - **Builds without a resistor still work.** They keep the 220 Ω assumption, and the tip now suggests adding a Resistor part.
+- `analyze()` takes the session's inputs (part values). `NodeReport.seriesOhms` holds the resistance in series with a part.
+
 ## [1.16.6] - 2026-10-15
 
 ### Changed
@@ -343,6 +360,8 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.18.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.17.0...v1.18.0
+[1.17.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.6...v1.17.0
 [1.16.6]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.5...v1.16.6
 [1.16.5]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.4...v1.16.5
 [1.16.4]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.3...v1.16.4

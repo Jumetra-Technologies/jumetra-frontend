@@ -6,7 +6,7 @@ import { PartThumb } from "@/components/library/PartThumb";
 import { ComponentLibrary } from "@/components/library/ComponentLibrary";
 import { PartDetail } from "@/components/library/PartDetail";
 import { analyze } from "@/lib/lab/circuit";
-import { LAB_STORAGE_KEY, useLab } from "@/lib/lab/store";
+import { labKeyFor, setLabOwner, useLab } from "@/lib/lab/store";
 import { StartExperimentButton } from "@/components/library/StartExperimentButton";
 import { PartFlowView } from "@/components/library/views/PartFlowView";
 import { PartModel3D } from "@/components/library/views/PartModel3D";
@@ -264,8 +264,10 @@ describe("PartDetail", () => {
 describe("StartExperimentButton", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    setLabOwner("acct-1");
     useLab.setState({ hydrated: false, sessions: [], activeId: null, past: [], future: [] });
   });
+  afterEach(() => setLabOwner(null));
 
   it("opens a new lab session with an Uno wired to the part, without the backend", () => {
     render(<StartExperimentButton part={getPart("hc-sr04")!} />);
@@ -282,7 +284,7 @@ describe("StartExperimentButton", () => {
     expect(analysis.nodes[session.nodes[1].id].status).toBe("ready");
     expect(push).toHaveBeenCalledWith(`/laboratory/workspace?session=${session.id}`);
     expect(createEngineeringWorkspace).not.toHaveBeenCalled();
-    expect(JSON.parse(window.localStorage.getItem(LAB_STORAGE_KEY)!).sessions).toHaveLength(1);
+    expect(JSON.parse(window.localStorage.getItem(labKeyFor("acct-1"))!).sessions).toHaveLength(1);
   });
 
   it("puts a board on its own", () => {

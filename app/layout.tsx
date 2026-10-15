@@ -4,6 +4,7 @@ import { AuthBootstrap } from "@/components/auth/auth-bootstrap";
 import { AppShell } from "@/components/layout/sidebar";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ElasticScrollbars } from "@/components/ui/ElasticScrollbars";
+import { LabAccountSync } from "@/components/lab/LabAccountSync";
 import "./globals.css";
 
 const inter = Inter({
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <AuthBootstrap />
           <ElasticScrollbars />
+          <LabAccountSync />
           <AppShell>{children}</AppShell>
         </ThemeProvider>
       </body>

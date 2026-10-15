@@ -7,7 +7,7 @@ import { frameAt, serialLine } from "@/lib/lab/simulate";
 import { describeChanges, RunRecorder } from "@/lib/lab/activity";
 import { fitFor, suggest } from "@/lib/lab/suggest";
 import { runCommand, tokenize, type TerminalApi } from "@/lib/lab/terminal";
-import { LAB_STORAGE_KEY, flushLab, nextLabel, readLabData, useLab } from "@/lib/lab/store";
+import { LAB_STORAGE_KEY, flushLab, labKeyFor, nextLabel, readLabData, setLabOwner, useLab } from "@/lib/lab/store";
 import type { LabNode, LabWire } from "@/lib/lab/types";
 
 let seq = 0;
@@ -319,14 +319,16 @@ describe("lab store", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     window.localStorage.clear();
+    setLabOwner("acct-1");
     useLab.setState({ hydrated: false, sessions: [], activeId: null, past: [], future: [] });
     useLab.getState().hydrate();
   });
   afterEach(() => {
     vi.useRealTimers();
+    setLabOwner(null);
   });
 
-  it("creates sessions, edits with undo and redo, and saves to the browser", () => {
+  it("creates sessions, edits with undo and redo, and saves them for the signed-in account", () => {
     const s = useLab.getState().createSession({ name: "Bench" });
     const uno = useLab.getState().addNode("arduino-uno")!;
     const led = useLab.getState().addNode("led")!;
@@ -345,7 +347,37 @@ describe("lab store", () => {
     expect(saved.activeId).toBe(s.id);
     expect(saved.sessions[0].nodes.map((n) => n.partId)).toEqual(["arduino-uno"]);
     expect(saved.sessions[0].log.map((e) => e.text)).toEqual(["Session “Bench” started", "Added Arduino Uno", "Added LED", "Wired Arduino Uno D13 SCK → LED Anode (+)", "Removed LED"]);
-    expect(window.localStorage.getItem(LAB_STORAGE_KEY)).toContain("Bench");
+    expect(window.localStorage.getItem(labKeyFor("acct-1"))).toContain("Bench");
+    // Never under the old key every visitor shared.
+    expect(window.localStorage.getItem(LAB_STORAGE_KEY)).toBeNull();
+  });
+
+  it("keeps each account's sessions apart, and shows none when signed out", () => {
+    useLab.getState().createSession({ name: "Amina's rover" });
+    flushLab();
+    setLabOwner("acct-2");
+    expect(useLab.getState().sessions).toEqual([]);
+    useLab.getState().createSession({ name: "Brian's alarm" });
+    setLabOwner(null);
+    expect(useLab.getState().sessions).toEqual([]);
+    setLabOwner("acct-1");
+    expect(useLab.getState().sessions.map((s) => s.name)).toEqual(["Amina's rover"]);
+    setLabOwner("acct-2");
+    expect(useLab.getState().sessions.map((s) => s.name)).toEqual(["Brian's alarm"]);
+  });
+
+  it("survives a reload: a fresh store reads the account's sessions back", () => {
+    useLab.getState().createSession({ name: "Bench" });
+    flushLab();
+    useLab.setState({ hydrated: false, sessions: [], activeId: null });
+    useLab.getState().hydrate();
+    expect(useLab.getState().sessions.map((s) => s.name)).toEqual(["Bench"]);
+  });
+
+  it("clears the old shared key", () => {
+    window.localStorage.setItem(LAB_STORAGE_KEY, JSON.stringify({ version: 1, sessions: [], activeId: null }));
+    readLabData();
+    expect(window.localStorage.getItem(LAB_STORAGE_KEY)).toBeNull();
   });
 
   it("names repeats LED, LED 2 and keeps short names", () => {

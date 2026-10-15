@@ -1,6 +1,15 @@
 "use client";
 
-/** In-memory lab sessions; persistence belongs on the authenticated server. */
+/**
+ * Lab sessions, kept per signed-in account.
+ *
+ * The lab needs a signed-in account (app/laboratory/workspace). Until the
+ * server stores lab sessions (docs/engineering-lab-simulation.md, "Saving"),
+ * each account's sessions are kept in this browser under that account's own
+ * key, so a refresh doesn't lose a build and another person signed in on the
+ * same computer never sees them. Signed out, sessions live in memory only.
+ * The old shared, account-less key is cleared.
+ */
 
 import { create } from "zustand";
 import { getPart } from "@/lib/parts";
@@ -9,10 +18,16 @@ import { getPinout } from "./pinout";
 import { stepperStepsAt } from "./simulate";
 import type { DeviceMode, LabData, LabNode, LabSession, LabView, LabWire, LogEntry, LogKind, NodeInputs, PinRef } from "./types";
 
+/** The old key every visitor shared; cleared, never written. */
 export const LAB_STORAGE_KEY = "hhip.lab:v1";
+/** Per-account key: this plus the account id. */
+export const LAB_ACCOUNT_KEY_PREFIX = "kiungo.lab:v2:";
+export const labKeyFor = (accountId: string) => `${LAB_ACCOUNT_KEY_PREFIX}${accountId}`;
 const MAX_LOG = 400;
 const MAX_HISTORY = 60;
 let labData: LabData = { version: 1, sessions: [], activeId: null };
+/** The signed-in account whose sessions are open, or null (memory only). */
+let owner: string | null = null;
 
 function clearLegacyLabData(): void {
   if (typeof window === "undefined") return;
@@ -127,13 +142,33 @@ function sanitize(raw: unknown): LabData {
 
 export function readLabData(): LabData {
   clearLegacyLabData();
+  if (owner && typeof window !== "undefined") {
+    try {
+      const raw = window.localStorage.getItem(labKeyFor(owner));
+      labData = raw ? sanitize(JSON.parse(raw)) : { version: 1, sessions: [], activeId: null };
+    } catch {
+      /* unreadable: keep what's in memory */
+    }
+  }
   return labData;
 }
 
+/** Keep the sessions; returns false when the browser refused to store them (full or blocked). */
 export function writeLabData(data: LabData): boolean {
   clearLegacyLabData();
   labData = sanitize(data);
-  return true;
+  if (!owner || typeof window === "undefined") return true;
+  try {
+    window.localStorage.setItem(labKeyFor(owner), JSON.stringify(labData));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Whose sessions are open: the signed-in account's id, or null. */
+export function labOwner(): string | null {
+  return owner;
 }
 
 type Snapshot = { nodes: LabNode[]; wires: LabWire[] };
@@ -455,7 +490,7 @@ if (typeof window !== "undefined") {
     }, 200);
   });
   window.addEventListener("storage", (event) => {
-    if (event.key !== LAB_STORAGE_KEY || !useLab.getState().hydrated) return;
+    if (!owner || event.key !== labKeyFor(owner) || !useLab.getState().hydrated) return;
     const data = readLabData();
     const { activeId } = useLab.getState();
     useLab.setState({ sessions: data.sessions, activeId: activeId && data.sessions.some((s) => s.id === activeId) ? activeId : (data.sessions[0]?.id ?? null) });
@@ -470,6 +505,23 @@ export function flushLab() {
   }
   const state = useLab.getState();
   if (state.hydrated) writeLabData({ version: 1, sessions: state.sessions, activeId: state.activeId });
+}
+
+/**
+ * Switch to another account's sessions (sign-in, sign-out, switching
+ * account). Pending changes are saved to the account they belong to first,
+ * and nothing from one account is shown to another.
+ */
+export function setLabOwner(accountId: string | null): void {
+  if (accountId === owner) return;
+  flushLab();
+  owner = accountId;
+  labData = { version: 1, sessions: [], activeId: null };
+  if (accountId) labData = readLabData();
+  if (useLab.getState().hydrated) {
+    const data = labData;
+    useLab.setState({ sessions: data.sessions, activeId: data.activeId && data.sessions.some((s) => s.id === data.activeId) ? data.activeId : (data.sessions[0]?.id ?? null), past: [], future: [], saveError: false });
+  }
 }
 
 export function useActiveSession(): LabSession | null {

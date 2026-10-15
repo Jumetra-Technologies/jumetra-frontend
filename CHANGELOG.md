@@ -10,6 +10,24 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.16.0] - 2026-10-15
+
+### Changed
+- **The Firmware page says what it is and what really happened.**
+  - **Simulated builds are labeled.** When the Kiungo server has no compiler for a board, it only checks the project's files. The page used to report that as a normal build. Compiler messages now show a **Simulated** badge and a note that the code wasn't compiled. The Memory tab marks its figures as estimates, and the Compile step turns amber.
+  - **Simulated uploads are labeled too.** An upload with no board or flasher used to say "Verified · board reset" with nothing flashed. It now says "Simulated: no board was flashed". "On the board" appears only when a board was really flashed.
+  - **The page explains itself.** It opens with what firmware is and four steps: Start a project → Write and save → Compile → Run it. The steps are tracked in the header.
+  - **Plain language throughout.** Boards are listed by name ("Arduino Uno", not `arduino-uno`). Each starter says what it does. The panels are renamed: Compiler messages, Serial monitor, Memory (program storage and working memory, in KB), Compilers, Pin activity. Internal project ids are hidden.
+  - **No more misleading COM3.** The default port is gone, and the port box says it is a port on the Kiungo server. Upload explains that it flashes boards attached to the server, not to your computer.
+
+### Added
+- **Read your own board over USB.** Serial monitor → **My board (USB)** connects to a board plugged into your computer, from the browser (Chrome or Edge), at the speed you choose. It shows each line the board prints, and you can send lines back. Nothing goes through the server. Other browsers get a short explanation.
+- **Try it in the lab.** Opens a new Engineering Lab session with your project's board and the parts its starter drives, wired up: Blink gets an LED, DHT11 a DHT11, and so on. Wi-Fi starters use an ESP32. The lab runs its own version of the starter, not your edited code, and the page says so.
+- `docs/firmware.md`: how the page works, where each step runs, and what the backend needs for flashing from the browser and running your own code in the lab.
+
+### Fixed
+- The server Serial monitor and Compilers tab no longer throw when the server can't be reached; they say so.
+
 ## [1.15.2] - 2026-10-14
 
 ### Fixed
@@ -260,6 +278,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.16.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.15.2...v1.16.0
 [1.15.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.15.1...v1.15.2
 [1.15.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.15.0...v1.15.1
 [1.15.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.14.0...v1.15.0

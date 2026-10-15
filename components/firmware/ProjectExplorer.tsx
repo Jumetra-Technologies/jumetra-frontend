@@ -12,10 +12,10 @@ export function ProjectExplorer({
   return (
     <div className="h-full overflow-auto text-[11px]">
       <p className="border-b border-border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
-        Project Explorer
+        Files
       </p>
       {Object.keys(tree).length === 0 && (
-        <p className="p-2 text-muted">No files yet. Create a project from a template.</p>
+        <p className="p-2 text-muted">Open a project to see its files.</p>
       )}
       {Object.entries(tree).map(([group, files]) => (
         <div key={group} className="border-b border-border/60 py-1">

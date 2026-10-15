@@ -10,6 +10,15 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.16.5] - 2026-10-15
+
+### Changed
+- **The Firmware page works on phones and tablets.** Below desktop width its three columns squeezed into one illegible strip. A **Project / Code / Run it** switch now shows one pane at a time, and opening a project jumps straight to its code. The output tabs scroll sideways instead of wrapping. Desktops keep all three columns.
+- **Pins are easier to hit on touch screens.** On a phone or tablet each pin's tap target extends past the dot, by 9 px for pins and 3 px for breadboard holes, which are only 0.1" apart.
+
+### Checked
+- No page scrolls sideways at 360 px or 768 px: Home, Projects, Experiment Records, Component library, Firmware, Learning Center, Documentation, Roadmap, Hybrid Hardware, Analytics, Engineering Lab, legal pages. On a phone, the lab's parts panel and Inspector open as drawers over the canvas.
+
 ## [1.16.4] - 2026-10-15
 
 ### Fixed
@@ -328,6 +337,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.16.5]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.4...v1.16.5
 [1.16.4]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.3...v1.16.4
 [1.16.3]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.2...v1.16.3
 [1.16.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.1...v1.16.2

@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // The MCP server is its own package with its own tsconfig.
     "mcp/**",
+    // Generated copy of the code editor (scripts/copy-monaco.mjs).
+    "public/monaco/**",
   ]),
 ]);
 

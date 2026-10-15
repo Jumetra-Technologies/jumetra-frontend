@@ -53,7 +53,8 @@ describe("pinouts", () => {
 describe("auto-wiring", () => {
   it("wires every peripheral to an Uno so it is ready, except 3.3 V-only LoRa signals", () => {
     // A resistor has nothing to wire to on its own; its auto-wiring (in series with an LED) is tested in LabAcceptance.
-    for (const part of PARTS.filter((p) => !getPinout(p.id).controller && p.id !== "resistor")) {
+    // A mini breadboard has no rails to feed, so it stays unwired (tested in Breadboard).
+    for (const part of PARTS.filter((p) => !getPinout(p.id).controller && p.id !== "resistor" && p.id !== "breadboard-mini")) {
       const { part: n, analysis, plan } = autowired("arduino-uno", part.id);
       expect(plan.skipped, part.id).toEqual([]);
       const errors = analysis.nodes[n.id].faults.filter((f) => f.severity === "error");

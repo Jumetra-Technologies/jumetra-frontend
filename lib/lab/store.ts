@@ -92,6 +92,8 @@ const SHORT: Record<string, string> = {
   bmp280: "BMP280",
   led: "LED",
   resistor: "Resistor",
+  "breadboard-full": "Full breadboard",
+  "breadboard-mini": "Mini breadboard",
   "rgb-led": "RGB LED",
   buzzer: "Buzzer",
   servo: "Servo",

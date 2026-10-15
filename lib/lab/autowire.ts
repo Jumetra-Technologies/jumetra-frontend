@@ -4,7 +4,7 @@
  * ground, and each signal on a free pin that can do the job.
  */
 
-import { RAILS, RAIL_HOLES, type RailId } from "@/lib/parts/models/breadboard";
+import { breadboardSpec, type BreadboardSpec, type RailId } from "@/lib/parts/models/breadboard";
 import { analyze, type Analysis } from "./circuit";
 import { nodeFootprint } from "./layout";
 import { getPinout, type LabPin, type PinFn, type Pinout } from "./pinout";
@@ -55,8 +55,8 @@ function usedHoles(nodeId: string, wires: LabWire[]): Set<string> {
 }
 
 /** Holes of a rail, starting from the end nearer `towardsX` (canvas x), so wires stay short. */
-function railHoles(rail: RailId, fromRight: boolean): string[] {
-  const all = Array.from({ length: RAIL_HOLES }, (_, i) => `${rail}${i + 1}`);
+function railHoles(spec: BreadboardSpec, rail: RailId, fromRight: boolean): string[] {
+  const all = Array.from({ length: spec.railHoles }, (_, i) => `${rail}${i + 1}`);
   return fromRight ? all.reverse() : all;
 }
 
@@ -68,6 +68,9 @@ function railHoles(rail: RailId, fromRight: boolean): string[] {
 function planBreadboard(breadboard: LabNode, nodes: LabNode[], wires: LabWire[], preferBoard?: string): { board: LabNode | null; wires: PlannedWire[]; skipped: string[] } {
   const board = pickBoard(nodes.filter((n) => n.id !== breadboard.id), wires, preferBoard);
   if (!board) return { board: null, wires: [], skipped: [] };
+  const spec = breadboardSpec(breadboard.partId);
+  // A mini board has no rails: nothing to feed until the student picks strips.
+  if (!spec?.rails.TP || !spec.rails.TN) return { board, wires: [], skipped: [] };
   const bp = getPinout(board.partId);
   const used = usedHoles(breadboard.id, wires);
   const fromRight = board.x > breadboard.x;
@@ -76,10 +79,10 @@ function planBreadboard(breadboard: LabNode, nodes: LabNode[], wires: LabWire[],
   const supply = bp.pins.find((p) => p.supplies === bp.logic && p.id !== "VIN") ?? bp.pins.find((p) => p.supplies);
   const ground = bp.pins.find((p) => p.fns?.includes("ground"));
   for (const [rail, pin] of [["TP", supply], ["TN", ground]] as const) {
-    const holes = railHoles(rail, fromRight);
+    const holes = railHoles(spec, rail, fromRight);
     if (holes.some((h) => used.has(h))) continue; // Already fed.
     if (!pin) {
-      skipped.push(`${RAILS[rail].label} rail`);
+      skipped.push(`${spec.rails[rail]!.label} rail`);
       continue;
     }
     planned.push({ from: { node: board.id, pin: pin.id }, to: { node: breadboard.id, pin: holes[0] } });
@@ -122,15 +125,17 @@ function railHole(want: { kind: "power"; volts: number } | { kind: "ground" }, b
   const boardGround = getPinout(board.partId).pins.find((p) => p.fns?.includes("ground"));
   const groundNet = boardGround ? analysis.netOfPin.get(`${board.id}:${boardGround.id}`) : undefined;
   for (const bb of nodes.filter((n) => getPinout(n.partId).strips)) {
+    const spec = breadboardSpec(bb.partId);
+    if (!spec) continue;
     const used = usedHoles(bb.id, wires);
-    const rails = (Object.keys(RAILS) as RailId[]).filter((r) => (want.kind === "power" ? RAILS[r].sign === "+" : RAILS[r].sign === "−"));
+    const rails = (Object.keys(spec.rails) as RailId[]).filter((r) => (want.kind === "power" ? spec.rails[r]!.sign === "+" : spec.rails[r]!.sign === "−"));
     for (const rail of rails) {
       const netId = analysis.netOfPin.get(`${bb.id}:${rail}1`);
       const net = analysis.nets.find((n) => n.id === netId);
       if (!net) continue;
       const ok = want.kind === "power" ? net.kind === "power" && net.voltage === want.volts && net.pins.some((p) => p.node === board.id) : net.kind === "ground" && netId === groundNet;
       if (!ok) continue;
-      const hole = railHoles(rail, part.x > bb.x + nodeFootprint(bb.partId).w / 2).find((h) => !used.has(h) && !taken.has(`${bb.id}:${h}`));
+      const hole = railHoles(spec, rail, part.x > bb.x + nodeFootprint(bb.partId).w / 2).find((h) => !used.has(h) && !taken.has(`${bb.id}:${h}`));
       if (hole) {
         taken.add(`${bb.id}:${hole}`);
         return { node: bb.id, pin: hole };

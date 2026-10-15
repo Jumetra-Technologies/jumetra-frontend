@@ -8,7 +8,7 @@
  * what the part expects from the other end of the wire.
  */
 
-import { BREADBOARD_HOLES, BREADBOARD_STRIPS, RAILS } from "@/lib/parts/models/breadboard";
+import { BREADBOARD_SPECS, type BreadboardSpec } from "@/lib/parts/models/breadboard";
 
 export type PinFn = "power" | "ground" | "digital" | "analog" | "pwm" | "sda" | "scl" | "tx" | "rx" | "mosi" | "miso" | "sck" | "cs" | "led";
 
@@ -438,25 +438,30 @@ function terminalNote(id: string): string {
 }
 
 /** Every hole is a pin; the strips say which holes share a clip. */
-const BREADBOARD: Pinout = {
-  partId: "breadboard",
-  controller: false,
-  passive: true,
-  logic: 5,
-  tolerates5V: true,
-  pins: BREADBOARD_HOLES.map((h): LabPin => {
-    const rail = h.rail ? RAILS[h.rail] : null;
-    return {
-      id: h.id,
-      label: h.label,
-      side: h.y < 27 ? L : R,
-      fns: rail ? [rail.sign === "+" ? "power" : "ground"] : undefined,
-      role: rail ? undefined : "opt",
-      note: rail ? `${rail.label} rail: all 25 holes are joined` : terminalNote(h.id),
-    };
-  }),
-  strips: BREADBOARD_STRIPS,
-};
+function breadboardPinout(spec: BreadboardSpec): Pinout {
+  const middle = spec.size.h / 2;
+  return {
+    partId: spec.partId,
+    controller: false,
+    passive: true,
+    logic: 5,
+    tolerates5V: true,
+    pins: spec.holes.map((h): LabPin => {
+      const rail = h.rail ? spec.rails[h.rail] : undefined;
+      return {
+        id: h.id,
+        label: h.label,
+        side: h.y < middle ? L : R,
+        fns: rail ? [rail.sign === "+" ? "power" : "ground"] : undefined,
+        role: rail ? undefined : "opt",
+        note: rail ? `${rail.label} rail: all ${spec.railHoles} holes are joined` : terminalNote(h.id),
+      };
+    }),
+    strips: spec.strips,
+  };
+}
+
+const BREADBOARDS: Pinout[] = Object.values(BREADBOARD_SPECS).map(breadboardPinout);
 
 /** A resistor: two legs, no polarity. It joins nothing inside; the analysis follows current through it. */
 const RESISTOR: Pinout = {
@@ -471,7 +476,7 @@ const RESISTOR: Pinout = {
   ],
 };
 
-const ALL: Pinout[] = [UNO, ESP32, PICO, MEGA, ESP8266, STM32, PI4, MICROBIT, TEENSY, BREADBOARD, RESISTOR, ...PERIPHERALS];
+const ALL: Pinout[] = [UNO, ESP32, PICO, MEGA, ESP8266, STM32, PI4, MICROBIT, TEENSY, ...BREADBOARDS, RESISTOR, ...PERIPHERALS];
 
 const BY_ID = new Map(ALL.map((p) => [p.partId, p]));
 

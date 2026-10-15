@@ -8,7 +8,7 @@
  */
 
 import { getPart } from "@/lib/parts";
-import { BREADBOARD_HOLES, RAILS, stripName } from "@/lib/parts/models/breadboard";
+import { breadboardSpec, stripName, type RailId } from "@/lib/parts/models/breadboard";
 import { getPinout, type LabPin, type PinRole, type Pinout } from "./pinout";
 import { ohmsOf } from "./controls";
 import type { LabNode, LabWire, NodeInputs, PinRef } from "./types";
@@ -370,10 +370,11 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
       if (net.kind === "power" && net.voltage !== undefined) supplyV = Math.max(supplyV ?? 0, net.voltage);
       if (net.kind === "ground") grounded = true;
     }
-    for (const rail of Object.keys(RAILS) as Array<keyof typeof RAILS>) {
+    const rails = breadboardSpec(node.partId)?.rails ?? {};
+    for (const rail of Object.keys(rails) as RailId[]) {
       const net = netFor({ node: node.id, pin: `${rail}1` });
       if (!net || !net.wires.length) continue;
-      const { sign, label } = RAILS[rail];
+      const { sign, label } = rails[rail]!;
       if (sign === "+" && net.kind === "ground") {
         nodeFaults.push({ id: `rail-sign:${node.id}:${rail}`, severity: "warning", title: `GND on the ${label} rail`, detail: `The ${label} rail is printed red for supply, but it is wired to ground. It works, but anyone who trusts the stripes will wire parts backwards. Put GND on a − rail.`, nodes: [node.id], wires: net.wires });
       } else if (sign === "−" && net.kind === "power") {
@@ -413,7 +414,7 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
   const breadboardStrip = (net: Net): string | null => {
     const hole = net.pins.find((ref) => !!pinouts.get(ref.node)?.strips);
     if (!hole) return null;
-    const h = BREADBOARD_HOLES.find((x) => x.id === hole.pin);
+    const h = breadboardSpec(byId.get(hole.node)?.partId ?? "")?.holes.find((x) => x.id === hole.pin);
     return h ? stripName(h.strip) : null;
   };
 

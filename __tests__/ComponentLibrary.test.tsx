@@ -64,10 +64,10 @@ afterEach(() => {
 });
 
 describe("part models", () => {
-  it("covers all 36 catalog parts with unique ids", () => {
+  it("covers all 38 catalog parts with unique ids", () => {
     const ids = PARTS.map((part) => part.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(36);
+    expect(ids).toHaveLength(38);
     for (const id of CATALOGUE_IDS) expect(getPart(id), id).toBeDefined();
   });
 
@@ -152,7 +152,7 @@ describe("part models", () => {
   });
 
   it("searches by name, alias, tag and interface, best match first", () => {
-    expect(searchParts("")).toHaveLength(36);
+    expect(searchParts("")).toHaveLength(38);
     expect(searchParts("uno")[0].id).toBe("arduino-uno");
     expect(searchParts("GY-521")[0].id).toBe("mpu6050");
     expect(searchParts("photoresistor")[0].id).toBe("ldr");
@@ -319,7 +319,7 @@ describe("ComponentLibrary", () => {
     fireEvent.change(screen.getByRole("searchbox", { name: /Search parts/ }), { target: { value: "no such part" } });
     expect(screen.getByText(/Nothing matches/)).toBeInTheDocument();
     fireEvent.change(screen.getByRole("searchbox", { name: /Search parts/ }), { target: { value: "" } });
-    expect(screen.getByText(/36 parts in 6 groups, most common first/)).toBeInTheDocument();
+    expect(screen.getByText(/38 parts in 6 groups, most common first/)).toBeInTheDocument();
   });
 
   it("has one clear button, removes the search icon while typing, and clears on Escape", () => {

@@ -11,7 +11,7 @@ import { frameAt, serialLine } from "@/lib/lab/simulate";
 import { suggest } from "@/lib/lab/suggest";
 import type { LabNode, LabWire } from "@/lib/lab/types";
 import { getPart } from "@/lib/parts";
-import { BREADBOARD_HOLES, BREADBOARD_STRIPS } from "@/lib/parts/models/breadboard";
+import { BREADBOARD_HOLES, BREADBOARD_SPECS, BREADBOARD_STRIPS } from "@/lib/parts/models/breadboard";
 import { freshLab } from "./helpers/lab";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
@@ -48,6 +48,54 @@ describe("The breadboard model", () => {
     }
     // Every lab pin has a hole on the canvas.
     for (const pin of getPinout("breadboard").pins) expect(part.canvas!.pins[pin.id], pin.id).toBeDefined();
+  });
+});
+
+describe("Breadboard sizes", () => {
+  it("has a 170-point mini with no rails and an 830-point full-size with four 50-hole rails", () => {
+    const mini = BREADBOARD_SPECS["breadboard-mini"];
+    const full = BREADBOARD_SPECS["breadboard-full"];
+    expect(mini.holes).toHaveLength(170);
+    expect(mini.strips).toHaveLength(34);
+    expect(Object.keys(mini.rails)).toEqual([]);
+    expect(full.holes).toHaveLength(830);
+    expect(full.strips.filter((s) => s.length === 50)).toHaveLength(4);
+    expect(full.strips.filter((s) => s.length === 5)).toHaveLength(126);
+    for (const spec of [mini, full]) {
+      const part = getPart(spec.partId)!;
+      expect(part.group).toBe("prototyping");
+      for (const h of spec.holes) {
+        expect(h.x, h.id).toBeGreaterThan(0);
+        expect(h.x, h.id).toBeLessThan(part.size.w);
+        expect(h.y, h.id).toBeLessThan(part.size.h);
+      }
+      for (const pin of getPinout(spec.partId).pins) expect(part.canvas!.pins[pin.id], pin.id).toBeDefined();
+    }
+  });
+
+  it("feeds the full-size board's top rails and leaves the mini unwired", () => {
+    const full = node("full", "breadboard-full", 420, 0);
+    const plan = planAutoWire(full, [uno, full], []);
+    expect(plan.wires.map((w) => w.to.pin)).toEqual(["TP1", "TN1"]);
+    const mini = node("mini", "breadboard-mini", 420, 0);
+    expect(planAutoWire(mini, [uno, mini], []).wires).toEqual([]);
+  });
+
+  it("joins a full-size rail end to end and reports the strips in use", () => {
+    const full = node("full", "breadboard-full", 420, 0);
+    const wires = [wire("uno", "5V", "full", "TP1"), wire("uno", "GND1", "full", "TN50")];
+    const a = analyze([uno, full], wires);
+    expect(a.netOfPin.get("full:TP1")).toBe(a.netOfPin.get("full:TP50"));
+    const use = breadboardUse("full", a, [uno, full]);
+    expect(use.map((u) => u.name)).toEqual(["Top + rail", "Top − rail"]);
+    expect(railSummary(use)).toMatch(/GND/);
+  });
+
+  it("joins a mini's columns like any other board", () => {
+    const mini = node("mini", "breadboard-mini", 420, 0);
+    const a = analyze([mini], []);
+    expect(a.netOfPin.get("mini:a17")).toBe(a.netOfPin.get("mini:e17"));
+    expect(a.netOfPin.get("mini:a17")).not.toBe(a.netOfPin.get("mini:f17"));
   });
 });
 

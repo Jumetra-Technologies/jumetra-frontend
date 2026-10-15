@@ -179,7 +179,7 @@ export function suggest(query: string, nodes: LabNode[], project?: ProjectContex
 
   // Several parts each wanting 5 V and GND: the board has one 5 V pin, a breadboard rail has 25 holes.
   const powered = nodes.filter((n) => getPinout(n.partId).pins.some((p) => p.role === "vcc")).length;
-  if (hasBoard && powered >= 2 && !onCanvas.has("breadboard")) add(list, "breadboard", `${powered} parts need 5 V and GND: feed them from a power rail`, "missing");
+  if (hasBoard && powered >= 2 && ![...onCanvas].some((id) => id.startsWith("breadboard"))) add(list, "breadboard", `${powered} parts need 5 V and GND: feed them from a power rail`, "missing");
 
   for (const node of nodes) {
     for (const pair of PAIRS[node.partId] ?? []) if (!onCanvas.has(pair.part)) add(list, pair.part, `${pair.why} with your ${node.label}`, "pairs");

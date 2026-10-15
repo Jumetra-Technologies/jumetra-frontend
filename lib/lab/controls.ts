@@ -15,6 +15,7 @@
 import type { Analysis } from "./circuit";
 import { getPinout } from "./pinout";
 import type { LabNode, NodeInputs } from "./types";
+import { DEFAULT_OHMS, RESISTOR_VALUES, formatOhms } from "@/lib/parts/models/passives";
 
 export type Control =
   | { key: string; kind: "number"; label: string; min: number; max: number; step: number; unit?: string; default: number; help?: string }
@@ -67,6 +68,26 @@ const ACTUATOR_CONTROLS: Record<string, Control[]> = {
     num("stepsPerSecond", "Speed", 1, 1000, 1, 256, "steps/s", "28BYJ-48 with ULN2003: 2048 steps per turn of the output shaft."),
   ],
 };
+
+/** Values of passive parts. */
+const PASSIVE_CONTROLS: Record<string, Control[]> = {
+  resistor: [
+    {
+      key: "ohms",
+      kind: "select",
+      label: "Value",
+      options: RESISTOR_VALUES.map((v) => ({ id: String(v), label: `${formatOhms(v)}${v === 220 ? " (red red brown)" : v === 1000 ? " (brown black red)" : v === 10000 ? " (brown black orange)" : ""}` })),
+      default: String(DEFAULT_OHMS),
+      help: "The bands on the part change with it. 220 Ω suits an LED on a 5 V pin.",
+    },
+  ],
+};
+
+/** A resistor's value in ohms, as set in the lab (220 Ω if not). */
+export function ohmsOf(inputs: Record<string, NodeInputs> | undefined, nodeId: string): number {
+  const v = Number(inputs?.[nodeId]?.ohms);
+  return Number.isFinite(v) && v > 0 ? v : DEFAULT_OHMS;
+}
 
 /** Sketch settings on a board. `when` says which wired parts make a setting relevant. */
 const BOARD_CONTROLS: Array<Control & { when: (partsOnBoard: Set<string>) => boolean }> = [
@@ -121,6 +142,7 @@ export function controlsFor(node: LabNode, nodes: LabNode[], analysis: Analysis)
     const parts = partsOnBoard(node.id, nodes, analysis);
     return { title: "Sketch settings", controls: BOARD_CONTROLS.filter((c) => c.when(parts)).map((c) => stripWhen(c)) };
   }
+  if (PASSIVE_CONTROLS[node.partId]) return { title: "Value", controls: PASSIVE_CONTROLS[node.partId] };
   if (SENSOR_CONTROLS[node.partId]) return { title: "Surroundings", controls: SENSOR_CONTROLS[node.partId] };
   if (FOLLOWERS.has(node.partId)) {
     const board = boardOf(node.id, analysis);
@@ -175,7 +197,7 @@ export function coerceInput(control: Control, value: unknown): number | string |
 /** Find a control by part and key, boards included (for coercion in the store and tests). */
 export function findControl(partId: string, key: string): Control | undefined {
   const pinout = getPinout(partId);
-  const list = pinout.controller ? BOARD_CONTROLS : (SENSOR_CONTROLS[partId] ?? ACTUATOR_CONTROLS[partId] ?? []);
+  const list = pinout.controller ? BOARD_CONTROLS : (SENSOR_CONTROLS[partId] ?? ACTUATOR_CONTROLS[partId] ?? PASSIVE_CONTROLS[partId] ?? []);
   return list.find((c) => c.key === key);
 }
 

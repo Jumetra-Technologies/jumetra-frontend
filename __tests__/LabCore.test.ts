@@ -33,7 +33,10 @@ describe("pinouts", () => {
 
   it("gives every board a supply and a ground, every peripheral a role per pin, and every breadboard hole a strip", () => {
     for (const pinout of PINOUTS) {
-      if (pinout.passive) {
+      if (pinout.passive && !pinout.strips) {
+        // A resistor: two legs, no polarity, nothing joined inside.
+        expect(pinout.pins.map((p) => p.id), pinout.partId).toEqual(["1", "2"]);
+      } else if (pinout.passive) {
         const inStrips = new Set(pinout.strips!.flat());
         expect(pinout.pins.every((p) => inStrips.has(p.id)), pinout.partId).toBe(true);
       } else if (pinout.controller) {
@@ -49,7 +52,8 @@ describe("pinouts", () => {
 
 describe("auto-wiring", () => {
   it("wires every peripheral to an Uno so it is ready, except 3.3 V-only LoRa signals", () => {
-    for (const part of PARTS.filter((p) => !getPinout(p.id).controller)) {
+    // A resistor has nothing to wire to on its own; its auto-wiring (in series with an LED) is tested in LabAcceptance.
+    for (const part of PARTS.filter((p) => !getPinout(p.id).controller && p.id !== "resistor")) {
       const { part: n, analysis, plan } = autowired("arduino-uno", part.id);
       expect(plan.skipped, part.id).toEqual([]);
       const errors = analysis.nodes[n.id].faults.filter((f) => f.severity === "error");

@@ -212,8 +212,9 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
   // ----- analysis, frames and the log ------------------------------------------
   const nodes = useMemo(() => session?.nodes ?? [], [session?.nodes]);
   const wires = useMemo(() => session?.wires ?? [], [session?.wires]);
-  const analysis = useMemo(() => analyze(nodes, wires), [nodes, wires]);
   const inputs = session?.inputs;
+  // Inputs carry part values the check needs (a resistor's ohms).
+  const analysis = useMemo(() => analyze(nodes, wires, inputs), [nodes, wires, inputs]);
   const frame = useMemo(() => frameAt(nodes, wires, analysis, t, running, inputs), [nodes, wires, analysis, t, running, inputs]);
 
   const prevAnalysis = useRef<{ id: string; analysis: Analysis } | null>(null);
@@ -461,7 +462,8 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
         return other && other.id !== plan.board!.id ? `${other.label} ${label}` : label;
       };
       const desc = fresh.map((w) => `${pp.pins.find((p) => p.id === w.to.pin)?.label ?? w.to.pin} → ${far(w.from)}`).join(", ");
-      s.addWires(fresh, `Auto-wired ${node.label} to ${plan.board.label}: ${desc}`);
+      if (plan.remove?.length) s.addWires(fresh, `Put ${node.label} in series: ${desc}`, plan.remove);
+      else s.addWires(fresh, `Auto-wired ${node.label} to ${plan.board.label}: ${desc}`);
       if (plan.skipped.length) showToast(`${plan.board.label} has no free pin for ${plan.skipped.join(", ")}`);
       return fresh.length;
     },

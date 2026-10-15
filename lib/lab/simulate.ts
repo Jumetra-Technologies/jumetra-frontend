@@ -13,8 +13,9 @@
 
 import type { Analysis } from "./circuit";
 import { ledCurrentMa, pinKey } from "./circuit";
+import { formatOhms } from "@/lib/parts/models/passives";
 import { breadboardUse, railSummary } from "./breadboard";
-import { inputOf, isSet, isSensorPart } from "./controls";
+import { inputOf, isSet, isSensorPart, ohmsOf } from "./controls";
 import { getPinout } from "./pinout";
 import { boardSettings, displayLines, planBoard, sampleSensor, type BoardPlan, type Inputs, type SensorSample } from "./sketch";
 import type { LabNode, LabWire } from "./types";
@@ -196,6 +197,10 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
     if (live[node.id]) continue;
     const report = analysis.nodes[node.id];
     const pinout = getPinout(node.partId);
+    if (node.partId === "resistor") {
+      live[node.id] = { on: false, level: 0, readings: [{ label: "Value", value: formatOhms(ohmsOf(inputs, node.id)) }] };
+      continue;
+    }
     if (pinout.passive) {
       // A breadboard runs nothing; its panel says what each wired strip carries.
       const use = breadboardUse(node.id, analysis, nodes);
@@ -247,11 +252,13 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
         const why = plan.alertSensor ? (plan.alert ? `On: ${plan.alertSensor.node.label} condition met` : `Off: waiting on ${plan.alertSensor.node.label}`) : go ? `Blinking, ${plan.settings.delayMs} ms` : "—";
         // The lab has no resistor part: an LED on a pin is modeled with the 220 Ω a real build needs (see the circuit check's tip).
         const pinV = onRail ? (report?.supplyV ?? 5) : boardLogicV(nodes, board);
-        const current = level > 0 ? ledCurrentMa(pinV) : 0;
+        // A wired resistor sets the current; with none, the model assumes 220 Ω (the circuit check's tip says so).
+        const ohms = report?.seriesOhms || 220;
+        const current = level > 0 ? ledCurrentMa(pinV, ohms) : 0;
         live[node.id] = {
           on: level > 0,
           level,
-          readings: [{ label: "State", value: level ? "On" : "Off" }, ...(go ? [{ label: "Sketch", value: why }, { label: "Current (modeled)", value: level ? `${fmt(current)} mA via 220 Ω` : "0 mA" }] : [])],
+          readings: [{ label: "State", value: level ? "On" : "Off" }, ...(go ? [{ label: "Sketch", value: why }, { label: report?.seriesOhms ? "Current" : "Current (modeled)", value: level ? `${fmt(current)} mA via ${formatOhms(ohms)}${report?.seriesOhms ? "" : " (assumed)"}` : "0 mA" }] : [])],
           badge: level ? "ON" : "OFF",
         };
         break;

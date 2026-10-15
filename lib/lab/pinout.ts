@@ -458,7 +458,20 @@ const BREADBOARD: Pinout = {
   strips: BREADBOARD_STRIPS,
 };
 
-const ALL: Pinout[] = [UNO, ESP32, PICO, MEGA, ESP8266, STM32, PI4, MICROBIT, TEENSY, BREADBOARD, ...PERIPHERALS];
+/** A resistor: two legs, no polarity. It joins nothing inside; the analysis follows current through it. */
+const RESISTOR: Pinout = {
+  partId: "resistor",
+  controller: false,
+  passive: true,
+  logic: 5,
+  tolerates5V: true,
+  pins: [
+    { id: "1", label: "Leg 1", side: L, role: "opt", note: "Either way round" },
+    { id: "2", label: "Leg 2", side: R, role: "opt", note: "Either way round" },
+  ],
+};
+
+const ALL: Pinout[] = [UNO, ESP32, PICO, MEGA, ESP8266, STM32, PI4, MICROBIT, TEENSY, BREADBOARD, RESISTOR, ...PERIPHERALS];
 
 const BY_ID = new Map(ALL.map((p) => [p.partId, p]));
 

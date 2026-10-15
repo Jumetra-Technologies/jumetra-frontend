@@ -15,6 +15,14 @@ export interface PlannedWire {
   to: PinRef;
 }
 
+export interface WirePlan {
+  board: LabNode | null;
+  wires: PlannedWire[];
+  skipped: string[];
+  /** Wires to take out first: the direct pin-to-LED wire a new resistor goes in place of. */
+  remove?: string[];
+}
+
 /** Board pins already carrying a wire. Power and ground can be shared. */
 function usedPins(boardId: string, wires: LabWire[]): Set<string> {
   const used = new Set<string>();
@@ -80,6 +88,32 @@ function planBreadboard(breadboard: LabNode, nodes: LabNode[], wires: LabWire[],
 }
 
 /**
+ * A new resistor goes where a real build needs it: between a board pin and
+ * the anode of an LED wired straight to that pin. The direct wire comes out;
+ * pin → leg 1 and leg 2 → anode go in. With no such LED it stays unwired.
+ */
+function planResistor(resistor: LabNode, nodes: LabNode[], wires: LabWire[], preferBoard?: string): WirePlan {
+  const board = pickBoard(nodes.filter((n) => n.id !== resistor.id), wires, preferBoard);
+  if (!board) return { board: null, wires: [], skipped: [] };
+  const isBoardNode = (id: string) => getPinout(nodes.find((n) => n.id === id)?.partId ?? "").controller;
+  for (const led of nodes.filter((n) => n.partId === "led")) {
+    const direct = wires.find((w) => (w.to.node === led.id && w.to.pin === "A" && isBoardNode(w.from.node)) || (w.from.node === led.id && w.from.pin === "A" && isBoardNode(w.to.node)));
+    if (!direct) continue;
+    const pin = direct.to.node === led.id ? direct.from : direct.to;
+    return {
+      board: nodes.find((n) => n.id === pin.node) ?? board,
+      wires: [
+        { from: pin, to: { node: resistor.id, pin: "1" } },
+        { from: { node: led.id, pin: "A" }, to: { node: resistor.id, pin: "2" } },
+      ],
+      skipped: [],
+      remove: [direct.id],
+    };
+  }
+  return { board, wires: [], skipped: [] };
+}
+
+/**
  * A free hole on a breadboard rail that already carries what a pin needs:
  * `volts` on a + rail, or this board's ground on a − rail. Null when no
  * breadboard has one, and the pin then goes to the board directly.
@@ -87,7 +121,7 @@ function planBreadboard(breadboard: LabNode, nodes: LabNode[], wires: LabWire[],
 function railHole(want: { kind: "power"; volts: number } | { kind: "ground" }, board: LabNode, part: LabNode, nodes: LabNode[], wires: LabWire[], analysis: Analysis, taken: Set<string>): PinRef | null {
   const boardGround = getPinout(board.partId).pins.find((p) => p.fns?.includes("ground"));
   const groundNet = boardGround ? analysis.netOfPin.get(`${board.id}:${boardGround.id}`) : undefined;
-  for (const bb of nodes.filter((n) => getPinout(n.partId).passive)) {
+  for (const bb of nodes.filter((n) => getPinout(n.partId).strips)) {
     const used = usedHoles(bb.id, wires);
     const rails = (Object.keys(RAILS) as RailId[]).filter((r) => (want.kind === "power" ? RAILS[r].sign === "+" : RAILS[r].sign === "−"));
     for (const rail of rails) {
@@ -106,10 +140,11 @@ function railHole(want: { kind: "power"; volts: number } | { kind: "ground" }, b
   return null;
 }
 
-export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], preferBoard?: string): { board: LabNode | null; wires: PlannedWire[]; skipped: string[] } {
+export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], preferBoard?: string): WirePlan {
   const pinout = getPinout(part.partId);
   if (pinout.controller) return { board: null, wires: [], skipped: [] };
-  if (pinout.passive) return planBreadboard(part, nodes, wires, preferBoard);
+  if (pinout.strips) return planBreadboard(part, nodes, wires, preferBoard);
+  if (part.partId === "resistor") return planResistor(part, nodes, wires, preferBoard);
   const board = pickBoard(nodes.filter((n) => n.id !== part.id), wires, preferBoard);
   if (!board) return { board: null, wires: [], skipped: [] };
   const bp: Pinout = getPinout(board.partId);
@@ -141,7 +176,7 @@ export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], 
   };
 
   // With a breadboard fed by this board, supply and ground come from its rails, as on the bench.
-  const analysis = nodes.some((n) => getPinout(n.partId).passive) ? analyze(nodes, wires) : null;
+  const analysis = nodes.some((n) => getPinout(n.partId).strips) ? analyze(nodes, wires) : null;
   const takenHoles = new Set<string>();
 
   const signalOrder = pinout.pins.filter((p) => p.role && !["opt", "load"].includes(p.role));

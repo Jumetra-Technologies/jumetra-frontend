@@ -6,6 +6,8 @@ import { AlertTriangle, Cpu, Grid3x3, Lightbulb, Monitor, Radio, Thermometer, Us
 import { PartModel3D } from "@/components/library/views/PartModel3D";
 import { PartPlanGraphic } from "@/components/library/views/PartPlanView";
 import { getPart, hasScreen, withScreenText } from "@/lib/parts";
+import { withResistorValue } from "@/lib/parts/models/passives";
+import { ohmsOf } from "@/lib/lab/controls";
 import { getPinout, pinTone, type LabPin, type PinTone } from "@/lib/lab/pinout";
 import type { PowerState } from "./UsbCable";
 import { NODE, nodeLayout, pinY } from "@/lib/lab/layout";
@@ -137,7 +139,7 @@ function FlowBody({ node, slot, status, badge, on, left, right, live }: { node: 
       <foreignObject x={bx} y={by} width={bw} height={bh}>
         <div className="flex h-full flex-col items-center justify-center gap-1 px-2 text-center">
           <Icon className={cn("size-5", on ? "text-success" : status === "fault" ? "text-danger" : "text-muted")} />
-          <span className="max-w-full truncate text-[11px] font-semibold text-foreground">{pinout.controller ? `MCU · ${pinout.logic} V logic` : (part?.group ?? "part").replace(/s$/, "")}</span>
+          <span className="max-w-full truncate text-[11px] font-semibold text-foreground">{pinout.controller ? `MCU · ${pinout.logic} V logic` : part?.group === "prototyping" ? (part.name.split(" (")[0] ?? "part").toLowerCase() : (part?.group ?? "part").replace(/s$/, "")}</span>
           {badge ? <span className={cn("max-w-full truncate font-mono text-sm font-semibold tabular-nums", on ? "text-success" : "text-muted")}>{badge}</span> : null}
           {pinout.controller ? (
             <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-muted">
@@ -213,7 +215,8 @@ function PartNodeView({ id, data, selected }: NodeProps & { data: PartNodeData }
   // A display's glass shows what the sketch wrote this frame, or nothing: never the library's sample text.
   const screen = !!part && hasScreen(part);
   const text = live?.text;
-  const shown = useMemo(() => (part && screen ? withScreenText(part, text ?? []) : part), [part, screen, text]);
+  const ohms = node.partId === "resistor" ? ohmsOf(session.inputs, node.id) : 0;
+  const shown = useMemo(() => (part && screen ? withScreenText(part, text ?? []) : part && ohms ? withResistorValue(part, ohms) : part), [part, screen, text, ohms]);
 
   if (layout.bare && part && pinout.passive) {
     return (

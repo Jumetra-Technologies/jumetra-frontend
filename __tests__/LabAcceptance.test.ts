@@ -145,19 +145,75 @@ describe("P1 · Experiment 01: LDR-controlled LED and the resistor tip", () => {
     }
   });
 
-  it("the tip matches the model: there is no resistor part, a 220 Ω one is assumed, and the LED reports the current it gives", () => {
+  it("with no resistor wired, the tip and the reading both assume 220 Ω", () => {
     const { parts, analysis, at } = build("arduino-uno", "ldr", "led");
     const tip = analysis.nodes[parts.led.id].faults.find((f) => f.id.startsWith("resistor"))!;
     expect(tip.severity).toBe("tip");
     expect(tip.title).toBe("Assumed: 220 Ω resistor in series");
-    expect(tip.detail).toMatch(/no resistor part.*220 Ω.*5 V pin.*13\.6 mA/);
-    expect(getPart("resistor")).toBeUndefined();
-    expect(reading(at(2, set(parts.ldr.id, { light: 10 })), parts.led.id, "Current (modeled)")).toBe("13.6 mA via 220 Ω");
+    expect(tip.detail).toMatch(/No resistor is wired.*220 Ω.*5 V pin.*13\.6 mA.*Add a Resistor part/);
+    expect(reading(at(2, set(parts.ldr.id, { light: 10 })), parts.led.id, "Current (modeled)")).toBe("13.6 mA via 220 Ω (assumed)");
     expect(reading(at(2, set(parts.ldr.id, { light: 90 })), parts.led.id, "Current (modeled)")).toBe("0 mA");
     // On a 3.3 V board the same resistor gives less.
     const esp = build("esp32", "led");
     expect(esp.analysis.nodes[esp.parts.led.id].faults.find((f) => f.id.startsWith("resistor"))!.detail).toMatch(/3\.3 V pin.*5\.9 mA/);
     expect(ledCurrentMa(5)).toBeCloseTo(13.64, 2);
+  });
+});
+
+describe("The resistor part", () => {
+  const led = (ohms?: number, side: "anode" | "cathode" = "anode") => {
+    const uno = { id: "uno", partId: "arduino-uno", label: "Uno", x: 0, y: 0, mode: "virtual" as const };
+    const r = { id: "r1", partId: "resistor", label: "Resistor", x: 0, y: 0, mode: "virtual" as const };
+    const l = { id: "led", partId: "led", label: "LED", x: 0, y: 0, mode: "virtual" as const };
+    const w = (a: string, ap: string, b: string, bp: string, id: string) => ({ id, from: { node: a, pin: ap }, to: { node: b, pin: bp } });
+    const wires =
+      side === "anode"
+        ? [w("uno", "D13", "r1", "1", "w1"), w("r1", "2", "led", "A", "w2"), w("led", "C", "uno", "GND1", "w3")]
+        : [w("uno", "D13", "led", "A", "w1"), w("led", "C", "r1", "1", "w2"), w("r1", "2", "uno", "GND1", "w3")];
+    const inputs = ohms ? { r1: { ohms: String(ohms) } } : {};
+    const nodes = [uno, r, l];
+    return { nodes, wires, inputs, analysis: analyze(nodes, wires, inputs) };
+  };
+
+  it("drives an LED through it, on either side, and uses its real value", () => {
+    for (const side of ["anode", "cathode"] as const) {
+      const { analysis } = led(220, side);
+      const report = analysis.nodes.led;
+      expect(report.status, side).toBe("ready");
+      expect(report.seriesOhms, side).toBe(220);
+      expect(report.faults.map((f) => f.id), side).not.toContain(expect.stringMatching(/^resistor/));
+      expect(report.links.some((l) => l.boardPin === "D13"), side).toBe(true);
+    }
+    const { nodes, wires, inputs, analysis } = led(1000);
+    const frame = frameAt(nodes, wires, analysis, 0.2, true, inputs);
+    expect(frame.nodes.led.readings.find((r) => r.label === "Current")?.value).toBe("3.0 mA via 1 kΩ");
+    expect(frame.nodes.r1.readings[0]).toEqual({ label: "Value", value: "1 kΩ" });
+  });
+
+  it("warns when the resistor is too small for the LED", () => {
+    const f = led(100).analysis.nodes.led.faults.find((x) => x.id.startsWith("too-much-current"))!;
+    expect(f.severity).toBe("warning");
+    expect(f.title).toBe("30 mA: more than the LED takes");
+    expect(f.detail).toMatch(/Use at least 150 Ω/);
+    expect(led(220).analysis.nodes.led.faults.some((x) => x.id.startsWith("too-much-current"))).toBe(false);
+  });
+
+  it("goes in series with an LED wired straight to a pin when auto-wired", () => {
+    const uno = { id: "uno", partId: "arduino-uno", label: "Uno", x: 0, y: 0, mode: "virtual" as const };
+    const l = { id: "led", partId: "led", label: "LED", x: 0, y: 0, mode: "virtual" as const };
+    const r = { id: "r1", partId: "resistor", label: "Resistor", x: 0, y: 0, mode: "virtual" as const };
+    const wires = [
+      { id: "wa", from: { node: "uno", pin: "D13" }, to: { node: "led", pin: "A" } },
+      { id: "wc", from: { node: "uno", pin: "GND1" }, to: { node: "led", pin: "C" } },
+    ];
+    const plan = planAutoWire(r, [uno, l, r], wires);
+    expect(plan.remove).toEqual(["wa"]);
+    expect(plan.wires).toEqual([
+      { from: { node: "uno", pin: "D13" }, to: { node: "r1", pin: "1" } },
+      { from: { node: "led", pin: "A" }, to: { node: "r1", pin: "2" } },
+    ]);
+    const after = [...wires.filter((w) => w.id !== "wa"), ...plan.wires.map((w, i) => ({ id: `n${i}`, ...w }))];
+    expect(analyze([uno, l, r], after).nodes.led.seriesOhms).toBe(220);
   });
 });
 

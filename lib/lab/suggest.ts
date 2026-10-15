@@ -81,6 +81,7 @@ function boardsOn(nodes: LabNode[]) {
 export function fitFor(partId: string, nodes: LabNode[]): Suggestion["fit"] {
   const board = boardsOn(nodes)[0];
   const pinout = getPinout(partId);
+  if (partId === "resistor") return { tone: "ok", text: "Goes in series with an LED: 220 Ω at 5 V" };
   if (pinout.passive) {
     if (!board) return { tone: "ok", text: "Shares one 5 V pin with every part" };
     const boardName = getPart(board.partId)?.name.split(" ")[0] ?? "the board";

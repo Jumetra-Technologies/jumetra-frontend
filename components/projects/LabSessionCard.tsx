@@ -93,7 +93,7 @@ export function SessionPreview({ session, className }: { session: LabSession; cl
 }
 
 export function LabSessionCard({ session, projects, showProject = true }: { session: LabSession; projects: RoboticsProject[]; showProject?: boolean }) {
-  const analysis = useMemo(() => analyze(session.nodes, session.wires), [session.nodes, session.wires]);
+  const analysis = useMemo(() => analyze(session.nodes, session.wires, session.inputs), [session.nodes, session.wires, session.inputs]);
   const errors = analysis.faults.filter((f) => f.severity === "error").length;
   const ready = Object.values(analysis.nodes).filter((r) => r.status === "ready").length;
   const project = projects.find((p) => p.id === session.projectId);

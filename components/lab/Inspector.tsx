@@ -9,6 +9,8 @@ import { PartFlowView } from "@/components/library/views/PartFlowView";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Button } from "@/components/ui/button";
 import { getPart, hasScreen, partHref, withScreenText } from "@/lib/parts";
+import { withResistorValue } from "@/lib/parts/models/passives";
+import { ohmsOf } from "@/lib/lab/controls";
 import { getPinout, pinTone } from "@/lib/lab/pinout";
 import { breadboardUse } from "@/lib/lab/breadboard";
 import { useLab } from "@/lib/lab/store";
@@ -62,7 +64,7 @@ function NodeInspector({ id }: { id: string }) {
   // The preview is this part in the lab, not the library's: a display's glass shows what the sketch
   // wrote this frame (the same lines as on the canvas), or nothing. Never the library's sample text.
   // withScreenText caches per model and text, so this is cheap on every frame.
-  const shown = part && hasScreen(part) ? withScreenText(part, live?.text ?? []) : part;
+  const shown = part && hasScreen(part) ? withScreenText(part, live?.text ?? []) : part && node?.partId === "resistor" ? withResistorValue(part, ohmsOf(session.inputs, node.id)) : part;
   if (!node || !pinout) return null;
 
   const otherEnd = (pin: string) =>
@@ -170,7 +172,7 @@ function NodeInspector({ id }: { id: string }) {
         <FaultList faults={report?.faults ?? []} empty={status === "idle" ? "Not wired yet. Drag from a pin, or use Auto-wire." : "No problems with this part."} />
       </Section>
 
-      {pinout.passive ? (
+      {pinout.strips ? (
         <Section title="Strips in use">
           <BreadboardStrips nodeId={node.id} />
         </Section>
@@ -193,7 +195,7 @@ function NodeInspector({ id }: { id: string }) {
 
       <Section title="Device">
         {pinout.passive ? (
-          <p className="text-[12.5px] leading-5 text-muted">A breadboard has no electronics of its own: it only joins what you plug into it, in the lab and on the bench alike.</p>
+          <p className="text-[12.5px] leading-5 text-muted">{pinout.strips ? "A breadboard has no electronics of its own: it only joins what you plug into it, in the lab and on the bench alike." : "A resistor works the same in the lab and on the bench: there is nothing to connect to Kiungo."}</p>
         ) : (
           <>
             <label className="flex items-center justify-between gap-3 text-[13px]">

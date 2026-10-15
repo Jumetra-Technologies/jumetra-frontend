@@ -126,7 +126,29 @@ A real Uno has one 5 V pin and three GND pins, and each header hole takes one ju
 - **Auto-wire.** Adding a breadboard to a build with a board wires the board's logic-level supply (Uno: 5V) to the Top + rail and a GND to the Top − rail, one wire each, from the end nearer the board. After that, auto-wired parts take VCC and GND from free rail holes when a rail already carries the voltage they need from the same board; signals still go straight to board pins. A 3.3 V part on a 5 V rail falls back to the board's 3.3V pin. The lab suggests a breadboard once two or more parts need 5 V.
 - **Canvas.** Drawn as itself in all three views (no 400-row card): 3D square-on with a 35° tilt so the 0.1" holes stay at least 8 px apart, 2D flat, and Trace as its strips. A strip lights in its net's color once wired (red supply, slate ground, blue signal), with moving dashes while current flows. The caption badge says what the rails carry ("5 V · GND"). The Inspector lists the strips in use instead of 400 pins.
 
-## 6. Known limits and remaining work
+## 6. Saving lab sessions (v1.16.2)
+
+The lab needs a signed-in account. Sessions are saved **per account** (`lib/lab/store.ts`):
+
+- **Where they're kept now:** in this browser under `kiungo.lab:v2:<account id>`. They're written about 200 ms after each change and read back on reload.
+- **Switching accounts:** `components/lab/LabAccountSync.tsx` is mounted once in `app/layout.tsx` and calls `setLabOwner()` on sign-in, sign-out and account changes. Pending changes are saved to the account they belong to first. One account never sees another's sessions.
+- **Signed out:** sessions live in memory only, and the account's saved copy stays for its next sign-in.
+- **The old shared key:** `hhip.lab:v1`, which every visitor of a browser shared, is cleared and never written again.
+- **Toolbar status:** "Saved on this device" (signed in), "Not saved" (signed out), or "Not saved" in red when the browser refuses to store (full or blocked).
+
+### Server storage (backend contract, to build)
+
+The intended home for sessions is the account on the server, as projects and experiment records already are. Proposed routes, which answer only for the bearer's own sessions:
+
+| Route | Body / answer |
+|---|---|
+| `GET /auth/me/lab-sessions` | `[{ id, name, projectId, updatedAt, ... }]`: the full `LabSession` objects (`lib/lab/types.ts`) |
+| `PUT /auth/me/lab-sessions/{id}` | A `LabSession`. Creates or replaces it. Answers with the stored session. Last write wins on `updatedAt`. |
+| `DELETE /auth/me/lab-sessions/{id}` | `{ deleted: true }` |
+
+Sessions are small JSON documents (parts, wires, inputs, a log capped at 400 entries). One JSON column per session is enough. Once these routes exist, the store loads from the server on sign-in, saves each changed session with a short debounce, and keeps the browser copy only as an offline cache.
+
+## 7. Known limits and remaining work
 
 - Inputs are not mirrored to the backend workspace; they live in the browser session like the rest of the build.
 - The sketch rules are fixed. Writing your own firmware for a lab build (the Firmware page's projects) is not connected to the lab's simulation; that needs a backend-run or browser-run interpreter and is out of scope here.

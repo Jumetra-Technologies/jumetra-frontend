@@ -10,6 +10,11 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.16.2] - 2026-10-15
+
+### Fixed
+- **The Engineering Lab saves your work again.** Since 1.15.1, lab sessions lived only in memory, so a page refresh lost the whole build. They are now saved in the browser **for the signed-in account**, under that account's own key. A refresh or a return visit brings them back, and a second person signed in on the same school computer never sees them. Signed out, nothing is shown. The old storage, which every visitor of a browser shared, stays cleared. The toolbar says **Saved on this device** or **Not saved**. The browser copy is a stopgap until lab sessions are stored on the account's server; the routes the backend needs are in `docs/engineering-lab-simulation.md` §6.
+
 ## [1.16.1] - 2026-10-15
 
 ### Changed
@@ -287,6 +292,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.16.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.1...v1.16.2
 [1.16.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.0...v1.16.1
 [1.16.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.15.2...v1.16.0
 [1.15.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.15.1...v1.15.2

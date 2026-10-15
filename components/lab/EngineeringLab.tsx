@@ -51,6 +51,7 @@ import { planAutoWire, placeNode } from "@/lib/lab/autowire";
 import { getPinout } from "@/lib/lab/pinout";
 import { backendReachable, reconcile, type RuntimeStatus } from "@/lib/lab/runtime";
 import { flushLab, useActiveSession, useLab } from "@/lib/lab/store";
+import { useAuthStore } from "@/lib/auth-store";
 import { parseSessionFile, SESSION_FILE_EXTENSION, sessionFileName, SessionFileError, toSessionFile } from "@/lib/lab/session-file";
 import type { LabNode, LabView } from "@/lib/lab/types";
 import { getServerRoboticsDataSnapshot, readRoboticsData, subscribeToRoboticsData } from "@/lib/robotics-data";
@@ -103,6 +104,7 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
   const hydrated = useLab((s) => s.hydrated);
   const sessions = useLab((s) => s.sessions);
   const saveError = useLab((s) => s.saveError);
+  const signedIn = useAuthStore((s) => !!s.user);
   const past = useLab((s) => s.past.length);
   const future = useLab((s) => s.future.length);
   const session = useActiveSession();
@@ -643,7 +645,7 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
       ? { icon: <Server className="size-3.5" aria-hidden />, text: runtime === "syncing" ? "Saving" : "Online", tone: "text-success", title: "Connected: real boards can join this session" }
       : runtime === "checking"
         ? { icon: <Server className="size-3.5" aria-hidden />, text: "Connecting", tone: "text-muted", title: "Connecting to Kiungo" }
-        : { icon: <CloudOff className="size-3.5" aria-hidden />, text: "Offline mode", tone: "text-muted", title: "Simulation works offline, but this lab session isn't saved to your account. Connecting real boards needs Kiungo online." };
+        : { icon: <CloudOff className="size-3.5" aria-hidden />, text: "Offline mode", tone: "text-muted", title: "Working offline. The simulation works and your sessions are saved in this browser; connecting real boards needs Kiungo online." };
 
   const panelLeft = (
     <AddPanel
@@ -751,8 +753,21 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
               {runtimePill.icon}
               <span className="hidden 2xl:inline">{runtimePill.text}</span>
             </span>
-            <span className={cn("hidden items-center gap-1 text-[11.5px] lg:inline-flex", saveError ? "text-danger" : "text-muted")} title={saveError ? "The lab session couldn't be synchronized with the server." : "Lab sessions are not currently saved to your account."} aria-label={saveError ? "Not synchronized" : "Session only"} data-testid="save-status">
-              {saveError ? "Not synchronized" : "Session only"}
+            <span
+              className={cn("hidden items-center gap-1 text-[11.5px] lg:inline-flex", saveError ? "text-danger" : "text-muted")}
+              title={saveError ? "This browser's storage is full or blocked, so changes aren't being saved." : signedIn ? "Saved in this browser for your account. It isn't on your other devices yet." : "Not saved: sign in to keep your lab sessions."}
+              aria-label={saveError ? "Not saved" : signedIn ? "Saved on this device" : "Not saved"}
+              data-testid="save-status"
+            >
+              {saveError ? (
+                "Not saved"
+              ) : signedIn ? (
+                <>
+                  <Check className="size-3.5 text-success" aria-hidden /> <span className="hidden 2xl:inline">Saved on this device</span>
+                </>
+              ) : (
+                "Not saved"
+              )}
             </span>
             <button type="button" onClick={() => setRightOpen(!showRight)} aria-pressed={showRight} aria-label={showRight ? "Hide inspector" : "Show inspector"} title="Inspector" className={cn("flex size-9 items-center justify-center rounded-[10px] transition-colors", showRight ? "bg-muted-bg text-foreground" : "text-muted hover:bg-muted-bg")}>
               <PanelRight className="size-4" />

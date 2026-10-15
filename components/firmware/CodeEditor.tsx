@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { CodeSkeleton } from "@/components/ui/page-skeletons";
+import { configureLocalMonaco } from "@/lib/firmware/monaco";
 
 type Props = {
   value: string;
@@ -12,7 +13,14 @@ type Props = {
   readOnly?: boolean;
 };
 
-const Monaco = dynamic(() => import("@monaco-editor/react"), {
+const Monaco = dynamic(
+  () =>
+    import("@monaco-editor/react").then((m) => {
+      // Load the editor from Kiungo's own copy, not a CDN.
+      configureLocalMonaco(m.loader);
+      return m;
+    }),
+  {
   ssr: false,
   loading: () => <CodeSkeleton />,
 });

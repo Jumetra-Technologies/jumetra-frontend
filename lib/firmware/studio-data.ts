@@ -11,6 +11,7 @@
  */
 
 import { api } from "@/lib/api-client";
+import { configureLocalMonaco } from "./monaco";
 
 export type ProjectSummary = { project_id: string; name: string; board_type: string; project_type: string };
 export type Template = { id: string; name: string };
@@ -98,10 +99,10 @@ let editorPreload: Promise<unknown> | null = null;
 let guardInstalled = false;
 
 /**
- * @monaco-editor/loader has a bug: when its CDN script fails to load, it
+ * @monaco-editor/loader has a bug: when its script fails to load, it
  * surfaces the raw script "error" Event as an unhandled rejection besides
- * rejecting init(). On a network that blocks the CDN (some schools), that
- * is console noise on every visit. Turn it into one plain log line.
+ * rejecting init(). The editor now comes from Kiungo itself (/monaco/vs), but
+ * a failed download is still possible offline; turn it into one plain log line.
  */
 function guardLoaderFailure(): void {
   if (guardInstalled || typeof window === "undefined") return;
@@ -109,7 +110,7 @@ function guardLoaderFailure(): void {
   window.addEventListener("unhandledrejection", (event) => {
     const reason = event.reason as unknown;
     const target = reason instanceof Event ? (reason.target as { src?: string } | null) : null;
-    if (reason instanceof Event && reason.type === "error" && /monaco-editor/.test(target?.src ?? "")) {
+    if (reason instanceof Event && reason.type === "error" && /monaco/.test(target?.src ?? "")) {
       event.preventDefault();
       console.warn("Kiungo: the code editor could not be downloaded; a plain text editor will be used.");
     }
@@ -118,8 +119,8 @@ function guardLoaderFailure(): void {
 
 /**
  * Fetch the code editor while the page is idle, so opening a project doesn't
- * wait for it. Monaco is several megabytes and comes from a CDN; the
- * download happens once per visit either way, so start it early.
+ * wait for it. Monaco is several megabytes, served by Kiungo from
+ * /monaco/vs; the download happens once per visit either way, so start it early.
  */
 export function preloadEditor(): Promise<unknown> {
   if (typeof window === "undefined") return Promise.resolve();
@@ -131,7 +132,10 @@ export function preloadEditor(): Promise<unknown> {
     else window.setTimeout(start, 1500);
   })
     .then(() => import("@monaco-editor/react"))
-    .then((m) => m.loader.init())
+    .then((m) => {
+      configureLocalMonaco(m.loader);
+      return m.loader.init();
+    })
     .catch(() => {
       // No CDN or no module: the editor falls back to a plain text area when it's opened.
       editorPreload = null;

@@ -76,7 +76,7 @@ describe("Firmware page: plain language", () => {
     expect(boards).toContain("ESP32 DevKit");
     expect(boards).not.toContain("esp32");
     expect(screen.getByTestId("starter-does")).toHaveTextContent("Flashes an LED on and off once a second.");
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Compiler messages", "Serial monitor", "Memory", "Compilers"]);
+    expect(within(screen.getByRole("tablist", { name: "Output" })).getAllByRole("tab").map((t) => t.textContent)).toEqual(["Compiler messages", "Serial monitor", "Memory", "Compilers"]);
     await waitFor(() => expect(api.listFirmwareProjects).toHaveBeenCalled());
   });
 
@@ -84,6 +84,22 @@ describe("Firmware page: plain language", () => {
     await startProject();
     expect(screen.queryByText("fw_1")).toBeNull();
     expect(screen.getByText(/Arduino Uno · Arduino sketch \(C\+\+\)/)).toBeInTheDocument();
+  });
+});
+
+describe("Firmware page: phones and tablets", () => {
+  it("shows one pane at a time below desktop width, and jumps to the code when a project opens", async () => {
+    render(<FirmwareStudio />);
+    const panes = screen.getByTestId("firmware-panes");
+    expect(within(panes).getByRole("tab", { name: "Project" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("complementary", { name: "Run it" }).className).toMatch(/\bhidden\b/);
+    fireEvent.click(screen.getByTestId("new-project"));
+    await screen.findByLabelText("Code");
+    expect(within(panes).getByRole("tab", { name: "Code" })).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(within(panes).getByRole("tab", { name: "Run it" }));
+    expect(screen.getByRole("complementary", { name: "Run it" }).className).not.toMatch(/(^|\s)hidden(\s|$)/);
+    // On a desktop all three show: the hiding classes stop at lg.
+    expect(screen.getByRole("complementary", { name: "Run it" }).className).toMatch(/lg:flex/);
   });
 });
 

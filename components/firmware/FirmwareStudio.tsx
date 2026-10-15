@@ -91,6 +91,8 @@ export function FirmwareStudio() {
   const cached = useMemo(readCache, []);
   const [templates, setTemplates] = useState<Template[]>(cached?.templates ?? BUILT_IN_TEMPLATES);
   const [rightTab, setRightTab] = useState<"build" | "serial" | "tools" | "memory">("build");
+  /** On phones and tablets one column shows at a time; on a desktop all three sit side by side. */
+  const [pane, setPane] = useState<"project" | "code" | "run">("project");
   /** Starter each project was made from, by project id (the server doesn't always say). */
   const [starterOf, setStarterOf] = useState<Record<string, string>>({});
   const [gpio, setGpio] = useState<Array<Record<string, unknown>>>([]);
@@ -195,6 +197,7 @@ export function FirmwareStudio() {
           const p = (await api.getFirmwareProject(id)) as Project;
           setProject(p);
           const first = p.files?.[0];
+          setPane("code");
           if (first) {
             setActivePath(first.path);
             setContent(first.content);
@@ -370,7 +373,7 @@ export function FirmwareStudio() {
       <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-surface px-4 py-2.5">
         <div className="min-w-0">
           <h1 className="text-[15px] font-semibold leading-5">Firmware</h1>
-          <p className="truncate text-[12px] text-muted">Write the code that runs on a board, compile it, then run it on a board or in the Engineering Lab.</p>
+          <p className="hidden truncate text-[12px] text-muted sm:block">Write the code that runs on a board, compile it, then run it on a board or in the Engineering Lab.</p>
         </div>
         <ol className="hidden items-center gap-1 xl:flex" aria-label="Steps" data-testid="firmware-steps">
           {steps.map((step, i) => {
@@ -405,8 +408,29 @@ export function FirmwareStudio() {
 
       <ConnectionBar connection={connection} onRetry={retry} />
 
+      <div role="tablist" aria-label="Firmware panes" className="flex shrink-0 gap-1 border-b border-border bg-surface p-1.5 lg:hidden" data-testid="firmware-panes">
+        {(
+          [
+            ["project", "Project"],
+            ["code", "Code"],
+            ["run", "Run it"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={pane === id}
+            onClick={() => setPane(id)}
+            className={cn("h-9 flex-1 rounded-[8px] text-[13px] font-medium transition-colors", pane === id ? "bg-accent text-primary" : "text-muted hover:bg-muted-bg")}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex min-h-0 flex-1">
-        <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-surface">
+        <aside className={cn("w-full shrink-0 flex-col overflow-y-auto border-border bg-surface lg:flex lg:w-64 lg:border-r", pane === "project" ? "flex" : "hidden")}>
           <div className="space-y-2 border-b border-border p-3" data-testid="new-project-form">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Start a project</p>
             <label className="block text-[12px]">
@@ -467,7 +491,7 @@ export function FirmwareStudio() {
           </div>
         </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col">
+        <main className={cn("min-w-0 flex-1 flex-col lg:flex", pane === "code" ? "flex" : "hidden")}>
           <div className="flex items-center gap-2 border-b border-border px-3 py-1.5 text-[12px]">
             <span className="font-mono text-muted">{activePath || "No file open"}</span>
             {dirty && <span className="text-warning">• unsaved</span>}
@@ -507,8 +531,8 @@ export function FirmwareStudio() {
               </div>
             )}
           </div>
-          <div className="h-48 border-t border-border">
-            <div className="flex gap-1 border-b border-border p-1 text-[11.5px]" role="tablist" aria-label="Output">
+          <div className="h-56 border-t border-border lg:h-48">
+            <div className="flex gap-1 overflow-x-auto whitespace-nowrap border-b border-border p-1 text-[11.5px]" role="tablist" aria-label="Output">
               {(
                 [
                   ["build", "Compiler messages"],
@@ -552,7 +576,7 @@ export function FirmwareStudio() {
           </div>
         </main>
 
-        <aside className="flex w-72 shrink-0 flex-col gap-3 overflow-y-auto border-l border-border bg-surface p-3" aria-label="Run it">
+        <aside className={cn("w-full shrink-0 flex-col gap-3 overflow-y-auto border-border bg-surface p-3 lg:flex lg:w-72 lg:border-l", pane === "run" ? "flex" : "hidden")} aria-label="Run it">
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Run it</p>
 
           <section className="rounded-[10px] border border-border p-2.5" data-testid="try-in-lab">

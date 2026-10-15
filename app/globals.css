@@ -874,3 +874,17 @@ input[type="search"]::-webkit-search-decoration {
   appearance: none;
   display: none;
 }
+
+/* Touch screens: a fingertip needs a bigger target than a 7–11 px pin. The dot stays the same size;
+   an invisible margin round it takes the tap. Breadboard holes are 0.1" apart, so theirs is smaller. */
+@media (pointer: coarse) {
+  .react-flow__handle::before {
+    content: "";
+    position: absolute;
+    inset: -9px;
+    border-radius: 9999px;
+  }
+  .react-flow__handle.hhip-bb-hole::before {
+    inset: -3px;
+  }
+}

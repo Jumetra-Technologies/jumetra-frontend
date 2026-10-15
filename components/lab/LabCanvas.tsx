@@ -66,7 +66,7 @@ function wireMeta(wire: LabWire, nodes: LabNode[]): WireEdgeData {
   const boardIsSource = getPinout(nodeOf(wire.from.node)?.partId ?? "").controller;
   const boardIsTarget = getPinout(nodeOf(wire.to.node)?.partId ?? "").controller;
   const tones = [a, b].filter(Boolean).map((p) => pinTone(p!));
-  // A wire takes the colour of what it carries: the peripheral's side says that best.
+  // A wire takes the color of what it carries: the peripheral's side says that best.
   const peripheralPin = boardIsSource && !boardIsTarget ? b : !boardIsSource && boardIsTarget ? a : undefined;
   const tone = tones.includes("power") ? "power" : tones.includes("ground") ? "ground" : peripheralPin ? pinTone(peripheralPin) : (tones.find((t) => t !== "muted" && t !== "digital") ?? tones[0] ?? "digital");
   const partPin = boardIsSource ? b : a;

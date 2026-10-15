@@ -361,7 +361,7 @@ export const SENSORS: PartModel[] = [
         "Wire red to VCC, black to GND and yellow to a digital pin; nothing else is needed.",
         "Your board pulls the data wire low for about 1 ms; the built-in pull-up lets it float high again.",
         "The chip measures humidity and temperature and sends 40 bits back on the yellow wire.",
-        "Keep the cable under a couple of metres, read no more than every two seconds, and the readings match a DHT22 exactly.",
+        "Keep the cable under a couple of meters, read no more than every two seconds, and the readings match a DHT22 exactly.",
       ],
     },
     facts: [
@@ -812,7 +812,7 @@ export const SENSORS: PartModel[] = [
       { label: "Supply", value: "1.7–3.6 V, 2.7 µA" },
       { label: "Size", value: "11.5 × 15 mm" },
     ],
-    experiment: { title: "Staircase altimeter", idea: "Print pressure every second, convert it to altitude, then walk up a flight of stairs and watch it climb about three metres." },
+    experiment: { title: "Staircase altimeter", idea: "Print pressure every second, convert it to altitude, then walk up a flight of stairs and watch it climb about three meters." },
     tags: ["bmp280", "barometer", "pressure", "altitude", "temperature", "weather", "i2c", "spi", "sensor"],
   },
 ];

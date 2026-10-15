@@ -12,7 +12,7 @@ import styles from "./kiungo.module.css";
  *   arms): "kiungo" is Swahili for link or joint
  * - traces and nodes: the circuit traces running out to the amber pads
  *
- * Colours come from CSS variables (--kiungo-navy, --kiungo-teal,
+ * Colors come from CSS variables (--kiungo-navy, --kiungo-teal,
  * --kiungo-amber, --kiungo-cut) so the mark follows the theme.
  */
 export type KiungoMarkState = "still" | "loading" | "broken";

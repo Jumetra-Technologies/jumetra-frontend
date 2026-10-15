@@ -145,8 +145,8 @@ export function stepperStepsAt(inputs: Inputs, nodeId: string, t: number): numbe
   const at = inputOf(inputs, nodeId, "cmdAt", 0);
   const sps = Math.max(1, inputOf(inputs, nodeId, "stepsPerSecond", 256));
   const distance = Math.abs(target - from);
-  const travelled = Math.min(distance, Math.max(0, t - at) * sps);
-  return Math.round(from + Math.sign(target - from) * travelled);
+  const traveled = Math.min(distance, Math.max(0, t - at) * sps);
+  return Math.round(from + Math.sign(target - from) * traveled);
 }
 
 export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, t: number, running: boolean, inputs: Inputs = undefined): Frame {
@@ -245,13 +245,13 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
         const level = go ? (onRail ? 1 : plan.alertSensor ? (plan.alert ? 1 : 0) : square(t, period, 0.5, k * (period / 4))) : !running && onRail && ready ? 1 : 0;
         setLinks(() => level);
         const why = plan.alertSensor ? (plan.alert ? `On: ${plan.alertSensor.node.label} condition met` : `Off: waiting on ${plan.alertSensor.node.label}`) : go ? `Blinking, ${plan.settings.delayMs} ms` : "—";
-        // The lab has no resistor part: an LED on a pin is modelled with the 220 Ω a real build needs (see the circuit check's tip).
+        // The lab has no resistor part: an LED on a pin is modeled with the 220 Ω a real build needs (see the circuit check's tip).
         const pinV = onRail ? (report?.supplyV ?? 5) : boardLogicV(nodes, board);
         const current = level > 0 ? ledCurrentMa(pinV) : 0;
         live[node.id] = {
           on: level > 0,
           level,
-          readings: [{ label: "State", value: level ? "On" : "Off" }, ...(go ? [{ label: "Sketch", value: why }, { label: "Current (modelled)", value: level ? `${fmt(current)} mA via 220 Ω` : "0 mA" }] : [])],
+          readings: [{ label: "State", value: level ? "On" : "Off" }, ...(go ? [{ label: "Sketch", value: why }, { label: "Current (modeled)", value: level ? `${fmt(current)} mA via 220 Ω` : "0 mA" }] : [])],
           badge: level ? "ON" : "OFF",
         };
         break;
@@ -284,7 +284,7 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
         const rgb: [number, number, number] = [wired("R") ? r : 0, wired("G") ? g : 0, wired("B") ? b : 0];
         setLinks((_, pin) => (pin === "R" ? rgb[0] : pin === "G" ? rgb[1] : pin === "B" ? rgb[2] : 0));
         const level = Math.max(...rgb);
-        live[node.id] = { on: level > 0.05, level, rgb, readings: [{ label: "Colour", value: `R ${Math.round(rgb[0] * 255)} G ${Math.round(rgb[1] * 255)} B ${Math.round(rgb[2] * 255)}` }], badge: go ? "Fading" : "Off" };
+        live[node.id] = { on: level > 0.05, level, rgb, readings: [{ label: "Color", value: `R ${Math.round(rgb[0] * 255)} G ${Math.round(rgb[1] * 255)} B ${Math.round(rgb[2] * 255)}` }], badge: go ? "Fading" : "Off" };
         break;
       }
       case "servo": {

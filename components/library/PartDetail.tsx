@@ -17,7 +17,7 @@ export type ViewId = "model" | "plan" | "flow";
 
 export const VIEW_OPTIONS: Array<{ id: ViewId; label: string; description: string; info: string; icon: React.ReactNode }> = [
   { id: "model", label: VIEW_COPY["3d"].label, description: VIEW_COPY["3d"].description, info: "The part as it sits on the bench, drawn to scale. Drag to turn it and see how it's built.", icon: <Box className="size-4" aria-hidden /> },
-  { id: "plan", label: VIEW_COPY["2d"].label, description: VIEW_COPY["2d"].description, info: "A flat view from above with every pin, port and LED labelled on a millimetre grid. Point at a feature to read what it does.", icon: <Grid2x2 className="size-4" aria-hidden /> },
+  { id: "plan", label: VIEW_COPY["2d"].label, description: VIEW_COPY["2d"].description, info: "A flat view from above with every pin, port and LED labeled on a millimeter grid. Point at a feature to read what it does.", icon: <Grid2x2 className="size-4" aria-hidden /> },
   { id: "flow", label: VIEW_COPY.trace.label, description: "Trace: what is inside and where the current goes", info: "What is inside the part and where the current goes through it. Use it to understand how the part works before you wire it.", icon: <Zap className="size-4" aria-hidden /> },
 ];
 

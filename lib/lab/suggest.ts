@@ -5,7 +5,7 @@
  * missing (a board, a way to show readings), what the linked project is
  * about (its name, description, objectives and hardware list), and what goes
  * well with the parts already on the canvas. With a query, results are the
- * catalogue search, ranked the same way, with a note on whether each part
+ * catalog search, ranked the same way, with a note on whether each part
  * fits the board in use. Typos fall back to the closest names.
  */
 
@@ -47,7 +47,7 @@ const INTENTS: Array<{ words: RegExp; parts: string[]; why: string }> = [
   { words: /\b(long range|lora|field|remote sensor|telemetry|farm)/i, parts: ["lora"], why: "Sends data kilometres away" },
   { words: /\b(mains|pump|heater|fan|appliance|switch|load)/i, parts: ["relay"], why: "Switches a bigger load safely" },
   { words: /\b(sound|beep|alert|buzz|notify|siren)/i, parts: ["buzzer"], why: "Makes an audible alert" },
-  { words: /\b(colou?r|rgb|mood|status light|indicator)/i, parts: ["rgb-led", "led"], why: "Shows status in colour" },
+  { words: /\b(colou?r|rgb|mood|status light|indicator)/i, parts: ["rgb-led", "led"], why: "Shows status in color" },
   { words: /\b(camera|vision|linux|python|ai|machine learning|server)/i, parts: ["raspberry-pi-4"], why: "Runs Linux, Python and a camera" },
   { words: /\b(breadboard|prototyp\w*|solderless|power rail)/i, parts: ["breadboard"], why: "Shares the board's 5 V and GND with every part" },
   { words: /\b(classroom|beginner|school|learn|first)/i, parts: ["arduino-uno", "microbit", "led"], why: "Easy first steps" },

@@ -212,7 +212,7 @@ export const HARDWARE_ARTICLES: DocArticle[] = [
         type: "link-card",
         href: "/learn/measure-distance-with-hc-sr04",
         title: "Tutorial: Measure distance",
-        text: "Wire the sensor and convert echo time to centimetres.",
+        text: "Wire the sensor and convert echo time to centimeters.",
       },
     ],
   },
@@ -236,7 +236,7 @@ export const HARDWARE_ARTICLES: DocArticle[] = [
         rows: [
           ["Supply voltage", "About 5 V (modules accept roughly 4.5 to 20 V)"],
           ["Output", "Digital HIGH at about 3.3 V when motion is detected"],
-          ["Detection range", "A few metres, adjustable"],
+          ["Detection range", "A few meters, adjustable"],
           ["Warm-up", "About a minute after power-on before readings settle"],
           ["Adjustments", "Sensitivity and hold-time trimmers, and often a trigger-mode jumper"],
         ],
@@ -277,7 +277,7 @@ export const HARDWARE_ARTICLES: DocArticle[] = [
         rows: [
           ["Supply voltage", "About 4.8 to 6 V"],
           ["Control signal", "Pulse every 20 ms (50 Hz)"],
-          ["Pulse width", "About 1 ms for one end, 1.5 ms for centre, 2 ms for the other end (exact range varies by model)"],
+          ["Pulse width", "About 1 ms for one end, 1.5 ms for center, 2 ms for the other end (exact range varies by model)"],
           ["Wires", "Signal (often orange or yellow), power (red), ground (brown or black)"],
         ],
       },

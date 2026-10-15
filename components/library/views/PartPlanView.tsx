@@ -241,7 +241,7 @@ export function PartPlanView({ model, powered, activeFeature, onFeature, classNa
 
   return (
     <div className={cn("relative", className)} data-testid="part-plan">
-      <svg viewBox={`${left} ${-PAD} ${viewW} ${viewH}`} className="h-full w-full" role="img" aria-label={`${front ? "Front" : "Top"} view of the ${model.name}, ${w} by ${h} millimetres`}>
+      <svg viewBox={`${left} ${-PAD} ${viewW} ${viewH}`} className="h-full w-full" role="img" aria-label={`${front ? "Front" : "Top"} view of the ${model.name}, ${w} by ${h} millimeters`}>
         <defs>
           <pattern id={`${uid}-minor`} width="1" height="1" patternUnits="userSpaceOnUse">
             <path d="M 1 0 L 0 0 0 1" fill="none" stroke="var(--canvas-grid)" strokeWidth={0.06 * k} />

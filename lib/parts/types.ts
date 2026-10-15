@@ -1,7 +1,7 @@
 /**
  * The part model behind the Component library.
  *
- * One model per part describes it in millimetres: the solids that make up
+ * One model per part describes it in millimeters: the solids that make up
  * its body, the features a person would point at (pins, ports, LEDs,
  * buttons), and the electrical blocks inside it with the paths current takes
  * between them. Three renderers draw every part from this one description:
@@ -9,7 +9,7 @@
  *
  * Coordinates: the part is seen from above. The origin is its top-left
  * corner; x runs right, y runs down the page (towards the viewer's front)
- * and z runs up, out of the board. All lengths are in millimetres.
+ * and z runs up, out of the board. All lengths are in millimeters.
  */
 
 export type PartGroupId = "boards" | "prototyping" | "sensors" | "outputs" | "displays" | "radios";
@@ -20,7 +20,7 @@ export interface PartGroup {
   blurb: string;
 }
 
-/** A CSS colour (hex) or a CSS background for the top face. */
+/** A CSS color (hex) or a CSS background for the top face. */
 export type Paint = string;
 
 export type Solid =
@@ -42,7 +42,7 @@ export type Solid =
       radius?: number;
       /** Rows of header holes punched into the top, across the long axis. */
       holes?: { count: number; rows?: number };
-      /** Marks a lit element; the colour of its glow when powered. */
+      /** Marks a lit element; the color of its glow when powered. */
       glow?: string;
       /** Text printed on the top face. */
       label?: { text: string; size?: number; color?: string };
@@ -133,7 +133,7 @@ export type Solid =
  * so jumper wires land on the real header, and where the USB lead plugs in.
  */
 export interface CanvasSpec {
-  /** Pinout pin id → hole centre on the board (mm, top-left origin). */
+  /** Pinout pin id → hole center on the board (mm, top-left origin). */
   pins: Record<string, { x: number; y: number }>;
   /** The USB socket's mouth: where the lead's plug seats, and the side it comes in from. */
   usb?: { x: number; y: number; z: number; from: "left" | "right" | "top" | "bottom" };

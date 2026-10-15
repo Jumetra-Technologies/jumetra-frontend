@@ -8,7 +8,7 @@ import { closeAccountDialog, useAccountDialog } from "@/lib/account-dialogs";
 import { renderHook } from "@testing-library/react";
 import { useAuthStore } from "@/lib/auth-store";
 
-/** WCAG relative luminance and contrast of two #rrggbb colours. */
+/** WCAG relative luminance and contrast of two #rrggbb colors. */
 function contrast(a: string, b: string): number {
   const lum = (hex: string) => {
     const [r, g, bl] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
@@ -24,7 +24,7 @@ function palette(theme: string): Record<string, string> {
   return Object.fromEntries([...block.matchAll(/--([\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
 }
 
-describe("Colour themes are clear", () => {
+describe("Color themes are clear", () => {
   for (const theme of ["blue", "red", "green"]) {
     it(`${theme}: a solid sidebar with readable text, and real hierarchy on the page`, () => {
       const p = palette(theme);
@@ -40,7 +40,7 @@ describe("Colour themes are clear", () => {
       expect(p.surface).toBe("#ffffff");
     });
   }
-  it("reverses the logo on the coloured sidebars", () => {
+  it("reverses the logo on the colored sidebars", () => {
     expect(css).toMatch(/\[data-theme="blue"\] \[data-sidebar\][\s\S]*--kiungo-word: #ffffff/);
   });
 });

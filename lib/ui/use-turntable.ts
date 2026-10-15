@@ -3,7 +3,7 @@
 import { useEffect, type RefObject } from "react";
 
 /**
- * Turntable behaviour for a CSS 3D scene: slow auto-rotation that pauses
+ * Turntable behavior for a CSS 3D scene: slow auto-rotation that pauses
  * under the pointer and off screen, drag to spin and tilt, a capped fling on
  * release, arrow keys, and no motion for people who prefer reduced motion.
  *
@@ -19,7 +19,7 @@ export interface TurntableOptions {
   maxTilt?: number;
   /** Elements that must not start a drag when pressed, as a selector. */
   ignore?: string;
-  /** Turn the behaviour off (for still renders). */
+  /** Turn the behavior off (for still renders). */
   enabled?: boolean;
 }
 

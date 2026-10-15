@@ -22,7 +22,7 @@ export const THEME_OPTIONS: ThemeOption[] = [
   {
     id: "light",
     label: "Light",
-    description: "Soft grey chrome, white canvas",
+    description: "Soft gray chrome, white canvas",
     swatch: ["#f2f2f2", "#ffffff", "#525252"],
   },
   {

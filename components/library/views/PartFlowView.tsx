@@ -57,7 +57,7 @@ function blockRect(col: number, row: number) {
   return { x: MARGIN + col * COL, y: MARGIN + row * ROW, w: BW, h: BH };
 }
 
-/** The path between two blocks and where its label chip goes (chip centre). */
+/** The path between two blocks and where its label chip goes (chip center). */
 function linkPath(link: CircuitLink, blocks: PartModel["circuit"]["blocks"]): { d: string; label: { x: number; y: number } } | null {
   const from = blocks.find((block) => block.id === link.from);
   const to = blocks.find((block) => block.id === link.to);

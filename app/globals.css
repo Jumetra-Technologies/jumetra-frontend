@@ -311,9 +311,17 @@ pre {
   font-family: var(--font-jetbrains), ui-monospace, monospace;
 }
 
-:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+/*
+ * The default keyboard focus ring. It sits in the base layer so a component
+ * that draws its own focus style (a utility class) can replace it; anything
+ * that removes it with outline-none must draw its own (see
+ * __tests__/FocusStyles.test.ts).
+ */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
 
 .hhip-canvas-grid {

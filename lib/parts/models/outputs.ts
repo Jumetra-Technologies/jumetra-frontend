@@ -1,7 +1,7 @@
 import { MATERIAL, chip, dip, led5mm, lyingCylinder, maleHeader, mountHole, pcb, screwTerminal, silk, smdLed, wire } from "../build";
 import type { PartModel, Solid } from "../types";
 
-/** A single component leg hanging below z = 0, centred at (cx, cy). */
+/** A single component leg hanging below z = 0, centered at (cx, cy). */
 function leg(cx: number, cy: number, len: number): Solid {
   return { kind: "pins", x: cx - 1.27, y: cy - 1.27, count: 1, pitch: 2.54, dir: "x", len: -len, z: 0, size: 0.5 };
 }
@@ -20,7 +20,7 @@ export const OUTPUTS: PartModel[] = [
     plan: "front",
     solids: [...led5mm(3, 3, "#ff3b3b", "led"), leg(4.27, 3, 13), leg(1.73, 3, 11)],
     features: [
-      { id: "dome", label: "Dome", kind: "led", x: 0.5, y: 0, w: 5, h: 2.3, note: "Tinted epoxy that shapes the light into a ~30° beam. The colour comes from the semiconductor inside, not the plastic." },
+      { id: "dome", label: "Dome", kind: "led", x: 0.5, y: 0, w: 5, h: 2.3, note: "Tinted epoxy that shapes the light into a ~30° beam. The color comes from the semiconductor inside, not the plastic." },
       { id: "body", label: "Body", kind: "other", x: 0.5, y: 2.3, w: 5, h: 5.5, note: "Inside: a tiny die sitting in the cathode's reflector cup, with a hair-thin wire bond to the anode." },
       { id: "rim", label: "Rim with a flat side", kind: "other", x: 0.1, y: 7.8, w: 5.8, h: 1, note: "The flat edge of the rim marks the cathode (−)." },
       { id: "anode", label: "Anode (+), longer leg", kind: "pin", x: 3.9, y: 8.8, w: 0.8, h: 13, note: "Current enters here. Always through a resistor." },
@@ -35,7 +35,7 @@ export const OUTPUTS: PartModel[] = [
         { id: "gpio", label: "Board pin", sub: "HIGH = 5 V", kind: "pin", col: 0, row: 0, note: "Any digital pin; a ~ pin if you want to dim it with PWM." },
         { id: "res", label: "220 Ω resistor", sub: "yours, in series", kind: "passive", col: 1, row: 0, note: "Sets the current: (5 − 2 V) ÷ 220 Ω ≈ 14 mA. Without it the LED or the pin burns." },
         { id: "anode", label: "Anode +", kind: "pin", col: 2, row: 0, note: "The longer leg." },
-        { id: "die", label: "LED die", sub: "drops ~2 V", kind: "actuator", col: 3, row: 0, note: "A semiconductor junction; electrons crossing it give off light of one colour." },
+        { id: "die", label: "LED die", sub: "drops ~2 V", kind: "actuator", col: 3, row: 0, note: "A semiconductor junction; electrons crossing it give off light of one color." },
         { id: "light", label: "Light", sub: "~20 mA = full bright", kind: "world", col: 3, row: 1, note: "Brightness follows current, not voltage." },
         { id: "cathode", label: "Cathode −", kind: "pin", col: 2, row: 1, note: "The shorter leg, on the flat side." },
         { id: "gnd", label: "GND", kind: "ground", col: 1, row: 1, note: "Back to the board's ground." },
@@ -50,7 +50,7 @@ export const OUTPUTS: PartModel[] = [
       ],
       steps: [
         "The pin goes HIGH (5 V). The resistor sets the current: (5 − 2 V) ÷ 220 Ω ≈ 14 mA. Never skip it; without it the LED or the pin burns.",
-        "Current enters at the anode, crosses the semiconductor junction, and electrons give up their energy as light of one colour.",
+        "Current enters at the anode, crosses the semiconductor junction, and electrons give up their energy as light of one color.",
         "It leaves by the cathode to GND. Reverse it and nothing lights: an LED is a one-way valve.",
         "Dim it with PWM: analogWrite switches it on and off faster than your eye can follow.",
       ],
@@ -71,10 +71,10 @@ export const OUTPUTS: PartModel[] = [
   {
     id: "rgb-led",
     name: "RGB LED, 5 mm",
-    aka: ["tri-colour LED", "common-cathode LED", "colour LED"],
+    aka: ["tri-color LED", "common-cathode LED", "color LED"],
     group: "outputs",
     rank: 2,
-    summary: "Three LEDs in one clear dome with a shared leg. Three PWM pins and you can mix any colour you can name.",
+    summary: "Three LEDs in one clear dome with a shared leg. Three PWM pins and you can mix any color you can name.",
     size: { w: 9, h: 6, d: 8.8 },
     plan: "front",
     solids: [
@@ -87,8 +87,8 @@ export const OUTPUTS: PartModel[] = [
       leg(8.31, 3, 11),
     ],
     features: [
-      { id: "dome", label: "Clear dome", kind: "led", x: 2, y: 0, w: 5, h: 2.3, note: "Three dies inside: red, green and blue. Mix their brightness for any colour." },
-      { id: "body", label: "Body", kind: "other", x: 2, y: 2.3, w: 5, h: 5.5, note: "Water-clear so the three colours blend; look closely while it's lit and you can see the three dots." },
+      { id: "dome", label: "Clear dome", kind: "led", x: 2, y: 0, w: 5, h: 2.3, note: "Three dies inside: red, green and blue. Mix their brightness for any color." },
+      { id: "body", label: "Body", kind: "other", x: 2, y: 2.3, w: 5, h: 5.5, note: "Water-clear so the three colors blend; look closely while it's lit and you can see the three dots." },
       { id: "r", label: "Red (+)", kind: "pin", x: 0.3, y: 8.8, w: 0.8, h: 11, note: "Red anode, through its own 220 Ω resistor." },
       { id: "c", label: "Common cathode (−), longest", kind: "pin", x: 2.8, y: 8.8, w: 0.8, h: 14, note: "Shared by all three; to GND. On common-anode parts this leg goes to 5 V instead." },
       { id: "g", label: "Green (+)", kind: "pin", x: 5.4, y: 8.8, w: 0.8, h: 11, note: "Green anode, through 220 Ω." },
@@ -102,10 +102,10 @@ export const OUTPUTS: PartModel[] = [
     ],
     circuit: {
       blocks: [
-        { id: "pwm", label: "PWM pins ×3", sub: "~9, ~10, ~11", kind: "pin", col: 0, row: 0, note: "One PWM output per colour." },
-        { id: "res", label: "3 × 220 Ω", sub: "yours, one per colour", kind: "passive", col: 1, row: 0, note: "Each die needs its own resistor; they must not share one." },
+        { id: "pwm", label: "PWM pins ×3", sub: "~9, ~10, ~11", kind: "pin", col: 0, row: 0, note: "One PWM output per color." },
+        { id: "res", label: "3 × 220 Ω", sub: "yours, one per color", kind: "passive", col: 1, row: 0, note: "Each die needs its own resistor; they must not share one." },
         { id: "dies", label: "R, G, B dies", sub: "2.0 / 3.2 / 3.2 V", kind: "actuator", col: 2, row: 0, note: "Three separate junctions under one dome." },
-        { id: "light", label: "Mixed colour", sub: "16 M combinations", kind: "world", col: 3, row: 0, note: "Your eye adds the three colours together." },
+        { id: "light", label: "Mixed color", sub: "16 M combinations", kind: "world", col: 3, row: 0, note: "Your eye adds the three colors together." },
         { id: "cathode", label: "Common cathode", kind: "pin", col: 2, row: 1, note: "The longest leg." },
         { id: "gnd", label: "GND", kind: "ground", col: 1, row: 1, note: "Ground." },
       ],
@@ -120,7 +120,7 @@ export const OUTPUTS: PartModel[] = [
         "Three separate LEDs share one cathode leg. Each anode gets its own resistor and its own PWM pin.",
         "PWM sets how long each die is on; red + green reads as yellow, all three as white.",
         "Blue and green need ~3.2 V, red ~2 V: with equal resistors red looks brighter at the same duty, so trim it in code.",
-        "Common-anode versions are wired the other way: longest leg to 5 V, and pins pull low to light a colour.",
+        "Common-anode versions are wired the other way: longest leg to 5 V, and pins pull low to light a color.",
       ],
     },
     facts: [
@@ -132,7 +132,7 @@ export const OUTPUTS: PartModel[] = [
       { label: "Size", value: "Ø5 mm" },
     ],
     animate: { lit: ["rgb", "rgb-body"] },
-    experiment: { title: "Colour fader", idea: "Cycle smoothly around the hue wheel with three analogWrite calls, then map a potentiometer to the hue." },
+    experiment: { title: "Color fader", idea: "Cycle smoothly around the hue wheel with three analogWrite calls, then map a potentiometer to the hue." },
     tags: ["rgb", "led", "colour", "color", "pwm", "light", "output"],
   },
 
@@ -218,7 +218,7 @@ export const OUTPUTS: PartModel[] = [
       wire(5.5, 6.9, 7.4, 1, "#f08a24", 2),
     ],
     features: [
-      { id: "horn", label: "Horn", kind: "mechanical", x: 9.5, y: 3.9, w: 19, h: 4.4, note: "Screws onto the splined shaft and swings through about 180°. Fit it after sending 90°, so centre is centre." },
+      { id: "horn", label: "Horn", kind: "mechanical", x: 9.5, y: 3.9, w: 19, h: 4.4, note: "Screws onto the splined shaft and swings through about 180°. Fit it after sending 90°, so center is center." },
       { id: "spline", label: "Output spline", kind: "mechanical", x: 16.6, y: 3.7, w: 4.8, h: 4.8, note: "21 teeth on the last gear; the position potentiometer turns with it." },
       { id: "ears", label: "Mounting ears", kind: "mechanical", x: 8, y: 3.6, w: 4.9, h: 5, note: "Two tabs with holes, 28 mm apart, for tiny screws or a zip tie." },
       { id: "cable", label: "Lead: brown, red, orange", kind: "connector", x: 0, y: 3.5, w: 12.9, h: 4.2, note: "Brown GND, red 5 V, orange signal. The connector pushes straight onto three header pins." },
@@ -477,7 +477,7 @@ export const OUTPUTS: PartModel[] = [
       mountHole(88.5, 6.5, 1.4),
     ],
     features: [
-      { id: "shaft", label: "Shaft", kind: "mechanical", x: 17, y: 9.5, w: 7, h: 6, note: "5 mm with two flats, offset from the centre of the can. 2048 half-steps per turn after the gearbox." },
+      { id: "shaft", label: "Shaft", kind: "mechanical", x: 17, y: 9.5, w: 7, h: 6, note: "5 mm with two flats, offset from the center of the can. 2048 half-steps per turn after the gearbox." },
       { id: "can", label: "Motor can", kind: "other", x: 6.5, y: 6, w: 28, h: 28, note: "A unipolar stepper: four coils around a toothed rotor, plus a 1:64 gear train under the lid." },
       { id: "flange", label: "Mounting ears", kind: "mechanical", x: 0, y: 16.5, w: 6, h: 7, note: "Two holes 35 mm apart." },
       { id: "cable", label: "5-wire lead", kind: "connector", x: 32.5, y: 23.5, w: 22.5, h: 9.5, note: "Red is the common; blue, pink, yellow and orange are the coil ends. Plugs straight into the driver board." },

@@ -19,7 +19,7 @@ function FooterLink({ href, label }: { href: string; label: string }) {
 
 /**
  * The site footer, in the brand's teal deepening to navy (the logo's two
- * colours) so it closes the page with weight. Shown on Home, the Learning
+ * colors) so it closes the page with weight. Shown on Home, the Learning
  * Center and Documentation.
  */
 export function SiteFooter({ className }: { className?: string }) {

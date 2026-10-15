@@ -34,7 +34,7 @@ describe("Every page loads its frame first", () => {
     expect(missing).toEqual([]);
   });
 
-  it.each(Object.entries(loaders))("%s shows a labelled skeleton, never a spinner", (file, mod) => {
+  it.each(Object.entries(loaders))("%s shows a labeled skeleton, never a spinner", (file, mod) => {
     pathname = route(file).replace(/\[[^\]]+\]/g, "x");
     const Loading = mod.default;
     const { container } = render(<Loading />);

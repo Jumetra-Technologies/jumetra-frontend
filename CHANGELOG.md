@@ -10,6 +10,17 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.16.4] - 2026-10-15
+
+### Fixed
+- **Keyboard focus is always visible, and components can draw their own.** The default focus ring was an unlayered rule, so it overrode every component's own focus style; that's why the library search showed a thick ring that got clipped. It now sits in the base layer. Elements that remove it draw their own instead:
+  - The lab's terminal input, the session-name field and the fallback code editor get a ring.
+  - Menu items keep their highlight.
+  - The SVG hotspots in the 2D and Trace views and the architecture board keep their highlights.
+
+  `__tests__/FocusStyles.test.ts` fails if anything removes the outline without a replacement.
+- **US English throughout.** A pass over all app copy, part descriptions, learning content and docs: color, center, organization, behavior, labeled, catalog, millimeter, modeled, gray, license, recognize and the rest. Search tags keep the UK spelling as a synonym, so "colour" still finds the RGB LED. `__tests__/Spelling.test.ts` guards it.
+
 ## [1.16.3] - 2026-10-15
 
 ### Added
@@ -317,6 +328,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.16.4]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.3...v1.16.4
 [1.16.3]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.2...v1.16.3
 [1.16.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.1...v1.16.2
 [1.16.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.0...v1.16.1

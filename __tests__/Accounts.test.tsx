@@ -61,7 +61,7 @@ afterEach(() => {
 });
 
 describe("Continue with Google", () => {
-  it("uses Google's four-colour G and stays readable while sign-in loads", () => {
+  it("uses Google's four-color G and stays readable while sign-in loads", () => {
     render(<GoogleSignInButton />);
     const button = screen.getByRole("button", { name: "Continue with Google" });
     expect(button).toBeEnabled();
@@ -170,7 +170,7 @@ describe("Signed in", () => {
     fireEvent.click(screen.getByTestId("sidebar-account"));
     fireEvent.click(screen.getByTestId("profile-edit"));
     fireEvent.change(screen.getByLabelText("Role"), { target: { value: "instructor" } });
-    fireEvent.change(screen.getByLabelText("School or organisation"), { target: { value: "  Strathmore University " } });
+    fireEvent.change(screen.getByLabelText("School or organization"), { target: { value: "  Strathmore University " } });
     fireEvent.click(screen.getByTestId("profile-save"));
 
     expect(await screen.findByText("Profile saved.")).toBeInTheDocument();

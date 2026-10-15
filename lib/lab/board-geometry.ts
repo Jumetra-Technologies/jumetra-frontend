@@ -14,7 +14,7 @@ import { project, projectAngle, type View3D } from "@/lib/parts/geometry";
 import type { CanvasSpec, PartModel } from "@/lib/parts/types";
 import type { LabView } from "./types";
 
-/** Pixels per millimetre on the canvas. An Uno comes out 302 px wide. */
+/** Pixels per millimeter on the canvas. An Uno comes out 302 px wide. */
 export const BOARD_SCALE = 4.4;
 /** The still 3D view used on the canvas. */
 export const BOARD_VIEW = { spin: -24, tilt: 50 } as const;
@@ -25,7 +25,7 @@ const MARGIN = 14;
 const HOLE_Z = 1.6 + 8.5;
 
 export interface BoardPinSpot {
-  /** Centre of the handle, px from the node's top-left. */
+  /** Center of the handle, px from the node's top-left. */
   x: number;
   y: number;
   /** Which way a wire leaves the pin. */
@@ -106,8 +106,8 @@ export function boardGeometry(partId: string, view: LabView): BoardGeometry | nu
 
   if (view === "reality") {
     // The scene is the node's full width below the caption. PartModel3D puts the stage's
-    // centre at the scene's centre (plus the lift that project() already includes), so a
-    // point lands at scene centre + project(). Shift the scene so the board's box is centred.
+    // center at the scene's center (plus the lift that project() already includes), so a
+    // point lands at scene center + project(). Shift the scene so the board's box is centered.
     const sw = w;
     const sh = h - CAPTION;
     const graphic = { left: -(minX + maxX) / 2, top: CAPTION - (minY + maxY) / 2, width: sw, height: sh };

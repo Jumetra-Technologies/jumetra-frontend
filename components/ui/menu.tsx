@@ -132,8 +132,7 @@ export function MenuList({ items, onClose, at, labelledBy, className, autoFocus 
               }
             }}
             className={cn(
-              "flex cursor-default select-none items-center gap-2.5 rounded-[8px] px-2.5 py-1.5 outline-none transition-colors",
-              "focus:bg-muted-bg data-[open=true]:bg-muted-bg",
+              "flex cursor-default select-none items-center gap-2.5 rounded-[8px] px-2.5 py-1.5 outline-none transition-colors focus:bg-muted-bg data-[open=true]:bg-muted-bg",
               entry.danger ? "text-danger" : "text-foreground",
               entry.disabled && "opacity-45",
             )}

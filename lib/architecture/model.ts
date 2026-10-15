@@ -67,7 +67,7 @@ export const LAYERS: Layer[] = [
     name: "Web Platform",
     role: "Learn, plan, document",
     summary:
-      "The browser app you are using now. People learn how Kiungo works, explore hardware, organise projects and record experiments here before they touch real devices.",
+      "The browser app you are using now. People learn how Kiungo works, explore hardware, organize projects and record experiments here before they touch real devices.",
     phase: 1,
     responsibilities: [
       "Documentation and the Learning Center",
@@ -132,14 +132,14 @@ export const LAYERS: Layer[] = [
       "Software stand-ins for real parts. A virtual DHT11 reports temperature, a virtual servo turns, and the circuit they sit in is checked for wiring mistakes.",
     phase: 2,
     responsibilities: [
-      "Behaviour models for sensors and actuators",
+      "Behavior models for sensors and actuators",
       "Circuit graph and wiring validation",
       "Time-stepped simulation you can start, step and stop",
       "Component catalog with metadata and SVG drawings",
     ],
     code: {
       status: "prototype",
-      text: "The backend simulation engine, with behaviour models for parts such as the DHT11, HC-SR04 and PIR sensor. The Laboratory and the engineering canvas drive it.",
+      text: "The backend simulation engine, with behavior models for parts such as the DHT11, HC-SR04 and PIR sensor. The Laboratory and the engineering canvas drive it.",
       endpoints: ["/laboratory/{id}/simulation/advance", "/components/v2/{id}/simulate"],
       links: [
         { href: "/laboratory/workspace", label: "Engineering Lab" },
@@ -256,7 +256,7 @@ export const DATA_FLOWS: DataFlow[] = [
         to: "comm",
         text: "The browser asks the backend to move the simulation forward 100 ms with `POST /laboratory/{id}/simulation/advance`.",
       },
-      { kind: "edge", from: "comm", to: "virtual", text: "The simulation engine steps the circuit and runs the DHT11 behaviour model." },
+      { kind: "edge", from: "comm", to: "virtual", text: "The simulation engine steps the circuit and runs the DHT11 behavior model." },
       { kind: "edge", from: "virtual", to: "comm", text: "The sensor's new temperature and humidity are added to the simulation state." },
       { kind: "edge", from: "comm", to: "web", text: "The state comes back in the response and the Laboratory panel updates." },
     ],

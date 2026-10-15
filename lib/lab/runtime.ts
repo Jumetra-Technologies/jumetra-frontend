@@ -75,7 +75,7 @@ export async function reconcile(session: LabSession): Promise<Runtime> {
         const created = await api.addWorkspaceNode(ws, { component_id: node.partId, position: { x: node.x, y: node.y }, device_mode: node.mode, label: node.label });
         if (created.id) runtime.nodeIds[node.id] = created.id;
       } catch {
-        /* parts the backend catalogue lacks stay browser-only */
+        /* parts the backend catalog lacks stay browser-only */
       }
     }
   }

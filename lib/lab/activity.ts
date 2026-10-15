@@ -167,7 +167,7 @@ function firstOnText(node: LabNode, badge?: string, value?: string): string {
     case "led":
       return `${node.label} flashes on`;
     case "rgb-led":
-      return `${node.label} starts fading through colours`;
+      return `${node.label} starts fading through colors`;
     case "buzzer":
       return `${node.label} beeps`;
     case "relay":

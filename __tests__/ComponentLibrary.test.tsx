@@ -33,7 +33,7 @@ vi.mock("@/lib/api-client", () => ({
   },
 }));
 
-/** The ids the backend's v1 catalogue returns; the library must cover every one. */
+/** The ids the backend's v1 catalog returns; the library must cover every one. */
 const CATALOGUE_IDS = [
   "buzzer", "dc-motor", "led", "relay", "rgb-led", "servo", "stepper-motor",
   "arduino-mega", "arduino-uno", "microbit", "teensy",
@@ -64,7 +64,7 @@ afterEach(() => {
 });
 
 describe("part models", () => {
-  it("covers all 35 catalogue parts with unique ids", () => {
+  it("covers all 35 catalog parts with unique ids", () => {
     const ids = PARTS.map((part) => part.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toHaveLength(35);
@@ -183,7 +183,7 @@ describe("part views", () => {
   const led = getPart("led")!;
   const servo = getPart("servo")!;
 
-  it("renders the 3D model as a focusable, labelled scene with every solid", () => {
+  it("renders the 3D model as a focusable, labeled scene with every solid", () => {
     render(<PartModel3D model={uno} powered />);
     const scene = screen.getByTestId("part-3d");
     expect(scene).toHaveAttribute("role", "group");
@@ -212,7 +212,7 @@ describe("part views", () => {
   it("draws the top view with dimensions and a clickable outline per feature", () => {
     const onFeature = vi.fn();
     render(<PartPlanView model={uno} powered activeFeature={null} onFeature={onFeature} />);
-    expect(screen.getByRole("img", { name: /Top view of the Arduino Uno, 68.6 by 53.4 millimetres/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Top view of the Arduino Uno, 68.6 by 53.4 millimeters/ })).toBeInTheDocument();
     const buttons = screen.getAllByRole("button");
     expect(buttons).toHaveLength(uno.features.length);
     fireEvent.click(screen.getByRole("button", { name: /USB-B port/ }));
@@ -223,7 +223,7 @@ describe("part views", () => {
 
   it("draws front-facing parts like the LED standing up, legs included", () => {
     render(<PartPlanView model={led} powered activeFeature="anode" onFeature={() => {}} />);
-    expect(screen.getByRole("img", { name: /Front view of the LED, 5 mm, 6 by 21.8 millimetres/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Front view of the LED, 5 mm, 6 by 21.8 millimeters/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Anode/ })).toHaveAttribute("aria-pressed", "true");
   });
 

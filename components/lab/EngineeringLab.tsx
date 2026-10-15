@@ -680,7 +680,7 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
                   if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                   if (e.key === "Escape") setRenaming(false);
                 }}
-                className="h-9 w-56 rounded-[10px] border border-primary bg-surface px-2.5 text-sm font-semibold outline-none"
+                className="h-9 w-56 rounded-[10px] border border-primary bg-surface px-2.5 text-sm font-semibold outline-none focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--primary)_22%,transparent)]"
               />
             ) : (
               <Menu label="Session menu" items={sessionMenu} buttonClassName="flex h-9 max-w-[16rem] items-center gap-1.5 rounded-[10px] px-2.5 text-sm font-semibold text-foreground hover:bg-muted-bg" title={`${session.name}: session menu`}>

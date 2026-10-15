@@ -12,7 +12,7 @@ import { useLab } from "@/lib/lab/store";
 import type { DiscoveredHardwareDevice } from "@/stores/discovery-store";
 import { useLabContext } from "./lab-context";
 
-/** Board types the discovery service reports, mapped to catalogue parts. */
+/** Board types the discovery service reports, mapped to catalog parts. */
 const BOARD_PART: Record<string, string> = {
   "arduino-uno": "arduino-uno",
   "arduino-mega": "arduino-mega",

@@ -10,6 +10,15 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.16.1] - 2026-10-15
+
+### Changed
+- **The Home page board is the real Arduino Uno R3.** The hero used to show its own hand-built "Kiungo DEV BOARD", a green slab with Kiungo branding. It now shows the same R3 model as the Component library and the Engineering Lab (`lib/parts/models/arduino-uno.ts`): teal PCB, USB-B and barrel jacks on the left, real headers and silkscreen, and the socketed ATmega328P. It still turns slowly, pauses under the pointer, and can be dragged or turned with the arrow keys.
+- **Blink moved to a button.** The pin-13 LED used to be a tiny target on the turning board. **Run Blink** now flashes the board's L LED on and off every half second, with the ON LED lit throughout. **Stop Blink** ends it. The link to the Blink lesson is unchanged.
+
+### Removed
+- `components/landing/hero-board.module.css`, the old board's stylesheet.
+
 ## [1.16.0] - 2026-10-15
 
 ### Changed
@@ -278,6 +287,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.16.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.0...v1.16.1
 [1.16.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.15.2...v1.16.0
 [1.15.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.15.1...v1.15.2
 [1.15.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.15.0...v1.15.1

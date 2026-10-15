@@ -46,7 +46,7 @@ export const HERO = {
   /** Shown instead of the learning path to people who aren't signed in: opens Log in (Continue with Google). */
   login: { label: "Log in" },
   facts: "Virtual Arduino Uno, ESP32, Raspberry Pi Pico and STM32 boards. Free for students, clubs and schools.",
-  boardHint: "Drag to turn the board. Click the LED to run Blink.",
+  boardHint: "An Arduino Uno R3, drawn to scale. Drag to turn it, or run Blink.",
 };
 
 /** Headings carry their own line breaks (\n) so no line is left holding one word. */

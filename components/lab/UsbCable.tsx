@@ -32,7 +32,7 @@ export type PowerState = "off" | "plugging" | "on" | "unplugging";
  * port), and 5 V runs down the cable to the board. Drawn as SVG above the
  * part card, so it works in every view.
  */
-/** Where the lead's socket point is in the drawing: 166 of 170 viewBox units down, centred. */
+/** Where the lead's socket point is in the drawing: 166 of 170 viewBox units down, centered. */
 const SEAT = { x: 0.5, y: 166 / 170 };
 const LEAD = { w: 84, h: 238 };
 

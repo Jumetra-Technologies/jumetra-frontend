@@ -70,7 +70,7 @@ export const LEARNING_MODULES: LearningModule[] = [
     objectives: [
       "Describe voltage, current, and resistance",
       "Use Ohm's law to size a resistor",
-      "Recognise a short circuit and avoid it",
+      "Recognize a short circuit and avoid it",
     ],
     tags: ["voltage", "current", "resistance", "ohm", "resistor", "ground", "breadboard", "basics", "foundations"],
     relatedDocs: ["hardware-knowledge/arduino-uno"],
@@ -109,7 +109,7 @@ export const LEARNING_MODULES: LearningModule[] = [
         items: [
           "Holes in a short row of five are connected together. Parts in the same row are electrically joined.",
           "The long rails along the edges are for power (usually marked + and −).",
-          "The centre gap isolates the two halves so a chip can straddle it.",
+          "The center gap isolates the two halves so a chip can straddle it.",
         ],
       },
       {
@@ -213,7 +213,7 @@ void loop() {
         type: "ul",
         items: [
           "Arduino Uno, plus a USB cable",
-          "One LED (any colour)",
+          "One LED (any color)",
           "One 220 Ω resistor",
           "Breadboard and jumper wires",
         ],
@@ -509,7 +509,7 @@ void loop() {
     level: "intermediate",
     minutes: 25,
     title: "Measure distance with an HC-SR04",
-    summary: "Time an ultrasonic echo and convert it to centimetres, including the voltage fix needed on ESP32.",
+    summary: "Time an ultrasonic echo and convert it to centimeters, including the voltage fix needed on ESP32.",
     objectives: [
       "Trigger the sensor and time its echo",
       "Convert echo time to distance",
@@ -559,7 +559,7 @@ void setup() {
   pinMode(ECHO_PIN, INPUT);
 }
 
-// Returns distance in centimetres, or -1 if no echo was received.
+// Returns distance in centimeters, or -1 if no echo was received.
 float readDistanceCm() {
   digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);

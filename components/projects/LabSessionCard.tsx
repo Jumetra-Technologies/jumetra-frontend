@@ -29,7 +29,7 @@ export function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString();
 }
 
-/** A small drawing of the canvas: parts as cards, wires coloured by what they carry. */
+/** A small drawing of the canvas: parts as cards, wires colored by what they carry. */
 export function SessionPreview({ session, className }: { session: LabSession; className?: string }) {
   const { boxes, lines, view } = useMemo(() => {
     const boxes = session.nodes.map((n) => ({ n, ...nodeLayout(n.partId) }));

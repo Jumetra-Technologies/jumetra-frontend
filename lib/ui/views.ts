@@ -10,8 +10,8 @@ export const VIEW_COPY = {
   },
   "2d": {
     label: "2D",
-    description: "2D: a flat view from above with every pin labelled",
-    info: "A flat view from above with every pin, port and LED labelled. Use it to wire parts and check exactly which pin goes where.",
+    description: "2D: a flat view from above with every pin labeled",
+    info: "A flat view from above with every pin, port and LED labeled. Use it to wire parts and check exactly which pin goes where.",
   },
   trace: {
     label: "Trace",

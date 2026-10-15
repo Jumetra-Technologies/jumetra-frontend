@@ -177,7 +177,7 @@ export function ProfileDialog({ open }: { open: boolean }) {
                 )}
               </Field>
             </div>
-            <Field label="School or organisation" error={errors.organization}>
+            <Field label="School or organization" error={errors.organization}>
               {(id, describedBy) => (
                 <Input id={id} aria-describedby={describedBy} value={form.organization ?? ""} placeholder="e.g. Strathmore University" autoComplete="organization" onChange={(e) => set("organization", e.target.value)} />
               )}
@@ -220,7 +220,7 @@ export function ProfileDialog({ open }: { open: boolean }) {
               <Row label="Name" value={user.display_name} />
               <Row label="Email" value={user.email} note="Managed by Google" />
               <Row label="Role" value={current.role === "other" ? current.role_other || roleLabel(current.role) : roleLabel(current.role)} />
-              <Row label="Organisation" value={current.organization} />
+              <Row label="Organization" value={current.organization} />
               <Row label="Location" value={current.location} />
               <Row label="About" value={current.bio} multiline />
             </dl>
@@ -265,7 +265,7 @@ export function ProfileDialog({ open }: { open: boolean }) {
                 <div role="alertdialog" aria-label={confirm === "clear" ? "Clear your details?" : "Delete your account?"} className="mt-1">
                   <p className="text-xs leading-5 text-foreground">
                     {confirm === "clear"
-                      ? "Remove your role, organisation, location and about text? Your name and email stay."
+                      ? "Remove your role, organization, location and about text? Your name and email stay."
                       : "Delete your Kiungo account and the details stored with it? You'll be signed out. This can't be undone."}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">

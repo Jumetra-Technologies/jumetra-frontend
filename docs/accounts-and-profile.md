@@ -6,11 +6,11 @@ How sign-in, the profile and account deletion work in the Kiungo frontend, and t
 
 ### Provider buttons (everywhere sign-in appears)
 
-Google follows Google's sign-in branding: the official four-colour "G" on a neutral pill. GitHub uses its mark on a high-contrast dark button.
+Google follows Google's sign-in branding: the official four-color "G" on a neutral pill. GitHub uses its mark on a high-contrast dark button.
 
 | Provider | Light | Dark |
 |---|---|---|
-| Google | Neutral white button and official four-colour mark | Neutral near-black button and official mark |
+| Google | Neutral white button and official four-color mark | Neutral near-black button and official mark |
 | GitHub | GitHub dark button with white mark and label | Same high-contrast GitHub button |
 
 The Firebase popup is prepared before use; a small spinner replaces the provider mark while sign-in is running. GitHub opens a secure popup through Firebase and can reuse an existing GitHub browser session. Errors explain blocked popups, network problems and providers that have not been enabled.
@@ -40,7 +40,7 @@ Sign-up mode reads "Create your Kiungo account" with "Already have an account? L
 
 ### First profile setup
 
-After sign-in, people without a profile role see a welcome card. It asks them to choose Student, Researcher, Instructor, or Other; Other opens a custom role field. The card also offers secure provider linking so Google and GitHub can sign in to the same Kiungo account. For complete profiles, a separate optional recommendation appears after sign-in. Linking proves access to both providers through Firebase; an email address is never used alone to merge accounts. Organisation and location are optional. Location may be typed, or requested only after the person presses "Use my location" and approves the browser prompt; approved coordinates are saved as editable profile text. "Not now" defers setup until a later sign-in.
+After sign-in, people without a profile role see a welcome card. It asks them to choose Student, Researcher, Instructor, or Other; Other opens a custom role field. The card also offers secure provider linking so Google and GitHub can sign in to the same Kiungo account. For complete profiles, a separate optional recommendation appears after sign-in. Linking proves access to both providers through Firebase; an email address is never used alone to merge accounts. Organization and location are optional. Location may be typed, or requested only after the person presses "Use my location" and approves the browser prompt; approved coordinates are saved as editable profile text. "Not now" defers setup until a later sign-in.
 
 ### Settings → Profile tile (replaces "Account")
 
@@ -85,7 +85,7 @@ Signed in: the whole tile is one button that opens the profile modal on top of S
 │ Name           Brad Robinson         │
 │ Email          bradr…  (managed by provider)
 │ Role           Instructor            │
-│ Organisation   Strathmore University │
+│ Organization   Strathmore University │
 │ Location       Nairobi               │
 │ About          …                     │
 │                                      │
@@ -114,7 +114,7 @@ components/auth/
 ├── social-signin-button.tsx    shared Firebase popup, session and error handling
 ├── google-signin-button.tsx    Google branded provider wrapper
 ├── github-signin-button.tsx    GitHub branded provider wrapper
-├── google-logo.tsx             official four-colour G
+├── google-logo.tsx             official four-color G
 └── AuthDialog.tsx              log in / sign up modal
 components/account/
 ├── Avatar.tsx                  Provider photo with initials fallback
@@ -213,7 +213,7 @@ Firebase Authentication must list every domain that serves the app (`jumetra-fro
 
 The app follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
-- **Patch**: fixes with no new behaviour.
+- **Patch**: fixes with no new behavior.
 - **Minor**: new features that don't break saved data or URLs.
 - **Major**: breaking changes (saved-data format, removed routes, a backend contract change that old clients can't use).
 

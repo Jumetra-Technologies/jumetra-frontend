@@ -4,7 +4,7 @@ import { EngineeringLab } from "@/components/lab/EngineeringLab";
 
 export const metadata: Metadata = {
   title: "Engineering Lab",
-  description: "Build circuits from 34 modelled parts, see where current flows, and run them in the browser.",
+  description: "Build circuits from 34 modeled parts, see where current flows, and run them in the browser.",
 };
 
 export default async function LaboratoryWorkspacePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

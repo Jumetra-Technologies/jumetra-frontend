@@ -80,7 +80,7 @@ export function ComponentLibrary({ initialPart, initialQuery = "", compatibility
               autoComplete="off"
               spellCheck={false}
               className={cn(
-                "h-11 w-full rounded-[12px] border border-border bg-surface pr-11 text-sm text-foreground shadow-[var(--shadow-sm)] outline-none focus-visible:!outline-none transition-[padding,border-color,box-shadow] duration-150 placeholder:text-muted hover:border-[color-mix(in_srgb,var(--primary)_35%,var(--border))] focus:border-primary focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--primary)_16%,transparent)]",
+                "h-11 w-full rounded-[12px] border border-border bg-surface pr-11 text-sm text-foreground shadow-[var(--shadow-sm)] outline-none transition-[padding,border-color,box-shadow] duration-150 placeholder:text-muted hover:border-[color-mix(in_srgb,var(--primary)_35%,var(--border))] focus:border-primary focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--primary)_16%,transparent)]",
                 typing ? "pl-3.5" : "pl-10",
               )}
             />

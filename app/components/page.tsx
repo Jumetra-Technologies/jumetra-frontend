@@ -9,7 +9,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   if (!part) {
     return {
       title: "Component library",
-      description: `${PARTS.length} boards, sensors, outputs, displays and radios, each with a 3D model, a labelled top view and a current-flow diagram.`,
+      description: `${PARTS.length} boards, sensors, outputs, displays and radios, each with a 3D model, a labeled top view and a current-flow diagram.`,
     };
   }
   return { title: `${part.name} · Component library`, description: part.summary };

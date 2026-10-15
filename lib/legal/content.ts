@@ -59,7 +59,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       { type: "h2", text: "No warranty" },
       {
         type: "p",
-        text: "Kiungo is provided as it is, without warranties of any kind. We do not promise that it will be available, accurate or free of errors, or that simulated behaviour matches real components. To the extent the law allows, Kiungo Labs Technologies is not liable for loss or damage arising from your use of Kiungo, including damage to hardware.",
+        text: "Kiungo is provided as it is, without warranties of any kind. We do not promise that it will be available, accurate or free of errors, or that simulated behavior matches real components. To the extent the law allows, Kiungo Labs Technologies is not liable for loss or damage arising from your use of Kiungo, including damage to hardware.",
       },
       { type: "h2", text: "Changes and ending" },
       {
@@ -103,7 +103,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       { type: "h2", text: "Content you upload" },
       {
         type: "p",
-        text: "Anything you upload stays yours. By uploading it you confirm you have the right to, and you give Kiungo Labs Technologies a licence to store and process it so Kiungo can show it back to you and to anyone you share it with. That licence ends when you delete the content or close your account, except for copies in routine backups, which expire on their own.",
+        text: "Anything you upload stays yours. By uploading it you confirm you have the right to, and you give Kiungo Labs Technologies a license to store and process it so Kiungo can show it back to you and to anyone you share it with. That license ends when you delete the content or close your account, except for copies in routine backups, which expire on their own.",
       },
       { type: "h2", text: "Closing your account" },
       {
@@ -130,7 +130,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         items: [
           "Experiment freely with simulated parts. Breaking a virtual circuit costs nothing.",
           "Share what you learn, with credit to the people whose work you build on.",
-          "Report bugs, security problems and unsafe behaviour you notice.",
+          "Report bugs, security problems and unsafe behavior you notice.",
         ],
       },
       { type: "h2", text: "Don't" },

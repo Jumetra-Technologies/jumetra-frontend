@@ -60,7 +60,7 @@ Display models carry `screen:N` text solids (`lib/parts/models/displays.ts`). In
 | 4 | LED flashes, servo sweeps, PIR toggles; no motion control | Three independent formulas of `t` | PIR **Motion** Detected/None input; gate policy servo = open/rest angle; LED = motion; angles configurable 0–180° | Unit: sequences none→motion, motion→none, none→none, motion→motion, stop→restart; no sweep with a PIR. Browser: all six transitions steady over 0.6 s; stop/restart holds 90°. **Fixed and verified.** |
 | 5 | DC rpm 50–140 and direction alternating; stepper position oscillating, steps unbounded; no control | DC duty and direction were formulas of `t`; stepper angle `(22.5·t) mod 360` with no command | DC **speed** and **direction** (needs EN for speed, IN1/IN2 for direction; reported when missing); stepper **Go/Stop/Zero** commands at a set speed, position wraps, count accumulates | Unit: 0/50/100 % → 0/70/140 rpm, reverse, hold over time; +512 steps → 45° at 1 s, 90° at 2 s then holds; −512 back to 0; 4096 wraps; coils. Browser: same, plus Stop holding at 154 steps. **Fixed and verified.** |
 
-Simulated-sweep mode (the default when nothing is set) is kept as the lab's demonstration behaviour and is labelled "Simulated sweep" / "(set)" so the two are never confused.
+Simulated-sweep mode (the default when nothing is set) is kept as the lab's demonstration behavior and is labeled "Simulated sweep" / "(set)" so the two are never confused.
 
 ## 3. Retest in the browser
 
@@ -91,7 +91,7 @@ Open **Engineering Lab**, click **Arduino Uno** in the empty-canvas quick-add, l
 
 - Inspector preview of a display shows the frame's lines, the same as the canvas, or nothing. It never shows sample text.
 - LCD Live "Source" says `DHT11 (set)`, `DHT11 (simulated)` or `DHT11 (no data)`. A wired sensor that can't be read shows `DHT11: no data / Check its wiring` on the glass, not a value.
-- LED tip: **Assumed: 220 Ω resistor in series**, with the pin voltage and the current the model uses (13.6 mA at 5 V, 5.9 mA at 3.3 V). The LED's Live panel shows `Current (modelled)`. It stays a tip: the build works in the lab, but a real one needs the resistor.
+- LED tip: **Assumed: 220 Ω resistor in series**, with the pin voltage and the current the model uses (13.6 mA at 5 V, 5.9 mA at 3.3 V). The LED's Live panel shows `Current (modeled)`. It stays a tip: the build works in the lab, but a real one needs the resistor.
 - Stepper: Live shows **Position**, **Position (steps)**, **Command** (steps to go or Holding), **Last move** (as commanded) and **Done** ("670 of 2000, stopped"). A speed change mid-move doesn't jump.
 - DC motor: the shaft angle follows the direction.
 
@@ -110,7 +110,7 @@ Open **Engineering Lab**, click **Arduino Uno** in the empty-canvas quick-add, l
 
 As in section 3, with these additions:
 
-1. **LDR:** add `ldr`, `led`. Run. Select the LDR: Light 29 → LED ON; 30 → OFF; 31 → OFF; 0 → ON; 100 → OFF. Select the LED: Problems shows the tip "Assumed: 220 Ω resistor in series"; Live shows "Current (modelled) 13.6 mA via 220 Ω" while on. Select the Arduino: **Dark below** changes the threshold.
+1. **LDR:** add `ldr`, `led`. Run. Select the LDR: Light 29 → LED ON; 30 → OFF; 31 → OFF; 0 → ON; 100 → OFF. Select the LED: Problems shows the tip "Assumed: 220 Ω resistor in series"; Live shows "Current (modeled) 13.6 mA via 220 Ω" while on. Select the Arduino: **Dark below** changes the threshold.
 2. **Ultrasonic:** 19 cm → LED ON, buzzer beeping; 20 cm and 21 cm → OFF, Quiet. 2 and 400 cm accepted; typing 999 gives 400.
 3. **DHT11 + LCD:** set 0, 10, 24.5, 35, 50 °C with 30 or 80 %. Select the LCD: the Inspector preview (3D and 2D) and the canvas both read `Temp: <t> °C / Hum: <h> %`, and Live says `Source: DHT11 (set)`. **Defaults** on the DHT11 → `DHT11 (simulated)`.
 4. **PIR gate:** None, Detected, Detected, None, twice: LED OFF/ON, servo 0°/90°, steady. Stop: servo holds; Run: follows again.

@@ -68,7 +68,7 @@ export function newSession(input: { name?: string; projectId?: string | null; no
   };
 }
 
-/** Short names for the canvas; catalogue names are written for the library. */
+/** Short names for the canvas; catalog names are written for the library. */
 const SHORT: Record<string, string> = {
   "arduino-uno": "Arduino Uno",
   "arduino-mega": "Arduino Mega",

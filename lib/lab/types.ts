@@ -13,7 +13,7 @@ export type DeviceMode = "virtual" | "physical" | "hybrid";
 
 export interface LabNode {
   id: string;
-  /** Part id from `lib/parts` (also the backend catalogue id). */
+  /** Part id from `lib/parts` (also the backend catalog id). */
   partId: string;
   label: string;
   x: number;
@@ -30,7 +30,7 @@ export interface LabWire {
   id: string;
   from: PinRef;
   to: PinRef;
-  /** A colour the person picked; otherwise the colour of the net's kind. */
+  /** A color the person picked; otherwise the color of the net's kind. */
   color?: string;
 }
 

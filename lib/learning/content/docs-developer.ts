@@ -6,7 +6,7 @@ export const DEVELOPER_ARTICLES: DocArticle[] = [
     category: "developer-resources",
     title: "Frontend structure",
     summary:
-      "The technology stack, how the repository is organised, where client state lives, and the everyday commands.",
+      "The technology stack, how the repository is organized, where client state lives, and the everyday commands.",
     tags: ["frontend", "nextjs", "react", "typescript", "tailwind", "zustand", "structure", "stack", "testing", "scrollbar", "ui"],
     related: ["technical-guides/run-locally", "developer-resources/contributing-docs"],
     blocks: [

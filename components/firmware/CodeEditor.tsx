@@ -47,7 +47,7 @@ export function CodeEditor({ value, language, path, onChange, readOnly }: Props)
   if (useFallback) {
     return (
       <textarea
-        className="h-full w-full resize-none bg-[#1e1e1e] p-3 font-mono text-xs leading-5 text-slate-100 outline-none"
+        className="h-full w-full resize-none bg-[#1e1e1e] p-3 font-mono text-xs leading-5 text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ring)]"
         value={value}
         readOnly={readOnly}
         spellCheck={false}

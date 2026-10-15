@@ -151,7 +151,7 @@ export const DISPLAYS: PartModel[] = [
       { label: "Diagonal", value: "0.96 in (21.7 × 10.9 mm)" },
       { label: "Interface", value: "I2C (SPI variants exist)" },
       { label: "Supply", value: "3.3–5 V, ~20 mA" },
-      { label: "Colour", value: "Mono: white, blue or yellow/blue" },
+      { label: "Color", value: "Mono: white, blue or yellow/blue" },
       { label: "Size", value: "27 × 27 mm" },
     ],
     animate: { lit: ["pixels"] },
@@ -161,11 +161,11 @@ export const DISPLAYS: PartModel[] = [
 
   {
     id: "tft-display",
-    name: "TFT 1.8″ colour (ST7735)",
-    aka: ["1.8 inch TFT", "ST7735 display", "SPI colour screen"],
+    name: "TFT 1.8″ color (ST7735)",
+    aka: ["1.8 inch TFT", "ST7735 display", "SPI color screen"],
     group: "displays",
     rank: 3,
-    summary: "A proper colour screen, 160 × 128 pixels, with a microSD slot on the back. Gauges, photos, menus, over SPI.",
+    summary: "A proper color screen, 160 × 128 pixels, with a microSD slot on the back. Gauges, photos, menus, over SPI.",
     size: { w: 34, h: 56, d: 10.1 },
     solids: [
       pcb(34, 56, MATERIAL.pcbRed, MATERIAL.pcbRedEdge),
@@ -184,7 +184,7 @@ export const DISPLAYS: PartModel[] = [
       mountHole(31.8, 48.8, 1.2),
     ],
     features: [
-      { id: "pixels", label: "160 × 128 colour pixels", kind: "other", x: 3.5, y: 5, w: 27, h: 35, note: "An LCD with an LED backlight behind it; 16-bit colour (65 k shades) per pixel." },
+      { id: "pixels", label: "160 × 128 color pixels", kind: "other", x: 3.5, y: 5, w: 27, h: 35, note: "An LCD with an LED backlight behind it; 16-bit color (65 k shades) per pixel." },
       { id: "header", label: "VCC, GND, CS, RST, A0, SDA, SCK, LED", kind: "pins", x: 6.84, y: 52, w: 20.3, h: 2.54, note: "SPI: SDA is MOSI, SCK the clock, A0 (DC) picks command or data, LED feeds the backlight." },
       { id: "flex", label: "Flex tail", kind: "connector", x: 8, y: 43, w: 18, h: 2.5, note: "Connects the glass to the board; the ST7735 driver sits on the glass end of it." },
       { id: "sd", label: "microSD slot (on the back)", kind: "other", x: 2.5, y: 2.5, w: 29, h: 40, note: "Behind the screen is a microSD holder on the same SPI bus, with its own chip-select pin on most boards." },
@@ -203,8 +203,8 @@ export const DISPLAYS: PartModel[] = [
       blocks: [
         { id: "spi", label: "SPI", sub: "MOSI, SCK, CS, DC", kind: "pin", col: 0, row: 0, note: "Hardware SPI pins; software SPI works but crawls." },
         { id: "st", label: "ST7735", sub: "controller, 40 KB RAM", kind: "ic", col: 1, row: 0, note: "Holds the whole frame so your board doesn't have to." },
-        { id: "lcd", label: "LCD panel", sub: "160 × 128 × RGB", kind: "display", col: 2, row: 0, note: "Each pixel is three tiny shutters with colour filters." },
-        { id: "light", label: "Colour image", kind: "world", col: 3, row: 0, note: "What you see." },
+        { id: "lcd", label: "LCD panel", sub: "160 × 128 × RGB", kind: "display", col: 2, row: 0, note: "Each pixel is three tiny shutters with color filters." },
+        { id: "light", label: "Color image", kind: "world", col: 3, row: 0, note: "What you see." },
         { id: "bl", label: "Backlight LEDs", kind: "actuator", col: 2, row: 1, note: "White LEDs behind the panel." },
         { id: "led", label: "LED pin", sub: "3.3 V or PWM", kind: "pin", col: 1, row: 1, note: "Switch or dim the backlight." },
         { id: "vcc", label: "VCC", kind: "power", col: 0, row: 1, note: "About 50 mA, mostly backlight." },
@@ -227,7 +227,7 @@ export const DISPLAYS: PartModel[] = [
       ],
     },
     facts: [
-      { label: "Resolution", value: "160 × 128, 65 k colours" },
+      { label: "Resolution", value: "160 × 128, 65 k colors" },
       { label: "Diagonal", value: "1.8 in" },
       { label: "Controller", value: "ST7735" },
       { label: "Interface", value: "SPI + backlight pin" },

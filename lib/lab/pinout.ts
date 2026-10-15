@@ -1,5 +1,5 @@
 /**
- * Wireable pins for every part in the catalogue.
+ * Wireable pins for every part in the catalog.
  *
  * The part models in `lib/parts` describe pins for people ("D0–D13"); the lab
  * needs one entry per pin a wire can land on, with what each pin can do. Board
@@ -485,7 +485,7 @@ export function getPin(partId: string, pinId: string): LabPin | undefined {
   return getPinout(partId).pins.find((p) => p.id === pinId);
 }
 
-/** The colour family a pin belongs to, for its dot on the canvas. */
+/** The color family a pin belongs to, for its dot on the canvas. */
 export type PinTone = "power" | "ground" | "analog" | "pwm" | "bus" | "digital" | "muted";
 
 export function pinTone(pin: LabPin): PinTone {

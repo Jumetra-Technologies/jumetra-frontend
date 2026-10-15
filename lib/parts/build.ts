@@ -39,7 +39,7 @@ export const MATERIAL = {
   tin: "#a7acb3",
 } as const;
 
-/** Darken or lighten a hex colour. factor < 1 darkens. */
+/** Darken or lighten a hex color. factor < 1 darkens. */
 export function shade(hex: string, factor: number): string {
   const match = /^#([0-9a-f]{6})$/i.exec(hex.trim());
   if (!match) return hex;
@@ -48,7 +48,7 @@ export function shade(hex: string, factor: number): string {
   return `#${[16, 8, 0].map((shift) => channel(shift).toString(16).padStart(2, "0")).join("")}`;
 }
 
-/** The first hex colour in a paint string, for flat 2D fills. */
+/** The first hex color in a paint string, for flat 2D fills. */
 export function flatColor(paint: string): string {
   const match = /#[0-9a-f]{6}/i.exec(paint);
   return match ? match[0] : paint;
@@ -154,7 +154,7 @@ export function shieldCan(x: number, y: number, w: number, h: number, label: str
   };
 }
 
-/** Surface-mount LED, lit colour given. */
+/** Surface-mount LED, lit color given. */
 export function smdLed(x: number, y: number, color: string, id: string, z = PCB_TOP): Solid {
   return { kind: "box", id, x, y, w: 1.6, h: 0.8, d: 0.6, z, top: shade(color, 0.7), side: shade(color, 0.4), glow: color, radius: 0.2 };
 }

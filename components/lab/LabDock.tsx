@@ -110,7 +110,7 @@ function Terminal({ api }: { api: Omit<TerminalApi, "clear"> }) {
           placeholder="help"
           spellCheck={false}
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent text-slate-100 outline-none placeholder:text-slate-600"
+          className="min-w-0 flex-1 rounded-[4px] bg-transparent text-slate-100 outline-none placeholder:text-slate-600 focus-visible:ring-1 focus-visible:ring-cyan-400/60"
           data-testid="terminal-input"
         />
       </form>

@@ -63,8 +63,8 @@ function centerY(rect: Rect): number {
 
 /**
  * Start and end points of the trace from `from` to `to`.
- * Stacked nodes join vertically under the narrower node's centre;
- * side-by-side nodes join horizontally at the shared row's centre.
+ * Stacked nodes join vertically under the narrower node's center;
+ * side-by-side nodes join horizontally at the shared row's center.
  */
 export function traceBetween(layout: BoardLayout, from: LayerId, to: LayerId): [Point, Point] {
   const a = layout.nodes[from];

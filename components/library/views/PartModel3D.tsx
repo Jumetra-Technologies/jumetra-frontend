@@ -10,7 +10,7 @@ import styles from "./part-model.module.css";
 
 const MAX_SCALE = 40;
 
-/** Pixels per millimetre so the part, turned to any angle, fits the stage. */
+/** Pixels per millimeter so the part, turned to any angle, fits the stage. */
 function fitScale(width: number, height: number, model: PartModel): number {
   const diagonal = Math.hypot(model.size.w, model.size.h) || 1;
   const byWidth = (width * 0.9) / diagonal;
@@ -303,7 +303,7 @@ export function PartModel3D({
   still?: { spin: number; tilt: number };
   /** Light only these solids (overrides the model's own list while powered). */
   lit?: string[];
-  /** Pixels per millimetre, instead of fitting the stage. The lab uses this so it knows where every pin lands. */
+  /** Pixels per millimeter, instead of fitting the stage. The lab uses this so it knows where every pin lands. */
   scale?: number;
   /** No perspective: an affine projection, which lib/parts/geometry.ts can reproduce exactly. */
   flat?: boolean;

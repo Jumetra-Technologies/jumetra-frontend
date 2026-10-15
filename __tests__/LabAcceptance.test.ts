@@ -152,8 +152,8 @@ describe("P1 · Experiment 01: LDR-controlled LED and the resistor tip", () => {
     expect(tip.title).toBe("Assumed: 220 Ω resistor in series");
     expect(tip.detail).toMatch(/no resistor part.*220 Ω.*5 V pin.*13\.6 mA/);
     expect(getPart("resistor")).toBeUndefined();
-    expect(reading(at(2, set(parts.ldr.id, { light: 10 })), parts.led.id, "Current (modelled)")).toBe("13.6 mA via 220 Ω");
-    expect(reading(at(2, set(parts.ldr.id, { light: 90 })), parts.led.id, "Current (modelled)")).toBe("0 mA");
+    expect(reading(at(2, set(parts.ldr.id, { light: 10 })), parts.led.id, "Current (modeled)")).toBe("13.6 mA via 220 Ω");
+    expect(reading(at(2, set(parts.ldr.id, { light: 90 })), parts.led.id, "Current (modeled)")).toBe("0 mA");
     // On a 3.3 V board the same resistor gives less.
     const esp = build("esp32", "led");
     expect(esp.analysis.nodes[esp.parts.led.id].faults.find((f) => f.id.startsWith("resistor"))!.detail).toMatch(/3\.3 V pin.*5\.9 mA/);

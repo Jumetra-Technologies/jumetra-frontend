@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Google's four-colour "G", as used on Google's own sign-in buttons. Keep
- * the colours and proportions as they are: Google's branding rules don't
+ * Google's four-color "G", as used on Google's own sign-in buttons. Keep
+ * the colors and proportions as they are: Google's branding rules don't
  * allow recolouring it.
  */
 export function GoogleLogo({ className }: { className?: string }) {

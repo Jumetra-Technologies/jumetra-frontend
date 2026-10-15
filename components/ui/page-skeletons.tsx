@@ -60,7 +60,7 @@ export function StatGridSkeleton({ count = 4 }: { count?: number }) {
   );
 }
 
-/** Cards with a title, a status pill and a few labelled values. */
+/** Cards with a title, a status pill and a few labeled values. */
 export function CardGridSkeleton({ count = 4, columns = 2, preview = false, lines = 2 }: { count?: number; columns?: 2 | 3; preview?: boolean; lines?: number }) {
   return (
     <div className={cn("grid gap-4", columns === 3 ? "md:grid-cols-2 xl:grid-cols-3" : "md:grid-cols-2")}>
@@ -125,7 +125,7 @@ export function TableSkeleton({ rows = 6, columns = 4 }: { rows?: number; column
   );
 }
 
-/** Two side-by-side panels with labelled values (detail and analytics pages). */
+/** Two side-by-side panels with labeled values (detail and analytics pages). */
 export function PanelPairSkeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div className="mt-8 grid gap-6 lg:grid-cols-2">

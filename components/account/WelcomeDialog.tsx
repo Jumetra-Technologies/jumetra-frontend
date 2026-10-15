@@ -120,8 +120,8 @@ export function WelcomeDialog({ open }: { open: boolean }) {
           </Field>
         ) : null}
 
-        <Field label="Organisation (optional)" error={errors.organization}>
-          {(id) => <Input id={id} maxLength={LIMITS.organization} value={form.organization ?? ""} onChange={(event) => set("organization", event.target.value)} placeholder="School, lab, or organisation" autoComplete="organization" />}
+        <Field label="Organization (optional)" error={errors.organization}>
+          {(id) => <Input id={id} maxLength={LIMITS.organization} value={form.organization ?? ""} onChange={(event) => set("organization", event.target.value)} placeholder="School, lab, or organization" autoComplete="organization" />}
         </Field>
 
         <Field label="Location (optional)" error={errors.location}>

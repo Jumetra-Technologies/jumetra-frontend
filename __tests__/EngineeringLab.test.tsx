@@ -153,7 +153,7 @@ describe("Engineering Lab", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
     fireEvent.click(within(views).getByRole("button", { name: "About 2D" }));
-    expect(screen.getByRole("note")).toHaveTextContent(/every pin, port and LED labelled/);
+    expect(screen.getByRole("note")).toHaveTextContent(/every pin, port and LED labeled/);
     fireEvent.pointerDown(document.body);
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
   });

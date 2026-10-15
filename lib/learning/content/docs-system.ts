@@ -42,7 +42,7 @@ export const SYSTEM_OVERVIEW_ARTICLES: DocArticle[] = [
       { type: "h2", text: "Who it is for" },
       {
         type: "p",
-        text: "Students, technicians, instructors, clubs, and schools: anyone who needs to practise or prototype robotics without being limited by which parts they happen to own.",
+        text: "Students, technicians, instructors, clubs, and schools: anyone who needs to practice or prototype robotics without being limited by which parts they happen to own.",
       },
       {
         type: "callout",

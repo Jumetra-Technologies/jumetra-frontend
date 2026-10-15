@@ -20,7 +20,7 @@ export const UNO_SIZE = { w: 68.6, h: 53.4, d: 13 } as const;
 /** 0.1" header pitch. */
 const P = 2.54;
 
-/** Header bodies: x, y of the top-left corner. Holes are at pitch centres inside. */
+/** Header bodies: x, y of the top-left corner. Holes are at pitch centers inside. */
 const HEADERS = {
   /** SCL SDA AREF GND 13 12 11 10 9 8, along the top. */
   top10: { x: 17.5, y: 0.8, count: 10 },

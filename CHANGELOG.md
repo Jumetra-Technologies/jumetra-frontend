@@ -10,6 +10,15 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.20.0] - 2026-10-15
+
+### Added
+- **Flash an Uno from the browser.** On the Firmware page, **On my board (USB)** flashes an Arduino Uno, or a Nano with the new bootloader, plugged into your computer (Chrome or Edge on desktop):
+  - **Pick a compiled `.hex` file.** In the Arduino IDE use Sketch > Export Compiled Binary.
+  - **Kiungo flashes it directly.** It resets the board into its bootloader, writes the program, reads every page back to check it, then starts it. Nothing goes through the Kiungo server.
+  - **A clear message when something is wrong:** a damaged or oversized file, a board that isn't an Uno or Nano, or a port another program has open.
+- The upload panel for boards on the server is now headed **On Kiungo online**, so the two ways to put a program on a board are clearly separate.
+
 ## [1.19.0] - 2026-10-15
 
 ### Added
@@ -372,6 +381,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.20.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.19.0...v1.20.0
 [1.19.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.18.0...v1.19.0
 [1.18.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.16.6...v1.17.0

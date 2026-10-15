@@ -101,3 +101,9 @@ export async function connectBoard(baudRate: number, onLine: (line: string) => v
     },
   };
 }
+
+/** Ask the person to pick a port, for flashing. Throws if they cancel the picker. */
+export async function requestSerialPort(): Promise<import("./stk500").FlashPort> {
+  const serial = (navigator as unknown as { serial: { requestPort(): Promise<import("./stk500").FlashPort> } }).serial;
+  return serial.requestPort();
+}

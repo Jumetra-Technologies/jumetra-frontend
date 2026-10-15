@@ -188,7 +188,8 @@ export function buildServer(): McpServer {
         return {
           node: { node_id: r.node.id, label: r.node.label, part_id: r.node.partId },
           wired_to: r.board?.label,
-          wires_added: r.added.map((w) => `${w.from.node === r.node.id ? r.node.label : r.board?.label}.${w.from.pin} → ${w.to.node === r.node.id ? r.node.label : r.board?.label}.${w.to.pin}`),
+          // Name each end by its own part: autowire can land a pin on a breadboard rail rather than the board.
+          wires_added: r.added.map((w) => `${labelIn(s, w.from.node)}.${w.from.pin} → ${labelIn(s, w.to.node)}.${w.to.pin}`),
           not_wired: r.skipped.length ? r.skipped : undefined,
           check: summarize(s),
         };
@@ -337,6 +338,10 @@ export function buildServer(): McpServer {
   );
 
   return server;
+}
+
+function labelIn(s: ReturnType<typeof store.get>, nodeId: string): string {
+  return s.nodes.find((n) => n.id === nodeId)?.label ?? nodeId;
 }
 
 function summarize(s: ReturnType<typeof store.get>) {

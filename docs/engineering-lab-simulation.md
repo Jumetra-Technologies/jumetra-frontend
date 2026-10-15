@@ -154,7 +154,7 @@ Sessions are small JSON documents (parts, wires, inputs, a log capped at 400 ent
 - The sketch rules are fixed. Writing your own firmware for a lab build (the Firmware page's projects) is not connected to the lab's simulation; that needs a backend-run or browser-run interpreter and is out of scope here.
 - The DC motor model is linear (rpm = duty × 140, no inertia); the stepper moves at constant speed with no acceleration.
 - The Component library still shows sample text on display glass, by design; the lab never does.
-- There is no resistor part. Adding one (with the circuit check working out the current from its value) would let the LED tip become a check rather than an assumption.
+- Resistors are followed one hop: a net with no board pin, supply or ground of its own is followed through one resistor (`throughResistor` in `lib/lab/circuit.ts`). Chains of resistors, and dividers (an LDR's 10 kΩ to GND), aren't modeled yet; an LED with no resistor still assumes 220 Ω.
 - The DC motor has no load or inertia model, and its shaft angle is computed from the current speed (a speed change shifts the phase; the angle isn't drawn).
 - Taking a stepper over from the simulated sweep starts its count at 0, not where the sweep left it.
 - The Activity log doesn't record input changes, so it can't show when you changed a value.

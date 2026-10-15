@@ -170,7 +170,7 @@ describe("The resistor part", () => {
       side === "anode"
         ? [w("uno", "D13", "r1", "1", "w1"), w("r1", "2", "led", "A", "w2"), w("led", "C", "uno", "GND1", "w3")]
         : [w("uno", "D13", "led", "A", "w1"), w("led", "C", "r1", "1", "w2"), w("r1", "2", "uno", "GND1", "w3")];
-    const inputs = ohms ? { r1: { ohms: String(ohms) } } : {};
+    const inputs: Record<string, NodeInputs> = ohms ? { r1: { ohms: String(ohms) } } : {};
     const nodes = [uno, r, l];
     return { nodes, wires, inputs, analysis: analyze(nodes, wires, inputs) };
   };

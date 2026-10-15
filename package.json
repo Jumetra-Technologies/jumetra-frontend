@@ -1,6 +1,6 @@
 {
   "name": "dashboard",
-  "version": "1.16.6",
+  "version": "1.17.0",
   "private": true,
   "scripts": {
     "predev": "node scripts/copy-monaco.mjs",

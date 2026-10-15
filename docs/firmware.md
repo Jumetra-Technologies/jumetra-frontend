@@ -23,9 +23,20 @@ The Firmware page (`/firmware`, `components/firmware/`) is a small Arduino IDE i
 - **The Serial monitor's My board (USB) is real and local.** `lib/firmware/web-serial.ts` asks the browser for a port, opens it at the chosen speed (9600 by default, matching `Serial.begin(9600)`), and prints each line. Nothing goes through the server. Common USB chips are named (Arduino, CH340, CP210x, FTDI, Espressif, Pico, Teensy, micro:bit). A busy port gets a hint to close the Arduino IDE's monitor.
 - **Try it in the lab runs the lab's own version of the starter**, not the code in the editor (`lib/firmware/lab-handoff.ts`, mapping in `lib/firmware/boards.ts`). The lab's simulation follows fixed rules (`lib/lab/sketch.ts`). The page says so.
 
+## Flashing a board on your own computer (v1.20.0)
+
+**On my board (USB)** in the Run column flashes an Arduino Uno, or a Nano with the new bootloader, plugged into this computer. It works in Chrome or Edge on desktop:
+
+- The person picks a compiled `.hex` file. In the Arduino IDE that's Sketch > Export Compiled Binary, and they should use the file without "bootloader" in its name.
+- `lib/firmware/intel-hex.ts` reads the file. It checks every record's checksum and refuses a program over 32,256 bytes (32 KB, less Optiboot's 512).
+- `lib/firmware/stk500.ts` then resets the board with DTR/RTS and syncs with Optiboot at 115200 baud. It checks the chip signature (ATmega328P), writes each 128-byte page and reads every page back to verify it. Finally it leaves programming mode, so the new program starts. This is the same STK500v1 exchange as `avrdude -c arduino`.
+- Errors say what to do in words: the wrong board, the port in use, or a damaged file.
+
+The Mega (STK500v2), ESP32 and ESP8266 (`esptool-js`) and the Pico (UF2 drag-and-drop) aren't covered yet.
+
 ## What it would take to go further
 
 Both of these need real compilers on the server (Arduino CLI with the `arduino:avr` and `esp32:esp32` cores in the backend image). Today the hosted server simulates.
 
-1. **Flash the board on the person's own computer.** The backend returns the compiled file: `GET /firmware/builds/{build_id}/binary` → `.hex` (AVR) or `.bin` (ESP32), owner-only. The frontend then flashes over Web Serial: STK500v1 for the Uno and Mega bootloader, and `esptool-js` for ESP32 and ESP8266. The Serial monitor's USB connection already exists to build on.
+1. **Flash the board on the person's own computer, from Kiungo's own build.** The Uno part is in place (above), but it needs the person to export the .hex. Next: The backend returns the compiled file: `GET /firmware/builds/{build_id}/binary` → `.hex` (AVR) or `.bin` (ESP32), owner-only. The frontend then flashes over Web Serial: STK500v1 for the Uno and Mega bootloader, and `esptool-js` for ESP32 and ESP8266. The Serial monitor's USB connection already exists to build on.
 2. **Run the person's own code in the Engineering Lab.** For the Uno, run the compiled `.hex` in the browser with `avr8js` (an ATmega328P emulator). Then map its pin writes onto the lab's LEDs, buzzers and relays, and its analog reads onto the lab's sensor inputs. This replaces the fixed sketch rules for boards that have a compiled program.

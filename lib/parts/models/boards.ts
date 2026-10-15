@@ -16,7 +16,7 @@ import {
   usbB,
   usbC,
 } from "../build";
-import type { PartModel, Solid } from "../types";
+import type { CanvasSpec, PartModel, Solid } from "../types";
 import { ARDUINO_UNO } from "./arduino-uno";
 
 
@@ -31,6 +31,42 @@ function pcbAntenna(x: number, y: number, w: number, h: number): Solid {
   return { kind: "path", d, color: MATERIAL.gold, width: 0.5 };
 }
 
+
+/**
+ * Where the lab's ESP32 pins are. The DevKit V1 is drawn with the USB jack on
+ * the left and the antenna on the right, so the header that reads EN … VIN
+ * (antenna end first) runs along the top, VIN nearest the USB, and the one
+ * that reads D23 … 3V3 runs along the bottom. EN has no lab pin.
+ */
+function esp32Canvas(): CanvasSpec {
+  const x = (i: number) => 0.5 + 1.27 + i * 2.54;
+  const top = ["VIN", "GND1", "D13", "D12", "D14", "D27", "D26", "D25", "D33", "D32", "D35", "D34", "D39", "D36", ""];
+  const bottom = ["3V3", "GND2", "D15", "D2", "D4", "D16", "D17", "D5", "D18", "D19", "D21", "RX", "TX", "D22", "D23"];
+  const pins: CanvasSpec["pins"] = {};
+  top.forEach((id, i) => id && (pins[id] = { x: x(i), y: 1 + 1.27 }));
+  bottom.forEach((id, i) => id && (pins[id] = { x: x(i), y: 24.5 + 1.27 }));
+  // Jumpers land on the top of the header bodies.
+  return { pins, pinZ: 1.6 + 2.5, usb: { x: -1.5, y: 11.2 + 2.75, z: 1.6 + 1.4, from: "left" } };
+}
+
+/**
+ * Where the lab's Pico pins are. Drawn with the USB on the left, so pins 1–20
+ * (GP0 … GP15) run along the bottom from the USB end and pins 40–21 (VBUS …
+ * GP16) along the top. Pads the lab doesn't model (extra GNDs, RUN, 3V3_EN,
+ * ADC_VREF) have no pin.
+ */
+/** Pico pads: 20 per edge on a 0.1" pitch, centered on the 51 mm board. */
+const PICO_PAD_X0 = (51 - 19 * 2.54) / 2;
+
+function picoCanvas(): CanvasSpec {
+  const x = (i: number) => PICO_PAD_X0 + i * 2.54;
+  const top = ["VBUS", "VSYS", "GND2", "", "3V3", "", "GP28", "", "GP27", "GP26", "", "GP22", "", "GP21", "GP20", "GP19", "GP18", "", "GP17", "GP16"];
+  const bottom = ["GP0", "GP1", "GND1", "GP2", "GP3", "GP4", "GP5", "", "GP6", "GP7", "GP8", "GP9", "", "GP10", "GP11", "GP12", "GP13", "", "GP14", "GP15"];
+  const pins: CanvasSpec["pins"] = {};
+  top.forEach((id, i) => id && (pins[id] = { x: x(i), y: 1.6 }));
+  bottom.forEach((id, i) => id && (pins[id] = { x: x(i), y: 19.4 }));
+  return { pins, pinZ: 1.6, usb: { x: -1.3, y: 7.75 + 2.75, z: 1.6 + 1.4, from: "left" } };
+}
 
 export const BOARDS: PartModel[] = [
   ARDUINO_UNO,
@@ -66,8 +102,8 @@ export const BOARDS: PartModel[] = [
       { id: "module", label: "ESP-WROOM-32 module", kind: "chip", x: 31, y: 4.5, w: 18, h: 19, note: "The radio module: a dual-core ESP32 at 240 MHz, 4 MB flash, Wi-Fi and Bluetooth, under a metal shield." },
       { id: "antenna", label: "PCB antenna", kind: "antenna", x: 50, y: 6, w: 5, h: 16, note: "The printed Wi-Fi and Bluetooth antenna. Keep metal and fingers away from it for the best range." },
       { id: "usb", label: "Micro-USB", kind: "port", x: -1.5, y: 11.2, w: 7.5, h: 5.5, note: "Programming, serial monitor and 5 V power." },
-      { id: "top-pins", label: "Pins, top row", kind: "pins", x: 0.5, y: 1, w: 38.1, h: 2.54, note: "15 pins: EN, sensor inputs, analog pins 32–39 and GPIO. Everything is 3.3 V; 5 V on a GPIO will damage it." },
-      { id: "bottom-pins", label: "Pins, bottom row", kind: "pins", x: 0.5, y: 24.5, w: 38.1, h: 2.54, note: "15 pins including GND, VIN (5 V in), GPIO 23 to 1, TX0 and RX0." },
+      { id: "top-pins", label: "Pins, top row", kind: "pins", x: 0.5, y: 1, w: 38.1, h: 2.54, note: "15 pins: VIN (5 V in) and GND by the USB, GPIO 13 to 27, analog inputs 32–39 and EN at the antenna end. Everything is 3.3 V; 5 V on a GPIO will damage it." },
+      { id: "bottom-pins", label: "Pins, bottom row", kind: "pins", x: 0.5, y: 24.5, w: 38.1, h: 2.54, note: "15 pins: 3V3 and GND by the USB, then GPIO 15 to 23, with TX2/RX2, the I²C pair (21, 22), TX0 and RX0." },
       { id: "en", label: "EN button", kind: "button", x: 8, y: 4.2, w: 4, h: 4, note: "Reset. Hold BOOT while pressing it to enter the bootloader by hand." },
       { id: "boot", label: "BOOT button", kind: "button", x: 8, y: 19.8, w: 4, h: 4, note: "Hold during an upload if the board refuses to connect." },
       { id: "bridge", label: "CP2102 USB bridge", kind: "chip", x: 16, y: 10.5, w: 5, h: 5, note: "Makes USB look like a serial port to the ESP32." },
@@ -127,6 +163,7 @@ export const BOARDS: PartModel[] = [
     experiment: { title: "Blink over Wi-Fi", idea: "Join a Wi-Fi network, print the IP address, then flash the GPIO2 LED when the board is pinged." },
     docs: "/docs/hardware-knowledge/esp32-devkit",
     tags: ["esp32", "wifi", "bluetooth", "iot", "3.3v", "espressif", "board", "mcu"],
+    canvas: esp32Canvas(),
   },
 
   {
@@ -139,8 +176,8 @@ export const BOARDS: PartModel[] = [
     size: { w: 51, h: 21, d: 6.6 },
     solids: [
       pcb(51, 21, MATERIAL.pcbGreen, MATERIAL.pcbGreenEdge),
-      ...Array.from({ length: 20 }, (_, i) => ({ kind: "disc", cx: 1.6 + 2.54 + i * 2.54, cy: 1.6, r: 0.9, color: MATERIAL.gold }) as Solid),
-      ...Array.from({ length: 20 }, (_, i) => ({ kind: "disc", cx: 1.6 + 2.54 + i * 2.54, cy: 19.4, r: 0.9, color: MATERIAL.gold }) as Solid),
+      ...Array.from({ length: 20 }, (_, i) => ({ kind: "disc", cx: PICO_PAD_X0 + i * 2.54, cy: 1.6, r: 0.9, color: MATERIAL.gold }) as Solid),
+      ...Array.from({ length: 20 }, (_, i) => ({ kind: "disc", cx: PICO_PAD_X0 + i * 2.54, cy: 19.4, r: 0.9, color: MATERIAL.gold }) as Solid),
       ...Array.from({ length: 3 }, (_, i) => ({ kind: "disc", cx: 48.5, cy: 8 + i * 2.54, r: 0.9, color: MATERIAL.gold }) as Solid),
       microUsb(-1.3, 7.75),
       chip(22, 7.3, 7, 7, "RP2040", 0.9),
@@ -155,8 +192,8 @@ export const BOARDS: PartModel[] = [
       silk(45, 6.4, "DEBUG", 0.9),
     ],
     features: [
-      { id: "gpio-top", label: "GPIO pads, top edge", kind: "pins", x: 3, y: 0.4, w: 50.8, h: 2.4, note: "20 castellated pads: GP0–GP22 with GND every third pin. Solder headers on for a breadboard." },
-      { id: "gpio-bottom", label: "GPIO pads, bottom edge", kind: "pins", x: 3, y: 18.2, w: 50.8, h: 2.4, note: "The other 20 pads, including the three analog inputs (GP26–28), 3V3, VSYS and VBUS." },
+      { id: "gpio-top", label: "GPIO pads, top edge", kind: "pins", x: 0.1, y: 0.4, w: 50.8, h: 2.4, note: "Pins 40 to 21: VBUS, VSYS, 3V3, the three analog inputs (GP26–28), RUN and GP16–22, with GNDs between. Solder headers on for a breadboard." },
+      { id: "gpio-bottom", label: "GPIO pads, bottom edge", kind: "pins", x: 0.1, y: 18.2, w: 50.8, h: 2.4, note: "Pins 1 to 20: GP0–GP15 from the USB end, with GND every fifth pad." },
       { id: "usb", label: "Micro-USB", kind: "port", x: -1.3, y: 7.75, w: 7.5, h: 5.5, note: "Power and programming. With BOOTSEL held it appears as a drive you drop firmware onto." },
       { id: "rp2040", label: "RP2040", kind: "chip", x: 22, y: 7.3, w: 7, h: 7, note: "Two Cortex-M0+ cores at 133 MHz, 264 KB RAM and 8 programmable I/O state machines." },
       { id: "flash", label: "2 MB flash", kind: "chip", x: 33, y: 7.5, w: 6, h: 5, note: "Program storage; the RP2040 has none of its own." },
@@ -212,6 +249,7 @@ export const BOARDS: PartModel[] = [
     animate: { lit: ["led"] },
     experiment: { title: "Blink in MicroPython", idea: "Toggle GP25 from the REPL, then read the onboard temperature sensor on ADC channel 4." },
     tags: ["pico", "rp2040", "raspberry pi", "micropython", "3.3v", "board", "mcu"],
+    canvas: picoCanvas(),
   },
 
   {

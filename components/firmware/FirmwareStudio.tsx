@@ -18,6 +18,7 @@ import { CodeEditor } from "./CodeEditor";
 import { BuildOutput } from "./BuildOutput";
 import { SerialMonitorPanel } from "./SerialMonitor";
 import { ToolchainManagerPanel } from "./ToolchainManager";
+import { FlashHexFile } from "./FlashHexFile";
 import { UploadProgress, type UploadOutcome } from "./UploadProgress";
 import { FIRMWARE_BOARDS, STARTERS, boardName, labBuildFor, projectKind } from "@/lib/firmware/boards";
 import { openStarterInLab } from "@/lib/firmware/lab-handoff";
@@ -595,15 +596,17 @@ export function FirmwareStudio() {
 
           <section className="space-y-2 rounded-[10px] border border-border p-2.5" data-testid="upload-panel">
             <p className="flex items-center gap-1.5 text-[12.5px] font-semibold">
-              <Upload className="size-3.5 text-primary" aria-hidden /> On a board
+              <Upload className="size-3.5 text-primary" aria-hidden /> On Kiungo online
             </p>
-            <p className="text-[11.5px] leading-4 text-muted">Upload sends the program to a board connected to Kiungo online, not to your computer. To see a board on your own computer, use Serial monitor &gt; My board (USB).</p>
+            <p className="text-[11.5px] leading-4 text-muted">Upload sends the program to a board connected to Kiungo online, not to your computer. For a board on your computer, use On my board (USB) below.</p>
             <label className="block text-[11.5px]">
               <span className="mb-0.5 block text-muted">Board port (optional)</span>
               <Input value={port} onChange={(e) => setPort(e.target.value)} className="h-7 font-mono text-[12px]" placeholder="e.g. /dev/ttyUSB0" aria-label="Board port" />
             </label>
             <UploadProgress percent={uploadPct} message={uploadMsg} outcome={uploadOutcome} />
           </section>
+
+          <FlashHexFile />
 
           <section>
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Pin activity</p>

@@ -159,4 +159,5 @@ Sessions are small JSON documents (parts, wires, inputs, a log capped at 400 ent
 - The DC motor has no load or inertia model, and its shaft angle is computed from the current speed (a speed change shifts the phase; the angle isn't drawn).
 - Taking a stepper over from the simulated sweep starts its count at 0, not where the sweep left it.
 - The Activity log doesn't record input changes, so it can't show when you changed a value.
+- The Uno, ESP32 DevKit and Pico are drawn as themselves in 3D and 2D, with wires landing in their real header holes (`canvas` in their models). The Mega, ESP8266, STM32, Raspberry Pi 4, micro:bit and Teensy are still cards with pin rails; each needs its hole positions added the same way.
 - Parts don't plug into the breadboard: they connect to holes with jumpers. Dropping a part's legs straight into a strip (and a DIP chip straddling the channel) would need each part's leg spacing on the canvas.

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { HeroActions } from "@/components/landing/HeroActions";
 import { SiteFooter } from "@/components/landing/SiteFooter";
@@ -52,6 +52,7 @@ describe("Home page", () => {
     useAuthStore.setState({ isAuthenticated: false, isLoading: false, user: null });
     render(<HeroActions />);
     expect(screen.getByRole("link", { name: "Build a robot now" })).toHaveAttribute("href", "/laboratory/workspace");
+    expect(within(screen.getByTestId("hero-login")).getByTestId("google-logo")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("hero-login"));
     expect(renderHook(() => useAccountDialog()).result.current).toMatchObject({ kind: "auth", mode: "login" });
   });

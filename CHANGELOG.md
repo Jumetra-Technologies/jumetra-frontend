@@ -10,6 +10,11 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.20.1] - 2026-10-20
+
+### Changed
+- **The Home page's Log in button shows the Google "G".** It used to show a generic sign-in arrow. Signing in is Continue with Google, so the button now carries the same four-color mark as the sign-in dialog.
+
 ## [1.20.0] - 2026-10-15
 
 ### Added
@@ -381,6 +386,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.20.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.20.0...v1.20.1
 [1.20.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.19.0...v1.20.0
 [1.19.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.18.0...v1.19.0
 [1.18.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.17.0...v1.18.0

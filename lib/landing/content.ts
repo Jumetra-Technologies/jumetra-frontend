@@ -75,14 +75,6 @@ export const HYBRID = {
   cta: { label: "See how hybrid works", href: "/docs/technical-guides/device-modes" },
 };
 
-export const SIGN_UP = {
-  heading: "Save your work.\nPick up anywhere.",
-  body: "Sign in with Google so Kiungo knows it's you. Your workspace session follows you between devices, and you're first in line as accounts grow into shared projects and classrooms.",
-  signedInBody: "You're signed in. Your projects and experiment records are waiting.",
-  fineprint: "Free. No card. We keep your name and email so your work stays yours.",
-  cta: { label: "Open your projects", href: "/workspace" },
-};
-
 export const FOOTER = {
   about:
     "Kiungo (formerly HHIP) is a web platform for learning, simulating and building robotics and IoT projects. Students, technicians, instructors, clubs and schools use it to design circuits, test them with virtual Arduino, ESP32 and sensor components, document experiments and, when the real parts are on the bench, run physical and simulated hardware together. Kiungo is built by Kiungo Labs Technologies and is in its first phase: a web proof of concept ahead of a desktop application for offline work and direct device control.",

@@ -10,6 +10,11 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.20.2] - 2026-10-21
+
+### Removed
+- **The second sign-in block at the bottom of the Home page.** The page offered logging in twice: the **Log in** button at the top, and a "Save your work. Pick up anywhere." section at the bottom with its own Google and GitHub buttons. As agreed with the team, only the **Log in** button at the top remains. It opens the same Continue with Google / GitHub dialog, with the Privacy Policy note. The story now ends with the hybrid section, then the footer.
+
 ## [1.20.1] - 2026-10-20
 
 ### Changed
@@ -386,6 +391,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.20.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.20.1...v1.20.2
 [1.20.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.20.0...v1.20.1
 [1.20.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.19.0...v1.20.0
 [1.19.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.18.0...v1.19.0

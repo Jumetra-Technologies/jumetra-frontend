@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogIn } from "lucide-react";
+import { GoogleLogo } from "@/components/auth/google-logo";
 import { Button } from "@/components/ui/button";
 import { openAuth } from "@/lib/account-dialogs";
 import { useAuthStore } from "@/lib/auth-store";
@@ -31,7 +31,7 @@ export function HeroActions() {
         </Link>
       ) : (
         <Button size="lg" variant="secondary" className="h-12 px-7 text-[15px]" onClick={() => openAuth("login")} data-testid="hero-login">
-          <LogIn className="size-4" aria-hidden /> {HERO.login.label}
+          <GoogleLogo /> {HERO.login.label}
         </Button>
       )}
     </div>

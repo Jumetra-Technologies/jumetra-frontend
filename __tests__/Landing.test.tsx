@@ -7,7 +7,7 @@ import { LandingPage } from "@/components/landing/LandingPage";
 import { NAV_ITEMS } from "@/components/layout/nav-items";
 import { DOC_PAGES } from "@/lib/learning/doc-pages";
 import { HARDWARE_ASSETS } from "@/lib/hardware/asset-data";
-import { COUNTS, FOOTER, HERO, HYBRID, LEARN, LIBRARY, SEO, SIGN_UP, SIMULATE, structuredData } from "@/lib/landing/content";
+import { COUNTS, FOOTER, HERO, HYBRID, LEARN, LIBRARY, SEO, SIMULATE, structuredData } from "@/lib/landing/content";
 import { ARTICLES, DOC_CATEGORIES, FAQ_ITEMS, MODULES, getArticle, getModule } from "@/lib/learning";
 import { LEGAL_DOCUMENTS, getLegalDocument } from "@/lib/legal/content";
 
@@ -56,7 +56,6 @@ describe("landing copy", () => {
       LEARN.cta.href,
       LIBRARY.cta.href,
       HYBRID.cta.href,
-      SIGN_UP.cta.href,
       ...FOOTER.columns.flatMap((column) => column.links.map((link) => link.href)),
     ];
     expect(hrefs.filter((href) => !routeExists(href))).toEqual([]);
@@ -135,7 +134,7 @@ describe("LandingPage", () => {
     expect(h2s[1]).toMatch(/learning path/);
     expect(h2s[2]).toMatch(/component library/);
     expect(h2s[3]).toMatch(/Plug it in/);
-    expect(h2s[4]).toMatch(/Save your work/);
+    expect(h2s).toHaveLength(4);
   });
 
   it("puts a real action under every beat", () => {
@@ -144,7 +143,15 @@ describe("LandingPage", () => {
     expect(screen.getByRole("link", { name: "Start the learning path" })).toHaveAttribute("href", "/learn");
     expect(screen.getByRole("link", { name: "Open the component library" })).toHaveAttribute("href", "/components");
     expect(screen.getByRole("link", { name: "See how hybrid works" })).toHaveAttribute("href", "/docs/technical-guides/device-modes");
-    expect(screen.getByRole("button", { name: /Continue with Google/ })).toBeInTheDocument();
+  });
+
+  it("offers one way to log in, at the top, and no second sign-in block further down", () => {
+    render(<LandingPage />);
+    expect(screen.getAllByRole("button", { name: /log in|sign in|sign up|continue with/i })).toHaveLength(1);
+    expect(screen.getByTestId("hero-login")).toHaveTextContent("Log in");
+    expect(screen.queryByTestId("google-signin")).toBeNull();
+    expect(screen.queryByTestId("github-signin")).toBeNull();
+    expect(screen.queryByTestId("signup")).toBeNull();
   });
 
   it("shows live simulated readings and the learning path stages", () => {

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { HERO, HYBRID, LEARN, LIBRARY, SIMULATE, SIGN_UP } from "@/lib/landing/content";
+import { HERO, HYBRID, LEARN, LIBRARY, SIMULATE } from "@/lib/landing/content";
 import { cn } from "@/lib/utils";
 import { HeroActions } from "./HeroActions";
 import { HeroBoard } from "./HeroBoard";
@@ -9,7 +9,6 @@ import { HybridSwitch } from "./HybridSwitch";
 import { LearningPathStrip } from "./LearningPathStrip";
 import { LiveParts } from "./LiveParts";
 import { PartsList } from "./PartsList";
-import { SignUpSection } from "./SignUpSection";
 import { SiteFooter } from "./SiteFooter";
 
 const container = "mx-auto w-full max-w-[1120px] px-5 sm:px-8 lg:px-10";
@@ -118,15 +117,11 @@ export function LandingPage() {
           </div>
         </Beat>
 
-        <Beat id="hybrid" heading={HYBRID.heading} body={HYBRID.body}>
+        <Beat id="hybrid" heading={HYBRID.heading} body={HYBRID.body} last>
           <HybridSwitch />
           <div className="mt-8">
             <CallToAction href={HYBRID.cta.href} label={HYBRID.cta.label} primary={false} />
           </div>
-        </Beat>
-
-        <Beat id="account" heading={SIGN_UP.heading} body="" last>
-          <SignUpSection />
         </Beat>
       </main>
 

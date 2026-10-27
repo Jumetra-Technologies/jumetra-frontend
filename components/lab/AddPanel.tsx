@@ -3,8 +3,8 @@
 import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { ChevronDown, CornerDownLeft, FolderKanban, Plus, Search, Sparkles, Wand2, X } from "lucide-react";
 import { PartThumb } from "@/components/library/PartThumb";
-import { getPartsByGroup } from "@/lib/parts";
-import { fitFor, suggest, type ProjectContext, type Suggestion } from "@/lib/lab/suggest";
+import { getPartsByGroup } from "@kiungo/core/parts";
+import { fitFor, suggest, type ProjectContext, type Suggestion } from "@kiungo/core/lab/suggest";
 import { cn } from "@/lib/utils";
 import { useLabContext } from "./lab-context";
 

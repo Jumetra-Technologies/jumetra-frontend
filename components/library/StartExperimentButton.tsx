@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FlaskConical, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { planAutoWire, placeNode } from "@/lib/lab/autowire";
-import { getPinout } from "@/lib/lab/pinout";
+import { planAutoWire, placeNode } from "@kiungo/core/lab/autowire";
+import { getPinout } from "@kiungo/core/lab/pinout";
 import { flushLab, useLab } from "@/lib/lab/store";
-import type { PartModel } from "@/lib/parts/types";
+import type { PartModel } from "@kiungo/core/parts/types";
 
 /**
  * Opens the Engineering Lab with this part already on the canvas, in a new

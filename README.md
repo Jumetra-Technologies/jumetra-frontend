@@ -21,6 +21,19 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Repository layout
+
+The website is the Next.js app at the root. Phase Two adds npm workspaces beside it, so the website and the Kiungo 2 desktop app share one engine:
+
+| Folder | Package | What it holds |
+| --- | --- | --- |
+| `packages/core` | `@kiungo/core` | Parts, the lab model, firmware files, board definitions and the board emulator. No React. |
+| `packages/ui` | `@kiungo/ui` | Kiungo 2 design tokens and brand assets. |
+| `packages/api` | `@kiungo/api` | The typed contract between the desktop app's main process and its interface. |
+| `apps/desktop` | `@kiungo/desktop` | The Electron app. See `apps/desktop/README.md`. |
+
+`npm install` at the root installs everything. The website imports the engine as `@kiungo/core/...`.
+
 ## Checks before a pull request
 
 ```bash

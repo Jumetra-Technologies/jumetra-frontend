@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SOURCE_AUTO, SOURCE_KEY, SOURCE_SET, controlsFor, inputOf, type Control } from "@/lib/lab/controls";
+import { SOURCE_AUTO, SOURCE_KEY, SOURCE_SET, controlsFor, inputOf, type Control } from "@kiungo/core/lab/controls";
 import { useLab } from "@/lib/lab/store";
-import type { LabNode, NodeInputs } from "@/lib/lab/types";
+import type { LabNode, NodeInputs } from "@kiungo/core/lab/types";
 import { cn } from "@/lib/utils";
 import { useLabContext } from "./lab-context";
 

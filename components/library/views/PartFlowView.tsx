@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { BlockKind, CircuitLink, LinkKind, PartModel } from "@/lib/parts/types";
+import type { BlockKind, CircuitLink, LinkKind, PartModel } from "@kiungo/core/parts/types";
 import { cn } from "@/lib/utils";
 
 const COL = 182;

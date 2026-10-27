@@ -9,7 +9,7 @@
  * fits the board in use. Typos fall back to the closest names.
  */
 
-import { getPart, PARTS, searchParts, type PartModel } from "@/lib/parts";
+import { getPart, PARTS, searchParts, type PartModel } from "../parts";
 import { getPinout } from "./pinout";
 import type { LabNode } from "./types";
 

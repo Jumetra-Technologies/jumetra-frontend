@@ -1,5 +1,5 @@
-import { flatColor } from "@/lib/parts/build";
-import type { PartModel, Solid } from "@/lib/parts/types";
+import { flatColor } from "@kiungo/core/parts/build";
+import type { PartModel, Solid } from "@kiungo/core/parts/types";
 import { cn } from "@/lib/utils";
 
 /** A tiny top-down silhouette of a part, for lists. */

@@ -1,9 +1,9 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
-import { flatColor, shade } from "@/lib/parts/build";
-import { SIN_TILT, TILT, dropBelow, stageLift } from "@/lib/parts/geometry";
-import type { PartModel, Solid } from "@/lib/parts/types";
+import { flatColor, shade } from "@kiungo/core/parts/build";
+import { SIN_TILT, TILT, dropBelow, stageLift } from "@kiungo/core/parts/geometry";
+import type { PartModel, Solid } from "@kiungo/core/parts/types";
 import { useTurntable } from "@/lib/ui/use-turntable";
 import { cn } from "@/lib/utils";
 import styles from "./part-model.module.css";

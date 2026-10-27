@@ -9,8 +9,8 @@
  */
 
 import { API_BASE, api } from "@/lib/api-client";
-import { getPinout, pinTone } from "./pinout";
-import type { LabSession } from "./types";
+import { getPinout, pinTone } from "@kiungo/core/lab/pinout";
+import type { LabSession } from "@kiungo/core/lab/types";
 
 export type RuntimeStatus = "checking" | "online" | "offline" | "syncing";
 

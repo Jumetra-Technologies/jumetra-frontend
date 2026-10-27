@@ -6,7 +6,7 @@ import { Activity, AlertTriangle, Cable, CircleDot, Clock3, Cpu, FlaskConical, H
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { shortName, useLab } from "@/lib/lab/store";
-import type { LabSession, LogKind } from "@/lib/lab/types";
+import type { LabSession, LogKind } from "@kiungo/core/lab/types";
 import type { RoboticsProject } from "@/lib/robotics-data";
 import { cn } from "@/lib/utils";
 import { LabSessionCard, labHref } from "./LabSessionCard";

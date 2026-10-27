@@ -4,15 +4,15 @@
  * here depends on real time or random values.
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { analyze, type Analysis } from "@/lib/lab/circuit";
-import { planAutoWire } from "@/lib/lab/autowire";
-import { controlsFor, coerceInput, findControl } from "@/lib/lab/controls";
-import { DC_MOTOR_MAX_RPM, STEPPER_STEPS_PER_TURN, frameAt, stepperStepsAt } from "@/lib/lab/simulate";
-import { displayLines, sampleSensor, boardSettings } from "@/lib/lab/sketch";
+import { analyze, type Analysis } from "@kiungo/core/lab/circuit";
+import { planAutoWire } from "@kiungo/core/lab/autowire";
+import { controlsFor, coerceInput, findControl } from "@kiungo/core/lab/controls";
+import { DC_MOTOR_MAX_RPM, STEPPER_STEPS_PER_TURN, frameAt, stepperStepsAt } from "@kiungo/core/lab/simulate";
+import { displayLines, sampleSensor, boardSettings } from "@kiungo/core/lab/sketch";
 import { labKeyFor, readLabData, useLab } from "@/lib/lab/store";
 import { freshLab } from "./helpers/lab";
-import type { LabNode, LabWire, NodeInputs } from "@/lib/lab/types";
-import { getPart, hasScreen, withScreenText } from "@/lib/parts";
+import type { LabNode, LabWire, NodeInputs } from "@kiungo/core/lab/types";
+import { getPart, hasScreen, withScreenText } from "@kiungo/core/parts";
 
 let seq = 0;
 const node = (partId: string, x = 0, y = 0, label?: string): LabNode => ({ id: `n${++seq}`, partId, label: label ?? partId, x, y, mode: "virtual" });

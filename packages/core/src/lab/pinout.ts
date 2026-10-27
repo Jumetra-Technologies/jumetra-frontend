@@ -8,7 +8,7 @@
  * what the part expects from the other end of the wire.
  */
 
-import { BREADBOARD_SPECS, type BreadboardSpec } from "@/lib/parts/models/breadboard";
+import { BREADBOARD_SPECS, type BreadboardSpec } from "../parts/models/breadboard";
 
 export type PinFn = "power" | "ground" | "digital" | "analog" | "pwm" | "sda" | "scl" | "tx" | "rx" | "mosi" | "miso" | "sck" | "cs" | "led";
 

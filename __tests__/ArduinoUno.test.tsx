@@ -1,12 +1,12 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { EngineeringLab } from "@/components/lab/EngineeringLab";
-import { boardGeometry, BOARD_SCALE, BOARD_VIEW } from "@/lib/lab/board-geometry";
-import { nodeLayout } from "@/lib/lab/layout";
-import { getPinout } from "@/lib/lab/pinout";
-import { getPart } from "@/lib/parts";
-import { project, projectAngle, stageLift } from "@/lib/parts/geometry";
-import { ARDUINO_UNO } from "@/lib/parts/models/arduino-uno";
+import { boardGeometry, BOARD_SCALE, BOARD_VIEW } from "@kiungo/core/lab/board-geometry";
+import { nodeLayout } from "@kiungo/core/lab/layout";
+import { getPinout } from "@kiungo/core/lab/pinout";
+import { getPart } from "@kiungo/core/parts";
+import { project, projectAngle, stageLift } from "@kiungo/core/parts/geometry";
+import { ARDUINO_UNO } from "@kiungo/core/parts/models/arduino-uno";
 import { freshLab } from "./helpers/lab";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));

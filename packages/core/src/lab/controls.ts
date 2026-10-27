@@ -15,7 +15,7 @@
 import type { Analysis } from "./circuit";
 import { getPinout } from "./pinout";
 import type { LabNode, NodeInputs } from "./types";
-import { DEFAULT_OHMS, RESISTOR_VALUES, formatOhms } from "@/lib/parts/models/passives";
+import { DEFAULT_OHMS, RESISTOR_VALUES, formatOhms } from "../parts/models/passives";
 
 export type Control =
   | { key: string; kind: "number"; label: string; min: number; max: number; step: number; unit?: string; default: number; help?: string }

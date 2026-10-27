@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
-import { analyze } from "@/lib/lab/circuit";
-import { parseSessionFile, sessionFileName, SessionFileError, SESSION_FILE_FORMAT, toSessionFile } from "@/lib/lab/session-file";
+import { analyze } from "@kiungo/core/lab/circuit";
+import { parseSessionFile, sessionFileName, SessionFileError, SESSION_FILE_FORMAT, toSessionFile } from "@kiungo/core/lab/session-file";
 import { newSession, useLab } from "@/lib/lab/store";
-import type { LabSession } from "@/lib/lab/types";
+import type { LabSession } from "@kiungo/core/lab/types";
 
 const rover = readFileSync(join(__dirname, "fixtures", "sentinel-rover.kiungo.json"), "utf8");
 

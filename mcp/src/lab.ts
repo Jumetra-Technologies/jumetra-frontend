@@ -9,16 +9,16 @@ import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, existsSync
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { analyze, type Analysis } from "@/lib/lab/circuit";
-import { frameAt, serialLine } from "@/lib/lab/simulate";
-import { planAutoWire, placeNode } from "@/lib/lab/autowire";
-import { suggest } from "@/lib/lab/suggest";
-import { getPinout, hasPinout, PINOUTS } from "@/lib/lab/pinout";
-import { controlsFor, findControl, coerceInput, SOURCE_KEY, SOURCE_SET } from "@/lib/lab/controls";
+import { analyze, type Analysis } from "@kiungo/core/lab/circuit";
+import { frameAt, serialLine } from "@kiungo/core/lab/simulate";
+import { planAutoWire, placeNode } from "@kiungo/core/lab/autowire";
+import { suggest } from "@kiungo/core/lab/suggest";
+import { getPinout, hasPinout, PINOUTS } from "@kiungo/core/lab/pinout";
+import { controlsFor, findControl, coerceInput, SOURCE_KEY, SOURCE_SET } from "@kiungo/core/lab/controls";
 import { logEntry, makeId, newSession, nextLabel } from "@/lib/lab/store";
-import { parseSessionFile, sessionFileName, toSessionFile, type SessionFile } from "@/lib/lab/session-file";
-import { getPart, PARTS, searchParts } from "@/lib/parts";
-import type { LabNode, LabSession, LabWire, LogKind, PinRef } from "@/lib/lab/types";
+import { parseSessionFile, sessionFileName, toSessionFile, type SessionFile } from "@kiungo/core/lab/session-file";
+import { getPart, PARTS, searchParts } from "@kiungo/core/parts";
+import type { LabNode, LabSession, LabWire, LogKind, PinRef } from "@kiungo/core/lab/types";
 
 export class LabError extends Error {}
 

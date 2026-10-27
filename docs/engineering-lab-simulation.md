@@ -4,7 +4,7 @@ How the lab decides what each part does, where you can change its inputs, and ho
 
 ## 1. The model
 
-A frame is a pure function: `frameAt(nodes, wires, analysis, t, running, inputs)` in `lib/lab/simulate.ts`. Nothing is kept between frames, so any moment can be sampled again (the Signals panel and the tests do this).
+A frame is a pure function: `frameAt(nodes, wires, analysis, t, running, inputs)` in `packages/core/src/lab/simulate.ts`. Nothing is kept between frames, so any moment can be sampled again (the Signals panel and the tests do this).
 
 ```
 inputs (session.inputs, set in the Inspector)
@@ -13,7 +13,7 @@ inputs (session.inputs, set in the Inspector)
 sensors ──► SensorSample (readings + numbers)
    │
    ▼
-sketch per board (lib/lab/sketch.ts): settings + samples → plan
+sketch per board (packages/core/src/lab/sketch.ts): settings + samples → plan
    │
    ├─► LED / buzzer / relay: follow the board's alert sensor, else blink
    ├─► servo: gate policy with a PIR, else its own command
@@ -28,7 +28,7 @@ There is no firmware execution in the lab; the Firmware page is separate. The "s
 
 ### Inputs
 
-`session.inputs[nodeId]` holds what the person set. Keys, ranges, steps and defaults are declared once in `lib/lab/controls.ts`; the Inspector draws them, `store.setInput` clamps to them, the simulation reads them with `inputOf`.
+`session.inputs[nodeId]` holds what the person set. Keys, ranges, steps and defaults are declared once in `packages/core/src/lab/controls.ts`; the Inspector draws them, `store.setInput` clamps to them, the simulation reads them with `inputOf`.
 
 | Part | Controls |
 |---|---|
@@ -48,7 +48,7 @@ There is no firmware execution in the lab; the Firmware page is separate. The "s
 
 ### Display glass
 
-Display models carry `screen:N` text solids (`lib/parts/models/displays.ts`). In the library they show sample text; in the lab `withScreenText()` (`lib/parts/index.ts`) writes the frame's lines into them, in the 3D and top views, and blanks the `screen-demo` decoration. The lab never shows the library's sample text.
+Display models carry `screen:N` text solids (`packages/core/src/parts/models/displays.ts`). In the library they show sample text; in the lab `withScreenText()` (`packages/core/src/parts/index.ts`) writes the frame's lines into them, in the 3D and top views, and blanks the `screen-demo` decoration. The lab never shows the library's sample text.
 
 ## 2. The five experiments: what was wrong and what changed
 
@@ -81,11 +81,11 @@ Open **Engineering Lab**, click **Arduino Uno** in the empty-canvas quick-add, l
 | Issue | Where | Cause | Evidence |
 |---|---|---|---|
 | LCD shows "Hello, Kiungo! / Temp: 24.5 C" while its Live panel says the source is the DHT11 | `components/lab/Inspector.tsx` | The Inspector's preview (3D and 2D) drew the Component library's model, whose glass has that sample text printed on it. The v1.3.0 fix wrote live text into the canvas card's glass only. The data path (DHT11 → sketch → LCD) was already correct. | Reproduced in Chromium: canvas glass `Temp: 50.0 °C / Hum: 70 %`; Inspector preview `Hello, Kiungo! / Temp: 24.5 C`; Live `Temp: 50.0 °C · Hum: 70 % · DHT11`. |
-| LED "draws too much current, the simulation assumes 220 Ω" | `lib/lab/circuit.ts` | An advisory (`tip`) raised for every LED that is driven and grounded. The catalog has no resistor part, so a resistor can't be wired and the model assumes one. The diagnostic was right but didn't say so, or what it means for the model. | No `resistor` part in `lib/parts`; the LED pin note says "through 220 Ω". |
+| LED "draws too much current, the simulation assumes 220 Ω" | `packages/core/src/lab/circuit.ts` | An advisory (`tip`) raised for every LED that is driven and grounded. The catalog has no resistor part, so a resistor can't be wired and the model assumes one. The diagnostic was right but didn't say so, or what it means for the model. | No `resistor` part in `packages/core/src/parts`; the LED pin note says "through 220 Ω". |
 | Stepper jumps when its speed changes mid-move | `lib/lab/store.ts`, `simulate.ts` | The position is worked out as (t − start) × speed, so a new speed re-timed the whole move, including the part already done. | Unit test: 200 steps in at 100 steps/s, speed → 400 jumped to 800 before the fix; now 200, then 600 a second later. |
 | Stop and Zero lost the record of the move | `lib/lab/store.ts` | Stop was "move 0 steps", which overwrote the commanded move, so commanded and executed steps couldn't be told apart. | Inspector showed only Position, Steps, Command. |
-| DC motor's shaft angle turned the same way in reverse | `lib/lab/simulate.ts` | The angle didn't take the direction into account. It isn't drawn on the canvas, so only the frame data was wrong. | Unit test DC-07. |
-| A wired sensor that can't be read showed the no-sensor banner on the LCD | `lib/lab/simulate.ts`, `sketch.ts` | Unready sensors were dropped before the sketch ran. | Unit test: DHT11 without GND. |
+| DC motor's shaft angle turned the same way in reverse | `packages/core/src/lab/simulate.ts` | The angle didn't take the direction into account. It isn't drawn on the canvas, so only the frame data was wrong. | Unit test DC-07. |
+| A wired sensor that can't be read showed the no-sensor banner on the LCD | `packages/core/src/lab/simulate.ts`, `sketch.ts` | Unready sensors were dropped before the sketch ran. | Unit test: DHT11 without GND. |
 
 ### Changes
 
@@ -118,11 +118,11 @@ As in section 3, with these additions:
 
 ## 5. Breadboard (v1.15.0)
 
-A real Uno has one 5 V pin and three GND pins, and each header hole takes one jumper. The breadboard (`lib/parts/models/breadboard.ts`) is how a bench build shares them, and the lab now models it the same way.
+A real Uno has one 5 V pin and three GND pins, and each header hole takes one jumper. The breadboard (`packages/core/src/parts/models/breadboard.ts`) is how a bench build shares them, and the lab now models it the same way.
 
 - **Layout.** A half-size, 400-point board: 30 columns, rows a–e and f–j either side of a 0.3" center channel, and four 25-hole rails (Top +, Top −, Bottom −, Bottom +, + outermost as printed). Every hole is a pin (`a12`, `TP7`, …).
 - **Sizes (v1.18.0).** Three boards share one layout factory (`BREADBOARD_SPECS`, `breadboardSpec(partId)`): `breadboard-mini` (170 points, 17 columns, no rails), `breadboard` (400, 30 columns, four 25-hole rails) and `breadboard-full` (830, 63 columns, four 50-hole rails). Pinouts, strip analysis, rail checks, auto-wire and the Inspector's strip list all read the board's own spec. A mini has no rails, so auto-wire leaves it unwired: feed a strip with jumpers.
-- **Connectivity.** The pinout is `passive` with `strips` (`lib/lab/pinout.ts`): the five holes of a half-column are one strip, and each rail is one strip end to end. `analyze()` joins each strip into one net before the wires, so a part's VCC in `TP9` and the Uno's 5V in `TP1` are on the same 5 V net. The channel separates `e12` from `f12`; the top and bottom rails aren't joined unless you bridge them.
+- **Connectivity.** The pinout is `passive` with `strips` (`packages/core/src/lab/pinout.ts`): the five holes of a half-column are one strip, and each rail is one strip end to end. `analyze()` joins each strip into one net before the wires, so a part's VCC in `TP9` and the Uno's 5V in `TP1` are on the same 5 V net. The channel separates `e12` from `f12`; the top and bottom rails aren't joined unless you bridge them.
 - **Checks.** A breadboard has no supply, signals or status of its own; it is never a load, so a rail with nothing on it carries no current in Trace. A short made on a strip is the usual short-circuit error. GND on a + rail, or a supply on a − rail, is a warning: it works, but the stripes then lie. A part whose VCC or GND is on a strip nothing feeds says so ("on the breadboard's Bottom + rail, which has no supply yet").
 - **Auto-wire.** Adding a breadboard to a build with a board wires the board's logic-level supply (Uno: 5V) to the Top + rail and a GND to the Top − rail, one wire each, from the end nearer the board. After that, auto-wired parts take VCC and GND from free rail holes when a rail already carries the voltage they need from the same board; signals still go straight to board pins. A 3.3 V part on a 5 V rail falls back to the board's 3.3V pin. The lab suggests a breadboard once two or more parts need 5 V.
 - **Canvas.** Drawn as itself in all three views (no 400-row card): 3D square-on with a 35° tilt so the 0.1" holes stay at least 8 px apart, 2D flat, and Trace as its strips. A strip lights in its net's color once wired (red supply, slate ground, blue signal), with moving dashes while current flows. The caption badge says what the rails carry ("5 V · GND"). The Inspector lists the strips in use instead of 400 pins.
@@ -143,7 +143,7 @@ The intended home for sessions is the account on the server, as projects and exp
 
 | Route | Body / answer |
 |---|---|
-| `GET /auth/me/lab-sessions` | `[{ id, name, projectId, updatedAt, ... }]`: the full `LabSession` objects (`lib/lab/types.ts`) |
+| `GET /auth/me/lab-sessions` | `[{ id, name, projectId, updatedAt, ... }]`: the full `LabSession` objects (`packages/core/src/lab/types.ts`) |
 | `PUT /auth/me/lab-sessions/{id}` | A `LabSession`. Creates or replaces it. Answers with the stored session. Last write wins on `updatedAt`. |
 | `DELETE /auth/me/lab-sessions/{id}` | `{ deleted: true }` |
 
@@ -155,7 +155,7 @@ Sessions are small JSON documents (parts, wires, inputs, a log capped at 400 ent
 - The sketch rules are fixed. Writing your own firmware for a lab build (the Firmware page's projects) is not connected to the lab's simulation; that needs a backend-run or browser-run interpreter and is out of scope here.
 - The DC motor model is linear (rpm = duty × 140, no inertia); the stepper moves at constant speed with no acceleration.
 - The Component library still shows sample text on display glass, by design; the lab never does.
-- Resistors are followed one hop: a net with no board pin, supply or ground of its own is followed through one resistor (`throughResistor` in `lib/lab/circuit.ts`). Chains of resistors, and dividers (an LDR's 10 kΩ to GND), aren't modeled yet; an LED with no resistor still assumes 220 Ω.
+- Resistors are followed one hop: a net with no board pin, supply or ground of its own is followed through one resistor (`throughResistor` in `packages/core/src/lab/circuit.ts`). Chains of resistors, and dividers (an LDR's 10 kΩ to GND), aren't modeled yet; an LED with no resistor still assumes 220 Ω.
 - The DC motor has no load or inertia model, and its shaft angle is computed from the current speed (a speed change shifts the phase; the angle isn't drawn).
 - Taking a stepper over from the simulated sweep starts its count at 0, not where the sweep left it.
 - The Activity log doesn't record input changes, so it can't show when you changed a value.

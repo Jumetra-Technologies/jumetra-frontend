@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertOctagon, AlertTriangle, Check, CheckCircle2, Copy, Crosshair, Lightbulb } from "lucide-react";
 import { ContextMenu } from "@/components/ui/menu";
-import type { Fault, Severity } from "@/lib/lab/circuit";
+import type { Fault, Severity } from "@kiungo/core/lab/circuit";
 import { copyText } from "@/lib/ui/clipboard";
 import { cn } from "@/lib/utils";
 import { useLabContext } from "./lab-context";

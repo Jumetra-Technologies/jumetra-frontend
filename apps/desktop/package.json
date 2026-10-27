@@ -1,0 +1,32 @@
+{
+  "name": "@kiungo/desktop",
+  "productName": "Kiungo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kiungo 2: the desktop app for building, coding and running robotics projects.",
+  "author": "Kiungo Labs Technologies",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "fetch:arduino-cli": "node scripts/fetch-arduino-cli.mjs",
+    "dist": "electron-vite build && electron-builder --publish never"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@kiungo/api": "0.1.0",
+    "@kiungo/core": "0.1.0",
+    "@kiungo/ui": "0.1.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.0",
+    "electron": "44.9.3",
+    "electron-builder": "26.17.0",
+    "electron-vite": "6.0.0"
+  }
+}

@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { FlashHexFile } from "@/components/firmware/FlashHexFile";
-import { HexError, parseIntelHex } from "@/lib/firmware/intel-hex";
+import { HexError, parseIntelHex } from "@kiungo/core/firmware/intel-hex";
 import { ATMEGA328P, FlashError, flashStk500, openSerialLink, type ByteLink, type FlashProgress } from "@/lib/firmware/stk500";
 
 /** One Intel HEX data record. */

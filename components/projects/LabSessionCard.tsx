@@ -5,12 +5,12 @@ import { useMemo } from "react";
 import { AlertTriangle, ArrowUpRight, Cable, Clock3, Cpu, FlaskConical, Link2, MoreHorizontal, Trash2 } from "lucide-react";
 import { Menu, type MenuEntry } from "@/components/ui/menu";
 import { PartThumb } from "@/components/library/PartThumb";
-import { getPart } from "@/lib/parts";
-import { analyze } from "@/lib/lab/circuit";
-import { nodeLayout, pinY } from "@/lib/lab/layout";
-import { getPinout, pinTone } from "@/lib/lab/pinout";
+import { getPart } from "@kiungo/core/parts";
+import { analyze } from "@kiungo/core/lab/circuit";
+import { nodeLayout, pinY } from "@kiungo/core/lab/layout";
+import { getPinout, pinTone } from "@kiungo/core/lab/pinout";
 import { useLab } from "@/lib/lab/store";
-import type { LabSession } from "@/lib/lab/types";
+import type { LabSession } from "@kiungo/core/lab/types";
 import type { RoboticsProject } from "@/lib/robotics-data";
 import { cn } from "@/lib/utils";
 

@@ -1,8 +1,8 @@
 "use client";
 
 import { useId } from "react";
-import { flatColor, shade } from "@/lib/parts/build";
-import type { Feature, PartModel, Solid } from "@/lib/parts/types";
+import { flatColor, shade } from "@kiungo/core/parts/build";
+import type { Feature, PartModel, Solid } from "@kiungo/core/parts/types";
 import { cn } from "@/lib/utils";
 
 /** Margin around the part, in mm, so small parts are not lost in white space. */

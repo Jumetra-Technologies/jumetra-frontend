@@ -13,7 +13,7 @@
 
 import type { Analysis } from "./circuit";
 import { ledCurrentMa, pinKey } from "./circuit";
-import { formatOhms } from "@/lib/parts/models/passives";
+import { formatOhms } from "../parts/models/passives";
 import { breadboardUse, railSummary } from "./breadboard";
 import { inputOf, isSet, isSensorPart, ohmsOf } from "./controls";
 import { getPinout } from "./pinout";

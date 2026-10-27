@@ -5,9 +5,9 @@
  * code in the editor (see docs/firmware.md).
  */
 
-import { planAutoWire, placeNode } from "@/lib/lab/autowire";
+import { planAutoWire, placeNode } from "@kiungo/core/lab/autowire";
 import { flushLab, useLab } from "@/lib/lab/store";
-import { getPart } from "@/lib/parts";
+import { getPart } from "@kiungo/core/parts";
 import { labBuildFor } from "./boards";
 
 export function openStarterInLab(projectName: string, boardId: string, templateId: string): string {

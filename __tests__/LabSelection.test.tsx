@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import LabError from "@/app/laboratory/workspace/error";
-import { nextSelection, type Selection } from "@/lib/lab/selection";
+import { nextSelection, type Selection } from "@kiungo/core/lab/selection";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/laboratory/workspace" }));
 

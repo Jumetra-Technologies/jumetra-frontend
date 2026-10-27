@@ -4,7 +4,7 @@
  * ground, and each signal on a free pin that can do the job.
  */
 
-import { breadboardSpec, type BreadboardSpec, type RailId } from "@/lib/parts/models/breadboard";
+import { breadboardSpec, type BreadboardSpec, type RailId } from "../parts/models/breadboard";
 import { analyze, type Analysis } from "./circuit";
 import { nodeFootprint } from "./layout";
 import { getPinout, type LabPin, type PinFn, type Pinout } from "./pinout";

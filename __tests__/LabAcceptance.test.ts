@@ -7,14 +7,14 @@
  * setting). Blink is covered in LabExperiments.test.ts.
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { analyze, ledCurrentMa } from "@/lib/lab/circuit";
-import { planAutoWire } from "@/lib/lab/autowire";
-import { coerceInput, findControl } from "@/lib/lab/controls";
-import { DC_MOTOR_MAX_RPM, STEPPER_STEPS_PER_TURN, frameAt, stepperStepsAt } from "@/lib/lab/simulate";
-import { boardSettings, planBoard, sampleSensor } from "@/lib/lab/sketch";
+import { analyze, ledCurrentMa } from "@kiungo/core/lab/circuit";
+import { planAutoWire } from "@kiungo/core/lab/autowire";
+import { coerceInput, findControl } from "@kiungo/core/lab/controls";
+import { DC_MOTOR_MAX_RPM, STEPPER_STEPS_PER_TURN, frameAt, stepperStepsAt } from "@kiungo/core/lab/simulate";
+import { boardSettings, planBoard, sampleSensor } from "@kiungo/core/lab/sketch";
 import { useLab } from "@/lib/lab/store";
-import type { LabNode, LabWire, NodeInputs } from "@/lib/lab/types";
-import { getPart, withScreenText } from "@/lib/parts";
+import type { LabNode, LabWire, NodeInputs } from "@kiungo/core/lab/types";
+import { getPart, withScreenText } from "@kiungo/core/parts";
 
 let seq = 0;
 const node = (partId: string, x = 0, y = 0): LabNode => ({ id: `q${++seq}`, partId, label: partId === "dht11" ? "DHT11" : partId, x, y, mode: "virtual" });

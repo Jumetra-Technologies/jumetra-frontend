@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PARTS, getPart } from "@/lib/parts";
-import { PINOUTS, getPinout, hasPinout } from "@/lib/lab/pinout";
-import { analyze } from "@/lib/lab/circuit";
-import { planAutoWire, placeNode, nodeBox } from "@/lib/lab/autowire";
-import { frameAt, serialLine } from "@/lib/lab/simulate";
-import { describeChanges, RunRecorder } from "@/lib/lab/activity";
-import { fitFor, suggest } from "@/lib/lab/suggest";
-import { runCommand, tokenize, type TerminalApi } from "@/lib/lab/terminal";
+import { PARTS, getPart } from "@kiungo/core/parts";
+import { PINOUTS, getPinout, hasPinout } from "@kiungo/core/lab/pinout";
+import { analyze } from "@kiungo/core/lab/circuit";
+import { planAutoWire, placeNode, nodeBox } from "@kiungo/core/lab/autowire";
+import { frameAt, serialLine } from "@kiungo/core/lab/simulate";
+import { describeChanges, RunRecorder } from "@kiungo/core/lab/activity";
+import { fitFor, suggest } from "@kiungo/core/lab/suggest";
+import { runCommand, tokenize, type TerminalApi } from "@kiungo/core/lab/terminal";
 import { LAB_STORAGE_KEY, flushLab, labKeyFor, nextLabel, readLabData, setLabOwner, useLab } from "@/lib/lab/store";
-import type { LabNode, LabWire } from "@/lib/lab/types";
+import type { LabNode, LabWire } from "@kiungo/core/lab/types";
 
 let seq = 0;
 const node = (partId: string, x = 0, y = 0, label?: string): LabNode => ({ id: `n${++seq}`, partId, label: label ?? partId, x, y, mode: "virtual" });

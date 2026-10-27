@@ -19,11 +19,11 @@ import {
   type EdgeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { getPinout, pinTone, type LabPin } from "@/lib/lab/pinout";
-import { nodeLayout } from "@/lib/lab/layout";
-import { nextSelection } from "@/lib/lab/selection";
+import { getPinout, pinTone, type LabPin } from "@kiungo/core/lab/pinout";
+import { nodeLayout } from "@kiungo/core/lab/layout";
+import { nextSelection } from "@kiungo/core/lab/selection";
 import { useLab } from "@/lib/lab/store";
-import type { LabNode, LabView, LabWire } from "@/lib/lab/types";
+import type { LabNode, LabView, LabWire } from "@kiungo/core/lab/types";
 import { useLabContext } from "./lab-context";
 import { PartNode, type PartNodeData } from "./PartNode";
 import { WireEdge, type WireEdgeData } from "./WireEdge";

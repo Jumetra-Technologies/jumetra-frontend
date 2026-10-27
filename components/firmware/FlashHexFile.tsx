@@ -3,7 +3,7 @@
 import { useRef, useState, useSyncExternalStore } from "react";
 import { FileUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { HexError, parseIntelHex } from "@/lib/firmware/intel-hex";
+import { HexError, parseIntelHex } from "@kiungo/core/firmware/intel-hex";
 import { ATMEGA328P, FlashError, flashStk500, openSerialLink, type FlashStage } from "@/lib/firmware/stk500";
 import { requestSerialPort, webSerialSupported } from "@/lib/firmware/web-serial";
 import { UploadProgress, type UploadOutcome } from "./UploadProgress";

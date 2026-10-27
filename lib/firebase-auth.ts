@@ -133,7 +133,7 @@ export function describeSignInError(error: unknown, providerName = "Google"): st
     case "auth/argument-error":
       return `The ${providerName} sign-in window couldn't start. Reload the page and try again.`;
     case "auth/unauthorized-domain":
-      return describeError(error, "Sign-in isn't available for this website yet");
+      return "This website address isn't approved for sign-in yet. Use an approved app address or ask an administrator to add this domain in Firebase Authentication settings.";
     case "auth/network-request-failed":
       return "The network dropped during sign-in. Check your connection and try again.";
     case "auth/account-exists-with-different-credential":

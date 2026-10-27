@@ -11,10 +11,11 @@ const localDevOrigins = Object.values(networkInterfaces()).flatMap((addresses) =
     .filter((address) => address.family === "IPv4" && !address.internal)
     .map((address) => address.address),
 );
+const localDevHostnames = localDevOrigins.flatMap((address) => [`${address}.nip.io`]);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  allowedDevOrigins: ["localhost", "127.0.0.1", ...localDevOrigins],
+  allowedDevOrigins: ["localhost", "127.0.0.1", ...localDevOrigins, ...localDevHostnames],
   // Pages renamed in the Kiungo rebrand keep their old addresses working.
   async redirects() {
     return [

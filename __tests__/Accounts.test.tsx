@@ -85,7 +85,7 @@ describe("Continue with Google", () => {
   it("says nothing when the Google window is closed, and explains real failures", () => {
     expect(describeSignInError({ code: "auth/popup-closed-by-user" })).toBeNull();
     expect(describeSignInError({ code: "auth/popup-blocked" })).toMatch(/Allow pop-ups/);
-    expect(describeSignInError({ code: "auth/unauthorized-domain" })).toMatch(/^Sign-in isn't available for this website yet\./);
+    expect(describeSignInError({ code: "auth/unauthorized-domain" })).toMatch(/approved for sign-in yet/);
   });
 });
 

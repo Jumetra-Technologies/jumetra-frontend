@@ -4,8 +4,9 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 import {
   parseProgress,
   readProgressRaw,
-  setModuleComplete,
+  getProgressSyncState,
   subscribeProgress,
+  setModuleComplete,
 } from "@/lib/learning/progress";
 
 const getServerSnapshot = () => "";
@@ -16,10 +17,11 @@ const getServerSnapshot = () => "";
  */
 export function useLearningProgress() {
   const raw = useSyncExternalStore(subscribeProgress, readProgressRaw, getServerSnapshot);
+  const syncStatus = useSyncExternalStore(subscribeProgress, getProgressSyncState, () => "idle");
   const completed = useMemo(() => new Set(parseProgress(raw)), [raw]);
   const setComplete = useCallback((slug: string, complete: boolean) => {
     setModuleComplete(slug, complete);
   }, []);
 
-  return { completed, setComplete };
+  return { completed, setComplete, syncStatus };
 }

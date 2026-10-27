@@ -3,6 +3,7 @@
 import { CheckCircle2, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLearningProgress } from "@/components/learning/useLearningProgress";
+import { useAuthStore } from "@/lib/auth-store";
 
 /** Toggle shown at the end of a tutorial to mark it complete. */
 export function MarkCompleteButton({ slug }: { slug: string }) {
@@ -42,7 +43,8 @@ export function ModuleStatus({ slug }: { slug: string }) {
 
 /** Overall progress bar for the guided path. */
 export function PathProgress({ slugs }: { slugs: string[] }) {
-  const { completed } = useLearningProgress();
+  const { completed, syncStatus } = useLearningProgress();
+  const signedIn = useAuthStore((state) => !!state.user);
   const total = slugs.length;
   const done = slugs.filter((slug) => completed.has(slug)).length;
   const percent = total === 0 ? 0 : Math.round((done / total) * 100);
@@ -65,7 +67,15 @@ export function PathProgress({ slugs }: { slugs: string[] }) {
       >
         <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${percent}%` }} />
       </div>
-      <p className="mt-2 text-xs text-muted">Progress is saved in this browser only.</p>
+      <p className="mt-2 text-xs text-muted">
+        {!signedIn
+          ? "Sign in to sync your progress across devices."
+          : syncStatus === "saved"
+            ? "Progress is saved to your account."
+            : syncStatus === "error"
+              ? "Progress remains on this device; account sync failed."
+              : "Syncing progress to your account…"}
+      </p>
     </div>
   );
 }

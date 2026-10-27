@@ -9,6 +9,28 @@ import { cn } from "@/lib/utils";
 import { openProviderLink, openWelcome } from "@/lib/account-dialogs";
 
 type Provider = "google" | "github";
+type SignInStage = "provider-authentication" | "backend-token-exchange";
+
+function signInErrorDetails(error: unknown): Record<string, string> {
+  const details: Record<string, string> = {};
+
+  if (error instanceof Error) {
+    details.name = error.name;
+    details.message = error.message.slice(0, 300);
+  } else if (typeof error === "string") {
+    details.message = error.slice(0, 300);
+  } else if (error && typeof error === "object") {
+    const candidate = error as { code?: unknown; message?: unknown };
+    if (typeof candidate.code === "string") details.code = candidate.code;
+    details.message = typeof candidate.message === "string"
+      ? candidate.message.slice(0, 300)
+      : "A non-Error value was thrown during sign-in.";
+  } else {
+    details.message = String(error ?? "Unknown sign-in error");
+  }
+
+  return details;
+}
 
 export function SocialSignInButton({
   provider,
@@ -41,10 +63,12 @@ export function SocialSignInButton({
   async function start() {
     setIsSubmitting(true);
     setError(null);
+    let stage: SignInStage = "provider-authentication";
     try {
       const { idToken, photoURL } = provider === "github"
         ? await signInWithGitHub()
         : await signInWithGoogle();
+      stage = "backend-token-exchange";
       const session = await loginWithFirebaseToken(idToken, provider, photoURL);
       onSignedIn?.();
       if (session.user.profile_complete === false || !session.user.role || (session.user.role === "other" && !session.user.role_other)) {
@@ -53,18 +77,17 @@ export function SocialSignInButton({
         openProviderLink();
       }
     } catch (signInError) {
-      const providerErrorCode =
-        typeof signInError === "object" && signInError && "code" in signInError
-          ? String(signInError.code)
-          : undefined;
-      console.error("Sign-in failed.", {
-        provider,
-        stage: signInError instanceof AuthApiError ? "backend-token-exchange" : "provider-authentication",
-        ...(signInError instanceof AuthApiError ? { status: signInError.status, detail: signInError.detail } : {}),
-        ...(providerErrorCode ? { code: providerErrorCode } : {}),
-        ...(signInError instanceof Error ? { message: signInError.message.slice(0, 300) } : {}),
-      });
-      if (mounted.current) setError(describeSignInError(signInError, providerName));
+      const errorMessage = describeSignInError(signInError, providerName);
+      if (errorMessage) {
+        console.warn("Sign-in failed; showing inline feedback.", {
+          provider,
+          stage,
+          ...(signInError instanceof AuthApiError
+            ? { status: signInError.status, detail: signInError.detail }
+            : signInErrorDetails(signInError)),
+        });
+      }
+      if (mounted.current) setError(errorMessage);
     } finally {
       if (mounted.current) setIsSubmitting(false);
     }

@@ -22,6 +22,7 @@ The Firmware page (`/firmware`, `components/firmware/`) is a small Arduino IDE i
 - **Upload runs on the Kiungo server** (`POST /firmware/upload`) and flashes a board plugged into *the server*. With no flasher or port it also returns `dry_run: true`. The page then says "Simulated: no board was flashed", never "Verified · board reset". A blank port is sent as no port (the server picks), not a made-up `COM3`.
 - **The Serial monitor's My board (USB) is real and local.** `lib/firmware/web-serial.ts` asks the browser for a port, opens it at the chosen speed (9600 by default, matching `Serial.begin(9600)`), and prints each line. Nothing goes through the server. Common USB chips are named (Arduino, CH340, CP210x, FTDI, Espressif, Pico, Teensy, micro:bit). A busy port gets a hint to close the Arduino IDE's monitor.
 - **Try it in the lab runs the lab's own version of the starter**, not the code in the editor (`lib/firmware/lab-handoff.ts`, mapping in `lib/firmware/boards.ts`). The lab's simulation follows fixed rules (`packages/core/src/lab/sketch.ts`). The page says so.
+- Firmware project metadata is stored below `projects/{ownerId}/firmware_projects`; source files are separate child documents. The authenticated API limits each source file to 700,000 UTF-8 bytes. Build output and binaries are not stored in Firestore.
 
 ## Flashing a board on your own computer (v1.20.0)
 

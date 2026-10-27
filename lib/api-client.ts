@@ -25,6 +25,7 @@ import type {
   SimulationStepResult,
 } from "./types";
 import type { WorkspaceNode, WorkspaceState } from "./workspace-types";
+import type { LabSession } from "@kiungo/core/lab/types";
 import { coerceWorkspaceState } from "./workspace-snapshot";
 import { recordError, recordRequest } from "./diagnostics/store";
 import { getStoredAuthSession } from "./auth-session";
@@ -344,6 +345,22 @@ export const api = {
     normalizeUserProject(await fetchJson<UserProjectPayload>(`/auth/me/projects/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(serializeUserProject(project)) })),
   deleteMyProject: (id: string) =>
     fetchJson<{ deleted: boolean }>(`/auth/me/projects/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  getMyLearningProgress: () => fetchJson<{ completed: string[] }>("/auth/me/learning-progress"),
+  saveMyLearningProgress: (completed: string[]) =>
+    fetchJson<{ completed: string[] }>("/auth/me/learning-progress", {
+      method: "PUT",
+      body: JSON.stringify({ completed }),
+    }),
+  getMyLabSessions: () => fetchJson<LabSession[]>("/auth/me/lab-sessions"),
+  saveMyLabSession: (session: LabSession) =>
+    fetchJson<LabSession>(`/auth/me/lab-sessions/${encodeURIComponent(session.id)}`, {
+      method: "PUT",
+      body: JSON.stringify(session),
+    }),
+  deleteMyLabSession: (id: string) =>
+    fetchJson<{ deleted: boolean }>(`/auth/me/lab-sessions/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }),
   searchComponents: (
     params: {
       q?: string;

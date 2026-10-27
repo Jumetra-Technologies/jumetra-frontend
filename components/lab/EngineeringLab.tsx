@@ -104,6 +104,7 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
   const hydrated = useLab((s) => s.hydrated);
   const sessions = useLab((s) => s.sessions);
   const saveError = useLab((s) => s.saveError);
+  const cloudSaveState = useLab((s) => s.cloudSaveState);
   const signedIn = useAuthStore((s) => !!s.user);
   const past = useLab((s) => s.past.length);
   const future = useLab((s) => s.future.length);
@@ -756,16 +757,19 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
               <span className="hidden 2xl:inline">{runtimePill.text}</span>
             </span>
             <span
-              className={cn("hidden items-center gap-1 text-[11.5px] lg:inline-flex", saveError ? "text-danger" : "text-muted")}
-              title={saveError ? "This browser's storage is full or blocked, so changes aren't being saved." : signedIn ? "Saved in this browser for your account. It isn't on your other devices yet." : "Not saved: sign in to keep your lab sessions."}
-              aria-label={saveError ? "Not saved" : signedIn ? "Saved on this device" : "Not saved"}
+              className={cn("hidden items-center gap-1 text-[11.5px] lg:inline-flex", saveError || cloudSaveState === "error" ? "text-danger" : "text-muted")}
+              title={saveError ? "This browser's storage is full or blocked." : cloudSaveState === "error" ? "Your local copy remains available, but cloud sync failed. Check your connection and sign in again." : signedIn ? cloudSaveState === "saved" ? "Saved to your account and this device." : "Syncing lab sessions to your account." : "Not saved: sign in to sync lab sessions."}
+              aria-label={saveError || cloudSaveState === "error" ? "Sync failed" : signedIn ? cloudSaveState === "saved" ? "Saved to your account" : "Syncing" : "Not saved"}
               data-testid="save-status"
             >
               {saveError ? (
                 "Not saved"
+              ) : cloudSaveState === "error" ? (
+                "Sync failed"
               ) : signedIn ? (
                 <>
-                  <Check className="size-3.5 text-success" aria-hidden /> <span className="hidden 2xl:inline">Saved on this device</span>
+                  {cloudSaveState === "saved" ? <Check className="size-3.5 text-success" aria-hidden /> : null}
+                  <span className="hidden 2xl:inline">{cloudSaveState === "saved" ? "Saved to account" : "Syncing…"}</span>
                 </>
               ) : (
                 "Not saved"

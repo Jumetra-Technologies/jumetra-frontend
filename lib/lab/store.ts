@@ -3,11 +3,9 @@
 /**
  * Lab sessions, kept per signed-in account.
  *
- * The lab needs a signed-in account (app/laboratory/workspace). Until the
- * server stores lab sessions (docs/engineering-lab-simulation.md, "Saving"),
- * each account's sessions are kept in this browser under that account's own
- * key, so a refresh doesn't lose a build and another person signed in on the
- * same computer never sees them. Signed out, sessions live in memory only.
+ * The lab needs a signed-in account (app/laboratory/workspace). Each account's
+ * sessions are cached separately in this browser and synchronized to its
+ * authenticated server records. Signed out, sessions live in memory only.
  * The old shared, account-less key is cleared.
  */
 
@@ -179,6 +177,7 @@ type Snapshot = { nodes: LabNode[]; wires: LabWire[] };
 export interface LabState {
   hydrated: boolean;
   saveError: boolean;
+  cloudSaveState: "idle" | "syncing" | "saved" | "error";
   sessions: LabSession[];
   activeId: string | null;
   past: Snapshot[];
@@ -246,6 +245,7 @@ export const useLab = create<LabState>((set, get) => {
   return {
     hydrated: false,
     saveError: false,
+    cloudSaveState: "idle",
     sessions: [],
     activeId: null,
     past: [],
@@ -524,7 +524,7 @@ export function setLabOwner(accountId: string | null): void {
   if (accountId) labData = readLabData();
   if (useLab.getState().hydrated) {
     const data = labData;
-    useLab.setState({ sessions: data.sessions, activeId: data.activeId && data.sessions.some((s) => s.id === data.activeId) ? data.activeId : (data.sessions[0]?.id ?? null), past: [], future: [], saveError: false });
+    useLab.setState({ sessions: data.sessions, activeId: data.activeId && data.sessions.some((s) => s.id === data.activeId) ? data.activeId : (data.sessions[0]?.id ?? null), past: [], future: [], saveError: false, cloudSaveState: "idle" });
   }
 }
 

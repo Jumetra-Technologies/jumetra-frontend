@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/sidebar";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ElasticScrollbars } from "@/components/ui/ElasticScrollbars";
 import { LabAccountSync } from "@/components/lab/LabAccountSync";
+import { LearningAccountSync } from "@/components/learning/LearningAccountSync";
 import "./globals.css";
 
 // Fonts are bundled with the app (npm @fontsource-variable/*), so a build never depends on Google Fonts.
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthBootstrap />
           <ElasticScrollbars />
           <LabAccountSync />
+          <LearningAccountSync />
           <AppShell>{children}</AppShell>
         </ThemeProvider>
       </body>

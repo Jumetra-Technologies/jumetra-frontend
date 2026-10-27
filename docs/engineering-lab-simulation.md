@@ -131,23 +131,23 @@ A real Uno has one 5 V pin and three GND pins, and each header hole takes one ju
 
 The lab needs a signed-in account. Sessions are saved **per account** (`lib/lab/store.ts`):
 
-- **Where they're kept now:** in this browser under `kiungo.lab:v2:<account id>`. They're written about 200 ms after each change and read back on reload.
+- **Where they're kept:** immediately in this browser under `kiungo.lab:v2:<account id>`, then synced for signed-in accounts to `users/{userId}/lab_sessions/{sessionId}` through the authenticated backend. The browser copy remains available when the API is offline.
 - **Switching accounts:** `components/lab/LabAccountSync.tsx` is mounted once in `app/layout.tsx` and calls `setLabOwner()` on sign-in, sign-out and account changes. Pending changes are saved to the account they belong to first. One account never sees another's sessions.
 - **Signed out:** sessions live in memory only, and the account's saved copy stays for its next sign-in.
 - **The old shared key:** `hhip.lab:v1`, which every visitor of a browser shared, is cleared and never written again.
-- **Toolbar status:** "Saved on this device" (signed in), "Not saved" (signed out), or "Not saved" in red when the browser refuses to store (full or blocked).
+- **Toolbar status:** "Saved to account" after cloud sync, "Syncing…" while a save is pending, "Sync failed" if the API refuses a save, or "Not saved" when signed out. A failed cloud save keeps the local copy.
 
-### Server storage (backend contract, to build)
+### Server storage
 
-The intended home for sessions is the account on the server, as projects and experiment records already are. Proposed routes, which answer only for the bearer's own sessions:
+The server stores sessions below the signed-in user's document. These routes answer only for the authenticated user's own sessions:
 
 | Route | Body / answer |
 |---|---|
 | `GET /auth/me/lab-sessions` | `[{ id, name, projectId, updatedAt, ... }]`: the full `LabSession` objects (`packages/core/src/lab/types.ts`) |
-| `PUT /auth/me/lab-sessions/{id}` | A `LabSession`. Creates or replaces it. Answers with the stored session. Last write wins on `updatedAt`. |
+| `PUT /auth/me/lab-sessions/{id}` | A validated `LabSession`. Creates or updates it; a newer server `updatedAt` wins over an older client copy. |
 | `DELETE /auth/me/lab-sessions/{id}` | `{ deleted: true }` |
 
-Sessions are small JSON documents (parts, wires, inputs, a log capped at 400 entries). One JSON column per session is enough. Once these routes exist, the store loads from the server on sign-in, saves each changed session with a short debounce, and keeps the browser copy only as an offline cache.
+Sessions are bounded JSON documents (parts, wires, inputs, a log capped at 400 entries). The store merges server and browser copies on sign-in, saves changed sessions with a short debounce, and keeps the browser copy as an offline cache.
 
 ## 7. Known limits and remaining work
 

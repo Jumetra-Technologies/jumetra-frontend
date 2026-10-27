@@ -1,17 +1,17 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { EngineeringLab } from "@/components/lab/EngineeringLab";
-import { planAutoWire } from "@/lib/lab/autowire";
-import { boardGeometry } from "@/lib/lab/board-geometry";
-import { breadboardUse, railSummary } from "@/lib/lab/breadboard";
-import { analyze } from "@/lib/lab/circuit";
-import { nodeFootprint, nodeLayout } from "@/lib/lab/layout";
-import { getPinout } from "@/lib/lab/pinout";
-import { frameAt, serialLine } from "@/lib/lab/simulate";
-import { suggest } from "@/lib/lab/suggest";
-import type { LabNode, LabWire } from "@/lib/lab/types";
-import { getPart } from "@/lib/parts";
-import { BREADBOARD_HOLES, BREADBOARD_SPECS, BREADBOARD_STRIPS } from "@/lib/parts/models/breadboard";
+import { planAutoWire } from "@kiungo/core/lab/autowire";
+import { boardGeometry } from "@kiungo/core/lab/board-geometry";
+import { breadboardUse, railSummary } from "@kiungo/core/lab/breadboard";
+import { analyze } from "@kiungo/core/lab/circuit";
+import { nodeFootprint, nodeLayout } from "@kiungo/core/lab/layout";
+import { getPinout } from "@kiungo/core/lab/pinout";
+import { frameAt, serialLine } from "@kiungo/core/lab/simulate";
+import { suggest } from "@kiungo/core/lab/suggest";
+import type { LabNode, LabWire } from "@kiungo/core/lab/types";
+import { getPart } from "@kiungo/core/parts";
+import { BREADBOARD_HOLES, BREADBOARD_SPECS, BREADBOARD_STRIPS } from "@kiungo/core/parts/models/breadboard";
 import { freshLab } from "./helpers/lab";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));

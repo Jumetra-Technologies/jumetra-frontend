@@ -10,8 +10,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseSessionFile } from "@/lib/lab/session-file";
-import { analyze } from "@/lib/lab/circuit";
+import { parseSessionFile } from "@kiungo/core/lab/session-file";
+import { analyze } from "@kiungo/core/lab/circuit";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const data = mkdtempSync(join(tmpdir(), "kiungo-mcp-"));

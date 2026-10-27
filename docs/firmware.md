@@ -21,14 +21,14 @@ The Firmware page (`/firmware`, `components/firmware/`) is a small Arduino IDE i
 - **Compile runs on the Kiungo server** (`POST /firmware/build/jobs`) with Arduino CLI or PlatformIO. If the server has no compiler for the board, it does a **dry run**: it checks the project's files and returns `dry_run: true` without compiling. The page shows that as **Simulated**, with a note that the code wasn't compiled and that the memory figures are estimates.
 - **Upload runs on the Kiungo server** (`POST /firmware/upload`) and flashes a board plugged into *the server*. With no flasher or port it also returns `dry_run: true`. The page then says "Simulated: no board was flashed", never "Verified · board reset". A blank port is sent as no port (the server picks), not a made-up `COM3`.
 - **The Serial monitor's My board (USB) is real and local.** `lib/firmware/web-serial.ts` asks the browser for a port, opens it at the chosen speed (9600 by default, matching `Serial.begin(9600)`), and prints each line. Nothing goes through the server. Common USB chips are named (Arduino, CH340, CP210x, FTDI, Espressif, Pico, Teensy, micro:bit). A busy port gets a hint to close the Arduino IDE's monitor.
-- **Try it in the lab runs the lab's own version of the starter**, not the code in the editor (`lib/firmware/lab-handoff.ts`, mapping in `lib/firmware/boards.ts`). The lab's simulation follows fixed rules (`lib/lab/sketch.ts`). The page says so.
+- **Try it in the lab runs the lab's own version of the starter**, not the code in the editor (`lib/firmware/lab-handoff.ts`, mapping in `lib/firmware/boards.ts`). The lab's simulation follows fixed rules (`packages/core/src/lab/sketch.ts`). The page says so.
 
 ## Flashing a board on your own computer (v1.20.0)
 
 **On my board (USB)** in the Run column flashes an Arduino Uno, or a Nano with the new bootloader, plugged into this computer. It works in Chrome or Edge on desktop:
 
 - The person picks a compiled `.hex` file. In the Arduino IDE that's Sketch > Export Compiled Binary, and they should use the file without "bootloader" in its name.
-- `lib/firmware/intel-hex.ts` reads the file. It checks every record's checksum and refuses a program over 32,256 bytes (32 KB, less Optiboot's 512).
+- `packages/core/src/firmware/intel-hex.ts` reads the file. It checks every record's checksum and refuses a program over 32,256 bytes (32 KB, less Optiboot's 512).
 - `lib/firmware/stk500.ts` then resets the board with DTR/RTS and syncs with Optiboot at 115200 baud. It checks the chip signature (ATmega328P), writes each 128-byte page and reads every page back to verify it. Finally it leaves programming mode, so the new program starts. This is the same STK500v1 exchange as `avrdude -c arduino`.
 - Errors say what to do in words: the wrong board, the port in use, or a damaged file.
 

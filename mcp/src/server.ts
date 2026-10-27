@@ -37,8 +37,8 @@ import {
   setInputs,
   simulate,
 } from "./lab.js";
-import { suggest } from "@/lib/lab/suggest";
-import { SESSION_FILE_EXTENSION, sessionFileName, toSessionFile } from "@/lib/lab/session-file";
+import { suggest } from "@kiungo/core/lab/suggest";
+import { SESSION_FILE_EXTENSION, sessionFileName, toSessionFile } from "@kiungo/core/lab/session-file";
 
 const VERSION = "0.1.0";
 

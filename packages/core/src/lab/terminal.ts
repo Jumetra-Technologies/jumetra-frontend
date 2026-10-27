@@ -4,7 +4,7 @@
  * tested without a browser.
  */
 
-import { getPart, searchParts } from "@/lib/parts";
+import { getPart, searchParts } from "../parts";
 import type { Analysis } from "./circuit";
 import { getPinout } from "./pinout";
 import type { Frame } from "./simulate";

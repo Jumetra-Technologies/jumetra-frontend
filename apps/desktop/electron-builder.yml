@@ -1,0 +1,29 @@
+# Installers for Windows, Linux and macOS (Phase Two section 13).
+# Signing, notarization and the update feed are added by Masden (sprint 6).
+appId: com.kiungolabs.kiungo
+productName: Kiungo
+copyright: Copyright © 2026 Kiungo Labs Technologies
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - package.json
+extraResources:
+  - from: resources/sketches
+    to: sketches
+  - from: resources/bin/${platform}-${arch}
+    to: bin
+    filter: ["**/*"]
+win:
+  target: [{ target: nsis, arch: [x64] }]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+linux:
+  target: [AppImage, deb, rpm]
+  category: Education
+mac:
+  target: [{ target: dmg, arch: [x64, arm64] }]
+  category: public.app-category.education

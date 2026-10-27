@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Play, Square } from "lucide-react";
 import { PartModel3D } from "@/components/library/views/PartModel3D";
-import { ARDUINO_UNO } from "@/lib/parts/models/arduino-uno";
+import { ARDUINO_UNO } from "@kiungo/core/parts/models/arduino-uno";
 import { cn } from "@/lib/utils";
 
 /** Blink's period: on for half a second, off for half a second. */

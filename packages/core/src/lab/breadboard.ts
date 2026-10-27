@@ -4,7 +4,7 @@
  * Live panel and its Strips list in the Inspector.
  */
 
-import { RAILS, breadboardSpec, stripName, type RailId } from "@/lib/parts/models/breadboard";
+import { RAILS, breadboardSpec, stripName, type RailId } from "../parts/models/breadboard";
 import type { Analysis, NetKind } from "./circuit";
 import { getPinout } from "./pinout";
 import type { LabNode } from "./types";

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { boardGeometry } from "@/lib/lab/board-geometry";
-import { nodeLayout } from "@/lib/lab/layout";
-import { getPinout } from "@/lib/lab/pinout";
-import { getPart } from "@/lib/parts";
+import { boardGeometry } from "@kiungo/core/lab/board-geometry";
+import { nodeLayout } from "@kiungo/core/lab/layout";
+import { getPinout } from "@kiungo/core/lab/pinout";
+import { getPart } from "@kiungo/core/parts";
 
 const BARE = ["arduino-uno", "esp32", "raspberry-pi-pico"];
 

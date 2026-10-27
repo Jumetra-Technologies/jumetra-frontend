@@ -12,11 +12,11 @@
  */
 
 import { create } from "zustand";
-import { getPart } from "@/lib/parts";
-import { SOURCE_KEY, SOURCE_SET, coerceInput, findControl, inputOf } from "./controls";
-import { getPinout } from "./pinout";
-import { stepperStepsAt } from "./simulate";
-import type { DeviceMode, LabData, LabNode, LabSession, LabView, LabWire, LogEntry, LogKind, NodeInputs, PinRef } from "./types";
+import { getPart } from "@kiungo/core/parts";
+import { SOURCE_KEY, SOURCE_SET, coerceInput, findControl, inputOf } from "@kiungo/core/lab/controls";
+import { getPinout } from "@kiungo/core/lab/pinout";
+import { stepperStepsAt } from "@kiungo/core/lab/simulate";
+import type { DeviceMode, LabData, LabNode, LabSession, LabView, LabWire, LogEntry, LogKind, NodeInputs, PinRef } from "@kiungo/core/lab/types";
 
 /** The old key every visitor shared; cleared, never written. */
 export const LAB_STORAGE_KEY = "hhip.lab:v1";

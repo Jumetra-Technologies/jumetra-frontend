@@ -4,11 +4,11 @@ import { useMemo, type ReactNode } from "react";
 import { Handle } from "@xyflow/react";
 import { PartModel3D } from "@/components/library/views/PartModel3D";
 import { PartPlanGraphic } from "@/components/library/views/PartPlanView";
-import type { BoardGeometry } from "@/lib/lab/board-geometry";
-import type { NetKind } from "@/lib/lab/circuit";
-import { getPinout } from "@/lib/lab/pinout";
-import type { LabNode, LabView } from "@/lib/lab/types";
-import type { PartModel } from "@/lib/parts/types";
+import type { BoardGeometry } from "@kiungo/core/lab/board-geometry";
+import type { NetKind } from "@kiungo/core/lab/circuit";
+import { getPinout } from "@kiungo/core/lab/pinout";
+import type { LabNode, LabView } from "@kiungo/core/lab/types";
+import type { PartModel } from "@kiungo/core/parts/types";
 import { cn } from "@/lib/utils";
 import { useLabContext } from "./lab-context";
 

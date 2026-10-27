@@ -7,8 +7,8 @@
  * result drives the Current flow view, the fault list and the simulation.
  */
 
-import { getPart } from "@/lib/parts";
-import { breadboardSpec, stripName, type RailId } from "@/lib/parts/models/breadboard";
+import { getPart } from "../parts";
+import { breadboardSpec, stripName, type RailId } from "../parts/models/breadboard";
 import { getPinout, type LabPin, type PinRole, type Pinout } from "./pinout";
 import { ohmsOf } from "./controls";
 import type { LabNode, LabWire, NodeInputs, PinRef } from "./types";

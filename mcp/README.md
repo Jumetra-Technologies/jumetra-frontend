@@ -2,7 +2,7 @@
 
 Lets AI models (Claude, ChatGPT, Gemini, Grok, or any MCP client) build circuits and robots in Kiungo's Engineering Lab, check and simulate them, and hand back a `.kiungo.json` file you open in Kiungo.
 
-It runs the Lab's own code (`lib/lab`, `lib/parts`), so a build the AI makes is checked by the same circuit analysis, autowire and simulator the browser uses.
+It runs the Lab's own code (`lib/lab`, `packages/core/src/parts`), so a build the AI makes is checked by the same circuit analysis, autowire and simulator the browser uses.
 
 ## Run it
 

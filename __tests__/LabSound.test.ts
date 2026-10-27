@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { analyze } from "@/lib/lab/circuit";
-import { planAutoWire } from "@/lib/lab/autowire";
-import { ACTIVE_BUZZER_HZ, frameAt } from "@/lib/lab/simulate";
-import { LabSound, edgesBetween, isHigh, type SoundState } from "@/lib/lab/sound";
-import type { LabNode, LabWire } from "@/lib/lab/types";
+import { analyze } from "@kiungo/core/lab/circuit";
+import { planAutoWire } from "@kiungo/core/lab/autowire";
+import { ACTIVE_BUZZER_HZ, frameAt } from "@kiungo/core/lab/simulate";
+import { LabSound, edgesBetween, isHigh, type SoundState } from "@kiungo/core/lab/sound";
+import type { LabNode, LabWire } from "@kiungo/core/lab/types";
 
 /** A sound card you can read: records every gain change with its time. */
 class FakeParam {

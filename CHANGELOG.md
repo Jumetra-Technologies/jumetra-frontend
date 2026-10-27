@@ -10,6 +10,27 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.21.0] - 2026-10-27
+
+Phase Two, Sprint 1: foundations for Kiungo 2. The website looks and works exactly as before.
+
+### Added
+- **npm workspaces for the website and the desktop app.** The website stays at the root. Next to it:
+  - `@kiungo/core`: the shared engine.
+  - `@kiungo/ui`: Kiungo 2 design tokens.
+  - `@kiungo/api`: the typed contract between the desktop app's main process and its interface.
+  - `@kiungo/desktop`: the Electron app.
+- **An emulated Uno and Nano in `@kiungo/core`** (EMU-01, spike #51). It runs programs compiled by Arduino CLI, unmodified, in a Web Worker, with the boards' real 32 KB of flash and 2 KB of RAM. Tests prove Blink toggles pin 13 every 1000 ms of simulated time, and that Serial prints at 9600 baud with real character timing.
+- **Determinism rules (EMU-04, #53).** Simulated time comes only from CPU cycles. Random values come from a seeded generator. Lint refuses `Math.random`, `Date.now` and `performance.now` in the emulator and simulation code.
+- **Kiungo 2 desktop shell (#50).** Electron 44 with context isolation, a sandboxed interface with no Node access, and a typed IPC bridge. The interface is served from its own `kiungo-app://` protocol with a strict content policy and cross-origin isolation, so the emulator shares pin levels through shared memory. The Sprint 1 "Foundations check" screen shows an emulated Uno running Blink, the Arduino toolchain status, and startup time and memory.
+- **Arduino CLI on the computer (spike #52).**
+  - A script fetches the pinned Arduino CLI 1.5.1 for Windows, Linux and macOS, and checks it against Arduino's published checksums.
+  - The main process installs the Uno and Nano core into Kiungo's own folder, compiles Blink, and loads the result into the emulator.
+- **The Sprint 2 hardware check** (`docs/phase-two/sprint-2-hardware-check.md`).
+
+### Changed
+- Parts, the lab model and the Intel HEX parser moved from `lib/parts`, `lib/lab` and `lib/firmware` to `packages/core`. They are imported as `@kiungo/core/...`. No behavior changed; the website's 500 tests pass unchanged.
+
 ## [1.20.2] - 2026-10-21
 
 ### Removed
@@ -391,6 +412,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.21.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.20.2...v1.21.0
 [1.20.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.20.1...v1.20.2
 [1.20.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.20.0...v1.20.1
 [1.20.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.19.0...v1.20.0

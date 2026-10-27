@@ -2,7 +2,7 @@
 
 import { memo, useState } from "react";
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from "@xyflow/react";
-import type { PinTone } from "@/lib/lab/pinout";
+import type { PinTone } from "@kiungo/core/lab/pinout";
 import { useLabContext } from "./lab-context";
 import { TONE_VAR } from "./PartNode";
 

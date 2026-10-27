@@ -8,10 +8,10 @@
  * the same size, so switching views doesn't move anything else.
  */
 
-import { Position } from "@xyflow/react";
-import { getPart } from "@/lib/parts";
-import { project, projectAngle, type View3D } from "@/lib/parts/geometry";
-import type { CanvasSpec, PartModel } from "@/lib/parts/types";
+import { Position } from "@xyflow/system";
+import { getPart } from "../parts";
+import { project, projectAngle, type View3D } from "../parts/geometry";
+import type { CanvasSpec, PartModel } from "../parts/types";
 import type { LabView } from "./types";
 
 /** Pixels per millimeter on the canvas. An Uno comes out 302 px wide. */

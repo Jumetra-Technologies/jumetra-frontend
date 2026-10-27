@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
-import { PARTS, PART_GROUPS, getPart, getPartsByGroup, searchParts } from "@/lib/parts";
-import type { PartModel } from "@/lib/parts/types";
+import { PARTS, PART_GROUPS, getPart, getPartsByGroup, searchParts } from "@kiungo/core/parts";
+import type { PartModel } from "@kiungo/core/parts/types";
 import { cn } from "@/lib/utils";
 import { PartDetail } from "./PartDetail";
 import { PartThumb } from "./PartThumb";

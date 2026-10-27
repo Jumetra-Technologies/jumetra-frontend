@@ -1,11 +1,11 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { Analysis } from "@/lib/lab/circuit";
-import type { Frame } from "@/lib/lab/simulate";
+import type { Analysis } from "@kiungo/core/lab/circuit";
+import type { Frame } from "@kiungo/core/lab/simulate";
 import type { RuntimeStatus } from "@/lib/lab/runtime";
 import type { PowerState } from "./UsbCable";
-import type { LabNode, LabSession, LabView } from "@/lib/lab/types";
+import type { LabNode, LabSession, LabView } from "@kiungo/core/lab/types";
 
 export interface LabContextValue {
   session: LabSession;

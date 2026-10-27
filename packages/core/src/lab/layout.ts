@@ -4,7 +4,7 @@
  */
 
 import { boardBox, boardGeometry, type BoardGeometry } from "./board-geometry";
-import { getPart } from "@/lib/parts";
+import { getPart } from "../parts";
 import { getPinout, type LabPin } from "./pinout";
 import type { LabView } from "./types";
 

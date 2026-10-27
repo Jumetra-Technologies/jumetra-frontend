@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ComponentLibrary } from "@/components/library/ComponentLibrary";
 import { api } from "@/lib/api-client";
-import { PARTS, getPart } from "@/lib/parts";
+import { PARTS, getPart } from "@kiungo/core/parts";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ part?: string }> }): Promise<Metadata> {
   const { part: partId } = await searchParams;

@@ -4,7 +4,7 @@
  * Engineering Lab build shows a starter running.
  */
 
-import { getPart } from "@/lib/parts";
+import { getPart } from "@kiungo/core/parts";
 
 /** Board ids the firmware backend knows (engine/firmware/firmware_project.py BOARD_PROFILES). */
 export const FIRMWARE_BOARDS = ["arduino-uno", "esp32", "arduino-mega", "esp8266", "raspberry-pi-pico", "stm32", "teensy", "microbit", "nrf52", "raspberry-pi-4"] as const;

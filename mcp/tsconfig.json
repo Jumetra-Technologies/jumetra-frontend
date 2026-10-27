@@ -10,7 +10,7 @@
     "jsx": "react-jsx",
     "noEmit": true,
     "baseUrl": ".",
-    "paths": { "@/*": ["../*"] },
+    "paths": { "@/*": ["../*"], "@kiungo/core/parts": ["../packages/core/src/parts/index.ts"], "@kiungo/core/*": ["../packages/core/src/*"] },
     "types": ["node"]
   },
   "include": ["src/**/*.ts"]

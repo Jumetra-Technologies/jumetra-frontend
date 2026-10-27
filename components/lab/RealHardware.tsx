@@ -7,7 +7,7 @@ import { useState } from "react";
 import { LoaderCircle, Plug, Usb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api-client";
-import { getPart } from "@/lib/parts";
+import { getPart } from "@kiungo/core/parts";
 import { useLab } from "@/lib/lab/store";
 import type { DiscoveredHardwareDevice } from "@/stores/discovery-store";
 import { useLabContext } from "./lab-context";

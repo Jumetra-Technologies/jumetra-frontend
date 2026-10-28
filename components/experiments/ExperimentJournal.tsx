@@ -31,7 +31,6 @@ export function ExperimentJournal({
 }) {
   const [creating, setCreating] = useState(Boolean(initialProjectId));
   const [editingRecord, setEditingRecord] = useState<ExperimentRecord | null>(null);
-  const [connectedRuns, setConnectedRuns] = useState(simulationRuns);
   const [filterProjectId, setFilterProjectId] = useState(initialProjectId ?? "all");
   const [projects, setProjects] = useState<RoboticsProject[]>([]);
   const [records, setRecords] = useState<ExperimentRecord[]>([]);
@@ -40,17 +39,13 @@ export function ExperimentJournal({
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      api.getMyProjects(),
-      api.getExperiments(),
-    ]).then(async ([savedProjects, runs]) => {
+    api.getMyProjects().then(async (savedProjects) => {
       const projectRecords = await Promise.all(
         savedProjects.map((project) => api.getMyProjectExperiments(project.id)),
       );
       if (active) {
         setProjects(savedProjects);
         setRecords(projectRecords.flat());
-        setConnectedRuns(runs);
         setError("");
       }
     }).catch((loadError: unknown) => {
@@ -199,11 +194,11 @@ export function ExperimentJournal({
           <h3 id="simulation-runs-heading" className="text-lg font-semibold">Simulation runs</h3>
           <p className="text-sm text-muted">Live and synchronization runs recorded by Kiungo.</p>
         </div>
-        {connectedRuns.length === 0 ? (
+        {simulationRuns.length === 0 ? (
           <p className="border-y border-border py-4 text-sm text-muted">No connected simulation runs available.</p>
         ) : (
           <div className="divide-y divide-border border-y border-border">
-            {connectedRuns.map((run) => (
+            {simulationRuns.map((run) => (
               <Link key={run.experiment_id} href={`/experiments/${run.experiment_id}`} className="flex flex-wrap items-center justify-between gap-3 py-3 hover:text-primary">
                 <span><span className="block text-sm font-medium">{run.name}</span><span className="text-xs text-muted">{run.device_count} devices · {run.status}</span></span>
                 <span className="text-xs text-muted">Sync error {run.average_sync_error.toFixed(2)} ms</span>

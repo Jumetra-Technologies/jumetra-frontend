@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { openProviderLink, openWelcome } from "@/lib/account-dialogs";
 
 type Provider = "google" | "github";
-type SignInStage = "provider-authentication" | "backend-token-exchange";
+type SignInStage = "sign-in" | "token-exchange";
 
 function signInErrorDetails(error: unknown): Record<string, string> {
   const details: Record<string, string> = {};
@@ -63,12 +63,12 @@ export function SocialSignInButton({
   async function start() {
     setIsSubmitting(true);
     setError(null);
-    let stage: SignInStage = "provider-authentication";
+    let stage: SignInStage = "sign-in";
     try {
       const { idToken, photoURL } = provider === "github"
         ? await signInWithGitHub()
         : await signInWithGoogle();
-      stage = "backend-token-exchange";
+      stage = "token-exchange";
       const session = await loginWithFirebaseToken(idToken, provider, photoURL);
       onSignedIn?.();
       if (session.user.profile_complete === false || !session.user.role || (session.user.role === "other" && !session.user.role_other)) {

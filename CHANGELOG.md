@@ -10,6 +10,11 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.21.1] - 2026-10-29
+
+### Fixed
+- **CI on `main` is green again.** The "no developer details" test caught the internal sign-in stage label `backend-token-exchange` (added in `5b5e4a9`, which went to `main` without a pull request). The label only ever reached `console.warn`, so nothing people see changes; it is now `token-exchange`.
+
 ## [1.21.0] - 2026-10-27
 
 Phase Two, Sprint 1: foundations for Kiungo 2. The website looks and works exactly as before.
@@ -412,6 +417,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.21.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.21.0...v1.21.1
 [1.21.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.20.2...v1.21.0
 [1.20.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.20.1...v1.20.2
 [1.20.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.20.0...v1.20.1

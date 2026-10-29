@@ -5,6 +5,12 @@
   "private": true,
   "description": "Kiungo 2: the desktop app for building, coding and running robotics projects.",
   "author": "Kiungo Labs Technologies",
+  "homepage": "https://jumetra-frontendv0.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jumetra-Technologies/jumetra-frontend.git",
+    "directory": "apps/desktop"
+  },
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",

@@ -1,6 +1,10 @@
 name: CI
 
-# Every pull request and every push to main: types, lint, tests and a production build.
+# Every pull request and every push to main.
+#   website: types, lint, tests and a production build on Ubuntu.
+#   desktop: types, tests, a real Arduino CLI compile and an unsigned
+#            installer on Windows, Ubuntu and macOS (issue #54).
+#   mcp:     the MCP server's typecheck and self-test.
 # A red check means the change isn't ready to merge.
 on:
   pull_request:
@@ -11,9 +15,14 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  # The website never starts Electron, so it never needs the binary.
+  ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+
 jobs:
-  app:
-    name: Typecheck, lint, test, build
+  website:
+    name: Website · typecheck, lint, test, build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -31,11 +40,108 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+
+  desktop:
+    name: Desktop · ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: Windows
+            builder: --win
+          - os: ubuntu-latest
+            label: Ubuntu
+            builder: --linux
+          - os: macos-latest
+            label: macOS
+            builder: --mac
+    env:
+      # The desktop jobs do need Electron: electron-builder packs it.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "0"
+      # Unsigned builds everywhere until signing lands (sprint 6).
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      KIUNGO_ARDUINO_CONFIG: ${{ github.workspace }}/.ci/arduino-cli.yaml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Linux packaging tools (rpm target)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -q && sudo apt-get install -y -q rpm
+      - run: npm ci
+
+      - name: Typecheck the desktop app
+        run: npm run typecheck -w @kiungo/desktop
+
+      - name: Fetch the pinned Arduino CLI for this system
+        run: npm run fetch:arduino-cli -w @kiungo/desktop
+
+      - name: Resolve the Arduino CLI path
+        id: cli
+        shell: bash
+        run: |
+          case "${{ runner.os }}" in
+            Windows) key=win32-x64; exe=arduino-cli.exe ;;
+            Linux)   key=linux-x64; exe=arduino-cli ;;
+            macOS)   key=darwin-$([ "$(uname -m)" = arm64 ] && echo arm64 || echo x64); exe=arduino-cli ;;
+          esac
+          echo "path=$GITHUB_WORKSPACE/apps/desktop/resources/bin/$key/$exe" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the Arduino AVR core
+        uses: actions/cache@v4
+        with:
+          path: .ci/arduino
+          key: arduino-avr-1.8.6-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install the Uno core (arduino:avr@1.8.6)
+        shell: bash
         env:
-          NEXT_TELEMETRY_DISABLED: "1"
+          CLI: ${{ steps.cli.outputs.path }}
+        run: |
+          mkdir -p .ci/arduino/data .ci/arduino/downloads .ci/arduino/sketchbook
+          cat > .ci/arduino-cli.yaml <<CFG
+          directories:
+            data: $GITHUB_WORKSPACE/.ci/arduino/data
+            downloads: $GITHUB_WORKSPACE/.ci/arduino/downloads
+            user: $GITHUB_WORKSPACE/.ci/arduino/sketchbook
+          CFG
+          "$CLI" --config-file .ci/arduino-cli.yaml core update-index
+          "$CLI" --config-file .ci/arduino-cli.yaml core install arduino:avr@1.8.6
+          "$CLI" --config-file .ci/arduino-cli.yaml version
+
+      - name: Test the core, api, ui and desktop packages (with the real compile)
+        env:
+          KIUNGO_ARDUINO_CLI: ${{ steps.cli.outputs.path }}
+        run: npx vitest run packages apps
+
+      - name: Build the renderer, preload and main bundles
+        run: npm run build -w @kiungo/desktop
+
+      - name: Package an unsigned installer
+        run: npx electron-builder ${{ matrix.builder }} --publish never
+        working-directory: apps/desktop
+
+      - name: Upload the installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: kiungo-desktop-${{ matrix.label }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            apps/desktop/dist/*.exe
+            apps/desktop/dist/*.AppImage
+            apps/desktop/dist/*.deb
+            apps/desktop/dist/*.rpm
+            apps/desktop/dist/*.dmg
+            apps/desktop/dist/*.zip
 
   mcp:
-    name: MCP server (typecheck and self-test)
+    name: MCP server · typecheck and self-test
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

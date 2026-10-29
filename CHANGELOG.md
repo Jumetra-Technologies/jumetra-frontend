@@ -10,6 +10,24 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.22.0] - 2026-10-29
+
+Phase Two, Sprint 2: the hybrid spike (issues #57 to #61). The website is unchanged. The desktop app is 0.2.0.
+
+### Added
+- **The Hybrid shim, proved (INJ-01, INJ-03, INJ-04).** A Hybrid build compiles the user's sketch unchanged with a generated forced-include header, the `KiungoHybrid` runtime library and, where a sensor needs one, an adapter library of the same name as the real one. Virtual sensors answer from values the PC pushes over a COBS-framed link at 115200; the sketch's own `Serial` text travels inside frames. PC side in `@kiungo/core/hybrid/*` (COBS, frames, the shim generator); board side in `apps/desktop/resources/hybrid/`.
+- **A NewPing adapter** (INJ-02's first): the same API as Tim Eckel's NewPing; a virtual HC-SR04 reports the pushed distance, a real one is pinged.
+- **The emulator receives serial** (`AvrBoard.writeSerial`), so a Hybrid build runs end to end on the PC: `apps/desktop/test/hybrid-shim.test.ts` pushes distances into the unchanged NewPing sketch and reads them back within the loop period.
+- **A direct avr-gcc build path** (`apps/desktop/src/main/toolchain/hybrid-build.ts`) that mirrors Arduino CLI's recipes, for the spike and for CI; `compileSketch` takes libraries and compiler flags for the Arduino CLI path.
+- **Scripts:** `npm run spike` writes `docs/phase-two/sprint-2-spike-results.md` (toolchain facts, footprint, delay, Electron budgets); `npm run measure-budgets` measures startup and memory; `npm run hardware-check` is Brad's Sprint 2 check on a real Uno (#61).
+- CI compiles the shim tests on Windows, Ubuntu and macOS with the installed core.
+
+### Decided by measurement (details in `docs/phase-two/sprint-2-spike-results.md`)
+- `--wrap` is silently dropped with LTO on, and cannot reach `Serial` at all. The forced include works with LTO on everywhere, including header-only code, and costs nothing beyond the runtime. LTO stays on.
+- The runtime adds about 1.2 KB of flash and 170 B of RAM; the NewPing adapter brings an HC-SR04 sketch to +1.6 KB / +190 B.
+- Push-to-print delay in the emulator: median 25 ms, worst 49 ms against a 50 ms loop.
+- Electron on this Linux machine: window in 357 ms, 282 MB proportional set size.
+
 ## [1.21.2] - 2026-10-29
 
 CI for the desktop app on all three systems (issue #54).
@@ -428,6 +446,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.22.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.21.2...v1.22.0
 [1.21.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.21.1...v1.21.2
 [1.21.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.21.0...v1.21.1
 [1.21.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.20.2...v1.21.0

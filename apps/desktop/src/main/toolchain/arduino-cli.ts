@@ -140,11 +140,32 @@ export function compileReport(json: CompileJson | null, raw: RunResult, duration
   };
 }
 
+export interface CompileOptions {
+  /** Library folders added with `--library`; these win over installed libraries of the same name. */
+  libraries?: string[];
+  /** Extra C++ compiler flags, e.g. a forced include for a Hybrid build. */
+  cppFlags?: string[];
+  /** Extra flags for every compile and link step. */
+  extraFlags?: string[];
+}
+
 /** Compiles a sketch folder and returns the program as Intel HEX. */
-export async function compileSketch(cli: CliLocation, sketchDir: string, fqbn: string, buildPath: string, now: () => number = () => performance.now()): Promise<CompileResult> {
+export async function compileSketch(
+  cli: CliLocation,
+  sketchDir: string,
+  fqbn: string,
+  buildPath: string,
+  now: () => number = () => performance.now(),
+  options: CompileOptions = {},
+): Promise<CompileResult> {
   mkdirSync(buildPath, { recursive: true });
   const started = now();
-  const raw = await runCli(cli, ["compile", "--fqbn", fqbn, "--build-path", buildPath, "--format", "json", sketchDir], 300_000);
+  const args = ["compile", "--fqbn", fqbn, "--build-path", buildPath, "--format", "json"];
+  for (const library of options.libraries ?? []) args.push("--library", library);
+  if (options.cppFlags?.length) args.push("--build-property", `compiler.cpp.extra_flags=${options.cppFlags.join(" ")}`);
+  if (options.extraFlags?.length) args.push("--build-property", `build.extra_flags=${options.extraFlags.join(" ")}`);
+  args.push(sketchDir);
+  const raw = await runCli(cli, args, 300_000);
   const report = compileReport(parseJson<CompileJson>(raw.stdout), raw, Math.round(now() - started));
   if (!report.ok) return report;
   const hexFile = join(buildPath, `${basename(sketchDir)}.ino.hex`);

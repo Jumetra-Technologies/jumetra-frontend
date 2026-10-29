@@ -13,7 +13,8 @@
     "./emulator": "./src/emulator/index.ts",
     "./emulator/*": "./src/emulator/*.ts",
     "./sim/*": "./src/sim/*.ts",
-    "./boards": "./src/boards/index.ts"
+    "./boards": "./src/boards/index.ts",
+    "./hybrid/*": "./src/hybrid/*.ts"
   },
   "dependencies": {
     "@xyflow/system": "0.0.80",

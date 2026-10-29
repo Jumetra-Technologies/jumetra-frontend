@@ -112,11 +112,15 @@ jobs:
           CFG
           "$CLI" --config-file .ci/arduino-cli.yaml core update-index
           "$CLI" --config-file .ci/arduino-cli.yaml core install arduino:avr@1.8.6
+          "$CLI" --config-file .ci/arduino-cli.yaml lib install NewPing
           "$CLI" --config-file .ci/arduino-cli.yaml version
 
-      - name: Test the core, api, ui and desktop packages (with the real compile)
+      - name: Test the core, api, ui and desktop packages (with the real compile and the Hybrid shim)
         env:
           KIUNGO_ARDUINO_CLI: ${{ steps.cli.outputs.path }}
+          # The shim tests compile with avr-gcc directly from the installed core (apps/desktop/test/hybrid-shim.test.ts).
+          KIUNGO_ARDUINO_DATA: ${{ github.workspace }}/.ci/arduino/data
+          KIUNGO_AVR_LIBRARIES: ${{ github.workspace }}/.ci/arduino/sketchbook/libraries
         run: npx vitest run packages apps
 
       - name: Build the renderer, preload and main bundles

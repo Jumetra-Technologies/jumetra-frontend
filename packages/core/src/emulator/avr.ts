@@ -57,6 +57,8 @@ export class AvrBoard {
   private readonly levels = new Map<number, PinLevel>();
   private pinListeners: Array<(change: PinChange) => void> = [];
   private serialListeners: Array<(byte: number) => void> = [];
+  private readonly usart: AVRUSART;
+  private rxQueue: number[] = [];
 
   /**
    * @param program The compiled program as Intel HEX text (what Arduino CLI
@@ -79,6 +81,8 @@ export class AvrBoard {
     new AVRTimer(this.cpu, timer2Config);
     const usart = new AVRUSART(this.cpu, usart0Config, board.clockHz);
     usart.onByteTransmit = (byte) => this.serialListeners.forEach((l) => l(byte));
+    usart.onRxComplete = () => this.pumpRx();
+    this.usart = usart;
 
     this.ports = {
       B: new AVRIOPort(this.cpu, portBConfig),
@@ -119,7 +123,23 @@ export class AvrBoard {
     while (cpu.cycles < end) {
       avrInstruction(cpu);
       cpu.tick();
+      if (this.rxQueue.length && this.usart.rxBusy === false) this.pumpRx();
     }
+  }
+
+  /**
+   * Send bytes to the board's UART, as the PC would over USB. They arrive at
+   * the UART's own baud rate as the CPU runs, so call runMs() afterwards.
+   */
+  writeSerial(bytes: Uint8Array | number[]): void {
+    for (const b of bytes) this.rxQueue.push(b & 0xff);
+    this.pumpRx();
+  }
+
+  private pumpRx(): void {
+    if (!this.rxQueue.length || this.usart.rxBusy) return;
+    // Before the sketch's Serial.begin() the UART isn't listening and the byte is lost, as on a real board.
+    this.usart.writeByte(this.rxQueue.shift()!);
   }
 
   /** Run the CPU for a stretch of simulated time. */

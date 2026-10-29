@@ -12,7 +12,7 @@
 
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { AvrBoard } from "@kiungo/core/emulator";
@@ -36,7 +36,7 @@ if (!tc) {
 }
 const toolchain: DirectToolchain = tc;
 const newPing = (() => {
-  for (const dir of (process.env.KIUNGO_AVR_LIBRARIES ?? "").split(":").filter(Boolean)) {
+  for (const dir of (process.env.KIUNGO_AVR_LIBRARIES ?? "").split(delimiter).filter(Boolean)) {
     if (existsSync(join(dir, "NewPing.h"))) return dir;
     for (const entry of readdirSync(dir)) {
       if (entry.toLowerCase() === "newping" && existsSync(join(dir, entry, "NewPing.h"))) return join(dir, entry);

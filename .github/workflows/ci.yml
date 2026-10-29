@@ -121,7 +121,17 @@ jobs:
           # The shim tests compile with avr-gcc directly from the installed core (apps/desktop/test/hybrid-shim.test.ts).
           KIUNGO_ARDUINO_DATA: ${{ github.workspace }}/.ci/arduino/data
           KIUNGO_AVR_LIBRARIES: ${{ github.workspace }}/.ci/arduino/sketchbook/libraries
-        run: npx vitest run packages apps
+        shell: bash
+        run: npx vitest run packages apps 2>&1 | tee vitest.log; exit ${PIPESTATUS[0]}
+
+      - name: Report failing tests as annotations
+        if: failure()
+        shell: bash
+        # The failure text as check annotations, readable from the API without downloading the log.
+        run: |
+          grep -nE "^ (FAIL|×)|AssertionError|Error:|expected" vitest.log | head -40 | while IFS= read -r line; do
+            printf '::error title=vitest (%s)::%s\n' "${{ matrix.label }}" "${line//$'\r'/}"
+          done
 
       - name: Build the renderer, preload and main bundles
         run: npm run build -w @kiungo/desktop

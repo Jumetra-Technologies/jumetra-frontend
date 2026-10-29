@@ -12,7 +12,7 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { basename, delimiter, join, resolve } from "node:path";
 
 import type { CompileResult } from "@kiungo/api";
 import { generateShim, type HybridPlan } from "@kiungo/core/hybrid/shim";
@@ -65,7 +65,7 @@ export interface DirectToolchain {
 export function locateDirectToolchain(env: NodeJS.ProcessEnv = process.env): DirectToolchain | null {
   const core = env.KIUNGO_AVR_CORE;
   if (core && existsSync(join(core, "cores", "arduino"))) {
-    return { bin: env.KIUNGO_AVR_BIN ?? "", core, libraries: env.KIUNGO_AVR_LIBRARIES ? env.KIUNGO_AVR_LIBRARIES.split(":") : [] };
+    return { bin: env.KIUNGO_AVR_BIN ?? "", core, libraries: env.KIUNGO_AVR_LIBRARIES ? env.KIUNGO_AVR_LIBRARIES.split(delimiter) : [] };
   }
   const data = env.KIUNGO_ARDUINO_DATA; // the `directories.data` of an Arduino CLI config
   if (data) {

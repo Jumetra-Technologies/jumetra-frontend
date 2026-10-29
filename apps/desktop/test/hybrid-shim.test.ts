@@ -10,9 +10,9 @@
  * What a real Uno adds on top is in docs/phase-two/sprint-2-hardware-check.md.
  */
 
-import { mkdtempSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -28,7 +28,7 @@ const resources = hybridResourcesDir();
 const sketches = join(__dirname, "..", "resources", "sketches");
 
 function newPingLibrary(): string | null {
-  const dirs = (process.env.KIUNGO_AVR_LIBRARIES ?? "").split(":").filter(Boolean);
+  const dirs = (process.env.KIUNGO_AVR_LIBRARIES ?? "").split(delimiter).filter(Boolean);
   if (process.env.KIUNGO_ARDUINO_DATA) dirs.push(join(process.env.KIUNGO_ARDUINO_DATA, "..", "sketchbook", "libraries"));
   for (const dir of dirs) {
     if (existsSync(join(dir, "NewPing.h"))) return dir;
@@ -54,6 +54,34 @@ function runner(hex: string) {
     for (const frame of result.frames) if (frame.type !== "text") frames.push({ at: board.timeMs, frame });
   });
   return { board, reader, lines, frames, raw };
+}
+
+/**
+ * A real HC-SR04 in the emulator: when the trigger pin rises, the echo pin goes
+ * high about 450 us later and stays high for the round-trip time of `cm`.
+ * Runs the board for `ms` of simulated time in 20 us slices to react in time.
+ */
+function runWithHcSr04(board: AvrBoard, ms: number, trigger: number, echo: number, cm: number) {
+  const sliceUs = 20;
+  let lastTrigger = board.level(trigger) === "high";
+  let echoStartAt = -1;
+  let echoEndAt = -1;
+  const end = board.timeMs + ms;
+  while (board.timeMs < end) {
+    board.runCycles(Math.round((sliceUs / 1e6) * UNO.clockHz));
+    const now = board.timeMs * 1000; // us
+    const trig = board.level(trigger) === "high";
+    if (trig && !lastTrigger) {
+      echoStartAt = now + 450;
+      echoEndAt = echoStartAt + cm * 58;
+    }
+    lastTrigger = trig;
+    if (echoStartAt >= 0 && now >= echoStartAt && now < echoEndAt) board.setInput(echo, true);
+    else if (echoEndAt >= 0 && now >= echoEndAt) {
+      board.setInput(echo, false);
+      echoStartAt = echoEndAt = -1;
+    }
+  }
 }
 
 function sketchDir(name: string, source: string): string {
@@ -105,23 +133,24 @@ describe.skipIf(!tc)("the Hybrid shim on compiled code", () => {
     const hybrid = compileHybridDirect(toolchain, { sketchDir: join(sketches, "SonarPrint"), buildPath: build("hybrid"), plan: SPRINT_2_PLAN, resources });
     expect(hybrid.ok, hybrid.log).toBe(true);
 
-    // Plain: no sensor wired in the emulator, so each ping times out as a real one would with nothing in range.
-    const countPlain = (() => {
+    // Plain: the real NewPing pings a simulated HC-SR04 at 30 cm.
+    const plainRun = (() => {
       const board = new AvrBoard(UNO, plain.hex!);
-      let newlines = 0;
-      board.onSerialByte((b) => { if (b === 0x0a) newlines++; });
-      board.runMs(1000);
-      return newlines;
+      let text = "";
+      board.onSerialByte((b) => (text += String.fromCharCode(b)));
+      runWithHcSr04(board, 1000, 9, 10, 30);
+      const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+      return { count: lines.length, lines };
     })();
+    expect(plainRun.lines.slice(2).every((l) => Math.abs(Number(l) - 30) <= 1), `plain printed ${plainRun.lines.slice(0, 6).join(" ")}`).toBe(true);
     const countHybrid = (() => {
       const { board, lines } = runner(hybrid.hex!);
+      board.runMs(5);
       board.writeSerial(encodeSet(0, 30));
-      board.runMs(1000);
+      board.runMs(995);
       return lines.length;
     })();
-    // With nothing in range the real sensor waits for its echo timeout, so plain prints a little slower.
-    expect(Math.abs(countHybrid - countPlain) / countPlain).toBeLessThan(0.1);
-    expect(countHybrid).toBeGreaterThan(15);
+    expect(Math.abs(countHybrid - plainRun.count) / plainRun.count, `plain ${plainRun.count}/s, hybrid ${countHybrid}/s`).toBeLessThan(0.05);
   });
 
   it("tags every byte of the sketch's Serial output and feeds Serial.read from IN frames", () => {

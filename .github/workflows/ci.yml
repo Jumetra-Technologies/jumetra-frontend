@@ -112,12 +112,26 @@ jobs:
           CFG
           "$CLI" --config-file .ci/arduino-cli.yaml core update-index
           "$CLI" --config-file .ci/arduino-cli.yaml core install arduino:avr@1.8.6
+          "$CLI" --config-file .ci/arduino-cli.yaml lib install NewPing
           "$CLI" --config-file .ci/arduino-cli.yaml version
 
-      - name: Test the core, api, ui and desktop packages (with the real compile)
+      - name: Test the core, api, ui and desktop packages (with the real compile and the Hybrid shim)
         env:
           KIUNGO_ARDUINO_CLI: ${{ steps.cli.outputs.path }}
-        run: npx vitest run packages apps
+          # The shim tests compile with avr-gcc directly from the installed core (apps/desktop/test/hybrid-shim.test.ts).
+          KIUNGO_ARDUINO_DATA: ${{ github.workspace }}/.ci/arduino/data
+          KIUNGO_AVR_LIBRARIES: ${{ github.workspace }}/.ci/arduino/sketchbook/libraries
+        shell: bash
+        run: npx vitest run packages apps 2>&1 | tee vitest.log; exit ${PIPESTATUS[0]}
+
+      - name: Report failing tests as annotations
+        if: failure()
+        shell: bash
+        # The failure text as check annotations, readable from the API without downloading the log.
+        run: |
+          grep -nE "^ (FAIL|×)|AssertionError|Error:|expected" vitest.log | head -40 | while IFS= read -r line; do
+            printf '::error title=vitest (%s)::%s\n' "${{ matrix.label }}" "${line//$'\r'/}"
+          done
 
       - name: Build the renderer, preload and main bundles
         run: npm run build -w @kiungo/desktop

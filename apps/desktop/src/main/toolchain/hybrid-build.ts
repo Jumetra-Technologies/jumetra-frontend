@@ -11,7 +11,9 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, delimiter, join, resolve } from "node:path";
 
 import type { CompileResult } from "@kiungo/api";
@@ -88,6 +90,8 @@ export interface DirectBuildOptions {
   ldFlags?: string[];
   libraries?: string[];
   mcu?: "atmega328p";
+  /** Where the compiled core is kept between builds. Default: a per-toolchain folder under the temp dir. */
+  coreCacheDir?: string;
 }
 
 interface Sizes {
@@ -133,7 +137,12 @@ export function compileDirect(tc: DirectToolchain, sketchDir: string, buildPath:
   const mcu = options.mcu ?? "atmega328p";
   const coreDir = join(tc.core, "cores", "arduino");
   const variantDir = join(tc.core, "variants", "standard");
-  mkdirSync(join(buildPath, "core"), { recursive: true });
+  // The core only depends on the toolchain, the core sources, the MCU and LTO, so one build of it
+  // serves every sketch (Arduino CLI caches it the same way). Keyed on those four.
+  const coreKey = createHash("sha1").update([tc.bin, tc.core, mcu, String(lto)].join("|")).digest("hex").slice(0, 12);
+  const coreBuild = options.coreCacheDir ?? join(tmpdir(), `kiungo-core-${coreKey}`);
+  mkdirSync(coreBuild, { recursive: true });
+  mkdirSync(buildPath, { recursive: true });
   const log: string[] = [];
   const common = ["-g", "-Os", "-w", "-ffunction-sections", "-fdata-sections", `-mmcu=${mcu}`, "-DF_CPU=16000000L", "-DARDUINO=10819", "-DARDUINO_AVR_UNO", "-DARDUINO_ARCH_AVR"];
   const ltoFlag = lto ? ["-flto", "-fno-fat-lto-objects"] : [];
@@ -143,25 +152,27 @@ export function compileDirect(tc: DirectToolchain, sketchDir: string, buildPath:
 
   try {
     // 1. The core (cached by this build folder).
-    const coreArchive = join(buildPath, "core", "core.a");
+    const coreArchive = join(coreBuild, "core.a");
     if (!existsSync(coreArchive)) {
       const objects: string[] = [];
       for (const src of listSources(coreDir, [".c"])) {
-        const obj = join(buildPath, "core", basename(src) + ".o");
+        const obj = join(coreBuild, basename(src) + ".o");
         run(tc.bin, "avr-gcc", [...cFlags, ...ltoFlag, ...coreIncludes, src, "-o", obj], buildPath);
         objects.push(obj);
       }
       for (const src of listSources(coreDir, [".cpp"])) {
-        const obj = join(buildPath, "core", basename(src) + ".o");
+        const obj = join(coreBuild, basename(src) + ".o");
         run(tc.bin, "avr-g++", [...cxxFlags, ...ltoFlag, ...coreIncludes, src, "-o", obj], buildPath);
         objects.push(obj);
       }
       for (const src of listSources(coreDir, [".S"])) {
-        const obj = join(buildPath, "core", basename(src) + ".o");
+        const obj = join(coreBuild, basename(src) + ".o");
         run(tc.bin, "avr-gcc", ["-c", "-g", "-x", "assembler-with-cpp", ...(lto ? ["-flto"] : []), `-mmcu=${mcu}`, "-DF_CPU=16000000L", "-DARDUINO=10819", "-DARDUINO_AVR_UNO", "-DARDUINO_ARCH_AVR", ...coreIncludes, src, "-o", obj], buildPath);
         objects.push(obj);
       }
-      run(tc.bin, "avr-gcc-ar", ["rcs", coreArchive, ...objects], buildPath);
+      const partial = coreArchive + ".partial";
+      run(tc.bin, "avr-gcc-ar", ["rcs", partial, ...objects], coreBuild);
+      renameSync(partial, coreArchive); // another process may build the same core at the same time
     }
 
     // 2. Libraries: the ones the sketch includes, resolved first from options.libraries (explicit), then tc.libraries.

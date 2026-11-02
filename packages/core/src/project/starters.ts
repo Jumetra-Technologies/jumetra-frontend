@@ -28,6 +28,8 @@ export interface Starter {
 
 const SERVO: PinnedLibrary = { name: "Servo", version: "1.3.0" };
 const DHT: PinnedLibrary = { name: "DHT sensor library", version: "1.4.7" };
+/** DHT sensor library includes Adafruit_Sensor.h, so it can't build without this. */
+const ADAFRUIT_SENSOR: PinnedLibrary = { name: "Adafruit Unified Sensor", version: "1.1.15", dependency: true };
 
 export const BLANK_SKETCH = `void setup() {
   // Runs once when the board starts.
@@ -93,7 +95,7 @@ void loop() {
     title: "Temperature and humidity",
     does: "Reads a DHT11 every two seconds and prints the readings.",
     parts: ["dht11"],
-    libraries: [DHT],
+    libraries: [DHT, ADAFRUIT_SENSOR],
     code: `// Temperature and humidity: reads the DHT11 and prints what it measures.
 #include <DHT.h>
 

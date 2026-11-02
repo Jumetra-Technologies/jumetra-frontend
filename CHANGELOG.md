@@ -10,6 +10,27 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.25.0] - 2026-11-02
+
+Phase Two, Sprint 5: building the code, libraries, and error explanations. The desktop app is 0.5.0.
+
+### Added
+- **Build (BLD-01, BLD-05).** **Build** (Ctrl+B) compiles the sketch with Arduino CLI using the project's own `sketch.yaml` profile, so the board package and every library are the exact versions pinned there, on every computer. The first build downloads what's missing into Kiungo's own folder and needs the internet once; after that, builds work offline. Files are saved before a build starts, and each project builds in its own folder outside the project, so later builds are quick.
+- **Memory used (BLD-02).** After a build, two meters show how much of the board's program storage (flash) and variable memory (RAM) the program uses, against that board's real limits (32,256 and 2,048 bytes on the Uno).
+- **Problems on their line (EDT-05, ERR-01).** The compiler's errors appear under the code in **Code problems** and as red underlines on the line they belong to. Clicking a problem goes to its line. Warnings from the board package or libraries are left out: they aren't the sketch's to fix.
+- **Plain-words explanations (ERR-02)** for the mistakes people make most in their first sketches: a missing `;`, a name that isn't defined, wrong capital letters (`serial` for `Serial`), a missing library, a missing `}`, the wrong number of values for a function, an unclosed `"`, `setup()` or `loop()` written twice or missing, and a program too big for the board. Each one says what it means and what to do; the compiler's own words are one click away.
+- **Quick fixes with a preview (FIX-01)** for the ones Kiungo can be sure of: adding the missing `;` (skipping a trailing comment), fixing a name's capital letters or an obvious misspelling GCC suggests, closing an unclosed `"`, and closing a function that runs into the next. **Fix** shows the lines before and after; **Make this change** makes it as one undo step. Problems in a file edited since the build say so and offer no fix until the next build.
+- **Missing libraries in one click (FIX-02).** When a sketch includes a header Kiungo knows (`Servo.h`, `DHT.h`, `LiquidCrystal_I2C.h`, `Adafruit_SSD1306.h`, `NewPing.h` and 12 more), the problem has **Add Servo**: it pins the newest version, and the libraries it needs, in `sketch.yaml`, then builds again.
+- **Libraries (BLD-04).** The **Libraries** tab lists what the sketch pins, finds libraries in the Arduino library index that work on AVR boards, and adds or removes them. Arduino CLI writes `sketch.yaml` and pins the dependencies too (marked "needed by another library").
+- Backend (jumetra-backend #4, stacked on #3): `releases` and `release_files` tables, and `GET /releases/latest` for the download page and the app's update check. Publishing takes the release pipeline's token.
+
+### Fixed
+- **The temperature and humidity starter couldn't build.** DHT sensor library includes `Adafruit_Sensor.h`, but the starter didn't pin Adafruit Unified Sensor. New projects from the starter pin it (1.1.15). For a project made with 0.3.0 or 0.4.0, build it and click **Add Adafruit Unified Sensor**.
+
+### Notes
+- CI builds all seven starters for the Uno, Blink for the Mega, and a sketch with a mistake, using the real Arduino CLI on Windows, macOS and Linux.
+- **Run** still runs each board's built-in behavior in the lab. Running your own built program in the lab arrives in Sprint 7.
+
 ## [1.24.0] - 2026-11-02
 
 Phase Two, Sprint 4: signing in to the desktop app through the website, and the code editor. The desktop app is 0.4.0.
@@ -483,6 +504,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.25.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.24.0...v1.25.0
 [1.24.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.23.0...v1.24.0
 [1.23.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.22.0...v1.23.0
 [1.22.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.21.2...v1.22.0

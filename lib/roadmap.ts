@@ -103,6 +103,8 @@ export const PHASES: Phase[] = [
         items: [
           "Installable app for Windows, macOS and Linux, running the same lab as the website (v1.23)",
           "Projects kept as folders on the computer, saved as you work and safe from a forced quit (v1.23)",
+          "Sign in through the website, and a code editor beside the circuit (v1.24)",
+          "Build with pinned libraries, with compiler problems explained in plain words and fixed in one click (v1.25)",
           "Works offline; syncs when back online",
         ],
       },

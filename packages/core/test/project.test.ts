@@ -58,7 +58,10 @@ describe("starters (DSK-11)", () => {
 
   it("starters that need a library pin it", () => {
     expect(STARTERS.find((s) => s.id === "servo")?.libraries).toEqual([{ name: "Servo", version: "1.3.0" }]);
-    expect(STARTERS.find((s) => s.id === "dht11")?.libraries).toEqual([{ name: "DHT sensor library", version: "1.4.7" }]);
+    expect(STARTERS.find((s) => s.id === "dht11")?.libraries).toEqual([
+      { name: "DHT sensor library", version: "1.4.7" },
+      { name: "Adafruit Unified Sensor", version: "1.1.15", dependency: true },
+    ]);
   });
 });
 

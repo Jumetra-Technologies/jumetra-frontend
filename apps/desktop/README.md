@@ -41,6 +41,12 @@ Kiungo signs in through the website: **Sign in with your browser** opens `/deskt
 KIUNGO_API_URL=http://127.0.0.1:8000 npm run desktop
 ```
 
+## Building
+
+**Build** (Ctrl+B) runs `arduino-cli compile --profile kiungo` on the project's `sketch/` folder (`src/main/build/service.ts`). The profile in `sketch.yaml` pins the board package and the libraries, so a project builds the same everywhere; Arduino CLI downloads anything missing into Kiungo's own data folder the first time, so the first build needs the internet. Builds go in `<userData>/builds/<hash of the project path>`, never inside the project.
+
+The compiler's output is turned into problems, explanations and fixes by `@kiungo/core/build` (`packages/core/src/build/`), tested against real avr-gcc 7.3 messages in `packages/core/test/fixtures/gcc/`. Libraries are added and removed with `arduino-cli profile lib add|remove`, which also pins what they depend on.
+
 ## Keyboard
 
 | Keys | What |
@@ -50,6 +56,7 @@ KIUNGO_API_URL=http://127.0.0.1:8000 npm run desktop
 | Ctrl+O (⌘O) | Open a project folder |
 | Ctrl+Shift+H (⇧⌘H) | Home |
 | Ctrl+E (⌘E) | Show or hide the code |
+| Ctrl+B (⌘B) | Build |
 | Ctrl+F (⌘F) | Find, in the code |
 | Ctrl+Enter (⌘↵) | Run or stop, in the lab |
 | / | Search parts, in the lab |
@@ -70,6 +77,7 @@ Before a release build, CI runs `npm run fetch:arduino-cli -w @kiungo/desktop --
 | `src/main/index.ts` | Window, the `kiungo-app://` protocol (isolation headers and content policy), IPC handlers |
 | `src/main/projects/` | Projects on disk: making, opening, the recent list, crash-safe autosave, sketch files |
 | `src/main/auth/` | Signing in through the website, the keychain-encrypted session |
+| `src/main/build/` | Building a project with its profile, and its libraries |
 | `src/main/toolchain/arduino-cli.ts` | Finding and running Arduino CLI with JSON output |
 | `src/preload/index.ts` | The only bridge: `window.kiungo.invoke(channel, ...args)` |
 | `src/renderer/` | The interface: the sign-in screen, Home, the project screen (the shared lab from `@kiungo/lab` and the code editor), the command palette |

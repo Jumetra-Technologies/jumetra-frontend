@@ -16,7 +16,9 @@
     "./boards": "./src/boards/index.ts",
     "./hybrid/*": "./src/hybrid/*.ts",
     "./project": "./src/project/index.ts",
-    "./project/*": "./src/project/*.ts"
+    "./project/*": "./src/project/*.ts",
+    "./build": "./src/build/index.ts",
+    "./build/*": "./src/build/*.ts"
   },
   "dependencies": {
     "@xyflow/system": "0.0.80",

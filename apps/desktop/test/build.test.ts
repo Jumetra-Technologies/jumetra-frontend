@@ -1,0 +1,231 @@
+// @vitest-environment node
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { applyEdits, explain, libraryForHeader, quickFix } from "@kiungo/core/build";
+import { buildStarter, PROJECT_BOARDS, sketchProfile, STARTERS } from "@kiungo/core/project";
+import { BuildService, setupProblem } from "../src/main/build/service";
+import { runCli, type CliLocation, type RunResult } from "../src/main/toolchain/arduino-cli";
+
+const CLI: CliLocation = { binary: "/fake/arduino-cli", configFile: "/fake/arduino-cli.yaml" };
+let root: string;
+let project: string;
+let calls: string[][];
+
+function service(answer: (args: string[]) => RunResult | Promise<RunResult>, cli: CliLocation | null = CLI) {
+  return new BuildService({
+    cli: () => cli,
+    buildsDir: join(root, "builds"),
+    run: async (_cli, args) => {
+      calls.push(args);
+      return answer(args);
+    },
+  });
+}
+
+beforeEach(() => {
+  root = mkdtempSync(join(tmpdir(), "kiungo-build-"));
+  project = join(root, "Rover");
+  mkdirSync(join(project, "sketch"), { recursive: true });
+  writeFileSync(join(project, "sketch", "sketch.ino"), "void setup() {}\nvoid loop() {}\n");
+  writeFileSync(join(project, "sketch", "sketch.yaml"), sketchProfile(PROJECT_BOARDS[0], [{ name: "Servo", version: "1.3.0" }]));
+  calls = [];
+});
+afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+const ok = (json: object): RunResult => ({ code: 0, stdout: JSON.stringify(json), stderr: "" });
+
+describe("building a project (BLD-01, BLD-02, BLD-05)", () => {
+  it("builds with the sketch's own profile, in a build folder outside the project", async () => {
+    const builds = service((args) => {
+      writeFileSync(join(args[args.indexOf("--build-path") + 1], "sketch.ino.hex"), ":00000001FF\n");
+      return ok({
+        success: true,
+        compiler_out: "Sketch uses 924 bytes (2%) of program storage space.",
+        builder_result: { executable_sections_size: [{ name: "text", size: 924, max_size: 32256 }, { name: "data", size: 9, max_size: 2048 }] },
+      });
+    });
+    const result = await builds.compile(project);
+    expect(calls[0].slice(0, 3)).toEqual(["compile", "--profile", "kiungo"]);
+    expect(calls[0].at(-1)).toBe(join(project, "sketch"));
+    expect(calls[0][calls[0].indexOf("--build-path") + 1].startsWith(join(root, "builds"))).toBe(true);
+    expect(result).toMatchObject({ ok: true, diagnostics: [], hex: ":00000001FF\n", flash: { used: 924, max: 32256 }, ram: { used: 9, max: 2048 } });
+  });
+
+  it("maps the compiler's problems to the sketch", async () => {
+    const err = `${join(project, "sketch", "sketch.ino")}:4:1: error: expected ';' before '}' token`;
+    const result = await service(() => ({ code: 1, stdout: JSON.stringify({ success: false, compiler_err: err }), stderr: "" })).compile(project);
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics).toMatchObject([{ file: "sketch.ino", line: 4, column: 1 }]);
+    expect(result.message).toBeUndefined();
+  });
+
+  it("a build that never reached the compiler says why in plain words", async () => {
+    const result = await service(() => ({ code: 1, stdout: "", stderr: 'Error downloading platform arduino:avr@1.8.6: Get "https://downloads.arduino.cc/...": dial tcp: lookup downloads.arduino.cc: no such host' })).compile(project);
+    expect(result.message).toMatch(/needs the internet once/);
+  });
+
+  it("one build per project at a time", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const builds = service(async () => {
+      await gate;
+      return { code: 1, stdout: "{}", stderr: "" };
+    });
+    const a = builds.compile(project);
+    const b = builds.compile(project);
+    expect(b).toBe(a);
+    release();
+    await a;
+    expect(calls).toHaveLength(1);
+  });
+
+  it("without Arduino CLI or build settings, says so instead of failing", async () => {
+    expect((await service(() => ok({}), null).compile(project)).message).toMatch(/Arduino CLI isn't installed/);
+    rmSync(join(project, "sketch", "sketch.yaml"));
+    expect((await service(() => ok({})).compile(project)).message).toMatch(/no build settings/);
+  });
+
+  it("the same project always builds in the same folder", () => {
+    const builds = service(() => ok({}));
+    expect(builds.buildPath(project)).toBe(builds.buildPath(project));
+    expect(builds.buildPath(project)).not.toBe(builds.buildPath(join(root, "Other")));
+  });
+});
+
+describe("libraries (BLD-04)", () => {
+  it("lists what sketch.yaml pins", async () => {
+    expect(await service(() => ok({})).libraries(project)).toEqual([{ name: "Servo", version: "1.3.0", dependency: false }]);
+  });
+
+  it("search keeps libraries that work on AVR boards", async () => {
+    const result = await service(() =>
+      ok({
+        libraries: [
+          { name: "Servo", latest: { version: "1.3.0", sentence: "Allows Arduino boards to control servo motors", author: "Michael Margolis, Arduino", architectures: ["avr", "megaavr", "sam"] } },
+          { name: "ESP32Servo", latest: { version: "3.0.6", sentence: "For ESP32", author: "Kevin Harrington", architectures: ["esp32"] } },
+          { name: "NewPing", latest: { version: "1.9.7", sentence: "Ultrasonic sensors", author: "Tim Eckel", website: "https://bitbucket.org/teckel12/arduino-new-ping", architectures: ["*"] } },
+        ],
+      }),
+    ).search("servo");
+    expect(result).toEqual({
+      ok: true,
+      libraries: [
+        { name: "Servo", version: "1.3.0", sentence: "Allows Arduino boards to control servo motors", author: "Michael Margolis, Arduino", website: null },
+        { name: "NewPing", version: "1.9.7", sentence: "Ultrasonic sensors", author: "Tim Eckel", website: "https://bitbucket.org/teckel12/arduino-new-ping" },
+      ],
+    });
+    expect(calls[0]).toEqual(["lib", "search", "servo", "--omit-releases-details", "--format", "json"]);
+  });
+
+  it("adding goes through Arduino CLI, which pins the library and what it needs", async () => {
+    const yaml = join(project, "sketch", "sketch.yaml");
+    const result = await service((args) => {
+      if (args[0] === "profile") {
+        writeFileSync(yaml, readFileSync(yaml, "utf8").replace("      - Servo (1.3.0)\n", "      - Servo (1.3.0)\n      - DHT sensor library (1.4.7)\n      - dependency: Adafruit Unified Sensor (1.1.15)\n"));
+        return ok({ added_libraries: [{ index_library: { name: "DHT sensor library", version: "1.4.7" } }, { index_library: { name: "Adafruit Unified Sensor", version: "1.1.15" } }], profile_name: "kiungo" });
+      }
+      return ok({});
+    }).add(project, "DHT sensor library");
+    expect(calls.map((c) => c.slice(0, 4))).toEqual([
+      ["lib", "update-index"],
+      ["profile", "lib", "add", "DHT sensor library"],
+    ]);
+    expect(calls[1]).toEqual(expect.arrayContaining(["--profile", "kiungo", "--sketch-path", join(project, "sketch")]));
+    expect(result).toEqual({
+      ok: true,
+      added: ["DHT sensor library 1.4.7", "Adafruit Unified Sensor 1.1.15"],
+      libraries: [
+        { name: "Servo", version: "1.3.0", dependency: false },
+        { name: "DHT sensor library", version: "1.4.7", dependency: false },
+        { name: "Adafruit Unified Sensor", version: "1.1.15", dependency: true },
+      ],
+    });
+  });
+
+  it("a library that isn't in the index is named", async () => {
+    const result = await service((args) => (args[0] === "profile" ? { code: 1, stdout: "", stderr: "Error adding Nope: library not found" } : ok({}))).add(project, "Nope", "1.0.0");
+    expect(result).toEqual({ ok: false, message: "There's no library called “Nope” in the Arduino library index." });
+    expect(calls[1][3]).toBe("Nope@1.0.0");
+  });
+
+  it("offline, adding says it needs the internet", async () => {
+    const result = await service(() => ({ code: 1, stdout: "", stderr: "Error downloading index: dial tcp: i/o timeout" })).add(project, "Servo");
+    expect(result).toMatchObject({ ok: false, message: expect.stringMatching(/internet/) });
+  });
+
+  it("edits to sketch.yaml happen one at a time", async () => {
+    let inside = 0;
+    let most = 0;
+    const builds = service(async () => {
+      most = Math.max(most, ++inside);
+      await new Promise((r) => setTimeout(r, 5));
+      inside--;
+      return ok({});
+    });
+    await Promise.all([builds.add(project, "Servo"), builds.remove(project, "Servo"), builds.add(project, "Stepper")]);
+    expect(most).toBe(1);
+  });
+});
+
+describe("setupProblem", () => {
+  it("leaves alone what it doesn't recognize", () => {
+    expect(setupProblem("something else")).toBeNull();
+  });
+});
+
+// Runs where Arduino CLI is set up (CI's desktop matrix): real profile builds, which download what sketch.yaml pins.
+const realCli = process.env.KIUNGO_ARDUINO_CLI && process.env.KIUNGO_ARDUINO_CONFIG ? { binary: process.env.KIUNGO_ARDUINO_CLI, configFile: process.env.KIUNGO_ARDUINO_CONFIG } : null;
+describe.skipIf(!realCli)("building with the real Arduino CLI", () => {
+  const real = () => new BuildService({ cli: () => realCli, buildsDir: join(root, "builds"), run: runCli });
+  const make = (starter: string | null, board = PROJECT_BOARDS[0]) => {
+    const { code, libraries } = buildStarter({ name: "Test", board: board.part, starter });
+    writeFileSync(join(project, "sketch", "sketch.ino"), code);
+    writeFileSync(join(project, "sketch", "sketch.yaml"), sketchProfile(board, libraries));
+  };
+
+  for (const starter of STARTERS) {
+    it(`the ${starter.title} starter builds with what it pins`, async () => {
+      make(starter.id);
+      const result = await real().compile(project);
+      expect(result.message, result.log).toBeUndefined();
+      expect(result.ok, result.log).toBe(true);
+      expect(result.hex?.startsWith(":")).toBe(true);
+      expect(result.flash?.max).toBe(32256);
+      expect(result.ram?.max).toBe(2048);
+    }, 600_000);
+  }
+
+  it("Blink builds for the Mega with its own limits", async () => {
+    make("blink", PROJECT_BOARDS[1]);
+    const result = await real().compile(project);
+    expect(result.ok, result.log).toBe(true);
+    expect(result.flash?.max).toBe(253952);
+  }, 600_000);
+
+  it("a mistake comes back on its line, explained, with a fix that builds", async () => {
+    make("blink");
+    const file = join(project, "sketch", "sketch.ino");
+    const good = readFileSync(file, "utf8");
+    const broken = good.replace("pinMode(LED_PIN, OUTPUT);", "pinMode(LED_PIN, OUTPUT)");
+    writeFileSync(file, broken);
+    const builds = real();
+    const result = await builds.compile(project);
+    expect(result.ok).toBe(false);
+    const [problem] = result.diagnostics;
+    expect(problem).toMatchObject({ file: "sketch.ino", severity: "error" });
+    expect(explain(problem)?.id).toBe("missing-semicolon");
+    const fix = quickFix(problem, broken, result.diagnostics);
+    expect(applyEdits(broken, fix!.edits)).toBe(good);
+  }, 600_000);
+
+  it("a missing library is named by its header", async () => {
+    make("servo");
+    writeFileSync(join(project, "sketch", "sketch.yaml"), sketchProfile(PROJECT_BOARDS[0]));
+    const result = await real().compile(project);
+    const [problem] = result.diagnostics;
+    expect(explain(problem)).toMatchObject({ id: "missing-library", header: "Servo.h" });
+    expect(libraryForHeader("Servo.h")?.name).toBe("Servo");
+  }, 600_000);
+});

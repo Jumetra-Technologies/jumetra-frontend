@@ -119,8 +119,9 @@ export function LandingPage() {
 
         <Beat id="hybrid" heading={HYBRID.heading} body={HYBRID.body} last>
           <HybridSwitch />
-          <div className="mt-8">
-            <CallToAction href={HYBRID.cta.href} label={HYBRID.cta.label} primary={false} />
+          <div className="mt-8 flex flex-wrap gap-3">
+            <CallToAction href={HYBRID.cta.href} label={HYBRID.cta.label} />
+            <CallToAction href={HYBRID.secondary.href} label={HYBRID.secondary.label} primary={false} />
           </div>
         </Beat>
       </main>

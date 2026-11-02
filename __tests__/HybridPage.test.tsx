@@ -47,7 +47,7 @@ describe("HybridPanel", () => {
     expect(within(screen.getByRole("list", { name: "Parts" })).getAllByRole("listitem")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: /Create Hybrid Experiment/ }));
     expect(await screen.findByText("Ready to start")).toBeInTheDocument();
-    expect(api.createHybridExperiment).toHaveBeenCalledWith(expect.objectContaining({ component_ids: ["dht22", "led", "relay"], device_modes: { dht22: "virtual", led: "physical", relay: "simulated" } }));
+    expect(api.createHybridExperiment).toHaveBeenCalledWith(expect.objectContaining({ component_ids: ["dht22", "led", "relay"], device_modes: { dht22: "virtual", led: "physical", relay: "virtual" } }));
     expect(screen.getByText("DHT22")).toBeInTheDocument();
     expect(screen.getByText(/^LED\. Connect them/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Start/ }));

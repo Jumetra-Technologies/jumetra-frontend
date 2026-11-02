@@ -56,6 +56,7 @@ describe("landing copy", () => {
       LEARN.cta.href,
       LIBRARY.cta.href,
       HYBRID.cta.href,
+      HYBRID.secondary.href,
       ...FOOTER.columns.flatMap((column) => column.links.map((link) => link.href)),
     ];
     expect(hrefs.filter((href) => !routeExists(href))).toEqual([]);

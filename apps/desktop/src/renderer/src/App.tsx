@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import { Box, Code2, FilePlus2, FolderOpen, Grid2x2, House, LogIn, LogOut, Maximize, PanelRight, Play, Redo2, Search, Stethoscope, Undo2, UserRound, X, Zap } from "lucide-react";
-import type { OpenedProject, OpenResult, RecentProject } from "@kiungo/api";
+import type { OpenedProject, OpenResult, RecentProject, RemoteProject } from "@kiungo/api";
 import { AccountMenu } from "./account/AccountMenu";
 import { SignInScreen } from "./account/SignInScreen";
 import { useAuth } from "./account/useAuth";
 import { Foundations } from "./foundations/Foundations";
 import { Home } from "./home/Home";
+import { ImportDialog } from "./home/ImportDialog";
 import { NewProjectDialog } from "./home/NewProjectDialog";
 import { invoke, shortcut } from "./ipc";
 import { CommandPalette, type Command } from "./palette/CommandPalette";
@@ -26,6 +27,22 @@ export function App() {
   // The open lab's actions, kept in state (not a ref) so the palette's commands built during render may use them.
   const [lab, setLab] = useState<ProjectScreenHandle | null>(null);
   const openPath = screen.kind === "project" ? screen.project.path : null;
+  const [importOpen, setImportOpen] = useState(false);
+  const [syncOn, setSyncOn] = useState(false);
+  const [remote, setRemote] = useState<{ projects: RemoteProject[] | null; message: string | null }>({ projects: null, message: null });
+  const [downloading, setDownloading] = useState<string | null>(null);
+  const signedIn = auth?.status === "signed-in";
+  useEffect(() => {
+    void invoke("projects:settings").then((s) => setSyncOn(s.sync === true));
+  }, []);
+  // Projects on the account but not here, each time Home shows with sync on.
+  useEffect(() => {
+    if (screen.kind !== "home" || !signedIn || !syncOn) return;
+    void invoke("sync:remote").then(
+      (r) => setRemote(r.ok ? { projects: r.projects, message: null } : { projects: [], message: r.message }),
+      () => setRemote({ projects: [], message: "Your account couldn't be read." }),
+    );
+  }, [screen.kind, signedIn, syncOn]);
 
   const refreshRecent = useCallback(() => {
     void invoke("projects:recent").then(setRecent, () => setRecent([]));
@@ -162,6 +179,25 @@ export function App() {
           onForget={(p) => void invoke("projects:forget", p.path).then(setRecent)}
           onPalette={() => setPaletteOpen(true)}
           account={<AccountMenu state={auth} />}
+          onImportFile={() => void invoke("import:file").then(show)}
+          onImportAccount={signedIn ? () => setImportOpen(true) : undefined}
+          sync={
+            signedIn
+              ? {
+                  enabled: syncOn,
+                  onToggle: (enabled) => void invoke("sync:set-enabled", enabled).then((s) => setSyncOn(s.sync === true)),
+                  remote: remote.projects,
+                  message: remote.message,
+                  downloading,
+                  onDownload: (p) => {
+                    setDownloading(p.id);
+                    void invoke("sync:download", p.id)
+                      .then(show)
+                      .finally(() => setDownloading(null));
+                  },
+                }
+              : undefined
+          }
         />
       )}
       <NewProjectDialog
@@ -174,6 +210,16 @@ export function App() {
           void show({ ok: true, project });
         }}
       />
+      {importOpen ? (
+        <ImportDialog
+          open
+          onClose={() => setImportOpen(false)}
+          onOpened={(result) => {
+            setImportOpen(false);
+            void show(result);
+          }}
+        />
+      ) : null}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
     </>
   );

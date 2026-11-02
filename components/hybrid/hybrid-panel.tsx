@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
-import { AlertTriangle, ArrowRight, Box, Cpu, FlaskConical, Play, Plug, Search, SkipForward, Square, Waypoints } from "lucide-react";
+import { AlertTriangle, ArrowRight, Box, Cpu, FlaskConical, Play, Plug, Search, SkipForward, Square } from "lucide-react";
 import { AnimatedCircuitCanvas } from "@/components/laboratory/animated-circuit-canvas";
 import { Button } from "@kiungo/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,11 +10,14 @@ import { api } from "@/lib/api-client";
 import type { ComponentSearchHit, ControllerSpec, HybridExperiment } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-/** The four ways a part can take part in a hybrid experiment (the backend's HybridDeviceMode). */
+/**
+ * The ways a part can take part in a hybrid experiment. The external
+ * Simulator binding (Wokwi, Proteus) was dropped from Phase Two: two
+ * bindings, Virtual and Physical, with Hybrid as the mix of the two.
+ */
 export const MODES = [
   { id: "virtual", label: "Virtual", icon: Box, text: "A software model that gives readings and takes commands. No hardware needed." },
   { id: "physical", label: "Physical", icon: Plug, text: "A real part on a board connected to this computer, for example over USB." },
-  { id: "simulated", label: "Simulator", icon: Waypoints, text: "A part run by an external circuit simulator. Wokwi and Proteus are planned." },
   { id: "hybrid", label: "Hybrid", icon: Cpu, text: "Real and virtual together: a real reading feeds a virtual part, or the other way round." },
 ] as const;
 
@@ -60,7 +63,7 @@ export function HybridPanel({ controllers, componentHits }: { controllers: Contr
   const [name, setName] = useState("Hybrid Greenhouse");
   const [controllerId, setControllerId] = useState(controllers[0]?.controller_id ?? "esp32");
   const [selected, setSelected] = useState<string[]>(["dht22", "led", "relay"]);
-  const [modes, setModes] = useState<Record<string, ModeId>>({ dht22: "virtual", led: "physical", relay: "simulated" });
+  const [modes, setModes] = useState<Record<string, ModeId>>({ dht22: "virtual", led: "physical", relay: "virtual" });
   const [filter, setFilter] = useState("");
   const [experiment, setExperiment] = useState<HybridExperiment | null>(null);
   const [state, setState] = useState<Record<string, unknown> | null>(null);
@@ -121,12 +124,12 @@ export function HybridPanel({ controllers, componentHits }: { controllers: Contr
 
   return (
     <div className="space-y-8">
-      {/* The four modes */}
+      {/* The modes */}
       <section aria-labelledby="modes-heading">
         <h3 id="modes-heading" className="sr-only">
           Device modes
         </h3>
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <ul className="grid gap-3 sm:grid-cols-3">
           {MODES.map(({ id, label, icon: Icon, text }) => (
             <li key={id} className="flex gap-3 rounded-[14px] border border-border bg-surface p-4">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-primary/10 text-primary">
@@ -193,7 +196,7 @@ export function HybridPanel({ controllers, componentHits }: { controllers: Contr
             </div>
 
             <div>
-              <StepHeading n={2} title="Choose parts and how each one joins" hint="Tick a part, then say whether it is virtual, real, simulated or hybrid." />
+              <StepHeading n={2} title="Choose parts and how each one joins" hint="Tick a part, then say whether it is virtual, real or hybrid." />
               <label className="relative block">
                 <span className="sr-only">Filter parts</span>
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted" aria-hidden />

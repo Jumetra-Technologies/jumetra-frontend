@@ -10,6 +10,37 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.31.0] - 2026-11-02
+
+Phase Two, Sprint 11: the website companion, sync and import. The website is now the way into the desktop app. Phase One work comes across, and projects can sync between computers through the account. The desktop app is 0.11.0.
+
+### Added
+- **Download page** (`/download`).
+  - It reads the newest release from the backend's `/releases/latest` and offers the installer for the visitor's computer first: Windows, macOS (Apple silicon or Intel) or Linux.
+  - Every installer is listed with its size and SHA-512 checksum.
+  - It says what the app adds and what a computer needs.
+  - Before the first release, it says the app is in beta and points to the browser lab.
+  - The page refreshes its release every 5 minutes.
+- **Import Phase One work (DSK-15).** Home > **Import** takes either:
+  - a lab session file (`.kiungo.json`) saved from the website, or
+  - the lab sessions and projects on the signed-in account.
+
+  A lab session becomes a project with the same circuit and a blank sketch for its board. A website project becomes a blank project with its details in `records/about.md`. Importing the same thing again makes a second copy and says so (`kiungo.json` records `importedFrom`).
+- **Project sync (DSK-14)**, with jumetra-backend #7. It's off until the person turns it on, from Home > **On your account**.
+  - Projects sync about 30 seconds after edits settle, and when they close.
+  - On opening, changes from another computer are taken first.
+  - A file changed in both places keeps this computer's version, and saves the other beside it (a sketch's copy as `.txt`, so it isn't built).
+  - A chip by **Saved** shows the state and syncs on click.
+  - Home lists the account's projects that aren't on this computer, with **Bring to this computer**.
+  - Only a project's own files sync: never `.kiungo/`, the local undo history.
+
+### Changed
+- **Landing page:** the hybrid section leads to the desktop app, and the facts, footer and search-engine data mention it.
+- **Navigation:** the sidebar and footer gain **Desktop app**.
+- **Hybrid Hardware and the docs:** both show three device modes. The external Simulator binding is gone (Phase Two decision).
+- **Firmware** is marked as a Preview: building and uploading moved to the desktop app.
+- **Website lab:** gains a **Desktop app** link in its toolbar.
+
 ## [1.30.0] - 2026-11-02
 
 Phase Two, Sprint 10: Hybrid safety and readiness. Real outputs are always safe: Stop, the emergency stop and a dropped link all turn the board's outputs off. The lab checks the wiring before real current flows, and lists what to have on the desk. The desktop app is 0.10.0.
@@ -632,6 +663,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.31.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.30.0...v1.31.0
 [1.30.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.29.0...v1.30.0
 [1.29.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.28.0...v1.29.0
 [1.28.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.27.0...v1.28.0

@@ -45,7 +45,7 @@ export const HERO = {
   secondary: { label: "Take the learning path", href: "/learn" },
   /** Shown instead of the learning path to people who aren't signed in: opens Log in (Continue with Google). */
   login: { label: "Log in" },
-  facts: "Virtual Arduino Uno, ESP32, Raspberry Pi Pico and STM32 boards. Free for students, clubs and schools.",
+  facts: "Virtual Arduino Uno, ESP32, Raspberry Pi Pico and STM32 boards in your browser, and a desktop app for Windows, macOS and Linux. Free for students, clubs and schools.",
   boardHint: "An Arduino Uno R3, drawn to scale. Drag to turn it, or run Blink.",
 };
 
@@ -71,13 +71,14 @@ export const LIBRARY = {
 
 export const HYBRID = {
   heading: "Already have a board?\nPlug it in.",
-  body: `Most simulators stop where real hardware begins. Kiungo doesn't. Plug an Arduino or ESP32 into your computer and it joins the same experiment as your simulated parts. Switch any device between virtual, simulated and physical without rebuilding, so you move to real hardware one part at a time.`,
-  cta: { label: "See how hybrid works", href: "/docs/technical-guides/device-modes" },
+  body: `Most simulators stop where real hardware begins. Kiungo doesn't. In the desktop app, plug in an Arduino Uno and mark it Physical: your own code runs on it while the lab plays the parts you don't have yet, and the lab shows what the board drives. Switch any part between virtual and physical without rebuilding, so you move to real hardware one part at a time.`,
+  cta: { label: "Download the desktop app", href: "/download" },
+  secondary: { label: "See how hybrid works", href: "/docs/technical-guides/device-modes" },
 };
 
 export const FOOTER = {
   about:
-    "Kiungo (formerly HHIP) is a web platform for learning, simulating and building robotics and IoT projects. Students, technicians, instructors, clubs and schools use it to design circuits, test them with virtual Arduino, ESP32 and sensor components, document experiments and, when the real parts are on the bench, run physical and simulated hardware together. Kiungo is built by Kiungo Labs Technologies and is in its first phase: a web proof of concept ahead of a desktop application for offline work and direct device control.",
+    "Kiungo (formerly HHIP) is a web platform for learning, simulating and building robotics and IoT projects. Students, technicians, instructors, clubs and schools use it to design circuits, test them with virtual Arduino, ESP32 and sensor components, document experiments and, when the real parts are on the bench, run physical and simulated hardware together. Kiungo is built by Kiungo Labs Technologies. Its second phase adds a desktop application for Windows, macOS and Linux that runs your own code, works offline and talks to real boards directly.",
   columns: [
     {
       title: "Product",
@@ -88,6 +89,7 @@ export const FOOTER = {
         { label: "Experiment records", href: "/experiments" },
         { label: "Firmware", href: "/firmware" },
         { label: "Hybrid hardware", href: "/hybrid" },
+        { label: "Desktop app", href: "/download" },
       ],
     },
     {
@@ -123,7 +125,7 @@ export const FOOTER = {
   ],
   trademarks:
     "Arduino is a trademark of Arduino SA. ESP32 is a trademark of Espressif Systems. Raspberry Pi is a trademark of Raspberry Pi Ltd. STM32 is a trademark of STMicroelectronics. Kiungo is not affiliated with or endorsed by any of them.",
-  copyright: `© ${new Date().getFullYear()} Kiungo Labs Technologies. Kiungo is a Phase One proof of concept.`,
+  copyright: `© ${new Date().getFullYear()} Kiungo Labs Technologies.`,
 };
 
 /** Structured data for search engines (schema.org SoftwareApplication). */
@@ -134,7 +136,7 @@ export function structuredData(origin?: string) {
     name: "Kiungo",
     alternateName: ["HHIP", "Universal Hybrid Hardware Simulation System"],
     applicationCategory: "EducationalApplication",
-    operatingSystem: "Web browser",
+    operatingSystem: "Web browser, Windows, macOS, Linux",
     ...(origin ? { url: origin } : {}),
     description: SEO.description,
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -144,6 +146,7 @@ export function structuredData(origin?: string) {
       `${COUNTS.parts}-part component library with pinouts and specifications`,
       "Sensor, actuator and display simulation",
       "Hybrid experiments mixing physical and simulated hardware",
+      "Desktop app that runs your own Arduino code on an emulated or real board",
       `${COUNTS.modules}-module learning path`,
       "Experiment records and Markdown reports",
     ],

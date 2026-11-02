@@ -6,6 +6,7 @@
 import { spawn } from "node:child_process";
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell } from "electron";
 import { hostname } from "node:os";
+import { readFile, rm, stat } from "node:fs/promises";
 import { join, normalize, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { EMULATED_BOARDS, EXAMPLE_SKETCHES, INSTALLABLE_CORES, isInvokeChannel, type AuthState, type Handlers, type Platform } from "@kiungo/api";
@@ -22,6 +23,11 @@ import { BAUD_RATES, SerialMonitor } from "./hardware/serial";
 import { HybridService } from "./hybrid/service";
 import { HybridLink } from "./hybrid/link";
 import { HYBRID_BOARDS, parsePlan } from "@kiungo/core/hybrid/plan";
+import { AccountClient } from "./account/client";
+import { importFromAccount, importSessionText, listAccount } from "./account/import";
+import { SyncService } from "./sync/service";
+import { parseProjectMeta } from "@kiungo/core/project";
+import type { SyncStatus } from "@kiungo/api";
 import { createHash } from "node:crypto";
 import { compileSketch, installCore, locateCli, runCli, toolchainStatus, type CliLocation } from "./toolchain/arduino-cli";
 
@@ -171,6 +177,61 @@ const serialMonitor = () =>
     onData: (port, text) => mainWindow?.webContents.send("serial:data", { port, text }),
     onClosed: (port, message) => mainWindow?.webContents.send("serial:closed", { port, message }),
   }));
+let account: AccountClient | null = null;
+const accountClient = () => (account ??= new AccountClient({ apiBase: API_BASE, token: () => authService().token(), timeoutMs: 15_000 }));
+
+// ----- project sync (DSK-14) -----
+let syncer: SyncService | null = null;
+const syncService = () =>
+  (syncer ??= new SyncService({
+    account: accountClient(),
+    device: () => {
+      const auth = authService().current();
+      return auth.status === "signed-in" ? auth.deviceName : hostname();
+    },
+  }));
+const syncTimers = new Map<string, ReturnType<typeof setTimeout>>();
+/** How long after a save settles before it's sent: at most one sync every 30 s while editing. */
+const SYNC_AFTER_MS = 30_000;
+const sendSync = (projectPath: string, status: SyncStatus) => mainWindow?.webContents.send("sync:status", { projectPath, status });
+
+async function syncProject(path: string, mode: "open" | "push"): Promise<SyncStatus> {
+  const at = new Date().toISOString();
+  if (!(await projectService().settings()).sync) return { state: "off", at };
+  if (authService().current().status !== "signed-in") {
+    const status: SyncStatus = { state: "signed-out", at, message: "Sign in to sync projects with your account." };
+    sendSync(path, status);
+    return status;
+  }
+  const meta = mode === "open" ? await readFile(join(path, PROJECT_FILE), "utf8").then(parseProjectMeta).catch(() => null) : projectService().metaOf(path);
+  if (!meta) return { state: "error", at, message: "This project couldn't be read." };
+  sendSync(path, { state: "syncing", at });
+  const status = await syncService().sync(path, { id: meta.id, name: meta.name, board: meta.board }, mode);
+  sendSync(path, status);
+  return status;
+}
+
+function scheduleSync(path: string, delay = SYNC_AFTER_MS): void {
+  const pending = syncTimers.get(path);
+  if (pending) clearTimeout(pending);
+  syncTimers.set(
+    path,
+    setTimeout(() => {
+      syncTimers.delete(path);
+      if (projectService().isOpen(path)) void syncProject(path, "push");
+    }, delay),
+  );
+}
+
+/** Open a project folder, taking the account's newer changes first when sync is on. */
+async function openWithSync(path: string) {
+  const sync = await syncProject(path, "open").catch(() => null);
+  const result = await projectService().openFolder(path);
+  if (!result.ok) return result;
+  scheduleSync(result.project.path, 2_000);
+  return sync && sync.state !== "off" ? { ...result, project: { ...result.project, sync } } : result;
+}
+
 let hybrid: HybridService | null = null;
 const hybridService = (projectPath: string) => {
   // One work folder per project, so its build cache survives between runs.
@@ -222,18 +283,31 @@ const handlers: Handlers = {
   },
   "projects:open-recent": async (path) => {
     if (!isText(path) || !(await projectService().isRecent(path))) return { ok: false, message: "That project isn't in the recent list." };
-    return projectService().openFolder(path);
+    return openWithSync(path);
   },
   "projects:open-dialog": async () => {
     const folder = await chooseFolder({ title: "Open a Kiungo project", buttonLabel: "Open project", properties: ["openDirectory"] });
-    return folder ? projectService().openFolder(folder) : null;
+    return folder ? openWithSync(folder) : null;
   },
   "projects:save": (path, payload) => {
     if (!isText(path) || !payload || typeof payload !== "object") return { ok: false, message: "Refused: nothing to save." };
-    return projectService().save(path, payload);
+    return projectService()
+      .save(path, payload)
+      .then((result) => {
+        if (result.ok) scheduleSync(path);
+        return result;
+      });
   },
   "projects:close": async (path) => {
-    if (isText(path)) await projectService().close(path);
+    if (!isText(path)) return;
+    const pending = syncTimers.get(path);
+    await projectService().close(path);
+    // What changed since the last sync goes now, without holding up the close.
+    if (pending) {
+      clearTimeout(pending);
+      syncTimers.delete(path);
+      void syncProject(path, "open").catch(() => undefined);
+    }
   },
   "projects:forget": (path) => (isText(path) ? projectService().forget(path) : projectService().recent()),
   "projects:reveal": async (path) => {
@@ -327,6 +401,48 @@ const handlers: Handlers = {
   },
   "hybrid:stop": () => link?.stop(),
   "hybrid:emergency-stop": () => link?.emergencyStop(),
+  "sync:set-enabled": async (enabled) => {
+    const settings = await projectService().setSync(enabled === true);
+    return settings;
+  },
+  "sync:now": (path) => (openProject(path) ? syncProject(path, "push") : { state: "error", at: new Date().toISOString(), message: notOpen.message }),
+  "sync:remote": async () => {
+    try {
+      const here = await projectService().recentIds();
+      const projects = (await syncService().list()).filter((p) => !p.deleted && !here.has(p.id));
+      return { ok: true, projects: projects.map((p) => ({ id: p.id, name: p.name, board: p.board, updatedAt: p.updated_at, sizeBytes: p.size_bytes })) };
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : "Your account couldn't be read." };
+    }
+  },
+  "sync:download": async (id) => {
+    if (!isText(id) || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(id)) return { ok: false, message: "Refused: that isn't a project on your account." };
+    let folder: string | null = null;
+    try {
+      const remote = await syncService().remote(id);
+      if (!remote || remote.deleted) return { ok: false, message: "That project isn't on your account any more." };
+      folder = await projectService().newFolder(remote.name || "Project");
+      await syncService().download(id, folder);
+      return projectService().openFolder(folder);
+    } catch (error) {
+      if (folder) await rm(folder, { recursive: true, force: true }).catch(() => undefined);
+      return { ok: false, message: error instanceof Error ? error.message : "That project couldn't be brought here." };
+    }
+  },
+  "import:file": async () => {
+    const options: Electron.OpenDialogOptions = { title: "Import a lab session", buttonLabel: "Import", properties: ["openFile"], filters: [{ name: "Kiungo lab session", extensions: ["json"] }] };
+    const result = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options);
+    const file = result.canceled ? null : result.filePaths[0];
+    if (!file) return null;
+    const info = await stat(file).catch(() => null);
+    if (!info?.isFile() || info.size > 5 * 1024 * 1024) return { ok: false, message: "That file is too big to be a lab session." };
+    return importSessionText(projectService(), await readFile(file, "utf8"));
+  },
+  "import:account-list": () => listAccount(projectService(), accountClient()),
+  "import:account": (kind, id) => {
+    if ((kind !== "lab-session" && kind !== "phase-one-project") || !isText(id) || id.length > 64) return { ok: false, message: "Refused: that isn't something on your account." };
+    return importFromAccount(projectService(), accountClient(), kind, id);
+  },
   "world:read": (path) => (openProject(path) ? projectService().readWorld(path) : null),
   "world:write": (path, world) => (openProject(path) ? projectService().writeWorld(path, world) : notOpen),
   "projects:choose-folder": async () => {

@@ -108,6 +108,7 @@ export const PHASES: Phase[] = [
           "Run your own code on an emulated Uno, with sensors that answer it like the real parts (v1.27)",
           "Robots in a world: a two-wheel robot your code drives round a course, with physics (v1.28)",
           "Hybrid runs: your code on the real board, with the lab playing the parts you don't have (v1.29)",
+          "Safe real outputs: emergency stop, a watchdog on the board, wiring checks before a run, and a parts list (v1.30)",
           "Works offline; syncs when back online",
         ],
       },

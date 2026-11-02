@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Activity, AlertTriangle, Cable, ChevronDown, ChevronUp, CircleDot, Hammer, Play, Radio, ScrollText, SquareTerminal, Trash2, Waves, Wrench } from "lucide-react";
+import { Activity, AlertTriangle, Cable, ChevronDown, ChevronUp, CircleDot, Hammer, ListChecks, Play, Radio, ScrollText, SquareTerminal, Trash2, Waves, Wrench } from "lucide-react";
 import { frameAt } from "@kiungo/core/lab/simulate";
 import { getPinout } from "@kiungo/core/lab/pinout";
 import { HELP, runCommand, type TermLine, type TerminalApi } from "@kiungo/core/lab/terminal";
 import type { LogKind } from "@kiungo/core/lab/types";
 import { cn } from "@kiungo/ui/cn";
 import { FaultList } from "./FaultList";
+import { PartsPanel } from "./PartsPanel";
 import { useLabContext } from "./lab-context";
 
-export type DockTab = "terminal" | "activity" | "serial" | "signals" | "problems";
+export type DockTab = "terminal" | "activity" | "serial" | "signals" | "problems" | "parts";
 
 const KIND_META: Record<LogKind, { icon: typeof Activity; tone: string; label: string }> = {
   session: { icon: CircleDot, tone: "text-muted", label: "Session" },
@@ -268,6 +269,7 @@ export function LabDock({ tab, onTab, open, onOpen, height, onHeight, serial, on
     { id: "serial", label: "Serial", icon: Radio },
     { id: "signals", label: "Signals", icon: Waves },
     { id: "problems", label: "Problems", icon: AlertTriangle, count: problems },
+    { id: "parts", label: "Parts", icon: ListChecks },
   ];
 
   const startResize = (e: React.PointerEvent) => {
@@ -322,6 +324,7 @@ export function LabDock({ tab, onTab, open, onOpen, height, onHeight, serial, on
           {tab === "activity" ? <ActivityLog /> : null}
           {tab === "serial" ? <Serial lines={serial} onClear={onClearSerial} /> : null}
           {tab === "signals" ? <Signals /> : null}
+          {tab === "parts" ? <PartsPanel fileName={session.name} /> : null}
           {tab === "problems" ? (
             <div className="hhip-scroll h-full overflow-y-auto p-3">
               <FaultList faults={analysis.faults} />

@@ -69,6 +69,13 @@ After the upload, `src/main/hybrid/link.ts` keeps `arduino-cli monitor` open at 
 
 The interface's plan is checked in `parsePlan` before it reaches the generated header.
 
+Safety (sprint 10):
+
+- **STOP:** Stop sends STOP before the port closes; the emergency stop sends it twice and stops pinging.
+- **Board watchdog:** the runtime's watchdog runs on Timer0's compare-A interrupt. It turns every driven pin off when the link is quiet for 300 ms after a hello.
+- **Checks before a run:** `@kiungo/core/hybrid/safety` adds the real-board checks to the lab's problems through `ProgramDriver.faults`, and `blockingFaults` decides what stops Run.
+- **Parts tab:** `@kiungo/core/hybrid/readiness` gives the Parts tab its statuses and the bill of materials.
+
 ## Boards, uploads and the serial monitor
 
 Arduino CLI finds boards (`board list --watch`, kept running while the app is open), uploads (`upload --profile kiungo --fqbn … -p …`) and runs the serial monitor (`monitor -p … --config baudrate=…`), all as child processes (`src/main/hardware/`). The interface can only name a port that discovery has found, and only open the driver pages listed in `src/main/hardware/doctor.ts`. Board limits and pins are in `@kiungo/core/hardware/boards`; upload failures are matched to recovery steps in `@kiungo/core/hardware/upload`.

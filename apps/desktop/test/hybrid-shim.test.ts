@@ -18,7 +18,7 @@ import { describe, expect, it } from "vitest";
 
 import { AvrBoard } from "@kiungo/core/emulator";
 import { UNO } from "@kiungo/core/boards";
-import { LinkReader, encodeHello, encodeIn, encodePing, encodeSet } from "@kiungo/core/hybrid/protocol";
+import { LinkReader, PROTOCOL_VERSION, encodeHello, encodeIn, encodePing, encodeSet, encodeStop } from "@kiungo/core/hybrid/protocol";
 import { SPRINT_2_PLAN, type HybridPlan } from "@kiungo/core/hybrid/shim";
 import { hybridBindings, hybridValues, packDht } from "@kiungo/core/hybrid/plan";
 import { analyze } from "@kiungo/core/lab/circuit";
@@ -108,7 +108,7 @@ describe.skipIf(!tc)("the Hybrid shim on compiled code", { timeout: 180_000 }, (
     board.writeSerial(encodeHello());
     board.runMs(60); // the sketch polls the link once per loop(), and its loop is 50 ms
     expect(frames.map((f) => f.frame.type)).toEqual(["hello", "stats"]);
-    expect(frames[0].frame).toMatchObject({ protocol: 1, sensors: 8 });
+    expect(frames[0].frame).toMatchObject({ protocol: PROTOCOL_VERSION, sensors: 8 });
 
     // No value pushed yet: the virtual sensor reports no echo, like a real one with nothing in range.
     expect(lines.every((l) => l.text === "0")).toBe(true);
@@ -361,5 +361,89 @@ void loop() { digitalWrite(13, HIGH); analogWrite(5, 128); delay(100); digitalWr
     expect(outs).toContainEqual({ type: "out", levels: 0, driven: (1 << 13) | (1 << 5), pwm: [] });
     // The sketch's own timing holds: pin 13 rises every 200 ms.
     for (let i = 1; i < edges.length; i++) expect(edges[i] - edges[i - 1]).toBeCloseTo(200, -1);
+  });
+});
+
+describe.skipIf(!tc)("safety on the board (sprint 10: SAF-01, SAF-02)", { timeout: 180_000 }, () => {
+  const toolchain = tc as DirectToolchain;
+  /** A motor sketch: pin 13 on and pin 9 at PWM 200, rewritten every second, with a button read from the lab on pin 7. */
+  const MOTOR = `void setup() { pinMode(13, OUTPUT); pinMode(9, OUTPUT); pinMode(7, INPUT); Serial.begin(9600); }
+void loop() { digitalWrite(13, HIGH); analogWrite(9, 200); Serial.println(digitalRead(7)); delay(1000); }`;
+  const plan: HybridPlan = { board: "arduino:avr:uno", sensors: [{ id: 0, part: "button", pins: [7] }] };
+  let hex = "";
+  const motor = () => {
+    if (!hex) {
+      const result = compileHybridDirect(toolchain, { sketchDir: sketchDir("Motor", MOTOR), buildPath: build("motor"), plan, resources });
+      expect(result.ok, result.log).toBe(true);
+      hex = result.hex!;
+    }
+    return runner(hex);
+  };
+  /** Whether a pin stays low for the whole of `ms` (a PWM pin that still pulses would go high). */
+  const staysLow = (board: ReturnType<typeof runner>["board"], pin: number, ms: number) => {
+    let high = board.level(pin) === "high";
+    const stop = board.onPinChange((c) => c.pin === pin && c.level === "high" && (high = true));
+    board.runMs(ms);
+    stop();
+    return !high;
+  };
+  /** Ping every 100 ms for `ms`, as the PC does while it listens. */
+  const pinging = (board: ReturnType<typeof runner>["board"], ms: number) => {
+    for (let t = 0; t < ms; t += 100) {
+      board.writeSerial(encodePing(t / 100));
+      board.runMs(100);
+    }
+  };
+
+  it("the emergency stop takes every driven pin low at once, even inside delay(), and holds it", () => {
+    const { board, frames } = motor();
+    board.runMs(100);
+    board.writeSerial(encodeHello());
+    pinging(board, 300);
+    expect(board.level(13)).toBe("high");
+    const at = board.timeMs;
+    board.writeSerial(encodeStop("emergency"));
+    board.runMs(5);
+    expect(board.level(13)).toBe("low");
+    expect(staysLow(board, 9, 5)).toBe(true);
+    expect(frames.filter((f) => f.at > at).map((f) => f.frame)).toContainEqual({ type: "safe", reason: "emergency" });
+    // The sketch keeps running and writing HIGH, but the pins stay low, after a new hello too.
+    board.writeSerial(encodeHello());
+    expect(staysLow(board, 13, 2500)).toBe(true);
+    expect(staysLow(board, 9, 10)).toBe(true);
+  });
+
+  it("when the link goes quiet the watchdog makes the outputs safe within 500 ms, and a new hello lets the sketch drive again", () => {
+    const { board, frames, lines } = motor();
+    board.runMs(100);
+    board.writeSerial(encodeHello());
+    board.writeSerial(encodeSet(0, 1));
+    pinging(board, 1200);
+    expect(board.level(13)).toBe("high");
+    expect(lines.at(-1)?.text).toBe("1");
+    // The PC goes away (the app closed, the cable to the PC pulled while the board has its own power).
+    const quiet = board.timeMs;
+    let lowAt = -1;
+    const stop = board.onPinChange((c) => c.pin === 13 && c.level === "low" && lowAt < 0 && (lowAt = board.timeMs));
+    board.runMs(600);
+    stop();
+    expect(lowAt).toBeGreaterThan(quiet);
+    expect(lowAt - quiet).toBeLessThan(500);
+    console.log(`watchdog: outputs safe ${Math.round(lowAt - quiet)} ms after the link went quiet`);
+    expect(staysLow(board, 9, 10)).toBe(true);
+    expect(frames.filter((f) => f.at > quiet).map((f) => f.frame)).toContainEqual({ type: "safe", reason: "link-lost" });
+    // The lab's value is gone too: the virtual button reads LOW again (its fallback).
+    board.runMs(1000);
+    expect(lines.at(-1)?.text).toBe("0");
+    // The PC is back.
+    board.writeSerial(encodeHello());
+    pinging(board, 1100);
+    expect(board.level(13)).toBe("high");
+  });
+
+  it("before the PC says hello there's no watchdog: a board on its own runs its sketch", () => {
+    const { board } = motor();
+    board.runMs(2500);
+    expect(board.level(13)).toBe("high");
   });
 });

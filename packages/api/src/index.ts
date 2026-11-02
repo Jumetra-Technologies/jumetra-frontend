@@ -16,6 +16,7 @@ import type { UploadProblem } from "@kiungo/core/hardware/upload";
 import type { DetectedBoard } from "@kiungo/core/hardware/usb";
 import type { WorldSpec } from "@kiungo/core/world/types";
 import type { HybridPlan } from "@kiungo/core/hybrid/shim";
+import type { SafeReason } from "@kiungo/core/hybrid/protocol";
 
 export type Platform = "win32" | "linux" | "darwin";
 
@@ -286,7 +287,10 @@ export interface InvokeMap {
   "hybrid:set": { args: [pairs: Array<[number, number]>]; result: void };
   /** Text for the sketch's Serial.read(), as typed in the serial monitor. */
   "hybrid:serial-in": { args: [text: string]; result: boolean };
+  /** End the run: the board's outputs go to the safe state, then the link closes. */
   "hybrid:stop": { args: []; result: void };
+  /** Every output of the real board off at once, and held off until the next upload (SAF-01). */
+  "hybrid:emergency-stop": { args: []; result: void };
   /** The open project's world (world.json), or null when it has none. */
   "world:read": { args: [projectPath: string]; result: WorldSpec | null };
   /** Save the open project's world. */
@@ -311,6 +315,8 @@ export interface HybridLinkEvent {
   /** Pin levels as bits (bit n is pin n), the pins the sketch has written, and the PWM duty (0 to 255) on PWM pins. */
   out?: { levels: number; driven: number; pwm: Array<[number, number]> };
   hello?: { protocol: number; compatible: boolean };
+  /** The board's outputs are in the safe state, and why. */
+  safe?: SafeReason;
   closed?: string | null;
 }
 
@@ -366,6 +372,7 @@ export const INVOKE_CHANNELS = [
   "hybrid:set",
   "hybrid:serial-in",
   "hybrid:stop",
+  "hybrid:emergency-stop",
   "world:read",
   "world:write",
 ] as const satisfies readonly InvokeChannel[];

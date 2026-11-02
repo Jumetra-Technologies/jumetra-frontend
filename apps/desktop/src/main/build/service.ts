@@ -131,12 +131,12 @@ export class BuildService {
   }
 
   /** Build a sketch folder that isn't a project's own (the Hybrid copy), in a build folder beside it. */
-  async compileFolder(sketchDir: string, fqbn: string): Promise<{ result: BuildResult; buildPath: string }> {
+  async compileFolder(sketchDir: string, fqbn: string, buildProperties: string[] = []): Promise<{ result: BuildResult; buildPath: string }> {
     const buildPath = join(sketchDir, "..", "build");
-    return { result: await this.compileAt(sketchDir, buildPath, fqbn), buildPath };
+    return { result: await this.compileAt(sketchDir, buildPath, fqbn, buildProperties), buildPath };
   }
 
-  private async compileAt(sketchDir: string, buildPath: string, fqbn?: string): Promise<BuildResult> {
+  private async compileAt(sketchDir: string, buildPath: string, fqbn?: string, buildProperties: string[] = []): Promise<BuildResult> {
     const cli = this.options.cli();
     const started = this.now();
     const elapsed = () => Math.round(this.now() - started);
@@ -150,7 +150,7 @@ export class BuildService {
     const cached = await this.cached(buildPath, fingerprint);
     if (cached) return { ...cached, durationMs: elapsed(), cached: true };
     // A first build may download the board package and libraries: allow it time.
-    const raw = await this.options.run(cli, ["compile", "--profile", PROFILE, ...(fqbn ? ["--fqbn", fqbn] : []), "--build-path", buildPath, "--format", "json", sketchDir], 900_000);
+    const raw = await this.options.run(cli, ["compile", "--profile", PROFILE, ...(fqbn ? ["--fqbn", fqbn] : []), ...buildProperties.flatMap((p) => ["--build-property", p]), "--build-path", buildPath, "--format", "json", sketchDir], 900_000);
     const json = parseJson<CompileJson>(raw.stdout);
     const sections = json?.builder_result?.executable_sections_size ?? [];
     const text = sections.find((s) => s.name === "text");

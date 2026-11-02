@@ -30,6 +30,8 @@ Phase Two, Sprint 9: Hybrid runs. Mark the board Physical and Run puts your own 
 - The Hybrid runtime reports what the sketch drives (`digitalWrite`, `analogWrite`) in a new OUT frame. It sends that frame whenever the serial port has room, so it never slows the sketch.
 - The Inspector's note under **Mode** says what Run does with each mode in the desktop app.
 - The desktop installer now ships the Hybrid runtime and adapter libraries.
+- The Hybrid link starts before `setup()`, so a sketch that never calls `Serial.begin` (Blink) still talks to Kiungo. The sketch's `Serial.begin` and `Serial.end` leave the link alone.
+- With Arduino CLI, the shim is forced into every C++ file of a Hybrid build (`compiler.cpp.extra_flags`), so the runtime and the adapters get the virtual pins.
 
 ### Not yet
 - Hybrid runs work on the Uno and the Nano; the Mega and ESP32 come later.

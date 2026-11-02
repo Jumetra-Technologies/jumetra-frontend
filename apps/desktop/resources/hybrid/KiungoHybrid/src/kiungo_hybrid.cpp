@@ -239,6 +239,17 @@ void kiungo_analogWrite(uint8_t pin, int value) {
   flushOut(false);
 }
 
+// The Arduino core calls initVariant() after init() and before setup(): the
+// link starts here, so a sketch that never calls Serial.begin (Blink) still
+// talks to Kiungo.
+static bool linkStarted = false;
+static void startLink() {
+  if (linkStarted) return;
+  LINK.begin(KIUNGO_LINK_BAUD);
+  linkStarted = true;
+}
+void initVariant() { startLink(); }
+
 // ----- pin functions -----
 int kiungo_digitalRead(uint8_t pin) {
   int8_t s = kiungo_sensor_for_pin(pin);
@@ -275,9 +286,11 @@ unsigned long kiungo_pulseInLong(uint8_t pin, uint8_t state, unsigned long timeo
 // ----- the user's Serial -----
 KiungoSerial kiungoSerial;
 
-void KiungoSerial::begin(unsigned long) { LINK.begin(KIUNGO_LINK_BAUD); }
-void KiungoSerial::begin(unsigned long, uint8_t) { LINK.begin(KIUNGO_LINK_BAUD); }
-void KiungoSerial::end() { flush(); LINK.end(); }
+// The link is already running (initVariant): the sketch's baud rate doesn't apply to it.
+void KiungoSerial::begin(unsigned long) { startLink(); }
+void KiungoSerial::begin(unsigned long, uint8_t) { startLink(); }
+// The link stays open: Kiungo needs it after the sketch is done with Serial.
+void KiungoSerial::end() { flush(); }
 
 int KiungoSerial::available() {
   kiungo_poll();

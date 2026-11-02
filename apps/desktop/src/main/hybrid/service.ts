@@ -52,6 +52,11 @@ export function shimmedSource(name: string, source: string): string {
   return `#include <kiungo_hybrid_marker.h>\n#include "kiungo_shim.h"\n#line 1 "${name}"\n${source}`;
 }
 
+/** The build property that forces the shim into every C++ compile. */
+export function hybridFlags(shimPath: string): string {
+  return `compiler.cpp.extra_flags=-include "${shimPath}"`;
+}
+
 export interface HybridBuild {
   /** The Hybrid build's result, with what the Kiungo layer adds. */
   build: BuildResult;
@@ -91,7 +96,9 @@ export class HybridService {
     const replaced = shim.adapters.flatMap((a) => REPLACED[a] ?? []);
     const original = await readFile(join(sketchDir, SKETCH_PROFILE_FILE), "utf8").catch(() => "");
     await writeFile(join(copy, SKETCH_PROFILE_FILE), hybridProfile(original, board.fqbn, libraries, replaced));
-    const hybrid = await this.builds.compileFolder(copy, board.fqbn);
+    // The shim goes into every C++ file, the runtime and adapters included: they need its pin table.
+    // The core's own files skip it (no marker on their include path).
+    const hybrid = await this.builds.compileFolder(copy, board.fqbn, [hybridFlags(join(copy, "kiungo_shim.h"))]);
     // Problems in the copy are the sketch's: its file names are the same, its lines are put back by #line.
     const build: BuildResult = { ...hybrid.result, diagnostics: hybrid.result.diagnostics.map((d) => (d.file === "kiungo_shim.h" ? { ...d, file: null } : d)) };
     if (build.ok && ship.flash && build.flash && ship.ram && build.ram) {

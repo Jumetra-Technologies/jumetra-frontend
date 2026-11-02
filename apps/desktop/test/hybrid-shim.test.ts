@@ -334,6 +334,19 @@ describe.skipIf(!tc)("Hybrid runs of the starters (sprint 9)", { timeout: 180_00
     expect(lines.map((l) => l.text)).toContain("Temperature: 23.40 C, humidity: 55.00 %");
   });
 
+  it("a sketch that never calls Serial.begin still answers the link (Blink)", () => {
+    const dir = sketchDir("Quiet", `void setup() { pinMode(13, OUTPUT); }
+void loop() { digitalWrite(13, HIGH); delay(100); digitalWrite(13, LOW); delay(100); }`);
+    const result = compileHybridDirect(toolchain, { sketchDir: dir, buildPath: build("quiet"), plan: { board: "arduino:avr:uno", sensors: [] }, resources });
+    expect(result.ok, result.log).toBe(true);
+    const { board, frames } = runner(result.hex!);
+    board.runMs(50);
+    board.writeSerial(encodeHello());
+    board.runMs(300);
+    expect(frames.map((f) => f.frame.type)).toContain("hello");
+    expect(frames.map((f) => f.frame.type)).toContain("out");
+  });
+
   it("the outputs the sketch drives come back as OUT frames, without slowing it (OUT-01)", () => {
     const dir = sketchDir("Outs", `void setup() { pinMode(13, OUTPUT); pinMode(5, OUTPUT); Serial.begin(9600); }
 void loop() { digitalWrite(13, HIGH); analogWrite(5, 128); delay(100); digitalWrite(13, LOW); analogWrite(5, 0); delay(100); }`);

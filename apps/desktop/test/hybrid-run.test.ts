@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { cobsDecode, cobsEncode } from "@kiungo/core/hybrid/cobs";
 import { Frame, PROTOCOL_VERSION } from "@kiungo/core/hybrid/protocol";
 import { HybridLink, type LinkEvent } from "../src/main/hybrid/link";
-import { hybridProfile, shimmedSource } from "../src/main/hybrid/service";
+import { hybridFlags, hybridProfile, shimmedSource } from "../src/main/hybrid/service";
 import type { CliLocation } from "../src/main/toolchain/arduino-cli";
 
 const CLI: CliLocation = { binary: "/fake/arduino-cli", configFile: "/fake/arduino-cli.yaml" };
@@ -140,6 +140,10 @@ describe("the Hybrid link to a real board (INJ-03, INJ-04, OUT-01)", () => {
 describe("the Hybrid copy of a sketch (INJ-01, INJ-05)", () => {
   it("each sketch file gets the marker and the shim, and keeps its line numbers", () => {
     expect(shimmedSource("sketch.ino", "void setup() {}\n").split("\n")).toEqual(['#include <kiungo_hybrid_marker.h>', '#include "kiungo_shim.h"', '#line 1 "sketch.ino"', "void setup() {}", ""]);
+  });
+
+  it("forces the shim into every C++ file, so the runtime and adapters get the pin table", () => {
+    expect(hybridFlags("/u/My Projects/x/kiungo_shim.h")).toBe('compiler.cpp.extra_flags=-include "/u/My Projects/x/kiungo_shim.h"');
   });
 
   it("the profile keeps the board package and libraries, swaps the replaced ones, and adds Kiungo's", () => {

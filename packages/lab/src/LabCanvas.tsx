@@ -225,6 +225,10 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
         connectionMode={ConnectionMode.Loose}
         elevateNodesOnSelect={false}
         connectionRadius={22}
+        // While the canvas pans or zooms it moves as one layer, so the parts aren't redrawn every
+        // frame (DSK-21); the attribute goes when it stops, so the parts redraw sharp at the new zoom.
+        onMoveStart={() => wrapper.current?.setAttribute("data-moving", "")}
+        onMoveEnd={() => wrapper.current?.removeAttribute("data-moving")}
         onNodeDragStop={(_, node, dragged) => {
           for (const n of dragged?.length ? dragged : [node]) moveNode(n.id, n.position.x, n.position.y);
         }}

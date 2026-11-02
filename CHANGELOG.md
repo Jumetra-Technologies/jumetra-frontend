@@ -10,6 +10,24 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.23.0] - 2026-11-02
+
+Phase Two, Sprint 3: the desktop app's Home, projects on disk and the lab. The website works as before. The desktop app is 0.3.0.
+
+### Added
+- **Home (DSK-10).** The desktop app opens on your projects and nothing else: each one with a drawing of its circuit, its board and when it was last opened, plus **New project** and **Open folder**. A project that was moved or deleted says so and can be removed from the list; the folder is never touched. With no projects yet, Home offers four starters.
+- **New project (DSK-11)** from blank or a starter, for the Arduino Uno or the Mega 2560: Blink, servo sweep, temperature and humidity (DHT11), distance (HC-SR04), motion alarm, relay switch and night light. The lab's auto-wire places and wires the parts, and the sketch is written from that wiring, so the pins in the code are the pins the wires go to on that board.
+- **Projects are folders in an open format (PRJ-01, DSK-12)**, in Documents/Kiungo unless you choose another folder: `kiungo.json` (the project), `circuit.json` (the build, in the same format as the website's `.kiungo.json` export), `sketch/sketch.ino` and `sketch/sketch.yaml` (an Arduino CLI profile pinning the board package and any libraries), `records/`, and `.kiungo/history.json` for undo.
+- **Autosave that survives a forced quit (EDT-04, DSK-13).** Every change reaches the project folder within about 50 ms. Files are written to a temporary file, flushed to the disk and renamed over the old one, so a crash or a power cut leaves the old file or the new one, never half of one. Undo and redo come back after a restart. A test kills a writing process mid-write and checks the file is whole every time.
+- **The lab in the desktop app (DSK-20):** the website's Engineering Lab, unchanged: parts, wiring, breadboards, auto-wire, the circuit check, and the 3D, 2D and Trace views. The top bar has Home and a project menu (Rename, Show in folder, Open a build file, Export the build, Close project).
+- **Light and dark follow the system; a command palette (DSK-82).** Ctrl+K (⌘K on macOS) finds every command and recent project. Ctrl+N makes a project, Ctrl+O opens a folder, Ctrl+Shift+H goes Home. The Sprint 1 Foundations check stays as **Check the toolchain and emulator** in the palette.
+- **`npm run measure-lab -w @kiungo/desktop`** (DSK-21) makes a 40-part, 200-wire project, opens it in the built app, drags the canvas and reports frames per second. Run it on the reference PC; the cloud workspace has no graphics card.
+
+### Changed
+- **The Engineering Lab is shared code.** The lab interface moved from the website into `@kiungo/lab`, and the controls it uses (button, menu, segmented control, skeleton, the Kiungo mark) and the theme CSS into `@kiungo/ui`. The website's `EngineeringLab` adds what only the website has: sessions per account, the project link, Kiungo online and links to the Component library. Pure session helpers moved to `@kiungo/core/lab/session`; the MCP server uses them from there.
+- **Panning stays smooth with big builds.** While the canvas pans or zooms it moves as one layer and the parts aren't redrawn every frame; they redraw sharp when it stops. With 40 parts and 200 wires on a machine with no graphics card, panning in 2D went from 25 to 41 frames per second.
+- The checks for spelling, focus rings, brand words and developer details now cover the packages and the desktop app as well as the website.
+
 ## [1.22.0] - 2026-10-29
 
 Phase Two, Sprint 2: the hybrid spike (issues #57 to #61). The website is unchanged. The desktop app is 0.2.0.
@@ -446,6 +464,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.23.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.22.0...v1.23.0
 [1.22.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.21.2...v1.22.0
 [1.21.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.21.1...v1.21.2
 [1.21.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.21.0...v1.21.1

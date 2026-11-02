@@ -1,232 +1,161 @@
-import { useEffect, useState } from "react";
-import type { AppInfo, CompileResult, InstallResult, StartupMetrics, ToolchainStatus } from "@kiungo/api";
-import markUrl from "@kiungo/ui/assets/kiungo-mark.svg";
-import blinkHex from "./assets/blink-uno.hex?raw";
-import { UnoBoard } from "./UnoBoard";
-import { useEmulator } from "./useEmulator";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
+import { Box, FilePlus2, FolderOpen, Grid2x2, House, Maximize, PanelRight, Play, Redo2, Search, Stethoscope, Undo2, X, Zap } from "lucide-react";
+import type { OpenedProject, OpenResult, RecentProject } from "@kiungo/api";
+import type { LabWorkspaceHandle } from "@kiungo/lab/LabWorkspace";
+import { Foundations } from "./foundations/Foundations";
+import { Home } from "./home/Home";
+import { NewProjectDialog } from "./home/NewProjectDialog";
+import { invoke, shortcut } from "./ipc";
+import { CommandPalette, type Command } from "./palette/CommandPalette";
+import { ProjectScreen } from "./project/ProjectScreen";
+import { useSystemTheme } from "./theme";
 
-type Program = { label: string; hex: string; origin: "bundled" | "compiled" };
-
-const BUNDLED: Program = { label: "Blink (compiled ahead, bundled)", hex: blinkHex, origin: "bundled" };
-
-function fmtMs(ms: number) {
-  const s = ms / 1000;
-  return s < 60 ? `${s.toFixed(1)} s` : `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`;
-}
-
-function Meter({ label, used, max }: { label: string; used: number; max: number }) {
-  const pct = Math.min(100, (used / max) * 100);
-  return (
-    <div className="meter">
-      <div className="meter-head">
-        <span>{label}</span>
-        <span className="num">
-          {used.toLocaleString("en-US")} of {max.toLocaleString("en-US")} bytes
-        </span>
-      </div>
-      <div className="meter-track" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={used}>
-        <div className="meter-fill" style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function Check({ ok, children }: { ok: boolean | null; children: React.ReactNode }) {
-  return (
-    <li className="check">
-      <span className={`dot ${ok === null ? "wait" : ok ? "ok" : "bad"}`} aria-hidden />
-      <span>{children}</span>
-    </li>
-  );
-}
+type Screen = { kind: "home" } | { kind: "project"; project: OpenedProject } | { kind: "foundations" };
 
 export function App() {
-  const { state, levels, load, start, stop } = useEmulator([13]);
-  const [program, setProgram] = useState<Program>(BUNDLED);
-  const [info, setInfo] = useState<AppInfo | null>(null);
-  const [metrics, setMetrics] = useState<StartupMetrics | null>(null);
-  const [toolchain, setToolchain] = useState<ToolchainStatus | null>(null);
-  const [compile, setCompile] = useState<CompileResult | null>(null);
-  const [compiling, setCompiling] = useState(false);
-  const [installing, setInstalling] = useState(false);
-  const [install, setInstall] = useState<InstallResult | null>(null);
-  const isolated = self.crossOriginIsolated;
+  useSystemTheme();
+  const [screen, setScreen] = useState<Screen>({ kind: "home" });
+  const [recent, setRecent] = useState<RecentProject[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [newOpen, setNewOpen] = useState<{ starter: string | null } | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  // The open lab's actions, kept in state (not a ref) so the palette's commands built during render may use them.
+  const [lab, setLab] = useState<LabWorkspaceHandle | null>(null);
+  const openPath = screen.kind === "project" ? screen.project.path : null;
 
-  useEffect(() => {
-    void window.kiungo.invoke("app:info").then(setInfo);
-    void window.kiungo.invoke("toolchain:status").then(setToolchain);
-    const t = setTimeout(() => void window.kiungo.invoke("app:metrics").then(setMetrics), 1500);
-    return () => clearTimeout(t);
+  const refreshRecent = useCallback(() => {
+    void invoke("projects:recent").then(setRecent, () => setRecent([]));
   }, []);
+  useEffect(() => {
+    if (screen.kind === "home") refreshRecent();
+  }, [screen.kind, refreshRecent]);
 
-  useEffect(() => load(program.hex, "uno"), [program, load]);
+  /** Leave the open project: its last changes are saved before it's let go. */
+  const closeOpen = useCallback(async () => {
+    if (!openPath) return;
+    // Unmount the project now: it sends its last change as it goes, before the close below.
+    flushSync(() => setScreen({ kind: "home" }));
+    await invoke("projects:close", openPath);
+  }, [openPath]);
 
-  const compileBlink = async () => {
-    setCompiling(true);
-    setCompile(null);
-    try {
-      const result = await window.kiungo.invoke("toolchain:compile-example", "Blink", "uno");
-      setCompile(result);
-      if (result.ok && result.hex) setProgram({ label: "Blink (compiled on this computer)", hex: result.hex, origin: "compiled" });
-    } finally {
-      setCompiling(false);
+  const show = useCallback(
+    async (result: OpenResult | null) => {
+      if (!result) return;
+      if (!result.ok) {
+        await closeOpen();
+        setError(result.message);
+        refreshRecent();
+        return;
+      }
+      if (result.project.path === openPath) return;
+      await closeOpen();
+      setError(null);
+      setScreen({ kind: "project", project: result.project });
+    },
+    [closeOpen, openPath, refreshRecent],
+  );
+
+  const goHome = useCallback(() => {
+    setError(null);
+    void closeOpen();
+    setScreen({ kind: "home" });
+  }, [closeOpen]);
+  const openFolder = useCallback(() => void invoke("projects:open-dialog").then(show), [show]);
+  const openRecent = useCallback((p: RecentProject) => void invoke("projects:open-recent", p.path).then(show), [show]);
+  const newProject = useCallback((starter: string | null = null) => setNewOpen({ starter }), []);
+
+  // Shortcuts that work everywhere. The lab adds its own (⌘Z, ⌘↵, /, 1–3).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (key === "k") {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      } else if (key === "n" && !e.shiftKey) {
+        e.preventDefault();
+        newProject();
+      } else if (key === "o" && !e.shiftKey) {
+        e.preventDefault();
+        openFolder();
+      } else if (key === "h" && e.shiftKey) {
+        e.preventDefault();
+        goHome();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [newProject, openFolder, goHome]);
+
+  // The palette lists recent projects too, so it needs the list on every screen.
+  useEffect(() => {
+    if (paletteOpen && recent === null) refreshRecent();
+  }, [paletteOpen, recent, refreshRecent]);
+
+  const commands = useMemo<Command[]>(() => {
+    const list: Command[] = [];
+    if (screen.kind === "project") {
+      const g = "This project";
+      const call = (fn: (l: LabWorkspaceHandle) => void) => () => lab && fn(lab);
+      list.push(
+        { id: "run", title: "Run or stop", group: g, icon: <Play />, shortcut: shortcut("↵"), keywords: "start simulate", run: call((l) => l.toggleRun()) },
+        { id: "parts", title: "Search parts", group: g, icon: <Search />, shortcut: "/", keywords: "add component sensor", run: call((l) => l.focusSearch()) },
+        { id: "inspector", title: "Show or hide the Inspector", group: g, icon: <PanelRight />, keywords: "details pins", run: call((l) => l.toggleInspector()) },
+        { id: "fit", title: "Fit the circuit to the screen", group: g, icon: <Maximize />, keywords: "zoom", run: call((l) => l.fit()) },
+        { id: "view-3d", title: "View in 3D", group: g, icon: <Box />, shortcut: "1", run: call((l) => l.setView("reality")) },
+        { id: "view-2d", title: "View in 2D", group: g, icon: <Grid2x2 />, shortcut: "2", run: call((l) => l.setView("top")) },
+        { id: "view-trace", title: "View as Trace", group: g, icon: <Zap />, shortcut: "3", keywords: "current flow", run: call((l) => l.setView("flow")) },
+        { id: "undo", title: "Undo", group: g, icon: <Undo2 />, shortcut: shortcut("Z"), run: call((l) => l.undo()) },
+        { id: "redo", title: "Redo", group: g, icon: <Redo2 />, shortcut: shortcut("Z", { shift: true }), run: call((l) => l.redo()) },
+        { id: "import", title: "Open a build file", group: g, icon: <FolderOpen />, keywords: "import json", run: call((l) => l.openFile()) },
+        { id: "export", title: "Export the build", group: g, keywords: "save json download", run: call((l) => l.exportJson()) },
+        { id: "reveal", title: "Show the project folder", group: g, icon: <FolderOpen />, keywords: "finder explorer files", run: () => void invoke("projects:reveal", screen.project.path) },
+        { id: "close", title: "Close project", group: g, icon: <X />, run: goHome },
+      );
     }
-  };
-
-  const installAvr = async () => {
-    setInstalling(true);
-    setInstall(null);
-    try {
-      const result = await window.kiungo.invoke("toolchain:install-core", "arduino:avr@1.8.6");
-      setInstall(result);
-      setToolchain(await window.kiungo.invoke("toolchain:status"));
-    } finally {
-      setInstalling(false);
+    list.push(
+      { id: "new", title: "New project", group: "Projects", icon: <FilePlus2 />, shortcut: shortcut("N"), keywords: "create starter", run: () => newProject() },
+      { id: "open", title: "Open a project folder", group: "Projects", icon: <FolderOpen />, shortcut: shortcut("O"), run: openFolder },
+    );
+    if (screen.kind !== "home") list.push({ id: "home", title: "Go to Home", group: "Projects", icon: <House />, shortcut: shortcut("H", { shift: true }), run: goHome });
+    for (const p of recent ?? []) {
+      if (p.missing || p.path === openPath) continue;
+      list.push({ id: `recent-${p.path}`, title: p.name ?? p.path, detail: p.boardName ?? undefined, group: "Recent projects", keywords: p.path, run: () => openRecent(p) });
     }
-  };
-
-  const led = levels[13] === "high";
-  const cliFound = toolchain?.cli.found ?? null;
-  const avrCore = toolchain?.cores.find((c) => c.id === "arduino:avr");
+    list.push({ id: "foundations", title: "Check the toolchain and emulator", group: "Help", icon: <Stethoscope />, keywords: "diagnostics arduino cli compiler", run: () => void closeOpen().then(() => setScreen({ kind: "foundations" })) });
+    return list;
+  }, [screen, lab, recent, openPath, goHome, newProject, openFolder, openRecent, closeOpen]);
 
   return (
-    <div className="shell">
-      <header className="topbar">
-        <img src={markUrl} alt="" className="mark" />
-        <span className="brand">Kiungo</span>
-        <span className="chip">Sprint 1 preview</span>
-        <span className="spacer" />
-        <span className="muted small">{info ? `v${info.appVersion}` : ""}</span>
-      </header>
-
-      <main className="page">
-        <section className="intro">
-          <h1>Foundations check</h1>
-          <p className="lead">This build proves the pieces Kiungo 2 is built on: your compiled code running on an emulated Uno, the Arduino toolchain on this computer, and a secure app shell. It isn&apos;t the final interface.</p>
-        </section>
-
-        <div className="grid">
-          <section className="card wide" aria-labelledby="emu-title">
-            <div className="card-head">
-              <h2 id="emu-title">Your code on an emulated Uno</h2>
-              <span className={`status ${state.running ? "on" : ""}`}>{state.running ? "Running" : state.loaded ? "Ready" : "Loading"}</span>
-            </div>
-            <div className="emu">
-              <UnoBoard ledOn={led} />
-              <div className="emu-side">
-                <div className="program">
-                  <span className="label">Program</span>
-                  <span>{program.label}</span>
-                </div>
-                <div className="actions">
-                  {state.running ? (
-                    <button className="btn" onClick={stop}>
-                      Stop
-                    </button>
-                  ) : (
-                    <button className="btn primary" onClick={start} disabled={!state.loaded}>
-                      Run
-                    </button>
-                  )}
-                  {program.origin === "compiled" && (
-                    <button className="btn ghost" onClick={() => setProgram(BUNDLED)}>
-                      Use the bundled Blink
-                    </button>
-                  )}
-                </div>
-                <dl className="stats">
-                  <div>
-                    <dt>Speed</dt>
-                    <dd className="num">{state.running ? `${state.speedPercent} % of real time` : "Stopped"}</dd>
-                  </div>
-                  <div>
-                    <dt>Simulated time</dt>
-                    <dd className="num">{fmtMs(state.simMs)}</dd>
-                  </div>
-                  <div>
-                    <dt>Pin 13 (LED)</dt>
-                    <dd>{levels[13] === "high" ? "HIGH" : levels[13] === "low" ? "LOW" : "Not set yet"}</dd>
-                  </div>
-                  <div>
-                    <dt>Program size</dt>
-                    <dd className="num">{state.programBytes ? `${state.programBytes.toLocaleString("en-US")} bytes` : "None"}</dd>
-                  </div>
-                </dl>
-                {state.error && <p className="error">{state.error}</p>}
-              </div>
-            </div>
-            <p className="note">The board runs in a background worker with the Uno&apos;s real 32 KB of flash and 2 KB of RAM. Pin levels reach this window through {state.sharedPins ? "shared memory" : "messages"}.</p>
-          </section>
-
-          <section className="card" aria-labelledby="cli-title">
-            <div className="card-head">
-              <h2 id="cli-title">Arduino toolchain</h2>
-            </div>
-            <ul className="checks">
-              <Check ok={cliFound}>{toolchain === null ? "Looking for Arduino CLI…" : toolchain.cli.found ? `Arduino CLI ${toolchain.cli.version}` : toolchain.cli.hint}</Check>
-              <Check ok={toolchain === null ? null : Boolean(avrCore)}>{avrCore ? `Uno and Nano core ${avrCore.version}` : "Uno and Nano core not installed"}</Check>
-            </ul>
-            {cliFound && toolchain && !avrCore && (
-              <div className="compile">
-                <p className="muted small">The Uno and Nano compiler downloads once, then works offline.</p>
-                <button className="btn" onClick={installAvr} disabled={installing}>
-                  {installing ? "Installing, this can take a few minutes…" : "Install the Uno and Nano core"}
-                </button>
-                {install && !install.ok && (
-                  <details open>
-                    <summary>The install failed</summary>
-                    <pre className="log">{install.log || "No output."}</pre>
-                  </details>
-                )}
-              </div>
-            )}
-            <button className="btn primary" onClick={compileBlink} disabled={!cliFound || !avrCore || compiling}>
-              {compiling ? "Compiling…" : "Compile Blink on this computer"}
-            </button>
-            {compile && (
-              <div className="compile">
-                {compile.ok ? (
-                  <>
-                    <p className="ok-line">Compiled in {(compile.durationMs / 1000).toFixed(1)} s and loaded into the emulator.</p>
-                    {compile.flash && <Meter label="Flash" used={compile.flash.used} max={compile.flash.max} />}
-                    {compile.ram && <Meter label="RAM" used={compile.ram.used} max={compile.ram.max} />}
-                  </>
-                ) : (
-                  <p className="error">The build failed.</p>
-                )}
-                <details>
-                  <summary>Build output</summary>
-                  <pre className="log">{compile.log || "No output."}</pre>
-                </details>
-              </div>
-            )}
-          </section>
-
-          <section className="card" aria-labelledby="sys-title">
-            <div className="card-head">
-              <h2 id="sys-title">This computer</h2>
-            </div>
-            <ul className="checks">
-              <Check ok={isolated}>{isolated ? "Shared memory available (cross-origin isolated)" : "Shared memory unavailable"}</Check>
-              <Check ok={info ? true : null}>{info ? `Electron ${info.versions.electron}, Chromium ${info.versions.chrome.split(".")[0]}` : "Reading versions…"}</Check>
-            </ul>
-            <dl className="stats two">
-              <div>
-                <dt>System</dt>
-                <dd>{info ? `${{ win32: "Windows", linux: "Linux", darwin: "macOS" }[info.platform] ?? info.platform} (${info.arch})` : "…"}</dd>
-              </div>
-              <div>
-                <dt>Start to window</dt>
-                <dd className="num">{metrics?.toWindowShownMs != null ? `${(metrics.toWindowShownMs / 1000).toFixed(2)} s` : "…"}</dd>
-              </div>
-              <div>
-                <dt>App memory, all processes</dt>
-                <dd className="num">{metrics ? `${metrics.totalMb} MB` : "…"}</dd>
-              </div>
-            </dl>
-          </section>
-        </div>
-      </main>
-    </div>
+    <>
+      {screen.kind === "project" ? (
+        <ProjectScreen key={screen.project.path} ref={setLab} project={screen.project} onHome={goHome} />
+      ) : screen.kind === "foundations" ? (
+        <Foundations onHome={goHome} />
+      ) : (
+        <Home
+          recent={recent}
+          error={error}
+          onNew={newProject}
+          onOpenFolder={openFolder}
+          onOpen={openRecent}
+          onReveal={(p) => void invoke("projects:reveal", p.path)}
+          onForget={(p) => void invoke("projects:forget", p.path).then(setRecent)}
+          onPalette={() => setPaletteOpen(true)}
+        />
+      )}
+      <NewProjectDialog
+        key={newOpen?.starter ?? "none"}
+        open={newOpen !== null}
+        initialStarter={newOpen?.starter ?? null}
+        onClose={() => setNewOpen(null)}
+        onCreated={(project) => {
+          setNewOpen(null);
+          void show({ ok: true, project });
+        }}
+      />
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
+    </>
   );
 }

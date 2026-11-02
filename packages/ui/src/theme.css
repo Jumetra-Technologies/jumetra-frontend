@@ -746,6 +746,11 @@ pre {
 [data-theme="dark-contrast"] .hhip-lab {
   --lab-muted: #525252;
 }
+/* Panning or zooming: draw the canvas as one moving layer (see LabCanvas, DSK-21). */
+.hhip-lab-canvas[data-moving] .react-flow__viewport {
+  will-change: transform;
+}
+
 .hhip-lab-canvas .react-flow__handle {
   min-width: 0;
   min-height: 0;

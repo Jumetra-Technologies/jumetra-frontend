@@ -99,8 +99,12 @@ export const PHASES: Phase[] = [
     milestones: [
       {
         title: "Desktop shell",
-        status: "planned",
-        items: ["Installable app for Windows, macOS and Linux, with the web app's interface", "Works offline; syncs when back online"],
+        status: "active",
+        items: [
+          "Installable app for Windows, macOS and Linux, running the same lab as the website (v1.23)",
+          "Projects kept as folders on the computer, saved as you work and safe from a forced quit (v1.23)",
+          "Works offline; syncs when back online",
+        ],
       },
       {
         title: "Hardware bridge",

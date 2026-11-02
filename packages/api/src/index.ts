@@ -158,6 +158,8 @@ export interface BuildResult {
   durationMs: number;
   /** Why the build couldn't run at all (no Arduino CLI, no internet the first time), in plain words. */
   message?: string;
+  /** Nothing in the sketch changed since the last good build, so that one was used. */
+  cached?: boolean;
   /** Everything the compiler said, for the build log. */
   log: string;
 }

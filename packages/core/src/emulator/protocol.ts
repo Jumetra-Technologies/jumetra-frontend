@@ -6,9 +6,11 @@
  * is posted per pin change. Without isolation the worker posts the changes.
  */
 import type { BoardDefinition } from "../boards";
-import type { PinChange, PinLevel } from "./avr";
+import type { CrashKind, PinChange, PinLevel } from "./avr";
+import type { PeripheralInput } from "./peripherals";
+import type { PinReading } from "./pinstats";
 
-export type { PinChange, PinLevel };
+export type { CrashKind, PeripheralInput, PinChange, PinLevel, PinReading };
 
 /** Byte codes for pin levels in the shared buffer. */
 export const LEVEL_CODES: Record<PinLevel, number> = { input: 0, low: 1, high: 2, pullup: 3 };
@@ -21,11 +23,17 @@ export type ToWorker =
   | { type: "load"; board: BoardDefinition["id"]; hex: string; pins?: SharedArrayBuffer }
   | { type: "start" }
   | { type: "stop" }
-  | { type: "input"; pin: number; high: boolean };
+  | { type: "input"; pin: number; high: boolean }
+  /** The parts wired to the board and what they read now; replaces the previous set. */
+  | { type: "peripherals"; inputs: PeripheralInput[] }
+  /** Text typed into the serial monitor, to the board's RX. */
+  | { type: "serial-in"; text: string };
 
 export type FromWorker =
   | { type: "loaded"; programBytes: number }
   | { type: "status"; running: boolean; simMs: number; speedPercent: number }
   | { type: "pins"; changes: PinChange[] }
   | { type: "serial"; text: string }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  /** What every pin did since the last readings, with the run's speed (about 20 a second). */
+  | { type: "readings"; simMs: number; speedPercent: number; pins: PinReading[]; crashed: CrashKind | null };

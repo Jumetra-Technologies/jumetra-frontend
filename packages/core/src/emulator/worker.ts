@@ -5,6 +5,8 @@
  */
 import { BOARDS } from "../boards";
 import { AvrBoard, type PinChange } from "./avr";
+import { Peripherals } from "./peripherals";
+import { PinStats } from "./pinstats";
 import { LEVEL_CODES, PIN_SLOTS, type FromWorker, type ToWorker } from "./protocol";
 import { Pacer } from "./realtime";
 
@@ -19,6 +21,8 @@ let pacer: Pacer | null = null;
 let shared: Uint8Array | null = null;
 let pending: PinChange[] = [];
 let serial = "";
+let stats: PinStats | null = null;
+let peripherals: Peripherals | null = null;
 
 const post = (message: FromWorker) => scope.postMessage(message);
 
@@ -42,10 +46,17 @@ scope.onmessage = (event) => {
           else pending.push(change);
         });
         board.onSerialByte((byte) => (serial += String.fromCharCode(byte)));
+        stats = new PinStats(board.board.clockHz, board.board.pins.map((p) => p.arduino));
+        const s = stats;
+        board.onPinChange((change) => s.record(change));
+        peripherals = new Peripherals(board);
+        const b = board;
         pacer = new Pacer(board, {
+          reportEveryMs: 50,
           onStatus: ({ simMs, speedPercent }) => {
             flush();
-            post({ type: "status", running: true, simMs, speedPercent });
+            post({ type: "readings", simMs, speedPercent, pins: s.take(b.cycles), crashed: b.crashed });
+            if (b.crashed) pacer?.stop();
           },
         });
         post({ type: "loaded", programBytes: board.programBytes });
@@ -61,6 +72,12 @@ scope.onmessage = (event) => {
         break;
       case "input":
         board?.setInput(message.pin, message.high);
+        break;
+      case "peripherals":
+        peripherals?.apply(message.inputs);
+        break;
+      case "serial-in":
+        board?.writeSerial(new TextEncoder().encode(message.text));
         break;
     }
   } catch (error) {

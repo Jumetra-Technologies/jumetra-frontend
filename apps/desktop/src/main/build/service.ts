@@ -10,7 +10,7 @@
 
 import { createHash } from "node:crypto";
 import { existsSync, realpathSync } from "node:fs";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { BuildResult, LibraryChange, LibraryInfo, LibrarySearchResult } from "@kiungo/api";
 import { parseDiagnostics, readSketchProfile, type ProfileLibrary } from "@kiungo/core/build";
@@ -85,6 +85,22 @@ export interface UploadOutcome {
   durationMs: number;
 }
 
+const CACHE_FILE = "kiungo-build.json";
+
+/**
+ * What a build depends on: every file in the sketch folder (sketch.yaml too)
+ * and the board. The same fingerprint means the same program.
+ */
+export async function sketchFingerprint(sketchDir: string, fqbn: string): Promise<string> {
+  const hash = createHash("sha256").update(`${fqbn}\n`);
+  const names = (await readdir(sketchDir).catch(() => [] as string[])).filter((n) => !n.startsWith(".") && !n.includes(".kiungo-tmp-")).sort();
+  for (const name of names) {
+    const data = await readFile(join(sketchDir, name)).catch(() => null);
+    if (data) hash.update(`${name}\n${data.length}\n`).update(data);
+  }
+  return hash.digest("hex");
+}
+
 export class BuildService {
   private readonly running = new Map<string, Promise<BuildResult>>();
   private libraryEdit: Promise<unknown> = Promise.resolve();
@@ -121,6 +137,10 @@ export class BuildService {
     }
     const buildPath = this.buildPath(projectPath, fqbn);
     await mkdir(buildPath, { recursive: true });
+    // Nothing changed since the last good build: use it (Run starts in well under 2 s).
+    const fingerprint = await sketchFingerprint(sketchDir, fqbn ?? "");
+    const cached = await this.cached(buildPath, fingerprint);
+    if (cached) return { ...cached, durationMs: elapsed(), cached: true };
     // A first build may download the board package and libraries: allow it time.
     const raw = await this.options.run(cli, ["compile", "--profile", PROFILE, ...(fqbn ? ["--fqbn", fqbn] : []), "--build-path", buildPath, "--format", "json", sketchDir], 900_000);
     const json = parseJson<CompileJson>(raw.stdout);
@@ -146,8 +166,10 @@ export class BuildService {
     }
     // AVR boards get Intel HEX (for the emulator too); the ESP32 gets a .bin, which only uploads use.
     const hex = await readFile(join(buildPath, `${SKETCH_DIR}.ino.hex`), "utf8").catch(() => null);
-    if (hex) return { ...result, hex };
-    if (existsSync(join(buildPath, `${SKETCH_DIR}.ino.bin`))) return result;
+    if (hex || existsSync(join(buildPath, `${SKETCH_DIR}.ino.bin`))) {
+      await writeFile(join(buildPath, CACHE_FILE), JSON.stringify({ fingerprint, result })).catch(() => undefined);
+      return hex ? { ...result, hex } : result;
+    }
     return { ...result, ok: false, message: "The build finished but didn't write the program file." };
   }
 
@@ -174,6 +196,18 @@ export class BuildService {
     const log = [json?.stdout, json?.stderr, json?.output?.stdout, json?.output?.stderr, json?.error, raw.stderr].filter((s) => s?.trim()).join("\n").trim() || raw.stdout.trim();
     if (raw.code === 0) return { ok: true, stage: "upload", build, log, durationMs: elapsed() };
     return { ok: false, stage: "upload", build, problem: uploadProblem(log, board.id, platform), log, durationMs: elapsed() };
+  }
+
+  private async cached(buildPath: string, fingerprint: string): Promise<BuildResult | null> {
+    try {
+      const saved = JSON.parse(await readFile(join(buildPath, CACHE_FILE), "utf8")) as { fingerprint?: string; result?: BuildResult };
+      if (saved.fingerprint !== fingerprint || !saved.result?.ok) return null;
+      const hex = await readFile(join(buildPath, `${SKETCH_DIR}.ino.hex`), "utf8").catch(() => null);
+      if (hex) return { ...saved.result, hex };
+      return existsSync(join(buildPath, `${SKETCH_DIR}.ino.bin`)) ? saved.result : null;
+    } catch {
+      return null;
+    }
   }
 
   async libraries(projectPath: string): Promise<ProfileLibrary[]> {

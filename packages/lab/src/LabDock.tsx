@@ -190,7 +190,7 @@ function Serial({ lines, onClear }: { lines: string[]; onClear: () => void }) {
 }
 
 function Signals() {
-  const { session, analysis, frame, running } = useLabContext();
+  const { session, analysis, frame, running, history } = useLabContext();
   const traces = useMemo(() => {
     const list: Array<{ key: string; label: string; color: string }> = [];
     for (const node of session.nodes) {
@@ -212,11 +212,21 @@ function Signals() {
   const samples = useMemo(() => {
     if (!traces.length) return [];
     const t1 = frame.t;
+    // A program run: its recorded pin levels, resampled onto the window (the emulator can't be asked about the past).
+    if (history?.length) {
+      const end = history[history.length - 1].t;
+      return Array.from({ length: SAMPLES + 1 }, (_, i) => {
+        const at = end - WINDOW + (i * WINDOW) / SAMPLES;
+        let found = history[0];
+        for (const h of history) if (h.t <= at) found = h;
+        return at < history[0].t ? {} : found.pins;
+      });
+    }
     return Array.from({ length: SAMPLES + 1 }, (_, i) => {
       const t = Math.max(0, t1 - WINDOW + (i * WINDOW) / SAMPLES);
       return frameAt(session.nodes, session.wires, analysis, t, running || frame.t > 0, session.inputs).pins;
     });
-  }, [traces.length, frame.t, session.nodes, session.wires, session.inputs, analysis, running]);
+  }, [traces.length, frame.t, session.nodes, session.wires, session.inputs, analysis, running, history]);
 
   if (!traces.length) {
     return <p className="p-4 text-[13px] text-muted">Wire a part to a board to see its signals over time, like a logic analyser.</p>;

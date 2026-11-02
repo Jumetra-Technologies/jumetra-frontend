@@ -130,6 +130,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          shopt -s nullglob
           title="Kiungo desktop ${{ steps.meta.outputs.version }}"
           [[ "${{ steps.meta.outputs.channel }}" == beta ]] && title="$title (beta)" && pre=--prerelease || pre=""
           gh release create "${{ steps.meta.outputs.tag }}" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$title" --notes-file release/notes.md $pre \

@@ -17,7 +17,13 @@ The backend needs jumetra-backend #7 (project sync) deployed for steps 3 and 4. 
 5. The website's lab has a **Desktop app** link in its toolbar (on wide screens).
 6. Lighthouse on the home page, mobile: performance ______, LCP ______ s. Pass: 90 or more, and 2.5 s or less.
 
-Where the download comes from: the backend's `/releases/latest` when the release pipeline has published there (Juma's token), otherwise the newest GitHub release from the **Release the desktop app** workflow. The first beta, `desktop-v0.11.0`, was published from the Sprint 11 branch as a pre-release.
+Where the download comes from: the backend's `/releases/latest` when the release pipeline has published there (Juma's token), otherwise the newest GitHub release from the **Release the desktop app** workflow. Until a release exists, the section says the first beta is being prepared.
+
+**To publish the first beta** (one of these; the workflow builds the installers on Windows, Ubuntu and macOS, about 25 minutes):
+- Push the tag from the Sprint 11 branch: `git tag desktop-v0.11.0 && git push origin desktop-v0.11.0`.
+- Or, once the branch is merged, open **Actions → Release the desktop app → Run workflow** with the channel set to beta.
+
+The home page picks the release up within five minutes.
 
 ## 2. Phase One work comes across (DSK-15)
 

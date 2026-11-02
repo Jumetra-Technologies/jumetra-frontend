@@ -186,14 +186,17 @@ describe("when a board doesn't show up (FIX-09)", () => {
   }
   const env = (over: Partial<DoctorEnv> = {}): DoctorEnv => ({ platform: "linux", usbDevicesDir: sys, brlttyPaths: ["/usr/bin/brltty"], canOpen: async () => true, exists: async () => false, ...over });
 
-  it("a CH340 with no port, and brltty installed: remove brltty", async () => {
+  // /sys is Linux's; its folder names have colons, which Windows can't make.
+  const linuxOnly = it.skipIf(process.platform === "win32");
+
+  linuxOnly("a CH340 with no port, and brltty installed: remove brltty", async () => {
     usbDevice("1-2", "1a86", "7523", false);
     const hints = await diagnosePorts([], env({ exists: async (p) => p === "/usr/bin/brltty" }));
     expect(hints[0]).toMatchObject({ id: "brltty", title: "A CH340 board is plugged in, but brltty took its port" });
     expect(hints[0].steps.join(" ")).toContain("sudo apt remove brltty");
   });
 
-  it("a CH340 with its port is fine; a port you can't open needs dialout", async () => {
+  linuxOnly("a CH340 with its port is fine; a port you can't open needs dialout", async () => {
     usbDevice("1-2", "1a86", "7523", true);
     const board = { port: "/dev/ttyUSB0", protocol: "serial", usbId: "1a86:7523", serialNumber: null, matches: [] };
     expect(await diagnosePorts([board], env())).toEqual([]);

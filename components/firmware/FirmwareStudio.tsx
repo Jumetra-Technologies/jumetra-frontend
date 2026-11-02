@@ -376,7 +376,7 @@ export function FirmwareStudio() {
       <p role="note" className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border bg-[color-mix(in_srgb,var(--primary)_7%,var(--surface))] px-4 py-2 text-[12.5px] text-foreground" data-testid="firmware-preview">
         <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[11px] font-semibold text-primary">Preview</span>
         Building and uploading code has moved to the desktop app, which compiles on your computer and talks to the board directly. This page stays as a preview; its server builds may be switched off.
-        <Link href="/download" className="font-medium text-primary underline-offset-4 hover:underline">
+        <Link href="/#desktop" className="font-medium text-primary underline-offset-4 hover:underline">
           Get the desktop app
         </Link>
       </p>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LandingPage } from "@/components/landing/LandingPage";
 import { SEO, structuredData } from "@/lib/landing/content";
+import { latestRelease } from "@/lib/releases";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
@@ -22,12 +23,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
-  const jsonLd = JSON.stringify(structuredData(siteUrl));
+export default async function HomePage() {
+  // The desktop app's newest release, for the download at the end of the page; null before the first is published.
+  const release = await latestRelease();
+  const jsonLd = JSON.stringify(structuredData(siteUrl, release));
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
-      <LandingPage />
+      <LandingPage release={release} />
     </>
   );
 }

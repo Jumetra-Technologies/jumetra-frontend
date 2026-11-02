@@ -8,7 +8,6 @@ import {
   FlaskConical,
   GraduationCap,
   Home,
-  MonitorDown,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
@@ -37,7 +36,6 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/laboratory/workspace", label: "Engineering Lab", icon: Beaker, primary: true },
       { href: "/components", label: "Component library", icon: CircuitBoard },
       { href: "/firmware", label: "Firmware", icon: Cpu },
-      { href: "/download", label: "Desktop app", icon: MonitorDown },
     ],
   },
   {

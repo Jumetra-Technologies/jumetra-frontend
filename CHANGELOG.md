@@ -15,12 +15,12 @@ Versions before 1.2.0 were assigned after the fact to the pull requests already 
 Phase Two, Sprint 11: the website companion, sync and import. The website is now the way into the desktop app. Phase One work comes across, and projects can sync between computers through the account. The desktop app is 0.11.0.
 
 ### Added
-- **Download page** (`/download`).
-  - It reads the newest release from the backend's `/releases/latest` and offers the installer for the visitor's computer first: Windows, macOS (Apple silicon or Intel) or Linux.
-  - Every installer is listed with its size and SHA-512 checksum.
-  - It says what the app adds and what a computer needs.
-  - Before the first release, it says the app is in beta and points to the browser lab.
-  - The page refreshes its release every 5 minutes.
+- **The desktop app on the home page.** The page's last section, *Then take it to your desk*, is the release: a download button for the visitor's computer (Windows, macOS on Apple silicon or Intel, or Linux), every installer with its size, and four screenshots of the app behind tabs: code and run, the real board, the robot world, and a mistake fixed.
+  - The release comes from the backend's `/releases/latest`, or, until the release pipeline publishes there, from the newest GitHub release made by the new **Release the desktop app** workflow. Both are read on the server and refreshed every five minutes.
+  - A beta is labeled as one, with how to get past the Windows and macOS warnings about an unsigned installer, and what a computer needs.
+  - On a phone there's no button to press, only the list, since the app runs on computers.
+  - Before the first release it says so and points to the lab in the browser.
+- **A release workflow** (`.github/workflows/release-desktop.yml`). Run from the Actions tab, or push a tag `desktop-v<version>`: it builds the installers on Windows, Ubuntu and macOS, writes a manifest with each file's SHA-512, publishes a GitHub release (a pre-release for a beta), and, once the pipeline's token is set, posts the same to the backend. Installers now have plain names: `Kiungo-0.11.0-win-x64.exe`, `Kiungo-0.11.0-mac-arm64.dmg`, `Kiungo-0.11.0-linux-x86_64.AppImage`.
 - **Import Phase One work (DSK-15).** Home > **Import** takes either:
   - a lab session file (`.kiungo.json`) saved from the website, or
   - the lab sessions and projects on the signed-in account.
@@ -35,8 +35,9 @@ Phase Two, Sprint 11: the website companion, sync and import. The website is now
   - Only a project's own files sync: never `.kiungo/`, the local undo history.
 
 ### Changed
-- **Landing page:** the hybrid section leads to the desktop app, and the facts, footer and search-engine data mention it.
-- **Navigation:** the sidebar and footer gain **Desktop app**.
+- **Landing page:** the hybrid section hands over to the desktop release below it, and the facts, footer and search-engine data (version and download) mention the app.
+- **Navigation:** the footer gains **Desktop app**, which goes to that section.
+- **Desktop app:** the build panel's tabs no longer wrap onto two lines in a narrow Code pane.
 - **Hybrid Hardware and the docs:** both show three device modes. The external Simulator binding is gone (Phase Two decision).
 - **Firmware** is marked as a Preview: building and uploading moved to the desktop app.
 - **Website lab:** gains a **Desktop app** link in its toolbar.

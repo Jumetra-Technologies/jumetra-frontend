@@ -2,18 +2,22 @@
 
 What Brad checks before the Sprint 11 gate. About 30 minutes, with a second computer for step 3 if you have one.
 
-The backend needs jumetra-backend #7 (project sync) deployed for steps 3 and 4. Until then they work against a local backend only: Juma's pipeline deploys it, and Masden reviews the tables.
+The backend needs jumetra-backend #7 (project sync) deployed for steps 3 and 4. Until then they work against a local backend only: Juma's pipeline deploys it, and Masden reviews the tables. Step 1's download needs no backend: it reads the GitHub release until the pipeline publishes to the backend.
 
 ## 1. The website sends people to the app
 
-1. Open the website's new **/download** page. It reads the newest release from `/releases/latest`:
-   - With a release: the big button is for your computer ("Download for Windows"), and every installer is listed with its size and checksum. On a phone there's no guess: the list says which computers it runs on.
-   - With no release published yet: it says the app is in beta, and offers the lab in the browser.
-2. Home page: the "Already have a board?" section now leads to **Download the desktop app**. The footer and the sidebar have **Desktop app**.
+1. Open the home page and scroll to the end, **Then take it to your desk** (or follow **Get the desktop app** from the hybrid section, or **Desktop app** in the footer).
+   - On your Windows PC the big button says **Download for Windows** and downloads `Kiungo-0.11.0-win-x64.exe`. **All downloads** lists every installer with its size.
+   - On a phone there's no button: it says the app runs on computers, and the list is still there.
+   - The four tabs (**Code and run**, **Real board**, **Robot world**, **Fix mistakes**) swap the screenshot and its caption; the arrow keys work on them too.
+   - **How to open the beta** says what to do about the Windows and macOS warnings (the installers aren't signed yet).
+2. Install it from that download. Windows warns (SmartScreen: More info, Run anyway); the app opens to the sign-in screen.
 3. **Hybrid Hardware** shows three modes (Virtual, Physical, Hybrid). The Simulator mode is gone, from the docs too.
 4. **Firmware** shows a Preview note at the top: building and uploading moved to the desktop app.
 5. The website's lab has a **Desktop app** link in its toolbar (on wide screens).
 6. Lighthouse on the home page, mobile: performance ______, LCP ______ s. Pass: 90 or more, and 2.5 s or less.
+
+Where the download comes from: the backend's `/releases/latest` when the release pipeline has published there (Juma's token), otherwise the newest GitHub release from the **Release the desktop app** workflow. The first beta, `desktop-v0.11.0`, was published from the Sprint 11 branch as a pre-release.
 
 ## 2. Phase One work comes across (DSK-15)
 

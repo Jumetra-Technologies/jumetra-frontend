@@ -421,7 +421,7 @@ export function BuildPanel({ projectPath, board, state, tab, onTab, onClose, onR
       role="tab"
       aria-selected={tab === id}
       onClick={() => onTab(id)}
-      className={cn("h-full border-b-2 px-2.5 text-[12px] font-medium", tab === id ? "border-primary text-foreground" : "border-transparent text-muted hover:text-foreground")}
+      className={cn("h-full shrink-0 whitespace-nowrap border-b-2 px-2.5 text-[12px] font-medium", tab === id ? "border-primary text-foreground" : "border-transparent text-muted hover:text-foreground")}
       data-testid={`build-tab-${id}`}
     >
       {label}
@@ -436,8 +436,9 @@ export function BuildPanel({ projectPath, board, state, tab, onTab, onClose, onR
         {tabButton("libraries", "Libraries")}
         {tabButton("output", "Build log")}
         {tabButton("serial", "Serial monitor")}
-        <span className="flex-1" />
-        <span className="flex items-center px-2 text-[11.5px] text-muted" aria-live="polite" data-testid="build-status">
+        <span className="min-w-2 flex-1" />
+        {/* In a narrow Code pane the tabs come first; the outcome is still read out, and shown as the problems count. */}
+        <span className="flex min-w-0 items-center whitespace-nowrap px-2 text-[11.5px] text-muted @max-[620px]:sr-only" aria-live="polite" data-testid="build-status">
           {state.status === "building" ? (
             <>
               <Loader2 className="mr-1 size-3.5 animate-spin" aria-hidden />

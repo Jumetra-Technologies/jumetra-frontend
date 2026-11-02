@@ -2,7 +2,10 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "@kiungo/ui/button";
 import { HERO, HYBRID, LEARN, LIBRARY, SIMULATE } from "@/lib/landing/content";
+import type { Release } from "@/lib/releases";
 import { cn } from "@/lib/utils";
+import { DesktopRelease } from "./DesktopRelease";
+import { ScrollToHash } from "./ScrollToHash";
 import { HeroActions } from "./HeroActions";
 import { HeroBoard } from "./HeroBoard";
 import { HybridSwitch } from "./HybridSwitch";
@@ -68,7 +71,7 @@ function Beat({
   );
 }
 
-export function LandingPage() {
+export function LandingPage({ release = null }: { release?: Release | null }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-background" data-testid="landing">
       {/* Hero */}
@@ -126,7 +129,9 @@ export function LandingPage() {
         </Beat>
       </main>
 
+      <DesktopRelease release={release} />
       <SiteFooter />
+      <ScrollToHash />
     </div>
   );
 }

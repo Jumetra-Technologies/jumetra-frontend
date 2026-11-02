@@ -1,0 +1,144 @@
+name: Release the desktop app
+
+# Builds the installers for Windows, Ubuntu and macOS (the same steps as CI) and
+# publishes them as a GitHub release, which the website's home page offers for
+# download when the backend has no newer release of its own. When the release
+# pipeline's token is set (KIUNGO_RELEASE_TOKEN, Juma), the same manifest is
+# also posted to the backend's POST /releases, which the app's update check and
+# the home page read first.
+#
+# Run it from the Actions tab (Run workflow) on the branch to release, or push
+# a tag desktop-v<version>. The tag is desktop-v<apps/desktop version>; the
+# build fails if that tag already has a release, because releases don't change.
+#
+# Signing is not part of this yet: the installers are unsigned, so the release
+# is marked as a pre-release and the notes say what Windows and macOS warn about.
+
+on:
+  push:
+    tags: ["desktop-v*"]
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Release channel. beta marks the release as a pre-release."
+        type: choice
+        options: [beta, stable]
+        default: beta
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-desktop-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  build:
+    name: Build · ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            label: Windows
+            builder: --win
+          - os: ubuntu-latest
+            label: Ubuntu
+            builder: --linux
+          - os: macos-latest
+            label: macOS
+            builder: --mac
+    env:
+      # Unsigned until signing lands (DSK-80).
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Linux packaging tools (rpm target)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -q && sudo apt-get install -y -q rpm
+      - run: npm ci
+      - name: Fetch the pinned Arduino CLI for this system
+        run: npm run fetch:arduino-cli -w @kiungo/desktop
+      - name: Build the renderer, preload and main bundles
+        run: npm run build -w @kiungo/desktop
+      - name: Package the installer
+        run: npx electron-builder ${{ matrix.builder }} --publish never
+        working-directory: apps/desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.label }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            apps/desktop/dist/*.exe
+            apps/desktop/dist/*.AppImage
+            apps/desktop/dist/*.deb
+            apps/desktop/dist/*.rpm
+            apps/desktop/dist/*.dmg
+            apps/desktop/dist/*.zip
+
+  publish:
+    name: Publish the release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Set as a repository secret by whoever runs the release pipeline (Juma). Empty: the backend step is skipped.
+      KIUNGO_RELEASE_TOKEN: ${{ secrets.KIUNGO_RELEASE_TOKEN }}
+      KIUNGO_API_URL: ${{ vars.KIUNGO_API_URL || 'https://europe-west4-hhipsystemv0.cloudfunctions.net/api' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installers-*
+          merge-multiple: true
+          path: dist
+      - name: Name the release
+        id: meta
+        shell: bash
+        run: |
+          version=$(node -p "require('./apps/desktop/package.json').version")
+          channel="${{ github.event.inputs.channel || 'beta' }}"
+          if [[ "${{ github.ref }}" == refs/tags/desktop-v* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+            [[ "$tag" == "desktop-v$version" ]] || { echo "::error::The tag $tag doesn't match apps/desktop version $version."; exit 1; }
+          else
+            tag="desktop-v$version"
+          fi
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $tag already exists. Releases don't change: bump apps/desktop/package.json and publish a new version."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Write the manifest and the notes
+        run: node .github/scripts/desktop-release-manifest.mjs dist "$GITHUB_REPOSITORY" "${{ steps.meta.outputs.tag }}" "${{ steps.meta.outputs.channel }}" release
+      - name: Create the GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Kiungo desktop ${{ steps.meta.outputs.version }}"
+          [[ "${{ steps.meta.outputs.channel }}" == beta ]] && title="$title (beta)" && pre=--prerelease || pre=""
+          gh release create "${{ steps.meta.outputs.tag }}" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$title" --notes-file release/notes.md $pre \
+            dist/*.exe dist/*.dmg dist/*.AppImage dist/*.deb dist/*.rpm release/kiungo-release.json
+      - name: Tell the backend
+        # Only when the release pipeline's token is configured (Juma): the backend's
+        # /releases is what the app's update check and the home page read first.
+        if: env.KIUNGO_RELEASE_TOKEN != ''
+        run: |
+          curl --fail-with-body -sS -X POST "$KIUNGO_API_URL/releases" \
+            -H "Authorization: Bearer $KIUNGO_RELEASE_TOKEN" -H "Content-Type: application/json" \
+            --data @release/kiungo-release.json

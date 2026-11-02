@@ -182,7 +182,7 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
 
   // The website's lab is the preview (SIM-12): your own code, real boards and robot worlds run in the desktop app.
   const desktopChip = (
-    <Link href="/download" className="hidden items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-medium text-muted hover:bg-muted-bg hover:text-foreground xl:inline-flex" title="Run your own code, use real boards and drive robots in the desktop app" data-testid="desktop-chip">
+    <Link href="/#desktop" className="hidden items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-medium text-muted hover:bg-muted-bg hover:text-foreground xl:inline-flex" title="Run your own code, use real boards and drive robots in the desktop app" data-testid="desktop-chip">
       <Monitor className="size-3 shrink-0" aria-hidden />
       Desktop app
     </Link>

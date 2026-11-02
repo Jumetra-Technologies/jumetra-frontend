@@ -24,6 +24,8 @@ export interface Starter {
   libraries: PinnedLibrary[];
   /** The sketch, with {{part.PIN}} placeholders. `part` is the lab part id. */
   code: string;
+  /** Boards (lab part ids) it can't be built for as it is, and why. */
+  notOn?: Record<string, string>;
 }
 
 const SERVO: PinnedLibrary = { name: "Servo", version: "1.3.0" };
@@ -129,6 +131,7 @@ void loop() {
     does: "Measures distance with an HC-SR04 and prints it in centimeters.",
     parts: ["hc-sr04"],
     libraries: [],
+    notOn: { esp32: "The HC-SR04 sends 5 V back, which damages a 3.3 V ESP32 pin without a level shifter." },
     code: `// Distance sensor: the HC-SR04 sends a ping and times the echo.
 const int TRIG_PIN = {{hc-sr04.TRIG}};
 const int ECHO_PIN = {{hc-sr04.ECHO}};
@@ -267,6 +270,8 @@ export interface StarterBuild {
 export function buildStarter(opts: { name: string; board: string; starter: string | null }): StarterBuild {
   const starter = opts.starter ? getStarter(opts.starter) : undefined;
   if (opts.starter && !starter) throw new StarterError(`There's no starter called “${opts.starter}”.`);
+  const notOn = starter?.notOn?.[opts.board];
+  if (notOn) throw new StarterError(`The “${starter?.title}” starter isn't for this board. ${notOn}`);
   if (!getPinout(opts.board).controller) throw new StarterError(`“${opts.board}” isn't a board.`);
 
   const board: LabNode = { id: makeId("n"), partId: opts.board, label: nextLabel([], opts.board), x: 80, y: 80, mode: "virtual" };

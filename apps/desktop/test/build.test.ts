@@ -5,7 +5,9 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { applyEdits, explain, libraryForHeader, quickFix } from "@kiungo/core/build";
 import { buildStarter, PROJECT_BOARDS, sketchProfile, STARTERS } from "@kiungo/core/project";
+import { hardwareBoard } from "@kiungo/core/hardware/boards";
 import { BuildService, setupProblem } from "../src/main/build/service";
+import { BoardWatcher } from "../src/main/hardware/boards";
 import { runCli, type CliLocation, type RunResult } from "../src/main/toolchain/arduino-cli";
 
 const CLI: CliLocation = { binary: "/fake/arduino-cli", configFile: "/fake/arduino-cli.yaml" };
@@ -228,4 +230,36 @@ describe.skipIf(!realCli)("building with the real Arduino CLI", () => {
     expect(explain(problem)).toMatchObject({ id: "missing-library", header: "Servo.h" });
     expect(libraryForHeader("Servo.h")?.name).toBe("Servo");
   }, 600_000);
+});
+
+describe.skipIf(!realCli)("boards and uploads with the real Arduino CLI", () => {
+  it("finds the serial ports (none on a CI machine) without failing", async () => {
+    const watcher = new BoardWatcher({ cli: () => realCli, run: runCli, spawn: () => { throw new Error("not watching in this test"); }, onChange: () => undefined });
+    const boards = await watcher.refresh();
+    expect(Array.isArray(boards)).toBe(true);
+    expect(watcher.message).toBeNull();
+  }, 120_000);
+
+  it("an upload to a port that isn't there fails with steps, not a crash", async () => {
+    const { code, libraries } = buildStarter({ name: "Test", board: "arduino-uno", starter: "blink" });
+    writeFileSync(join(project, "sketch", "sketch.ino"), code);
+    writeFileSync(join(project, "sketch", "sketch.yaml"), sketchProfile(PROJECT_BOARDS[0], libraries));
+    const builds = new BuildService({ cli: () => realCli, buildsDir: join(root, "builds"), run: runCli });
+    const port = process.platform === "win32" ? "COM250" : "/dev/ttyKIUNGO0";
+    const result = await builds.upload(project, port, hardwareBoard("uno")!, process.platform === "win32" ? "win32" : process.platform === "darwin" ? "darwin" : "linux");
+    console.log(`upload to a missing port: ${result.problem?.id}\n${result.log}`);
+    expect(result).toMatchObject({ ok: false, stage: "upload" });
+    expect(result.problem?.steps.length).toBeGreaterThan(0);
+    expect(["port-missing", "unknown"]).toContain(result.problem?.id);
+  }, 600_000);
+
+  // The ESP32 board package is large: CI builds it on one system (KIUNGO_TEST_ESP32).
+  it.skipIf(!process.env.KIUNGO_TEST_ESP32)("Blink builds for the ESP32 with its pinned board package", async () => {
+    const { code, libraries } = buildStarter({ name: "Test", board: "esp32", starter: "blink" });
+    writeFileSync(join(project, "sketch", "sketch.ino"), code);
+    writeFileSync(join(project, "sketch", "sketch.yaml"), sketchProfile(PROJECT_BOARDS[2], libraries));
+    const result = await new BuildService({ cli: () => realCli, buildsDir: join(root, "builds"), run: runCli }).compile(project);
+    expect(result.ok, result.log).toBe(true);
+    expect(result.flash?.max).toBe(1_310_720);
+  }, 1_800_000);
 });

@@ -307,6 +307,11 @@ export class ProjectService {
     return this.open.has(path);
   }
 
+  /** The board an open project is written for (a lab part id), or null if it isn't open. */
+  boardOf(path: string): string | null {
+    return this.open.get(path)?.meta.board ?? null;
+  }
+
   save(path: string, payload: SavePayload): Promise<SaveResult> {
     const entry = this.open.get(path);
     if (!entry) return Promise.resolve({ ok: false, message: "This project isn't open." });

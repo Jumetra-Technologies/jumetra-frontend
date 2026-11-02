@@ -15,6 +15,8 @@ import { join } from "node:path";
 import type { BuildResult, LibraryChange, LibraryInfo, LibrarySearchResult } from "@kiungo/api";
 import { parseDiagnostics, readSketchProfile, type ProfileLibrary } from "@kiungo/core/build";
 import { SKETCH_DIR, SKETCH_FILE, SKETCH_PROFILE_FILE } from "@kiungo/core/project";
+import type { HardwareBoard } from "@kiungo/core/hardware/boards";
+import { uploadProblem, type HostPlatform, type UploadProblem } from "@kiungo/core/hardware/upload";
 import { parseJson, type CliLocation, type CompileJson, type RunResult } from "../toolchain/arduino-cli";
 
 export const PROFILE = "kiungo";
@@ -73,6 +75,16 @@ export function sketchSpellings(dir: string): string[] {
   return out;
 }
 
+export interface UploadOutcome {
+  ok: boolean;
+  /** Where it stopped: the build, or the upload itself. */
+  stage: "build" | "upload";
+  build: BuildResult;
+  problem?: UploadProblem;
+  log: string;
+  durationMs: number;
+}
+
 export class BuildService {
   private readonly running = new Map<string, Promise<BuildResult>>();
   private libraryEdit: Promise<unknown> = Promise.resolve();
@@ -82,20 +94,23 @@ export class BuildService {
     this.now = options.now ?? (() => performance.now());
   }
 
-  /** The build folder for a project: the same folder every time, never inside the project. */
-  buildPath(projectPath: string): string {
-    return join(this.options.buildsDir, createHash("sha256").update(projectPath).digest("hex").slice(0, 16));
+  /** The build folder for a project (and board, when it isn't the project's own): the same folder every time, never inside the project. */
+  buildPath(projectPath: string, fqbn?: string): string {
+    const id = createHash("sha256").update(projectPath).digest("hex").slice(0, 16);
+    return join(this.options.buildsDir, fqbn ? `${id}-${fqbn.replace(/[^\w]+/g, "_")}` : id);
   }
 
-  compile(projectPath: string): Promise<BuildResult> {
-    const existing = this.running.get(projectPath);
+  /** Build the project, for its own board or, with `fqbn`, for another board with the same chip (a Nano for a Uno project). */
+  compile(projectPath: string, fqbn?: string): Promise<BuildResult> {
+    const key = `${projectPath}\n${fqbn ?? ""}`;
+    const existing = this.running.get(key);
     if (existing) return existing;
-    const job = this.doCompile(projectPath).finally(() => this.running.delete(projectPath));
-    this.running.set(projectPath, job);
+    const job = this.doCompile(projectPath, fqbn).finally(() => this.running.delete(key));
+    this.running.set(key, job);
     return job;
   }
 
-  private async doCompile(projectPath: string): Promise<BuildResult> {
+  private async doCompile(projectPath: string, fqbn?: string): Promise<BuildResult> {
     const cli = this.options.cli();
     const started = this.now();
     const elapsed = () => Math.round(this.now() - started);
@@ -104,10 +119,10 @@ export class BuildService {
     if (!existsSync(join(sketchDir, SKETCH_PROFILE_FILE))) {
       return { ok: false, diagnostics: [], durationMs: 0, message: "This project has no build settings (sketch/sketch.yaml). Make a new project, or copy sketch.yaml from one.", log: "" };
     }
-    const buildPath = this.buildPath(projectPath);
+    const buildPath = this.buildPath(projectPath, fqbn);
     await mkdir(buildPath, { recursive: true });
     // A first build may download the board package and libraries: allow it time.
-    const raw = await this.options.run(cli, ["compile", "--profile", PROFILE, "--build-path", buildPath, "--format", "json", sketchDir], 900_000);
+    const raw = await this.options.run(cli, ["compile", "--profile", PROFILE, ...(fqbn ? ["--fqbn", fqbn] : []), "--build-path", buildPath, "--format", "json", sketchDir], 900_000);
     const json = parseJson<CompileJson>(raw.stdout);
     const sections = json?.builder_result?.executable_sections_size ?? [];
     const text = sections.find((s) => s.name === "text");
@@ -129,10 +144,36 @@ export class BuildService {
       if (!diagnostics.length) result.message = setupProblem(log) ?? "The build stopped before compiling. The build log says why.";
       return result;
     }
-    const hexFile = join(buildPath, `${SKETCH_DIR}.ino.hex`);
-    const hex = await readFile(hexFile, "utf8").catch(() => null);
-    if (!hex) return { ...result, ok: false, message: "The build finished but didn't write the program file." };
-    return { ...result, hex };
+    // AVR boards get Intel HEX (for the emulator too); the ESP32 gets a .bin, which only uploads use.
+    const hex = await readFile(join(buildPath, `${SKETCH_DIR}.ino.hex`), "utf8").catch(() => null);
+    if (hex) return { ...result, hex };
+    if (existsSync(join(buildPath, `${SKETCH_DIR}.ino.bin`))) return result;
+    return { ...result, ok: false, message: "The build finished but didn't write the program file." };
+  }
+
+  /**
+   * Build for the board, then upload to it (BLD-06). The port must be one the
+   * caller checked is plugged in; the serial monitor must already be closed.
+   */
+  async upload(projectPath: string, port: string, board: HardwareBoard, platform: HostPlatform, onStage?: (stage: "building" | "uploading") => void): Promise<UploadOutcome> {
+    const started = this.now();
+    const elapsed = () => Math.round(this.now() - started);
+    onStage?.("building");
+    const build = await this.compile(projectPath, board.fqbn);
+    if (!build.ok) return { ok: false, stage: "build", build, log: build.log, durationMs: elapsed() };
+    const cli = this.options.cli();
+    if (!cli) return { ok: false, stage: "build", build, log: "", durationMs: elapsed() };
+    onStage?.("uploading");
+    const raw = await this.options.run(
+      cli,
+      ["upload", "--profile", PROFILE, "--fqbn", board.fqbn, "-p", port, "--input-dir", this.buildPath(projectPath, board.fqbn), "--format", "json", join(projectPath, SKETCH_DIR)],
+      180_000,
+    );
+    // Success: { stdout, stderr }. Failure: { error, output: { stdout, stderr } }.
+    const json = parseJson<{ stdout?: string; stderr?: string; error?: string; output?: { stdout?: string; stderr?: string } }>(raw.stdout);
+    const log = [json?.stdout, json?.stderr, json?.output?.stdout, json?.output?.stderr, json?.error, raw.stderr].filter((s) => s?.trim()).join("\n").trim() || raw.stdout.trim();
+    if (raw.code === 0) return { ok: true, stage: "upload", build, log, durationMs: elapsed() };
+    return { ok: false, stage: "upload", build, problem: uploadProblem(log, board.id, platform), log, durationMs: elapsed() };
   }
 
   async libraries(projectPath: string): Promise<ProfileLibrary[]> {

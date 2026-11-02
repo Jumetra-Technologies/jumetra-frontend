@@ -42,6 +42,11 @@ describe("compiler problems mapped to the line (ERR-01)", () => {
     expect(list[0].severity).toBe("error");
   });
 
+  it("the sketch folder under another spelling (Windows short names, symlinks)", () => {
+    const out = "C:/Users/runneradmin/AppData/Local/Temp/k/Rover/sketch/sketch.ino:2:3: error: 'x' was not declared in this scope";
+    expect(parseDiagnostics(out, ["C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\k\\Rover\\sketch", "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\k\\Rover\\sketch"])[0].file).toBe("sketch.ino");
+  });
+
   it("Windows paths, in any case", () => {
     const out = "C:\\Users\\Ada\\Documents\\Kiungo\\Rover\\sketch\\sketch.ino:7:3: error: 'x' was not declared in this scope";
     expect(parseDiagnostics(out, "c:\\users\\ada\\documents\\kiungo\\rover\\sketch")[0]).toMatchObject({ file: "sketch.ino", line: 7, column: 3 });
@@ -133,6 +138,12 @@ describe("quick fixes, previewed before they're made (FIX-01)", () => {
     expect(explain(d)?.id).toBe("missing-semicolon");
     expect(applyEdits(source, quickFix(d, source)!.edits)).toBe("void f() {\n  int times = 2;\n}\n");
     expect(explain({ ...d, message: "expected ';' after struct definition" })?.title).toBe("A ; is missing after the struct");
+  });
+
+  it("keeps Windows line endings", () => {
+    const source = fixture("brace.ino").replace(/\n/g, "\r\n");
+    const list = problems("brace");
+    expect(applyEdits(source, quickFix(list[0], source, list)!.edits)).toBe("void setup() {\r\n  pinMode(13, OUTPUT);\r\n}\r\n\r\nvoid loop() {\r\n  digitalWrite(13, HIGH);\r\n}\r\n");
   });
 
   it("a semicolon fix skips a trailing comment", () => {

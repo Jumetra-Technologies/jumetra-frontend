@@ -28,26 +28,34 @@ const LINKER = /^(?:.*[\\/])?(?:ld|ld\.exe|avr-ld)(?:\.exe)?:\s*(.*)$|^.*?:\s*\(
 const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "");
 
 /** The file's name inside the sketch folder, or null when the path is elsewhere. */
-function inSketch(path: string, sketchDir: string): string | null {
+function inSketch(path: string, sketchDirs: readonly string[]): string | null {
   const p = norm(path);
-  const dir = norm(sketchDir);
   const lower = (s: string) => s.toLowerCase();
-  // Windows paths compare without case.
-  const under = p.startsWith(`${dir}/`) || lower(p).startsWith(`${lower(dir)}/`);
-  if (!under) return null;
-  const rest = p.slice(dir.length + 1);
-  return rest.includes("/") ? null : rest;
+  for (const sketchDir of sketchDirs) {
+    const dir = norm(sketchDir);
+    // Windows paths compare without case.
+    const under = p.startsWith(`${dir}/`) || lower(p).startsWith(`${lower(dir)}/`);
+    if (!under) continue;
+    const rest = p.slice(dir.length + 1);
+    return rest.includes("/") ? null : rest;
+  }
+  return null;
 }
 
-/** Problems from compiler and linker output, in order, errors and warnings with their notes. */
-export function parseDiagnostics(output: string, sketchDir: string): Diagnostic[] {
+/**
+ * Problems from compiler and linker output, in order, errors and warnings with their notes.
+ * `sketchDir` can be several spellings of the same folder: Arduino CLI names files by the
+ * folder's real path, which on Windows can differ from the one Kiungo has (8.3 short names).
+ */
+export function parseDiagnostics(output: string, sketchDir: string | readonly string[]): Diagnostic[] {
+  const dirs = typeof sketchDir === "string" ? [sketchDir] : sketchDir;
   const out: Diagnostic[] = [];
   let skipNotes = false;
   for (const raw of output.split(/\r?\n/)) {
     const m = LINE.exec(raw);
     if (m) {
       const [, path, line, column, kind, message] = m;
-      const file = inSketch(path, sketchDir);
+      const file = inSketch(path, dirs);
       if (kind === "note") {
         if (!skipNotes) out[out.length - 1]?.notes.push({ file, line: Number(line), message: message.trim() });
         continue;
@@ -264,7 +272,8 @@ export function quickFix(diag: Diagnostic, source: string, all: Diagnostic[] = [
 
 /** The text with the fix made, for the preview and for tests. */
 export function applyEdits(source: string, edits: Edit[]): string {
-  const lines = source.split("\n");
+  const crlf = source.includes("\r\n");
+  const lines = source.split(/\r?\n/);
   // Last first, so earlier positions stay right.
   const ordered = [...edits].sort((a, b) => b.line - a.line || b.column - a.column);
   for (const e of ordered) {
@@ -273,5 +282,5 @@ export function applyEdits(source: string, edits: Edit[]): string {
     const next = text.slice(0, e.column - 1) + e.text + text.slice(e.column - 1 + e.length);
     lines.splice(i, 1, ...next.split("\n"));
   }
-  return lines.join("\n");
+  return lines.join(crlf ? "\r\n" : "\n");
 }

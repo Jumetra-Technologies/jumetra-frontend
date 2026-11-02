@@ -9,7 +9,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { BuildResult, LibraryChange, LibraryInfo, LibrarySearchResult } from "@kiungo/api";
@@ -61,6 +61,18 @@ const nameOf = (entry: unknown): string | null => {
   return typeof lib.name === "string" ? `${lib.name}${typeof (lib as { version?: unknown }).version === "string" ? ` ${(lib as { version: string }).version}` : ""}` : null;
 };
 
+/** The sketch folder as Kiungo names it and as the file system does (Windows 8.3 names, symlinks). */
+export function sketchSpellings(dir: string): string[] {
+  const out = [dir];
+  try {
+    const real = realpathSync.native(dir);
+    if (real !== dir) out.push(real);
+  } catch {
+    // Not there: the build will say so.
+  }
+  return out;
+}
+
 export class BuildService {
   private readonly running = new Map<string, Promise<BuildResult>>();
   private libraryEdit: Promise<unknown> = Promise.resolve();
@@ -102,7 +114,7 @@ export class BuildService {
     const data = sections.find((s) => s.name === "data");
     const compilerOutput = [json?.compiler_out, json?.compiler_err].filter(Boolean).join("\n");
     const log = [compilerOutput, raw.stderr].filter((s) => s?.trim()).join("\n").trim() || raw.stdout.trim();
-    const diagnostics = parseDiagnostics(`${compilerOutput}\n${raw.stderr}`, sketchDir);
+    const diagnostics = parseDiagnostics(`${compilerOutput}\n${raw.stderr}`, sketchSpellings(sketchDir));
     const ok = Boolean(json?.success) && raw.code === 0;
     const result: BuildResult = {
       ok,

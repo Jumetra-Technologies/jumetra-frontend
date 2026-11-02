@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { FolderOpen, MoreHorizontal, Plus, Search } from "lucide-react";
-import type { RecentProject } from "@kiungo/api";
+import { CloudDownload, FileUp, FolderOpen, Globe, Import, Loader2, MoreHorizontal, Plus, Search } from "lucide-react";
+import type { RecentProject, RemoteProject } from "@kiungo/api";
 import { STARTERS } from "@kiungo/core/project";
 import { Button } from "@kiungo/ui/button";
 import { KiungoLogo } from "@kiungo/ui/KiungoMark";
@@ -24,10 +24,15 @@ interface HomeProps {
   onPalette: () => void;
   /** Who's signed in, at the end of the top bar. */
   account?: ReactNode;
+  /** Import from a session file or the website account (DSK-15). */
+  onImportFile: () => void;
+  onImportAccount?: () => void;
+  /** Sync with the account (DSK-14): shown when signed in. */
+  sync?: { enabled: boolean; onToggle: (enabled: boolean) => void; remote: RemoteProject[] | null; message: string | null; onDownload: (p: RemoteProject) => void; downloading: string | null };
 }
 
 /** Home is the user's projects and nothing else (DSK-10). */
-export function Home({ recent, error, onNew, onOpenFolder, onOpen, onReveal, onForget, onPalette, account }: HomeProps) {
+export function Home({ recent, error, onNew, onOpenFolder, onOpen, onReveal, onForget, onPalette, account, onImportFile, onImportAccount, sync }: HomeProps) {
   const empty = recent !== null && recent.length === 0;
   return (
     <div className="flex h-full flex-col bg-background text-foreground" data-testid="home">
@@ -39,6 +44,18 @@ export function Home({ recent, error, onNew, onOpenFolder, onOpen, onReveal, onF
           Search and commands
           <kbd className="ml-3 font-sans text-[12px] text-muted">{shortcut("K")}</kbd>
         </button>
+        <Menu
+          label="Import"
+          align="end"
+          buttonClassName="inline-flex h-9 items-center gap-2 rounded-[10px] border border-border px-3 text-[13px] font-medium text-foreground hover:bg-muted-bg"
+          items={[
+            { id: "file", label: "A lab session file…", hint: ".kiungo.json", icon: <FileUp />, onSelect: onImportFile },
+            ...(onImportAccount ? [{ id: "account", label: "From the Kiungo website…", hint: "Your lab sessions and projects", icon: <Globe />, onSelect: onImportAccount }] : []),
+          ]}
+        >
+          <Import className="size-4" aria-hidden />
+          Import
+        </Menu>
         <Button variant="secondary" onClick={onOpenFolder} title={`Open a project folder (${shortcut("O")})`}>
           <FolderOpen className="size-4" aria-hidden />
           Open folder
@@ -85,6 +102,8 @@ export function Home({ recent, error, onNew, onOpenFolder, onOpen, onReveal, onF
               ))}
             </ul>
           )}
+
+          {sync ? <AccountProjects {...sync} /> : null}
         </div>
       </main>
     </div>
@@ -130,5 +149,54 @@ function ProjectCard({ project, onOpen, onReveal, onForget }: { project: RecentP
         </Menu>
       </div>
     </li>
+  );
+}
+
+/** Sync with the account, and projects there that aren't on this computer (DSK-14). */
+function AccountProjects({ enabled, onToggle, remote, message, onDownload, downloading }: NonNullable<HomeProps["sync"]>) {
+  return (
+    <section className="mt-10 max-w-[760px]" aria-labelledby="account-projects">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <h2 id="account-projects" className="text-[17px] font-semibold tracking-[-0.01em]">
+          On your account
+        </h2>
+        <label className="ml-auto inline-flex cursor-pointer items-center gap-2 text-[13px]">
+          <input type="checkbox" checked={enabled} onChange={(e) => onToggle(e.target.checked)} className="size-4 accent-[var(--primary)]" data-testid="sync-toggle" />
+          Keep a copy of my projects on my account
+        </label>
+      </div>
+      <p className="mt-1 text-[13px] leading-5 text-muted">
+        {enabled
+          ? "Projects sync about 30 seconds after you stop editing, and when you close them, so they open on your other computers. Your folders stay the working copy."
+          : "Turn this on to back up your projects and open them on another computer. Projects only ever live on this computer until you do."}
+      </p>
+      {enabled ? (
+        remote === null ? (
+          <p className="mt-3 flex items-center gap-2 text-[13px] text-muted">
+            <Loader2 className="size-3.5 animate-spin" aria-hidden />
+            Looking for projects from your other computers…
+          </p>
+        ) : message ? (
+          <p className="mt-3 text-[13px] text-muted">{message}</p>
+        ) : remote.length ? (
+          <ul className="mt-3 divide-y divide-border rounded-[12px] border border-border bg-surface" data-testid="remote-projects">
+            {remote.map((p) => (
+              <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13.5px] font-medium">{p.name}</span>
+                  <span className="block text-[12px] text-muted">{p.updatedAt ? `Changed ${openedAgo(p.updatedAt)}` : "On your account"}</span>
+                </span>
+                <Button size="sm" variant="secondary" disabled={downloading !== null} onClick={() => onDownload(p)}>
+                  {downloading === p.id ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <CloudDownload className="size-3.5" aria-hidden />}
+                  Bring to this computer
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-[13px] text-muted">Every project on your account is on this computer too.</p>
+        )
+      ) : null}
+    </section>
   );
 }

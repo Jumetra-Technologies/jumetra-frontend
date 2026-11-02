@@ -12,6 +12,8 @@
 
 import { mkdir, readFile, rm, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import type { LabSession } from "@kiungo/core/lab/types";
+import type { ImportKind } from "@kiungo/core/project";
 import {
   buildStarter,
   CIRCUIT_FILE,
@@ -113,17 +115,52 @@ export class ProjectService {
   async settings(): Promise<ProjectSettings> {
     try {
       const raw = JSON.parse(await readFile(this.settingsFile, "utf8")) as Partial<ProjectSettings>;
-      if (typeof raw.projectsFolder === "string" && raw.projectsFolder) return { projectsFolder: raw.projectsFolder };
+      return { projectsFolder: typeof raw.projectsFolder === "string" && raw.projectsFolder ? raw.projectsFolder : this.opts.defaultProjectsFolder, sync: raw.sync === true };
     } catch {
       /* first run, or unreadable: the default */
     }
-    return { projectsFolder: this.opts.defaultProjectsFolder };
+    return { projectsFolder: this.opts.defaultProjectsFolder, sync: false };
+  }
+
+  private async writeSettings(next: ProjectSettings): Promise<ProjectSettings> {
+    await writeFileAtomic(this.settingsFile, `${JSON.stringify(next, null, 2)}\n`);
+    return next;
   }
 
   async setProjectsFolder(folder: string): Promise<ProjectSettings> {
-    const next = { projectsFolder: resolve(folder) };
-    await writeFileAtomic(this.settingsFile, `${JSON.stringify(next, null, 2)}\n`);
-    return next;
+    return this.writeSettings({ ...(await this.settings()), projectsFolder: resolve(folder) });
+  }
+
+  /** Sync with the account, for every project (DSK-14). */
+  async setSync(enabled: boolean): Promise<ProjectSettings> {
+    return this.writeSettings({ ...(await this.settings()), sync: enabled });
+  }
+
+  /** A new, empty folder in the projects folder for a project called `name`. */
+  async newFolder(name: string): Promise<string> {
+    const { projectsFolder } = await this.settings();
+    await mkdir(projectsFolder, { recursive: true });
+    const folder = await this.freeFolder(projectsFolder, name);
+    await mkdir(folder);
+    return folder;
+  }
+
+  /** The ids of the projects in the recent list, read from their kiungo.json. */
+  async recentIds(): Promise<Set<string>> {
+    const ids = new Set<string>();
+    for (const project of await this.recent()) {
+      try {
+        ids.add(parseProjectMeta(await readFile(join(project.path, PROJECT_FILE), "utf8")).id);
+      } catch {
+        /* moved or unreadable */
+      }
+    }
+    return ids;
+  }
+
+  /** An open project's kiungo.json, as read. */
+  metaOf(path: string): ProjectMeta | null {
+    return this.open.get(path)?.meta ?? null;
   }
 
   private async readRecent(): Promise<RecentEntry[]> {
@@ -193,6 +230,33 @@ export class ProjectService {
   }
 
   async create(input: NewProjectInput): Promise<OpenResult> {
+    return this.make(input);
+  }
+
+  /**
+   * A project from something made elsewhere (DSK-15): a Phase One lab
+   * session becomes its circuit, with a blank sketch for its board, and any
+   * notes go in records/. The session keeps its parts and wires as they were.
+   */
+  async importFrom(input: { name: string; board: string; session?: LabSession; records?: Array<{ name: string; content: string }>; source: { kind: ImportKind; id: string } }): Promise<OpenResult> {
+    return this.make({ name: input.name, board: input.board, starter: null }, { session: input.session, records: input.records ?? [], source: input.source });
+  }
+
+  /** Recent projects already imported from this source: importing again makes a second copy, and says so. */
+  async importedCopies(source: { kind: ImportKind; id: string }): Promise<string[]> {
+    const names: string[] = [];
+    for (const project of await this.recent()) {
+      try {
+        const meta = parseProjectMeta(await readFile(join(project.path, PROJECT_FILE), "utf8"));
+        if (meta.importedFrom?.kind === source.kind && meta.importedFrom.id === source.id) names.push(meta.name);
+      } catch {
+        /* moved or unreadable: not a copy */
+      }
+    }
+    return names;
+  }
+
+  private async make(input: NewProjectInput, from?: { session?: LabSession; records: Array<{ name: string; content: string }>; source: { kind: ImportKind; id: string } }): Promise<OpenResult> {
     const name = (typeof input.name === "string" ? input.name : "").trim().slice(0, 120) || "Untitled project";
     const board = projectBoard(input.board);
     if (!board) return { ok: false, message: "Choose a board for this project." };
@@ -203,6 +267,7 @@ export class ProjectService {
     } catch (error) {
       return { ok: false, message: describe(error) ?? "Couldn't set up that starter." };
     }
+    if (from?.session) build = { ...build, session: { ...from.session, name } };
 
     const { projectsFolder } = await this.settings();
     let folder: string | null = null;
@@ -211,10 +276,11 @@ export class ProjectService {
       folder = await this.freeFolder(projectsFolder, name);
       await mkdir(folder);
       const at = new Date().toISOString();
-      const meta: ProjectMeta = { format: PROJECT_FORMAT, version: PROJECT_VERSION, id: makeId("prj"), name, board: board.part, starter: input.starter, createdAt: at, updatedAt: at, generator: this.opts.generator };
+      const meta: ProjectMeta = { format: PROJECT_FORMAT, version: PROJECT_VERSION, id: makeId("prj"), name, board: board.part, starter: input.starter, createdAt: at, updatedAt: at, generator: this.opts.generator, ...(from ? { importedFrom: from.source } : {}) };
       await writeFileAtomic(join(folder, SKETCH_DIR, SKETCH_FILE), build.code);
       await writeFileAtomic(join(folder, SKETCH_DIR, SKETCH_PROFILE_FILE), sketchProfile(board, build.libraries));
       await mkdir(join(folder, RECORDS_DIR), { recursive: true });
+      for (const record of from?.records ?? []) await writeFileAtomic(join(folder, RECORDS_DIR, record.name), record.content);
       await writeFileAtomic(join(folder, CIRCUIT_FILE), serializeCircuit(build.session, this.opts.generator));
       // A robot starter's course.
       if (build.world) await writeFileAtomic(join(folder, WORLD_FILE), serializeWorld(build.world));

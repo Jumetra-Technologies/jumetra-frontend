@@ -10,7 +10,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Check, Copy, Download, FilePlus2, FileUp, FolderKanban, FolderOpen, Link2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, Copy, Download, FilePlus2, FileUp, FolderKanban, FolderOpen, Link2, Monitor, Pencil, Plus, Trash2 } from "lucide-react";
 import { partHref } from "@kiungo/core/parts";
 import { SESSION_FILE_EXTENSION } from "@kiungo/core/lab/session-file";
 import type { LabSession } from "@kiungo/core/lab/types";
@@ -180,6 +180,14 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
     </span>
   );
 
+  // The website's lab is the preview (SIM-12): your own code, real boards and robot worlds run in the desktop app.
+  const desktopChip = (
+    <Link href="/download" className="hidden items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-medium text-muted hover:bg-muted-bg hover:text-foreground xl:inline-flex" title="Run your own code, use real boards and drive robots in the desktop app" data-testid="desktop-chip">
+      <Monitor className="size-3 shrink-0" aria-hidden />
+      Desktop app
+    </Link>
+  );
+
   const projectChip = project ? (
     <Link href={`/workspace/projects/${project.id}`} className="hidden max-w-[12rem] items-center gap-1 truncate rounded-full bg-accent px-2.5 py-1 text-[11.5px] font-medium text-primary hover:underline 2xl:inline-flex" title="Open the project">
       <FolderKanban className="size-3 shrink-0" aria-hidden />
@@ -192,7 +200,12 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
       host={host}
       runtime={runtime}
       project={project ? { id: project.id, name: project.name, description: project.description, objectives: project.objectives, hardware: project.hardware, category: project.category } : null}
-      projectChip={projectChip}
+      projectChip={
+        <>
+          {projectChip}
+          {desktopChip}
+        </>
+      }
       onLinkProject={() => {
         if (projects.length) return "Use the session menu: Link to project";
         router.push("/workspace?new=1");

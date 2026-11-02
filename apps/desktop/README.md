@@ -76,6 +76,16 @@ Safety (sprint 10):
 - **Checks before a run:** `@kiungo/core/hybrid/safety` adds the real-board checks to the lab's problems through `ProgramDriver.faults`, and `blockingFaults` decides what stops Run.
 - **Parts tab:** `@kiungo/core/hybrid/readiness` gives the Parts tab its statuses and the bill of materials.
 
+## Import and sync
+
+**Import:** `src/main/account/import.ts` turns a website lab session into a project. The session file or `/auth/me/lab-sessions` gives the circuit, and `boardForSession` picks the board. A website project gives `records/about.md`.
+
+**Sync:** `src/main/sync/service.ts` keeps a project in step with `/auth/me/projects-sync` (jumetra-backend `docs/sync-api.md`).
+- `.kiungo/sync.json` holds the last agreed tree.
+- `@kiungo/core/project` `mergeTrees` does the three-way merge, and `conflictCopyPath` names the other side of a conflict.
+- Pushes go through `If-Match`, and a 409 means pull and go again.
+- The account calls use the desktop session's bearer token, in the main process only (`src/main/account/client.ts`).
+
 ## Boards, uploads and the serial monitor
 
 Arduino CLI finds boards (`board list --watch`, kept running while the app is open), uploads (`upload --profile kiungo --fqbn … -p …`) and runs the serial monitor (`monitor -p … --config baudrate=…`), all as child processes (`src/main/hardware/`). The interface can only name a port that discovery has found, and only open the driver pages listed in `src/main/hardware/doctor.ts`. Board limits and pins are in `@kiungo/core/hardware/boards`; upload failures are matched to recovery steps in `@kiungo/core/hardware/upload`.

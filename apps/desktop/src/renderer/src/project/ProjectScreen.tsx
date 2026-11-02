@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Check, Code2, Download, FileUp, FolderOpen, House, Loader2, Pencil, X } from "lucide-react";
+import { AlertTriangle, Check, Code2, Download, FileUp, FolderOpen, House, Info, Loader2, Pencil, X } from "lucide-react";
 import { cn } from "@kiungo/ui/cn";
 import type { OpenedProject } from "@kiungo/api";
 import { SESSION_FILE_EXTENSION } from "@kiungo/core/lab/session-file";
@@ -12,6 +12,7 @@ import { LabWorkspace, type LabWorkspaceHandle, type TitleMenuApi } from "@kiung
 import { flushLab, setLabPersistence, useActiveSession, useLab } from "@kiungo/lab/store";
 import { EditorPane } from "../editor/EditorPane";
 import { programDriver, type EditorBridge } from "./program";
+import { SyncChip } from "./SyncChip";
 import { createWorldFeed, WorldPane } from "../world/WorldPane";
 import type { WorldSpec } from "@kiungo/core/world/types";
 import { invoke, shortcut } from "../ipc";
@@ -136,6 +137,7 @@ export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>
     window.addEventListener("pointerup", up);
   };
   const [warnings, setWarnings] = useState(project.warnings);
+  const [notes, setNotes] = useState(project.notes ?? []);
   const session = useActiveSession();
 
   // The lab reads from and writes to this project while it's open.
@@ -177,7 +179,7 @@ export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>
     [],
   );
 
-  const saveStatus =
+  const saveState =
     save.kind === "error" ? (
       <button type="button" onClick={() => flushLab()} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11.5px] font-medium text-danger hover:bg-muted-bg" title={`${save.message} Click to try again.`} data-testid="save-status">
         <AlertTriangle className="size-3.5" aria-hidden />
@@ -189,6 +191,12 @@ export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>
         {save.kind === "saving" ? "Saving" : "Saved"}
       </span>
     );
+  const saveStatus = (
+    <>
+      {saveState}
+      <SyncChip projectPath={project.path} initial={project.sync} />
+    </>
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -200,6 +208,15 @@ export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>
             {warnings.length > 3 ? ` And ${warnings.length - 3} more.` : ""}
           </p>
           <button type="button" onClick={() => setWarnings([])} aria-label="Dismiss" className="flex size-6 items-center justify-center rounded-[6px] text-muted hover:bg-muted-bg">
+            <X className="size-3.5" />
+          </button>
+        </div>
+      ) : null}
+      {notes.length ? (
+        <div role="status" className="flex shrink-0 items-start gap-2 border-b border-border bg-[color-mix(in_srgb,var(--primary)_8%,var(--surface))] px-4 py-2 text-[12.5px]" data-testid="project-notes">
+          <Info className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
+          <p className="min-w-0 flex-1">{notes.join(" ")}</p>
+          <button type="button" onClick={() => setNotes([])} aria-label="Dismiss" className="flex size-6 items-center justify-center rounded-[6px] text-muted hover:bg-muted-bg">
             <X className="size-3.5" />
           </button>
         </div>

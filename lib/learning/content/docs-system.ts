@@ -339,7 +339,7 @@ npm run dev                      # http://localhost:3000`,
     blocks: [
       {
         type: "p",
-        text: "Every component in the engineering laboratory runs in one of four modes. Mixing modes in a single system is what makes Kiungo a hybrid platform. New components start as virtual, and you change a component's mode by selecting it and using the mode dropdown in the Inspector.",
+        text: "Every component in the engineering laboratory runs in one of three modes. Mixing modes in a single system is what makes Kiungo a hybrid platform. New components start as virtual, and you change a component's mode by selecting it and using the mode dropdown in the Inspector.",
       },
       {
         type: "table",
@@ -347,7 +347,6 @@ npm run dev                      # http://localhost:3000`,
         rows: [
           ["Physical", "A real device attached through the backend, for example a board on a serial port."],
           ["Virtual", "A software model of the component that produces readings and responds to commands."],
-          ["Simulator", "An external simulator plugged in through an adapter. Wokwi and Proteus adapters are planned."],
           ["Hybrid", "A system that combines physical and virtual parts, such as a real ESP32 and DHT11 with a virtual soil moisture sensor and relay."],
         ],
       },

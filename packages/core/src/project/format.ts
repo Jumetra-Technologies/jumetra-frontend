@@ -45,7 +45,11 @@ export interface ProjectMeta {
   updatedAt: string;
   /** The app that last wrote it: "Kiungo 0.3.0". */
   generator?: string;
+  /** What it was imported from (DSK-15), so a second import can say it's a copy. */
+  importedFrom?: { kind: ImportKind; id: string };
 }
+
+export type ImportKind = "lab-session" | "phase-one-project" | "session-file";
 
 /** A board a project can be written for, and how Arduino CLI builds for it. */
 export interface ProjectBoard {
@@ -137,6 +141,9 @@ export function parseProjectMeta(input: string): ProjectMeta {
     createdAt,
     updatedAt: iso(raw.updatedAt, createdAt),
     ...(typeof raw.generator === "string" ? { generator: raw.generator } : {}),
+    ...(isObj(raw.importedFrom) && ["lab-session", "phase-one-project", "session-file"].includes(raw.importedFrom.kind as string) && typeof raw.importedFrom.id === "string"
+      ? { importedFrom: { kind: raw.importedFrom.kind as ImportKind, id: raw.importedFrom.id.slice(0, 120) } }
+      : {}),
   };
 }
 

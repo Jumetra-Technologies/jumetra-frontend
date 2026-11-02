@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ErrorNotice } from "@/components/ui/error-notice";
 import { describeError } from "@/lib/errors";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -371,6 +372,14 @@ export function FirmwareStudio() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background text-foreground">
+      {/* Phase Two: code is built and uploaded by the desktop app now; this stays as a preview. */}
+      <p role="note" className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border bg-[color-mix(in_srgb,var(--primary)_7%,var(--surface))] px-4 py-2 text-[12.5px] text-foreground" data-testid="firmware-preview">
+        <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[11px] font-semibold text-primary">Preview</span>
+        Building and uploading code has moved to the desktop app, which compiles on your computer and talks to the board directly. This page stays as a preview; its server builds may be switched off.
+        <Link href="/download" className="font-medium text-primary underline-offset-4 hover:underline">
+          Get the desktop app
+        </Link>
+      </p>
       <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-surface px-4 py-2.5">
         <div className="min-w-0">
           <h1 className="text-[15px] font-semibold leading-5">Firmware</h1>

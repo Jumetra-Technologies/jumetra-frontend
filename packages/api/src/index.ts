@@ -95,7 +95,25 @@ export interface OpenedProject {
   history: ProjectHistory | null;
   /** Parts or wires in circuit.json the lab couldn't use, already dropped. */
   warnings: string[];
+  /** Things to know about a project just imported (DSK-15): a second copy, a board the desktop can't build for. */
+  notes?: string[];
+  /** How the sync on opening went, when sync is on (DSK-14). */
+  sync?: SyncStatus;
 }
+
+/** Something on the person's website account that can become a desktop project (DSK-15). */
+export interface ImportCandidate {
+  kind: "lab-session" | "phase-one-project";
+  id: string;
+  name: string;
+  /** "4 parts, Arduino Uno" or "Robotics project". */
+  detail: string;
+  updatedAt: string | null;
+  /** Projects on this computer already imported from it. */
+  copies: string[];
+}
+
+export type ImportList = { ok: true; items: ImportCandidate[] } | { ok: false; message: string };
 
 export type OpenResult = { ok: true; project: OpenedProject } | { ok: false; message: string };
 
@@ -117,6 +135,34 @@ export type SaveResult = { ok: true; savedAt: string } | { ok: false; message: s
 export interface ProjectSettings {
   /** Where new projects are made. Documents/Kiungo unless the user picked another folder. */
   projectsFolder: string;
+  /** Keep a copy of projects on the signed-in account (DSK-14). Off until the person turns it on. */
+  sync?: boolean;
+}
+
+/** A project's sync with the account (DSK-14). */
+export interface SyncStatus {
+  /**
+   * off: sync isn't on. synced: this copy and the account agree. behind: the
+   * account has newer changes, taken next time the project opens. conflict:
+   * a file changed in both places; the other copy is saved beside it.
+   */
+  state: "off" | "syncing" | "synced" | "behind" | "conflict" | "offline" | "signed-out" | "removed" | "error";
+  at: string;
+  message?: string;
+  revision?: number;
+  /** Files taken from the account. */
+  pulled?: number;
+  /** Where the other side of each conflict was saved. */
+  conflicts?: string[];
+}
+
+/** A project on the account that isn't on this computer. */
+export interface RemoteProject {
+  id: string;
+  name: string;
+  board: string;
+  updatedAt: string | null;
+  sizeBytes: number;
 }
 
 /** Who is signed in to this copy of Kiungo (DSK-01 to DSK-03). */
@@ -291,6 +337,20 @@ export interface InvokeMap {
   "hybrid:stop": { args: []; result: void };
   /** Every output of the real board off at once, and held off until the next upload (SAF-01). */
   "hybrid:emergency-stop": { args: []; result: void };
+  /** Turn sync with the account on or off for every project (DSK-14). */
+  "sync:set-enabled": { args: [enabled: boolean]; result: ProjectSettings };
+  /** Sync the open project now. */
+  "sync:now": { args: [projectPath: string]; result: SyncStatus };
+  /** Projects on the account that aren't on this computer. */
+  "sync:remote": { args: []; result: { ok: true; projects: RemoteProject[] } | { ok: false; message: string } };
+  /** Bring one of them to this computer and open it. */
+  "sync:download": { args: [id: string]; result: OpenResult };
+  /** Import a lab session file (.kiungo.json) saved from the website (DSK-15). Null if the person cancelled. */
+  "import:file": { args: []; result: OpenResult | null };
+  /** The lab sessions and projects on the signed-in person's website account. */
+  "import:account-list": { args: []; result: ImportList };
+  /** Import one of them as a new project. */
+  "import:account": { args: [kind: ImportCandidate["kind"], id: string]; result: OpenResult };
   /** The open project's world (world.json), or null when it has none. */
   "world:read": { args: [projectPath: string]; result: WorldSpec | null };
   /** Save the open project's world. */
@@ -305,6 +365,8 @@ export interface EventMap {
   "serial:data": { port: string; text: string };
   /** The monitor stopped without being asked; `message` says why, if known. */
   "serial:closed": { port: string; message: string | null };
+  /** A project's sync status changed. */
+  "sync:status": { projectPath: string; status: SyncStatus };
   /** The Hybrid link (sprint 9): the sketch's Serial lines, what it drove, the handshake, or that the link closed. */
   "hybrid:link": HybridLinkEvent;
 }
@@ -321,7 +383,7 @@ export interface HybridLinkEvent {
 }
 
 export type EventChannel = keyof EventMap;
-export const EVENT_CHANNELS = ["auth:changed", "boards:changed", "upload:stage", "serial:data", "serial:closed", "hybrid:link"] as const satisfies readonly EventChannel[];
+export const EVENT_CHANNELS = ["auth:changed", "boards:changed", "upload:stage", "serial:data", "serial:closed", "hybrid:link", "sync:status"] as const satisfies readonly EventChannel[];
 
 export function isEventChannel(value: unknown): value is EventChannel {
   return typeof value === "string" && (EVENT_CHANNELS as readonly string[]).includes(value);
@@ -373,6 +435,13 @@ export const INVOKE_CHANNELS = [
   "hybrid:serial-in",
   "hybrid:stop",
   "hybrid:emergency-stop",
+  "import:file",
+  "sync:set-enabled",
+  "sync:now",
+  "sync:remote",
+  "sync:download",
+  "import:account-list",
+  "import:account",
   "world:read",
   "world:write",
 ] as const satisfies readonly InvokeChannel[];

@@ -10,6 +10,25 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.24.0] - 2026-11-02
+
+Phase Two, Sprint 4: signing in to the desktop app through the website, and the code editor. The desktop app is 0.4.0.
+
+### Added
+- **Sign in to the desktop app (DSK-01, DSK-02).** The first time it starts, Kiungo shows one screen with one button, **Sign in with your browser**. The browser opens the website's new **/desktop/sign-in** page; you sign in with Google or GitHub as usual, see which computer is asking ("Sign in to Kiungo on BRAD-THINKPAD?") and say yes. The browser then sends Kiungo a one-time code through `kiungo://signin`, which only this copy of the app can use: it holds a secret the code is checked against (PKCE). Where the link doesn't arrive (some Linux desktops), the app finds the approval by asking every 3 seconds.
+- **The session is kept safely and survives restarts and time offline (DSK-02).** The refresh token is encrypted with the computer's keychain (Windows' DPAPI, the macOS Keychain, the Linux Secret Service). On a Linux computer with no keychain it stays in memory only, and the account menu says you'll sign in each time. Offline, you stay signed in until the session can be checked.
+- **Sign out and switch account (DSK-03)** from the account menu on Home, or the command palette. Signing out ends this computer's session on the account and never touches projects on disk.
+- **When signing in can't start** (offline, or the sign-in service isn't there yet), the sign-in screen says why and offers **Use Kiungo without signing in**.
+- **The code editor beside the circuit (DSK-30, EDT-01 to EDT-03, EDT-06).** Each project opens with its sketch on the right: the editor from the website's Firmware page, bundled with the app so it works offline, with Arduino (C++) highlighting, find and replace, and Kiungo's light and dark themes. Files open in tabs; **New file** makes `.h`, `.cpp`, `.c` and the other files Arduino builds (headers start with an include guard); files can be renamed and moved to the computer's trash, except the main `sketch.ino`. Every change is saved 400 ms after typing stops, crash-safe as the circuit is. **Run** and **Stop** drive the lab (Ctrl+Enter from the editor too); **Upload** is there and waits for USB board support. Ctrl+E shows or hides the code, and the divider sets how much room it gets.
+- The website's API client: `getDesktopSignIn`, `approveDesktopSignIn`, `denyDesktopSignIn`.
+- The installers register `kiungo://` (Windows registry, macOS Info.plist, the Linux .desktop file).
+
+### Fixed
+- **Keys typed in the code editor no longer reach the lab.** The lab took `/` (search parts) and `1` to `3` (switch views) from anything that wasn't a plain text box, so typing a comment opened the parts search. Elements marked `data-own-keys` now keep their keys.
+
+### Not yet live
+- Production's backend doesn't have the desktop sign-in routes yet, so signing in only works against a backend with them (set `KIUNGO_API_URL`). Until they're deployed, the app offers to go on without signing in.
+
 ## [1.23.0] - 2026-11-02
 
 Phase Two, Sprint 3: the desktop app's Home, projects on disk and the lab. The website works as before. The desktop app is 0.3.0.
@@ -464,6 +483,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.24.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.23.0...v1.24.0
 [1.23.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.22.0...v1.23.0
 [1.22.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.21.2...v1.22.0
 [1.21.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.21.1...v1.21.2

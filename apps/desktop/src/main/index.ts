@@ -4,14 +4,22 @@
  * talks to this process only through the channels in @kiungo/api.
  */
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell } from "electron";
+import { hostname } from "node:os";
 import { join, normalize, sep } from "node:path";
 import { pathToFileURL } from "node:url";
-import { EMULATED_BOARDS, EXAMPLE_SKETCHES, INSTALLABLE_CORES, isInvokeChannel, type Handlers, type Platform } from "@kiungo/api";
+import { EMULATED_BOARDS, EXAMPLE_SKETCHES, INSTALLABLE_CORES, isInvokeChannel, type AuthState, type Handlers, type Platform } from "@kiungo/api";
 import { PROJECT_FILE } from "@kiungo/core/project";
+import { keychainStore } from "./auth/secret-store";
+import { AuthService } from "./auth/service";
 import { ProjectService } from "./projects/service";
+import { SketchFiles } from "./projects/sketch";
 import { compileSketch, installCore, locateCli, toolchainStatus } from "./toolchain/arduino-cli";
 
 const APP_SCHEME = "kiungo-app";
+/** The website sends the app back to kiungo://signin after signing in. */
+const LINK_SCHEME = "kiungo";
+/** The backend the app signs in with. KIUNGO_API_URL points it at another one (staging, a local backend). */
+const API_BASE = (process.env.KIUNGO_API_URL || "https://europe-west4-hhipsystemv0.cloudfunctions.net/api").replace(/\/+$/, "");
 const FQBN = { uno: "arduino:avr:uno", nano: "arduino:avr:nano:cpu=atmega328" } as const;
 
 /**
@@ -27,9 +35,10 @@ const CSP = [
   "script-src 'self'",
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
   "font-src 'self' data:",
   "connect-src 'self'",
+  // The account picture comes from Google or GitHub.
+  "img-src 'self' data: https://lh3.googleusercontent.com https://avatars.githubusercontent.com",
   "object-src 'none'",
   "base-uri 'none'",
 ].join("; ");
@@ -55,6 +64,43 @@ async function chooseFolder(options: Electron.OpenDialogOptions): Promise<string
 }
 
 const isText = (v: unknown): v is string => typeof v === "string" && v.length > 0 && v.length < 4096;
+
+let auth: AuthService | null = null;
+function authService(): AuthService {
+  auth ??= new AuthService({
+    apiBase: API_BASE,
+    device: {
+      // The computer's name as the person knows it, shown on the website's approval page and their device list.
+      name: (hostname() || "This computer").slice(0, 120),
+      platform: process.platform === "win32" ? "windows" : process.platform === "darwin" ? "macos" : "linux",
+      appVersion: app.getVersion(),
+    },
+    store: keychainStore(join(app.getPath("userData"), "session.bin")),
+    openBrowser: (url) => (url.startsWith("https://") || url.startsWith("http://127.0.0.1") || url.startsWith("http://localhost") ? shell.openExternal(url) : Promise.resolve()),
+    onChange: (state: AuthState) => mainWindow?.webContents.send("auth:changed", state),
+  });
+  return auth;
+}
+
+const sketchFiles = new SketchFiles((path) => shell.trashItem(path));
+/** Sketch files belong to the project open in this window, and only that one. */
+const openProject = (path: unknown): path is string => isText(path) && projectService().isOpen(path);
+const notOpen = { ok: false as const, message: "This project isn't open." };
+
+/** Links (kiungo://signin?…) arrive before the window exists on a cold start; hold them until then. */
+const pendingLinks: string[] = [];
+function handleLink(link: string) {
+  if (!link.startsWith(`${LINK_SCHEME}://`)) return;
+  if (!app.isReady()) {
+    pendingLinks.push(link);
+    return;
+  }
+  void authService().handleLink(link);
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+}
 
 protocol.registerSchemesAsPrivileged([
   { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
@@ -144,6 +190,17 @@ const handlers: Handlers = {
     if (projectService().isOpen(path) || (await projectService().isRecent(path))) shell.showItemInFolder(join(path, PROJECT_FILE));
   },
   "projects:settings": () => projectService().settings(),
+  "auth:state": () => authService().current(),
+  "auth:sign-in": () => authService().signIn(),
+  "auth:cancel": () => authService().cancel(),
+  "auth:sign-out": () => authService().signOut(),
+  "auth:skip": () => authService().skip(),
+  "sketch:list": (path) => (openProject(path) ? sketchFiles.list(path) : []),
+  "sketch:read": (path, name) => (openProject(path) ? sketchFiles.read(path, name) : notOpen),
+  "sketch:write": (path, name, content) => (openProject(path) ? sketchFiles.write(path, name, content) : notOpen),
+  "sketch:create": (path, name) => (openProject(path) ? sketchFiles.create(path, name) : notOpen),
+  "sketch:rename": (path, from, to) => (openProject(path) ? sketchFiles.rename(path, from, to) : notOpen),
+  "sketch:delete": (path, name) => (openProject(path) ? sketchFiles.remove(path, name) : notOpen),
   "projects:choose-folder": async () => {
     const current = await projectService().settings();
     const folder = await chooseFolder({ title: "Where should new projects go?", buttonLabel: "Use this folder", defaultPath: current.projectsFolder, properties: ["openDirectory", "createDirectory"] });
@@ -214,12 +271,45 @@ function createWindow() {
   else void win.loadURL(`${APP_SCHEME}://app/index.html`);
 }
 
+// One Kiungo at a time: a second launch (or a kiungo:// link on Windows and Linux) hands its arguments to this one.
+if (!app.requestSingleInstanceLock() && !process.env.KIUNGO_MEASURE_BUDGETS) {
+  app.quit();
+} else {
+  app.on("second-instance", (_event, argv) => {
+    const link = argv.find((a) => a.startsWith(`${LINK_SCHEME}://`));
+    if (link) handleLink(link);
+    else if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+// macOS delivers links as an event, possibly before the app is ready.
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  handleLink(url);
+});
+// The link a cold start was launched with (Windows and Linux).
+for (const arg of process.argv) if (arg.startsWith(`${LINK_SCHEME}://`)) pendingLinks.push(arg);
+
+function registerLinkScheme() {
+  // In development the app is electron + this folder, so the scheme must name both.
+  if (process.defaultApp && process.argv.length >= 2) app.setAsDefaultProtocolClient(LINK_SCHEME, process.execPath, [join(process.cwd(), process.argv[1])]);
+  else app.setAsDefaultProtocolClient(LINK_SCHEME);
+}
+
 app.whenReady().then(() => {
   // No camera, microphone or other device access until a feature asks the user for it (PCP-02).
   session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
   serveRenderer();
   registerIpc();
+  registerLinkScheme();
   createWindow();
+  void authService()
+    .restore()
+    .then(() => {
+      for (const link of pendingLinks.splice(0)) void authService().handleLink(link);
+    });
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -228,6 +318,7 @@ app.whenReady().then(() => {
 // Finish every save before the app goes. A forced quit loses at most the change in flight: files are written whole or not at all.
 let quitting = false;
 app.on("will-quit", (event) => {
+  auth?.dispose();
   if (quitting || !projects) return;
   event.preventDefault();
   quitting = true;

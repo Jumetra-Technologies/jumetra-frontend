@@ -8,6 +8,11 @@ copyright: Copyright © 2026 Kiungo Labs Technologies
 directories:
   output: dist
   buildResources: build
+# kiungo://signin is how the website hands a sign-in back to the app (DSK-02):
+# the installers register it (Info.plist on macOS, the .desktop file on Linux, the registry on Windows).
+protocols:
+  - name: Kiungo
+    schemes: [kiungo]
 files:
   - out/**
   - package.json
@@ -33,6 +38,7 @@ linux:
     entry:
       Name: Kiungo
       StartupWMClass: kiungo
+      MimeType: x-scheme-handler/kiungo;
 mac:
   target: [{ target: dmg, arch: [x64, arm64] }]
   category: public.app-category.education

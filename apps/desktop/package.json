@@ -1,7 +1,7 @@
 {
   "name": "@kiungo/desktop",
   "productName": "Kiungo",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Kiungo 2: the desktop app for building, coding and running robotics projects.",
   "author": "Kiungo Labs Technologies",
@@ -33,6 +33,7 @@
     "@kiungo/ui": "0.1.0",
     "@xyflow/react": "^12.11.3",
     "lucide-react": "^1.34.0",
+    "monaco-editor": "^0.55.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "zustand": "^5.0.15"

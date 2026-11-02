@@ -94,6 +94,8 @@ export interface TitleMenuApi {
 /** Actions the host can trigger from outside: its menus, its command palette. */
 export interface LabWorkspaceHandle {
   toggleRun: () => void;
+  run: () => void;
+  stop: () => void;
   focusSearch: () => void;
   toggleInspector: () => void;
   fit: () => void;
@@ -121,6 +123,10 @@ export interface LabWorkspaceProps {
   saveStatus?: ReactNode;
   /** Before everything in the top bar (the desktop app's Home button). */
   leading?: ReactNode;
+  /** After everything in the top bar, beside the Inspector button (the desktop app's code toggle). */
+  trailing?: ReactNode;
+  /** Told when a run starts or stops, so the host can show it (the desktop app's editor). */
+  onRunningChange?: (running: boolean) => void;
   /** Written into exported `.kiungo.json` files. */
   generator?: string;
   /** Open a `.kiungo.json` build. Default: as a new session. Returns what to report. */
@@ -128,7 +134,7 @@ export interface LabWorkspaceProps {
 }
 
 export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(function LabWorkspace(
-  { host, runtime, project = null, projectChip, onLinkProject, titleMenu, titleMenuLabel = "Session menu", saveStatus, leading, generator = "Kiungo Engineering Lab", onOpenBuild },
+  { host, runtime, project = null, projectChip, onLinkProject, titleMenu, titleMenuLabel = "Session menu", saveStatus, leading, trailing, onRunningChange, generator = "Kiungo Engineering Lab", onOpenBuild },
   ref,
 ) {
   const hydrated = useLab((s) => s.hydrated);
@@ -163,6 +169,13 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
 
   // Simulation
   const [running, setRunning] = useState(false);
+  const runningListener = useRef(onRunningChange);
+  useEffect(() => {
+    runningListener.current = onRunningChange;
+  }, [onRunningChange]);
+  useEffect(() => {
+    runningListener.current?.(running);
+  }, [running]);
   const [t, setT] = useState(0);
   const [speed, setSpeed] = useState(1);
   const [serial, setSerial] = useState<string[]>([]);
@@ -490,6 +503,8 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
+      // A code editor beside the lab handles its own keys: "/" and digits are code there, not lab shortcuts.
+      if (target?.closest?.("[data-own-keys]")) return;
       const typing = !!target && (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable);
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === "z" && !typing) {
@@ -536,6 +551,8 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
     ref,
     () => ({
       toggleRun: () => (running || power === "plugging" ? stopRun() : startRun()),
+      run: () => startRun(),
+      stop: () => stopRun(),
       focusSearch: () => {
         setLeftOpen(true);
         window.setTimeout(() => addPanelApi?.focusSearch(), 0);
@@ -716,6 +733,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
               </span>
             ) : null}
             {saveStatus}
+            {trailing}
             <button type="button" onClick={() => setRightOpen(!showRight)} aria-pressed={showRight} aria-label={showRight ? "Hide inspector" : "Show inspector"} title="Inspector" className={cn("flex size-9 items-center justify-center rounded-[10px] transition-colors", showRight ? "bg-muted-bg text-foreground" : "text-muted hover:bg-muted-bg")}>
               <PanelRight className="size-4" />
             </button>

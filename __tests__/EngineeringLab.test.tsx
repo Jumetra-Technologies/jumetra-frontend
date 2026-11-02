@@ -158,6 +158,27 @@ describe("Engineering Lab", () => {
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
   });
 
+  it("leaves keys typed in a code editor beside it alone: / and digits are code there", async () => {
+    render(
+      <>
+        <EngineeringLab />
+        <section data-own-keys>
+          <div data-testid="code" tabIndex={0} />
+        </section>
+      </>,
+    );
+    await screen.findByTestId("lab-empty");
+    const view = () => useLab.getState().sessions[0].view;
+    const before = view();
+    fireEvent.keyDown(screen.getByTestId("code"), { key: "/" });
+    fireEvent.keyDown(screen.getByTestId("code"), { key: "3" });
+    expect(screen.queryByTestId("lab-search")).not.toBeInTheDocument();
+    expect(view()).toBe(before);
+    // The same keys anywhere else are still the lab's.
+    fireEvent.keyDown(document.body, { key: "3" });
+    expect(view()).toBe("flow");
+  });
+
   it("switches between the three views and keeps the choice with the session", async () => {
     render(<EngineeringLab />);
     await screen.findByTestId("lab-empty");

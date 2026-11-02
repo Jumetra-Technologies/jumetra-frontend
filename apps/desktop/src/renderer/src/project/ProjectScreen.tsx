@@ -1,5 +1,6 @@
-import { forwardRef, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Check, Download, FileUp, FolderOpen, House, Loader2, Pencil, X } from "lucide-react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { AlertTriangle, Check, Code2, Download, FileUp, FolderOpen, House, Loader2, Pencil, X } from "lucide-react";
+import { cn } from "@kiungo/ui/cn";
 import type { OpenedProject } from "@kiungo/api";
 import { SESSION_FILE_EXTENSION } from "@kiungo/core/lab/session-file";
 import type { LabSession } from "@kiungo/core/lab/types";
@@ -8,6 +9,7 @@ import type { MenuEntry } from "@kiungo/ui/menu";
 import type { LabHost } from "@kiungo/lab/lab-context";
 import { LabWorkspace, type LabWorkspaceHandle, type TitleMenuApi } from "@kiungo/lab/LabWorkspace";
 import { flushLab, setLabPersistence, useActiveSession, useLab } from "@kiungo/lab/store";
+import { EditorPane } from "../editor/EditorPane";
 import { invoke, shortcut } from "../ipc";
 import { NO_PERSISTENCE, projectPersistence, type SaveState } from "./persistence";
 
@@ -19,9 +21,70 @@ interface ProjectScreenProps {
   onHome: () => void;
 }
 
+/** The lab's actions, plus showing and hiding the code. */
+export interface ProjectScreenHandle extends LabWorkspaceHandle {
+  toggleCode: () => void;
+}
+
+const CODE_PREF = "kiungo.desktop.code";
+/** Whether the code shows, and how wide: remembered on this computer. */
+function readCodePref(): { open: boolean; width: number } {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(CODE_PREF) ?? "null") as { open?: unknown; width?: unknown } | null;
+    return { open: raw?.open !== false, width: typeof raw?.width === "number" ? raw.width : 0.42 };
+  } catch {
+    return { open: true, width: 0.42 };
+  }
+}
+function writeCodePref(pref: { open: boolean; width: number }) {
+  try {
+    window.localStorage.setItem(CODE_PREF, JSON.stringify(pref));
+  } catch {
+    /* only a convenience */
+  }
+}
+
 /** An open project: the lab, saving into the project folder as you work. */
-export const ProjectScreen = forwardRef<LabWorkspaceHandle, ProjectScreenProps>(function ProjectScreen({ project, onHome }, ref) {
+export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>(function ProjectScreen({ project, onHome }, ref) {
   const [save, setSave] = useState<SaveState>({ kind: "saved", at: null });
+  const [lab, setLab] = useState<LabWorkspaceHandle | null>(null);
+  const [running, setRunning] = useState(false);
+  const [code, setCode] = useState(readCodePref);
+  const row = useRef<HTMLDivElement>(null);
+  const toggleCode = useCallback(() => setCode((c) => ({ ...c, open: !c.open })), []);
+  useEffect(() => writeCodePref(code), [code]);
+
+  useImperativeHandle(ref, () => (lab ? { ...lab, toggleCode } : (null as unknown as ProjectScreenHandle)), [lab, toggleCode]);
+
+  // Ctrl+E (⌘E) shows or hides the code, from anywhere in the project, the editor included.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleCode();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [toggleCode]);
+
+  // Drag the divider to share the width between the circuit and the code.
+  const startResize = (e: React.PointerEvent) => {
+    const box = row.current?.getBoundingClientRect();
+    if (!box) return;
+    e.preventDefault();
+    const move = (ev: PointerEvent) => {
+      const width = Math.min(0.7, Math.max(0.25, (box.right - ev.clientX) / box.width));
+      setCode((c) => ({ ...c, width }));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
   const [warnings, setWarnings] = useState(project.warnings);
   const session = useActiveSession();
 
@@ -91,9 +154,17 @@ export const ProjectScreen = forwardRef<LabWorkspaceHandle, ProjectScreenProps>(
           </button>
         </div>
       ) : null}
-      <div className="min-h-0 flex-1">
+      <div ref={row} className="flex min-h-0 flex-1">
+        <div className="min-h-0 min-w-0 flex-1">
         <LabWorkspace
-          ref={ref}
+          ref={setLab}
+          onRunningChange={setRunning}
+          trailing={
+            <button type="button" onClick={toggleCode} aria-pressed={code.open} aria-label={code.open ? "Hide the code" : "Show the code"} title={`Code (${shortcut("E")})`} className={cn("flex h-9 items-center gap-1.5 rounded-[10px] px-2.5 text-[12.5px] font-medium transition-colors", code.open ? "bg-muted-bg text-foreground" : "text-muted hover:bg-muted-bg")} data-testid="toggle-code">
+              <Code2 className="size-4" aria-hidden />
+              <span className="hidden xl:inline">Code</span>
+            </button>
+          }
           host={HOST}
           titleMenu={titleMenu}
           titleMenuLabel="Project menu"
@@ -107,6 +178,18 @@ export const ProjectScreen = forwardRef<LabWorkspaceHandle, ProjectScreenProps>(
             </button>
           }
         />
+        </div>
+        {code.open ? (
+          <>
+            <div role="separator" aria-orientation="vertical" aria-label="Resize the code" tabIndex={0} onPointerDown={startResize} onKeyDown={(e) => {
+              if (e.key === "ArrowLeft") setCode((c) => ({ ...c, width: Math.min(0.7, c.width + 0.03) }));
+              if (e.key === "ArrowRight") setCode((c) => ({ ...c, width: Math.max(0.25, c.width - 0.03) }));
+            }} className="w-1 shrink-0 cursor-col-resize bg-border transition-colors hover:bg-primary/40 focus-visible:bg-primary" />
+            <div className="min-h-0 shrink-0" style={{ width: `${code.width * 100}%` }}>
+              <EditorPane projectPath={project.path} running={running} onRun={() => lab?.run()} onStop={() => lab?.stop()} onClose={toggleCode} />
+            </div>
+          </>
+        ) : null}
       </div>
     </div>
   );

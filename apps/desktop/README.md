@@ -31,6 +31,16 @@ New projects go in Documents/Kiungo unless you pick another folder in the New pr
 
 The main process keeps the recent list and only opens projects that are on it or chosen in a folder dialog; the interface can't name other folders.
 
+## Signing in
+
+Kiungo signs in through the website: **Sign in with your browser** opens `/desktop/sign-in`, you approve this computer there, and the browser sends the app a one-time code through `kiungo://signin`. The code only works with a secret this copy of the app holds (PKCE). If the link doesn't arrive, the app polls for the approval every 3 seconds. The refresh token is kept encrypted by the operating system's keychain (`src/main/auth/`). The backend side is `jumetra-backend` `docs/desktop-sign-in.md`.
+
+`KIUNGO_API_URL` points the app at another backend, e.g. a local one with the desktop routes:
+
+```bash
+KIUNGO_API_URL=http://127.0.0.1:8000 npm run desktop
+```
+
 ## Keyboard
 
 | Keys | What |
@@ -39,6 +49,8 @@ The main process keeps the recent list and only opens projects that are on it or
 | Ctrl+N (⌘N) | New project |
 | Ctrl+O (⌘O) | Open a project folder |
 | Ctrl+Shift+H (⇧⌘H) | Home |
+| Ctrl+E (⌘E) | Show or hide the code |
+| Ctrl+F (⌘F) | Find, in the code |
 | Ctrl+Enter (⌘↵) | Run or stop, in the lab |
 | / | Search parts, in the lab |
 | 1, 2, 3 | 3D, 2D, Trace |
@@ -56,10 +68,11 @@ Before a release build, CI runs `npm run fetch:arduino-cli -w @kiungo/desktop --
 | Path | What |
 | --- | --- |
 | `src/main/index.ts` | Window, the `kiungo-app://` protocol (isolation headers and content policy), IPC handlers |
-| `src/main/projects/` | Projects on disk: making, opening, the recent list, crash-safe autosave |
+| `src/main/projects/` | Projects on disk: making, opening, the recent list, crash-safe autosave, sketch files |
+| `src/main/auth/` | Signing in through the website, the keychain-encrypted session |
 | `src/main/toolchain/arduino-cli.ts` | Finding and running Arduino CLI with JSON output |
 | `src/preload/index.ts` | The only bridge: `window.kiungo.invoke(channel, ...args)` |
-| `src/renderer/` | The interface: Home, the project screen (the shared lab from `@kiungo/lab`), the command palette |
+| `src/renderer/` | The interface: the sign-in screen, Home, the project screen (the shared lab from `@kiungo/lab` and the code editor), the command palette |
 | `resources/sketches/` | Example sketches shipped with the app |
 | `scripts/fetch-arduino-cli.mjs` | Pinned Arduino CLI download, checked against Arduino's published checksums |
 | `scripts/measure-lab.mjs` | DSK-21: frames per second while panning a 40-part, 200-wire build |

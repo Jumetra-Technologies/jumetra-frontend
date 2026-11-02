@@ -2,6 +2,8 @@
 # Signing, notarization and the update feed are added by Masden (sprint 6).
 appId: com.kiungolabs.kiungo
 productName: Kiungo
+# The package is @kiungo/desktop; the binary and bundle are plain "kiungo".
+executableName: kiungo
 copyright: Copyright © 2026 Kiungo Labs Technologies
 directories:
   output: dist
@@ -23,7 +25,14 @@ nsis:
   allowToChangeInstallationDirectory: true
 linux:
   target: [AppImage, deb, rpm]
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  maintainer: Kiungo Labs Technologies
   category: Education
+  synopsis: Build, code and run robotics projects
+  desktop:
+    entry:
+      Name: Kiungo
+      StartupWMClass: kiungo
 mac:
   target: [{ target: dmg, arch: [x64, arm64] }]
   category: public.app-category.education

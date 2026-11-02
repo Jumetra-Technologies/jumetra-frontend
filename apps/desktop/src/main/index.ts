@@ -134,6 +134,15 @@ function createWindow() {
     // process.uptime() counts from the moment the operating system started the app.
     windowShownAt = process.uptime() * 1000;
     win.show();
+    // scripts/measure-budgets.mjs: print the startup numbers once the app has settled, then quit.
+    if (process.env.KIUNGO_MEASURE_BUDGETS) {
+      setTimeout(() => {
+        const processes = app.getAppMetrics().map((m) => ({ type: m.type, pid: m.pid, mb: Math.round(m.memory.workingSetSize / 1024) }));
+        process.stdout.write(`KIUNGO_METRICS ${JSON.stringify({ ...handlers["app:metrics"](), processes })}\n`);
+        setTimeout(() => app.quit(), 1500); // long enough for the script to read /proc for each pid
+        return;
+      }, Number(process.env.KIUNGO_MEASURE_BUDGETS) || 5000);
+    }
   });
   // Links open in the user's browser; the window never leaves the app.
   win.webContents.setWindowOpenHandler(({ url }) => {

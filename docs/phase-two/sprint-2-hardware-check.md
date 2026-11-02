@@ -36,6 +36,16 @@ void loop() {
 }
 ```
 
+## Running it
+
+```
+npm run fetch:arduino-cli -w @kiungo/desktop        # once
+arduino-cli lib install NewPing                       # once, for the Physical build
+npm run hardware-check -w @kiungo/desktop -- --port COM5
+```
+
+The script (`apps/desktop/scripts/hardware-check.mjs`) builds both sketches, uploads them, pushes the distances, times the delay 20 times, and writes the record below to `docs/phase-two/sprint-2-hardware-results.md`. It stops and asks when a hand is needed (the book, the cable). What it found on the emulator side first is in `sprint-2-spike-results.md`.
+
 ## Steps
 
 1. **Real sensor (baseline).** Build with the Physical binding and upload. Hold the book at 20 cm, then 50 cm. Record what the Serial monitor prints.

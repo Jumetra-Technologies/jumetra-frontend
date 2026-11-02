@@ -352,7 +352,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
       const initial = peripheralInputs(nodes, analysis, inputs, boardId, 0).inputs;
       sentInputs.current = JSON.stringify(initial);
       void program
-        .start(boardId, initial, {
+        .start(boardId, initial, { nodes, analysis }, {
           stage: (stage) => setProgramRun((p) => (p && p.boardId === boardId ? { ...p, stage } : p)),
           readings: (readings) => setProgramRun((p) => (p && p.boardId === boardId ? { ...p, readings, stage: "running" } : p)),
           serial: (text) =>

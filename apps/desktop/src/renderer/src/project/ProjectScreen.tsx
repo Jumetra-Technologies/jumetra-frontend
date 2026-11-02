@@ -11,6 +11,8 @@ import { LabWorkspace, type LabWorkspaceHandle, type TitleMenuApi } from "@kiung
 import { flushLab, setLabPersistence, useActiveSession, useLab } from "@kiungo/lab/store";
 import { EditorPane } from "../editor/EditorPane";
 import { programDriver, type EditorBridge } from "./program";
+import { createWorldFeed, WorldPane } from "../world/WorldPane";
+import type { WorldSpec } from "@kiungo/core/world/types";
 import { invoke, shortcut } from "../ipc";
 import { NO_PERSISTENCE, projectPersistence, type SaveState } from "./persistence";
 
@@ -54,7 +56,39 @@ export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>
   const row = useRef<HTMLDivElement>(null);
   // The lab's Run runs the project's own code on an emulated board; the editor saves first and shows the build's problems.
   const editorBridge = useRef<EditorBridge | null>(null);
-  const program = useMemo(() => programDriver(project.path, project.meta.board, () => editorBridge.current), [project.path, project.meta.board]);
+  // The robot's world (sprint 8): world.json, the live feed from the running program, and which right-hand pane shows.
+  const [world, setWorld] = useState<WorldSpec | null>(null);
+  const worldRef = useRef<WorldSpec | null>(null);
+  const feed = useMemo(() => createWorldFeed(), []);
+  const [pane, setPane] = useState<"code" | "world">("code");
+  useEffect(() => {
+    let live = true;
+    void invoke("world:read", project.path).then((w) => {
+      if (!live) return;
+      worldRef.current = w;
+      setWorld(w);
+      if (w) setPane("world");
+    });
+    return () => {
+      live = false;
+    };
+  }, [project.path]);
+  const program = useMemo(
+    () => programDriver(project.path, project.meta.board, () => editorBridge.current, { world: () => worldRef.current, onState: (state, robot) => feed.push(state, robot) }),
+    [project.path, project.meta.board, feed],
+  );
+  const saveWorldTimer = useRef<number | null>(null);
+  const changeWorld = useCallback(
+    (next: WorldSpec) => {
+      worldRef.current = next;
+      setWorld(next);
+      // The running robot sees moved boxes at once; the file is saved once the dragging settles.
+      program.setObstacles(next.obstacles);
+      if (saveWorldTimer.current !== null) window.clearTimeout(saveWorldTimer.current);
+      saveWorldTimer.current = window.setTimeout(() => void invoke("world:write", project.path, next), 400);
+    },
+    [program, project.path],
+  );
   useEffect(() => () => program.stop(), [program]);
   const toggleCode = useCallback(() => setCode((c) => ({ ...c, open: !c.open })), []);
   useEffect(() => writeCodePref(code), [code]);
@@ -191,8 +225,23 @@ export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>
               if (e.key === "ArrowLeft") setCode((c) => ({ ...c, width: Math.min(0.7, c.width + 0.03) }));
               if (e.key === "ArrowRight") setCode((c) => ({ ...c, width: Math.max(0.25, c.width - 0.03) }));
             }} className="w-1 shrink-0 cursor-col-resize bg-border transition-colors hover:bg-primary/40 focus-visible:bg-primary" />
-            <div className="min-h-0 shrink-0" style={{ width: `${code.width * 100}%` }}>
-              <EditorPane projectPath={project.path} board={`the ${boardName(project.meta.board)}`} boardPart={project.meta.board} bridge={editorBridge} running={running} onRun={() => lab?.run()} onStop={() => lab?.stop()} onClose={toggleCode} />
+            <div className="flex min-h-0 shrink-0 flex-col" style={{ width: `${code.width * 100}%` }}>
+              <div className="flex h-9 shrink-0 items-stretch gap-1 border-b border-l border-border bg-background px-2" role="tablist" aria-label="Beside the circuit">
+                {(["code", "world"] as const).map((id) => (
+                  <button key={id} type="button" role="tab" aria-selected={pane === id} onClick={() => setPane(id)} className={cn("border-b-2 px-2.5 text-[12.5px] font-medium", pane === id ? "border-primary text-foreground" : "border-transparent text-muted hover:text-foreground")} data-testid={`pane-${id}`}>
+                    {id === "code" ? "Code" : "World"}
+                  </button>
+                ))}
+              </div>
+              {/* The editor stays mounted behind the World, so its files and undo history stay. */}
+              <div className={cn("min-h-0 flex-1", pane === "code" ? "block" : "hidden")}>
+                <EditorPane projectPath={project.path} board={`the ${boardName(project.meta.board)}`} boardPart={project.meta.board} bridge={editorBridge} running={running} onRun={() => lab?.run()} onStop={() => lab?.stop()} onClose={toggleCode} />
+              </div>
+              {pane === "world" ? (
+                <div className="min-h-0 flex-1 border-l border-border bg-surface">
+                  <WorldPane world={world} feed={feed} running={running} onChange={changeWorld} />
+                </div>
+              ) : null}
             </div>
           </>
         ) : null}

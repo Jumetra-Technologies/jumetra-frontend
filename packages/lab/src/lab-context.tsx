@@ -45,6 +45,8 @@ export interface ProgramDriver {
     boardId: string,
     /** What its sensors read as it starts, so the first reading isn't missed. */
     inputs: PeripheralInput[],
+    /** The circuit as it is now: a robot's wheels and sensors come from it. */
+    circuit: { nodes: LabNode[]; analysis: Analysis },
     on: { readings: (r: ProgramReadings) => void; serial: (text: string) => void; stage: (stage: "building" | "starting") => void },
   ) => Promise<{ ok: true; programBytes: number } | { ok: false; message: string }>;
   stop: () => void;

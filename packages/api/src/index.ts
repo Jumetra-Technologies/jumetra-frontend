@@ -14,6 +14,7 @@ import type { Diagnostic, ProfileLibrary } from "@kiungo/core/build";
 import type { HardwareBoardId } from "@kiungo/core/hardware/boards";
 import type { UploadProblem } from "@kiungo/core/hardware/upload";
 import type { DetectedBoard } from "@kiungo/core/hardware/usb";
+import type { WorldSpec } from "@kiungo/core/world/types";
 
 export type Platform = "win32" | "linux" | "darwin";
 
@@ -270,6 +271,10 @@ export interface InvokeMap {
   /** Send text to the board, as typed (add the line ending you want). */
   "serial:write": { args: [text: string]; result: boolean };
   "serial:close": { args: []; result: void };
+  /** The open project's world (world.json), or null when it has none. */
+  "world:read": { args: [projectPath: string]; result: WorldSpec | null };
+  /** Save the open project's world. */
+  "world:write": { args: [projectPath: string, world: WorldSpec]; result: SketchResult };
 }
 
 /** Messages the main process sends the interface, unasked. */
@@ -330,6 +335,8 @@ export const INVOKE_CHANNELS = [
   "serial:open",
   "serial:write",
   "serial:close",
+  "world:read",
+  "world:write",
 ] as const satisfies readonly InvokeChannel[];
 
 /** Fails to compile when a channel in InvokeMap is missing from INVOKE_CHANNELS (the preload would refuse it). */

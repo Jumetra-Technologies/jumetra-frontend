@@ -50,6 +50,21 @@ describe("making a project (DSK-11, DSK-12)", () => {
     expect(existsSync(projectsFolder) ? readdirSync(projectsFolder) : []).toEqual([]);
   });
 
+  it("a robot starter brings its course as world.json, which reads back and saves", async () => {
+    const { svc } = service();
+    const p = opened(await svc.create({ name: "Rover", board: "arduino-uno", starter: "obstacle-avoider" }));
+    expect(existsSync(join(p.path, "world.json"))).toBe(true);
+    const world = await svc.readWorld(p.path);
+    expect(world?.obstacles.length).toBe(6);
+    const moved = { ...world!, obstacles: world!.obstacles.slice(1) };
+    expect(await svc.writeWorld(p.path, moved)).toEqual({ ok: true });
+    expect((await svc.readWorld(p.path))?.obstacles.length).toBe(5);
+    expect(await svc.writeWorld(p.path, { version: 9 })).toMatchObject({ ok: false });
+    // A project without a robot has no world until one is added.
+    const blink = opened(await svc.create({ name: "Blink", board: "arduino-uno", starter: "blink" }));
+    expect(await svc.readWorld(blink.path)).toBeNull();
+  });
+
   it("uses the projects folder the user chose", async () => {
     const { root, svc } = service();
     await svc.setProjectsFolder(join(root, "School"));

@@ -9,6 +9,8 @@ import type { BoardDefinition } from "../boards";
 import type { CrashKind, PinChange, PinLevel } from "./avr";
 import type { PeripheralInput } from "./peripherals";
 import type { PinReading } from "./pinstats";
+import type { RobotWiring } from "../world/robot";
+import type { RobotSpec, WorldObstacle, WorldSpec, WorldState } from "../world/types";
 
 export type { CrashKind, PeripheralInput, PinChange, PinLevel, PinReading };
 
@@ -27,7 +29,11 @@ export type ToWorker =
   /** The parts wired to the board and what they read now; replaces the previous set. */
   | { type: "peripherals"; inputs: PeripheralInput[] }
   /** Text typed into the serial monitor, to the board's RX. */
-  | { type: "serial-in"; text: string };
+  | { type: "serial-in"; text: string }
+  /** Put the board in a robot that drives in this world (sprint 8). Send after "load", before "start". */
+  | { type: "world"; world: WorldSpec; robot: RobotSpec; wiring: RobotWiring }
+  /** Obstacles moved while the robot runs. */
+  | { type: "world-obstacles"; obstacles: WorldObstacle[] };
 
 export type FromWorker =
   | { type: "loaded"; programBytes: number }
@@ -36,4 +42,6 @@ export type FromWorker =
   | { type: "serial"; text: string }
   | { type: "error"; message: string }
   /** What every pin did since the last readings, with the run's speed (about 20 a second). */
-  | { type: "readings"; simMs: number; speedPercent: number; pins: PinReading[]; crashed: CrashKind | null };
+  | { type: "readings"; simMs: number; speedPercent: number; pins: PinReading[]; crashed: CrashKind | null; world?: WorldState }
+  /** The world is ready (its physics loaded): "start" can follow. */
+  | { type: "world-ready" };

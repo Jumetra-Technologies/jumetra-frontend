@@ -9,6 +9,8 @@ import { Peripherals } from "./peripherals";
 import { PinStats } from "./pinstats";
 import { LEVEL_CODES, PIN_SLOTS, type FromWorker, type ToWorker } from "./protocol";
 import { Pacer } from "./realtime";
+import { RobotRun } from "../world/harness";
+import { initPhysics } from "../world/sim";
 
 type Scope = {
   postMessage(message: FromWorker): void;
@@ -23,6 +25,9 @@ let pending: PinChange[] = [];
 let serial = "";
 let stats: PinStats | null = null;
 let peripherals: Peripherals | null = null;
+let robot: RobotRun | null = null;
+let robotStats: PinStats | null = null;
+let worldMs = 0;
 
 const post = (message: FromWorker) => scope.postMessage(message);
 
@@ -51,12 +56,22 @@ scope.onmessage = (event) => {
         board.onPinChange((change) => s.record(change));
         peripherals = new Peripherals(board);
         const b = board;
+        robot?.dispose();
+        robot = null;
         pacer = new Pacer(board, {
           reportEveryMs: 50,
           onStatus: ({ simMs, speedPercent }) => {
             flush();
-            post({ type: "readings", simMs, speedPercent, pins: s.take(b.cycles), crashed: b.crashed });
+            post({ type: "readings", simMs, speedPercent, pins: s.take(b.cycles), crashed: b.crashed, ...(robot ? { world: robot.world.state() } : {}) });
             if (b.crashed) pacer?.stop();
+          },
+          onSlice: () => {
+            // The world moves in the same simulated time as the board, in steps of at least 10 ms.
+            if (!robot || !robotStats) return;
+            const dt = b.timeMs - worldMs;
+            if (dt < 10) return;
+            robot.move(robotStats.take(b.cycles), dt / 1000);
+            worldMs = b.timeMs;
           },
         });
         post({ type: "loaded", programBytes: board.programBytes });
@@ -74,7 +89,26 @@ scope.onmessage = (event) => {
         board?.setInput(message.pin, message.high);
         break;
       case "peripherals":
-        peripherals?.apply(message.inputs);
+        if (robot) robot.setOtherInputs(message.inputs);
+        else peripherals?.apply(message.inputs);
+        break;
+      case "world": {
+        const b = board;
+        const p = peripherals;
+        if (!b || !p) break;
+        void initPhysics().then(() => {
+          if (board !== b) return;
+          robotStats = new PinStats(b.board.clockHz, b.board.pins.map((pin) => pin.arduino));
+          const stats = robotStats;
+          b.onPinChange((change) => stats.record(change));
+          robot = new RobotRun(b, message.wiring, message.world, message.robot, { peripherals: p, stats });
+          worldMs = b.timeMs;
+          post({ type: "world-ready" });
+        });
+        break;
+      }
+      case "world-obstacles":
+        robot?.world.setObstacles(message.obstacles);
         break;
       case "serial-in":
         board?.writeSerial(new TextEncoder().encode(message.text));

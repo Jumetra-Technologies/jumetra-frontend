@@ -40,6 +40,8 @@ import {
   type ProjectMeta,
 } from "@kiungo/core/project";
 import { makeId, newSession } from "@kiungo/core/lab/session";
+import { parseWorld, serializeWorld, WORLD_FILE } from "@kiungo/core/world/courses";
+import type { WorldSpec } from "@kiungo/core/world/types";
 import type { NewProjectInput, OpenResult, ProjectHistory, ProjectSettings, RecentProject, SavePayload, SaveResult } from "@kiungo/api";
 import { cleanTempFiles, writeFileAtomic } from "./atomic";
 
@@ -193,7 +195,7 @@ export class ProjectService {
   async create(input: NewProjectInput): Promise<OpenResult> {
     const name = (typeof input.name === "string" ? input.name : "").trim().slice(0, 120) || "Untitled project";
     const board = projectBoard(input.board);
-    if (!board) return { ok: false, message: "Choose an Arduino Uno or Mega for this project." };
+    if (!board) return { ok: false, message: "Choose a board for this project." };
 
     let build: ReturnType<typeof buildStarter>;
     try {
@@ -214,6 +216,8 @@ export class ProjectService {
       await writeFileAtomic(join(folder, SKETCH_DIR, SKETCH_PROFILE_FILE), sketchProfile(board, build.libraries));
       await mkdir(join(folder, RECORDS_DIR), { recursive: true });
       await writeFileAtomic(join(folder, CIRCUIT_FILE), serializeCircuit(build.session, this.opts.generator));
+      // A robot starter's course.
+      if (build.world) await writeFileAtomic(join(folder, WORLD_FILE), serializeWorld(build.world));
       // kiungo.json last: a folder with it is a whole project.
       await writeFileAtomic(join(folder, PROJECT_FILE), serializeProjectMeta(meta));
       await this.touchRecent(folder);
@@ -305,6 +309,25 @@ export class ProjectService {
 
   isOpen(path: string): boolean {
     return this.open.has(path);
+  }
+
+  /** The project's world, or null when it has none (or it can't be read). */
+  async readWorld(path: string): Promise<WorldSpec | null> {
+    if (!this.open.has(path)) return null;
+    return parseWorld(await readFile(join(path, WORLD_FILE), "utf8").catch(() => ""));
+  }
+
+  /** Save the world (obstacles moved, a world added). Crash-safe like every save. */
+  async writeWorld(path: string, world: unknown): Promise<{ ok: true } | { ok: false; message: string }> {
+    if (!this.open.has(path)) return { ok: false, message: "This project isn't open." };
+    const parsed = parseWorld(JSON.stringify(world));
+    if (!parsed) return { ok: false, message: "That isn't a world Kiungo can save." };
+    try {
+      await writeFileAtomic(join(path, WORLD_FILE), serializeWorld(parsed));
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, message: describe(error) ?? "Couldn't save the world." };
+    }
   }
 
   /** The board an open project is written for (a lab part id), or null if it isn't open. */

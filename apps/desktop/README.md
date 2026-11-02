@@ -51,6 +51,10 @@ The compiler's output is turned into problems, explanations and fixes by `@kiung
 
 The lab's Run builds the sketch (or reuses the last good build when no file changed: `kiungo-build.json` in the build folder holds the sketch's fingerprint), then runs the HEX in `@kiungo/core/emulator/worker` (`src/renderer/src/project/program.ts`). The worker reports each pin's level, PWM duty, toggle rate and last pulse width about 20 times a second (`emulator/pinstats.ts`); `@kiungo/core/lab/program` turns those into the parts' states and feeds the sensors' readings back as part models (`emulator/peripherals.ts`: HC-SR04, DHT11/22, analog and digital sensors). The test sketches and the script that compiles them like Arduino CLI are in `packages/core/test/fixtures/sketches/`.
 
+## Robots in a world
+
+A board with two DC motors is a robot (`@kiungo/core/world/robot`). When the project has a `world.json`, Run puts it in that world: the emulator worker steps Rapier 2D physics (`world/sim.ts`) after each slice of cycles, turns the motor pins into wheel speeds and the world into the sensors' readings (`world/harness.ts`, which CI also runs headless to check the templates finish their courses). The World pane (`src/renderer/src/world/WorldPane.tsx`) draws it at the screen's rate and lets you drag the obstacles while it runs.
+
 ## Boards, uploads and the serial monitor
 
 Arduino CLI finds boards (`board list --watch`, kept running while the app is open), uploads (`upload --profile kiungo --fqbn … -p …`) and runs the serial monitor (`monitor -p … --config baudrate=…`), all as child processes (`src/main/hardware/`). The interface can only name a port that discovery has found, and only open the driver pages listed in `src/main/hardware/doctor.ts`. Board limits and pins are in `@kiungo/core/hardware/boards`; upload failures are matched to recovery steps in `@kiungo/core/hardware/upload`.

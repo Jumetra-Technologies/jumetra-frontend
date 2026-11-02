@@ -19,6 +19,10 @@ import { BuildService } from "./build/service";
 import { BoardWatcher } from "./hardware/boards";
 import { defaultDoctorEnv, diagnosePorts, DRIVER_LINKS } from "./hardware/doctor";
 import { BAUD_RATES, SerialMonitor } from "./hardware/serial";
+import { HybridService } from "./hybrid/service";
+import { HybridLink } from "./hybrid/link";
+import { HYBRID_BOARDS, parsePlan } from "@kiungo/core/hybrid/plan";
+import { createHash } from "node:crypto";
 import { compileSketch, installCore, locateCli, runCli, toolchainStatus, type CliLocation } from "./toolchain/arduino-cli";
 
 const APP_SCHEME = "kiungo-app";
@@ -167,6 +171,15 @@ const serialMonitor = () =>
     onData: (port, text) => mainWindow?.webContents.send("serial:data", { port, text }),
     onClosed: (port, message) => mainWindow?.webContents.send("serial:closed", { port, message }),
   }));
+let hybrid: HybridService | null = null;
+const hybridService = (projectPath: string) => {
+  // One work folder per project, so its build cache survives between runs.
+  const workDir = join(app.getPath("userData"), "builds", `${createHash("sha256").update(projectPath).digest("hex").slice(0, 16)}-hybrid`);
+  if (!hybrid || hybrid.workDir !== workDir) hybrid = new HybridService(buildService(), { resources: join(resourcesDir(), "hybrid"), workDir });
+  return hybrid;
+};
+let link: HybridLink | null = null;
+const hybridLink = () => (link ??= new HybridLink({ cli, spawn: spawnCli, onEvent: (port, event) => mainWindow?.webContents.send("hybrid:link", { port, ...event }) }));
 const hostPlatform = process.platform === "win32" || process.platform === "darwin" ? process.platform : "linux";
 const DRIVER_URLS = new Set<string>(Object.values(DRIVER_LINKS).map((l) => l.url));
 
@@ -284,6 +297,35 @@ const handlers: Handlers = {
   },
   "serial:write": (text) => (typeof text === "string" && text.length <= 4096 ? serialMonitor().write(text) : false),
   "serial:close": () => serialMonitor().stop(),
+  "hybrid:start": async (path, port, boardId, rawPlan) => {
+    const refused = (message: string) => ({ ok: false, stage: "upload" as const, build: { ok: false, diagnostics: [], durationMs: 0, log: "", message }, log: "", durationMs: 0, problem: { id: "unknown" as const, title: message, steps: [] } });
+    if (!openProject(path)) return refused(notOpen.message);
+    const board = typeof boardId === "string" ? hardwareBoard(boardId) : undefined;
+    const projectBoard = projectService().boardOf(path);
+    if (!board || !projectBoard || !uploadTargetsFor(projectBoard).some((b) => b.id === board.id)) return refused("This project's code isn't written for that board.");
+    if (!HYBRID_BOARDS.has(board.id)) return refused(`Hybrid runs work on the Uno and the Nano for now. Run it all in the lab, or upload it to the ${board.name} without Kiungo.`);
+    if (!isText(port) || !boardWatcher().has(port)) return refused("That board isn't plugged in any more. Pick it again in Upload to.");
+    const parsed = parsePlan(rawPlan, board.fqbn);
+    if (!parsed.ok) return refused(parsed.message);
+    // The upload and the link both need the port.
+    hybridLink().stop();
+    if (serialMonitor().open?.port === port) serialMonitor().stop();
+    const result = await hybridService(path).upload(path, port, board, parsed.plan, hostPlatform, (stage) => mainWindow?.webContents.send("upload:stage", { projectPath: path, stage }));
+    if (!result.ok) return result;
+    const started = hybridLink().start(port);
+    return started.ok ? result : { ...result, ok: false, problem: { id: "unknown" as const, title: started.message, steps: [] } };
+  },
+  "hybrid:set": (pairs) => {
+    if (!Array.isArray(pairs) || pairs.length > 64) return;
+    const ok = pairs.filter((p): p is [number, number] => Array.isArray(p) && p.length === 2 && Number.isInteger(p[0]) && p[0] >= 0 && p[0] < 8 && Number.isInteger(p[1]) && p[1] >= -2147483648 && p[1] <= 2147483647);
+    hybridLink().set(ok);
+  },
+  "hybrid:serial-in": (text) => {
+    if (typeof text !== "string" || text.length > 4096 || !hybridLink().open) return false;
+    hybridLink().sendText(text);
+    return true;
+  },
+  "hybrid:stop": () => link?.stop(),
   "world:read": (path) => (openProject(path) ? projectService().readWorld(path) : null),
   "world:write": (path, world) => (openProject(path) ? projectService().writeWorld(path, world) : notOpen),
   "projects:choose-folder": async () => {
@@ -406,6 +448,7 @@ app.on("will-quit", (event) => {
   auth?.dispose();
   watcher?.stop();
   monitor?.stop();
+  link?.stop();
   if (quitting || !projects) return;
   event.preventDefault();
   quitting = true;

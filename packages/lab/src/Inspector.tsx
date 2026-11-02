@@ -205,7 +205,7 @@ function NodeInspector({ id }: { id: string }) {
                 <option value="physical">Physical (real hardware)</option>
               </select>
             </label>
-            <p className="mt-2 text-[11.5px] leading-4 text-muted">Physical and hybrid parts use a real board when it is plugged in and Kiungo is online.</p>
+            <p className="mt-2 text-[11.5px] leading-4 text-muted">{host.modeNote?.(node) ?? "Physical and hybrid parts use a real board when it is plugged in and Kiungo is online."}</p>
           </>
         )}
         {part && host.renderPartLink

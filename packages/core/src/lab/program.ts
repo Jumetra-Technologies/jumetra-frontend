@@ -27,6 +27,8 @@ export interface ProgramReadings {
   speedPercent: number;
   pins: PinReading[];
   crashed: CrashKind | null;
+  /** A run on a real board (sprint 9): which one, "Arduino Uno on COM3". Omitted: the emulated board. */
+  where?: string;
 }
 
 /** Boards whose chip Kiungo emulates now: the ATmega328P (EMU-01). */
@@ -83,9 +85,9 @@ export function programFrame(base: Frame, nodes: LabNode[], wires: LabWire[], an
       readings: [
         { label: "Sketch", value: crashed ? "Stopped: ran out of memory" : "Your code (sketch.ino)" },
         { label: "Uptime", value: `${fmt(t, 1)} s` },
-        { label: "Speed", value: speed >= 97 ? "Real time" : `${speed} % of real time` },
+        program.where ? { label: "Runs on", value: `The real ${program.where}` } : { label: "Speed", value: speed >= 97 ? "Real time" : `${speed} % of real time` },
       ],
-      badge: crashed ? "Crashed" : speed >= 97 ? "Running" : `${speed} %`,
+      badge: crashed ? "Crashed" : program.where ? "On board" : speed >= 97 ? "Running" : `${speed} %`,
     };
   }
 

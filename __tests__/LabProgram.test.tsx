@@ -31,7 +31,7 @@ afterEach(() => vi.useRealTimers());
 
 /** A driver that stands in for the emulator: the test pushes readings and serial text. */
 function fakeDriver(result: { ok: true; programBytes: number } | { ok: false; message: string } = { ok: true, programBytes: 924 }) {
-  const handlers: { readings?: (r: ProgramReadings) => void; serial?: (t: string) => void } = {};
+  const handlers: { readings?: (r: ProgramReadings) => void; serial?: (t: string) => void; ended?: (m: string) => void } = {};
   const driver: ProgramDriver & { started: string[]; stopped: number; inputs: unknown[] } = {
     started: [],
     stopped: 0,
@@ -42,6 +42,7 @@ function fakeDriver(result: { ok: true; programBytes: number } | { ok: false; me
       driver.inputs.push(inputs);
       handlers.readings = on.readings;
       handlers.serial = on.serial;
+      handlers.ended = on.ended;
       on.stage("building");
       return result;
     },
@@ -72,6 +73,19 @@ describe("Run with the user's program (RUN-02, RUN-03)", () => {
     act(() => handlers.readings?.({ boardId: board.id, t: 1.1, speedPercent: 100, crashed: null, pins: [{ pin: 13, level: "low", duty: 0, hz: 0, pulseUs: null }] }));
     await waitFor(() => expect(document.body.textContent).toContain("OFF"));
     fireEvent.click(screen.getByTestId("run-toggle"));
+    expect(driver.stopped).toBe(1);
+  });
+
+  it("a run that ends by itself (a real board unplugged) stops the lab and says why", async () => {
+    const { driver, handlers } = fakeDriver();
+    render(<LabWorkspace program={driver} titleMenu={titleMenu} />);
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId("run-toggle"));
+    });
+    await waitFor(() => expect(screen.getByTestId("run-toggle").textContent).toContain("Stop"));
+    act(() => handlers.ended?.("The link to the board closed."));
+    await waitFor(() => expect(screen.getByTestId("run-toggle").textContent).toContain("Run"));
+    expect(screen.getAllByText("The link to the board closed.").length).toBeGreaterThan(0);
     expect(driver.stopped).toBe(1);
   });
 

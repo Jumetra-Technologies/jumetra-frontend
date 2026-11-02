@@ -7,6 +7,7 @@ import type { LabSession } from "@kiungo/core/lab/types";
 import { boardName } from "@kiungo/core/project";
 import type { MenuEntry } from "@kiungo/ui/menu";
 import type { LabHost } from "@kiungo/lab/lab-context";
+import { getPinout } from "@kiungo/core/lab/pinout";
 import { LabWorkspace, type LabWorkspaceHandle, type TitleMenuApi } from "@kiungo/lab/LabWorkspace";
 import { flushLab, setLabPersistence, useActiveSession, useLab } from "@kiungo/lab/store";
 import { EditorPane } from "../editor/EditorPane";
@@ -17,7 +18,17 @@ import { invoke, shortcut } from "../ipc";
 import { NO_PERSISTENCE, projectPersistence, type SaveState } from "./persistence";
 
 /** The desktop app has no Component library page to link parts to. */
-const HOST: LabHost = {};
+/** In the desktop app, Mode decides where Run runs the code (sprint 9). */
+const HOST: LabHost = {
+  modeNote: (node) =>
+    getPinout(node.partId).controller
+      ? node.mode === "virtual"
+        ? "Run runs your code on an emulated board in the lab. Mark it Physical to run it on the board picked in Upload to."
+        : "Run uploads your code, with Kiungo's Hybrid layer, to the board picked in Upload to. Parts marked Virtual are played by the lab; outputs are the real ones on your desk."
+      : node.mode === "virtual"
+        ? "Played by the lab. On a real board, the lab gives the sketch this part's readings."
+        : "On your desk, wired to the real board: the board reads or drives it for real.",
+};
 
 interface ProjectScreenProps {
   project: OpenedProject;

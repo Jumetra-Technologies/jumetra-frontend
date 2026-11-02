@@ -15,6 +15,7 @@ import type { HardwareBoardId } from "@kiungo/core/hardware/boards";
 import type { UploadProblem } from "@kiungo/core/hardware/upload";
 import type { DetectedBoard } from "@kiungo/core/hardware/usb";
 import type { WorldSpec } from "@kiungo/core/world/types";
+import type { HybridPlan } from "@kiungo/core/hybrid/shim";
 
 export type Platform = "win32" | "linux" | "darwin";
 
@@ -161,6 +162,10 @@ export interface BuildResult {
   message?: string;
   /** Nothing in the sketch changed since the last good build, so that one was used. */
   cached?: boolean;
+  /** A Hybrid build: what Kiungo's layer adds over the sketch alone (HWT-02, HWT-04). */
+  overhead?: { flash: number; ram: number };
+  /** A Hybrid build: the Ship build's use, the sketch without Kiungo: what the board runs in the end (HWT-03). */
+  ship?: { flash: { used: number; max: number }; ram: { used: number; max: number } };
   /** Everything the compiler said, for the build log. */
   log: string;
 }
@@ -271,6 +276,17 @@ export interface InvokeMap {
   /** Send text to the board, as typed (add the line ending you want). */
   "serial:write": { args: [text: string]; result: boolean };
   "serial:close": { args: []; result: void };
+  /**
+   * A Hybrid run (RUN-01): build the open project with Kiungo's layer for the
+   * board, upload it to the port, and open the link. `ok` means the link is up;
+   * otherwise it stopped at the build or the upload, as an upload does.
+   */
+  "hybrid:start": { args: [projectPath: string, port: string, board: HardwareBoardId, plan: HybridPlan]; result: UploadResult };
+  /** Values for the virtual parts: [sensor id, value] pairs. Only changes reach the board. */
+  "hybrid:set": { args: [pairs: Array<[number, number]>]; result: void };
+  /** Text for the sketch's Serial.read(), as typed in the serial monitor. */
+  "hybrid:serial-in": { args: [text: string]; result: boolean };
+  "hybrid:stop": { args: []; result: void };
   /** The open project's world (world.json), or null when it has none. */
   "world:read": { args: [projectPath: string]; result: WorldSpec | null };
   /** Save the open project's world. */
@@ -285,10 +301,21 @@ export interface EventMap {
   "serial:data": { port: string; text: string };
   /** The monitor stopped without being asked; `message` says why, if known. */
   "serial:closed": { port: string; message: string | null };
+  /** The Hybrid link (sprint 9): the sketch's Serial lines, what it drove, the handshake, or that the link closed. */
+  "hybrid:link": HybridLinkEvent;
+}
+
+export interface HybridLinkEvent {
+  port: string;
+  lines: string[];
+  /** Pin levels as bits (bit n is pin n), the pins the sketch has written, and the PWM duty (0 to 255) on PWM pins. */
+  out?: { levels: number; driven: number; pwm: Array<[number, number]> };
+  hello?: { protocol: number; compatible: boolean };
+  closed?: string | null;
 }
 
 export type EventChannel = keyof EventMap;
-export const EVENT_CHANNELS = ["auth:changed", "boards:changed", "upload:stage", "serial:data", "serial:closed"] as const satisfies readonly EventChannel[];
+export const EVENT_CHANNELS = ["auth:changed", "boards:changed", "upload:stage", "serial:data", "serial:closed", "hybrid:link"] as const satisfies readonly EventChannel[];
 
 export function isEventChannel(value: unknown): value is EventChannel {
   return typeof value === "string" && (EVENT_CHANNELS as readonly string[]).includes(value);
@@ -335,6 +362,10 @@ export const INVOKE_CHANNELS = [
   "serial:open",
   "serial:write",
   "serial:close",
+  "hybrid:start",
+  "hybrid:set",
+  "hybrid:serial-in",
+  "hybrid:stop",
   "world:read",
   "world:write",
 ] as const satisfies readonly InvokeChannel[];

@@ -6,6 +6,7 @@
 #undef digitalRead
 #undef pulseIn
 #undef pulseInLong
+#undef digitalWrite
 
 NewPing::NewPing(uint8_t trigger_pin, uint8_t echo_pin, unsigned int max_cm_distance)
     : ping_result(0), _trigger(trigger_pin), _echo(echo_pin), _sensor(kiungo_sensor_for_pin(trigger_pin)) {

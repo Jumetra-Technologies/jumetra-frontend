@@ -4,9 +4,17 @@
  * emulated board in a worker, and passes the board's pins and serial back to
  * the lab. The run state goes building → starting → running → stopped, or
  * stops at the build with its problems in the editor.
+ *
+ * A board marked Physical or Hybrid in the Inspector runs the code for real
+ * (sprint 9): the sketch is built with Kiungo's Hybrid layer and uploaded to
+ * the board picked in Upload to; virtual parts are played over the link and
+ * the lab mirrors what the board drives.
  */
 
-import type { BuildResult } from "@kiungo/api";
+import type { BuildResult, HybridLinkEvent, UploadResult } from "@kiungo/api";
+import type { HardwareBoardId } from "@kiungo/core/hardware/boards";
+import { hardwareBoard } from "@kiungo/core/hardware/boards";
+import { boardIsReal, HYBRID_BOARDS, hybridBindings, hybridValues, outReadings, type HybridBindings } from "@kiungo/core/hybrid/plan";
 import type { FromWorker, ToWorker } from "@kiungo/core/emulator/protocol";
 import type { PeripheralInput } from "@kiungo/core/emulator/peripherals";
 import { EMULATED_PARTS } from "@kiungo/core/lab/program";
@@ -23,7 +31,14 @@ export interface EditorBridge {
   flush: () => Promise<void>;
   /** Show a build's problems in the editor. */
   showBuild: (result: BuildResult) => void;
+  /** The board picked in Upload to, when it's plugged in. */
+  target: () => { port: string; board: HardwareBoardId } | null;
+  /** Show a Hybrid run's build and upload, as an upload's. */
+  showUpload: (result: UploadResult, target: { port: string; board: HardwareBoardId }) => void;
 }
+
+/** How long the board may take to answer after the upload before the run gives up. */
+const HELLO_TIMEOUT_MS = 8000;
 
 /** How long loading may take before the run gives up (a worker that never answers). */
 const LOAD_TIMEOUT_MS = 10_000;
@@ -41,15 +56,89 @@ export type ProjectProgramDriver = ProgramDriver & { setObstacles: (obstacles: W
 export function programDriver(projectPath: string, projectBoard: string, editor: () => EditorBridge | null, world?: WorldLink): ProjectProgramDriver {
   let worker: Worker | null = null;
   let run = 0;
+  /** A run on a real board: its link, and how the lab's sensor values reach it. */
+  let real: { bindings: HybridBindings; unlisten: () => void; timer: number | null } | null = null;
 
   const stop = () => {
     run++;
     world?.onState(null, null);
+    if (real) {
+      real.unlisten();
+      if (real.timer !== null) window.clearTimeout(real.timer);
+      real = null;
+      void invoke("hybrid:stop").catch(() => undefined);
+    }
     if (worker) {
       worker.postMessage({ type: "stop" } satisfies ToWorker);
       worker.terminate();
       worker = null;
     }
+  };
+
+  type Start = ProgramDriver["start"];
+  /** The run on a real board: Hybrid build, upload, then the link. */
+  const startReal = async (...[boardId, inputs, circuit, on]: Parameters<Start>): ReturnType<Start> => {
+    const mine = ++run;
+    const target = editor()?.target() ?? null;
+    if (!target) return { ok: false, message: "This board is marked Physical: plug it in and pick it in Upload to (in the Code pane), then Run again. To run in the lab instead, mark it Virtual." };
+    const board = hardwareBoard(target.board);
+    if (!board || !HYBRID_BOARDS.has(board.id)) return { ok: false, message: `Hybrid runs work on the Uno and the Nano for now. Pick one in Upload to, or mark the board Virtual to run in the lab.` };
+    let bindings: HybridBindings;
+    try {
+      bindings = hybridBindings(circuit.nodes, circuit.analysis, boardId, board.fqbn);
+    } catch (e) {
+      return { ok: false, message: (e as Error).message };
+    }
+    if (bindings.unsupported.length) return { ok: false, message: bindings.unsupported[0].why };
+    on.stage("building");
+    await editor()?.flush();
+    if (mine !== run) return { ok: false, message: "Stopped." };
+    const offStage = window.kiungo.on("upload:stage", ({ projectPath: p, stage }) => {
+      if (p === projectPath && stage === "uploading" && mine === run) on.stage("starting");
+    });
+    // Listen before the upload ends: the board says hello soon after.
+    const started = performance.now();
+    let hello = false;
+    const handle = (event: HybridLinkEvent) => {
+      if (mine !== run || event.port !== target.port) return;
+      if (event.hello) {
+        hello = true;
+        if (!event.hello.compatible) {
+          on.ended?.("The board runs a different version of Kiungo's Hybrid layer. Run again to upload this one.");
+          return;
+        }
+        if (real?.timer != null) window.clearTimeout(real.timer);
+        if (real) real.timer = null;
+        // Every value again: the board starts with none.
+        const pairs = hybridValues(bindings, inputs);
+        if (pairs.length) void invoke("hybrid:set", pairs).catch(() => undefined);
+      }
+      if (event.lines.length) on.serial(event.lines.map((l) => `${l}\n`).join(""));
+      if (event.out && hello) on.readings({ boardId, t: (performance.now() - started) / 1000, speedPercent: 100, pins: outReadings(event.out), crashed: null, where: `${board.name} on ${target.port}` });
+      if (event.closed !== undefined) on.ended?.(event.closed ?? "The link to the board closed.");
+    };
+    const offLink = window.kiungo.on("hybrid:link", handle);
+    real = { bindings, unlisten: () => (offStage(), offLink()), timer: null };
+    const result = await invoke("hybrid:start", projectPath, target.port, target.board, bindings.plan).catch(() => null);
+    offStage();
+    if (mine !== run) return { ok: false, message: "Stopped." };
+    if (result) editor()?.showUpload(result, target);
+    if (!result || !result.ok) {
+      stop();
+      const errors = result?.build.diagnostics.filter((d) => d.severity === "error").length ?? 0;
+      const message = !result
+        ? "The upload didn't run. Try again."
+        : result.stage === "build"
+          ? (result.build.message ?? (errors ? `Your code didn't build: ${errors === 1 ? "1 problem" : `${errors} problems`} in Code problems.` : "Your code didn't build. The build log says why."))
+          : (result.problem?.title ?? "The upload didn't finish. The Code pane says what to try.");
+      return { ok: false, message };
+    }
+    if (!hello && real) {
+      real.timer = window.setTimeout(() => {
+        if (mine === run && !hello) on.ended?.("The board didn't answer after the upload. Check it's still plugged in, then Run again.");
+      }, HELLO_TIMEOUT_MS);
+    }
+    return { ok: true, programBytes: result.build.flash?.used ?? 0, where: `the real ${board.name} on ${target.port}` };
   };
 
   return {
@@ -63,6 +152,7 @@ export function programDriver(projectPath: string, projectBoard: string, editor:
 
     start: async (boardId, inputs, circuit, on) => {
       stop();
+      if (boardIsReal(circuit.nodes.find((n) => n.id === boardId))) return startReal(boardId, inputs, circuit, on);
       const mine = ++run;
       on.stage("building");
       await editor()?.flush();
@@ -134,9 +224,19 @@ export function programDriver(projectPath: string, projectBoard: string, editor:
 
     stop,
 
-    setInputs: (inputs: PeripheralInput[]) => worker?.postMessage({ type: "peripherals", inputs } satisfies ToWorker),
+    setInputs: (inputs: PeripheralInput[]) => {
+      if (real) {
+        const pairs = hybridValues(real.bindings, inputs);
+        if (pairs.length) void invoke("hybrid:set", pairs).catch(() => undefined);
+        return;
+      }
+      worker?.postMessage({ type: "peripherals", inputs } satisfies ToWorker);
+    },
 
-    sendSerial: (text: string) => worker?.postMessage({ type: "serial-in", text } satisfies ToWorker),
+    sendSerial: (text: string) => {
+      if (real) void invoke("hybrid:serial-in", text).catch(() => undefined);
+      else worker?.postMessage({ type: "serial-in", text } satisfies ToWorker);
+    },
 
     setObstacles: (obstacles: WorldObstacle[]) => worker?.postMessage({ type: "world-obstacles", obstacles } satisfies ToWorker),
   };

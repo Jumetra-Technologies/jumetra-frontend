@@ -222,13 +222,6 @@ export function EditorPane({ projectPath, board, boardPart, bridge, running, onR
     },
     [ensureModel, board],
   );
-  useEffect(() => {
-    if (!bridge) return;
-    bridge.current = { flush: flushAll, showBuild: (result) => void showBuild(result, false) };
-    return () => {
-      bridge.current = null;
-    };
-  }, [bridge, flushAll, showBuild]);
 
   const runBuild = useCallback(async () => {
     if (build.status === "building") return;
@@ -244,6 +237,18 @@ export function EditorPane({ projectPath, board, boardPart, bridge, running, onR
   }, [runBuild]);
 
   // ----- upload (BLD-06) ----------------------------------------------------------------
+  /** An upload's outcome, or a Hybrid run's: a failed build shows its problems like any build. */
+  const showUpload = useCallback(
+    async (result: UploadResult, chosen: UploadTarget) => {
+      diagnostics.current = result.build.diagnostics;
+      for (const name of new Set(result.build.diagnostics.map((d) => d.file).filter((f): f is string => Boolean(f)))) await ensureModel(name);
+      for (const file of files.current.values()) monaco.editor.setModelMarkers(file.model, MARKERS, markersFor(result.build.diagnostics, file.name, board));
+      setBuild({ status: "done", slow: false, result: result.build, changed: new Set() });
+      setUpload({ status: "done", result, target: chosen });
+      if (!result.ok) setPanel({ open: true, tab: "problems" });
+    },
+    [ensureModel, board],
+  );
   const plugged = Boolean(target && boards?.boards.some((b) => b.port === target.port));
   const runUpload = useCallback(
     async (as?: HardwareBoardId) => {
@@ -269,18 +274,30 @@ export function EditorPane({ projectPath, board, boardPart, bridge, running, onR
         durationMs: 0,
       }));
       stop();
-      // A failed build shows its problems like any build.
-      diagnostics.current = result.build.diagnostics;
-      for (const name of new Set(result.build.diagnostics.map((d) => d.file).filter((f): f is string => Boolean(f)))) await ensureModel(name);
-      for (const file of files.current.values()) monaco.editor.setModelMarkers(file.model, MARKERS, markersFor(result.build.diagnostics, file.name, board));
-      setBuild({ status: "done", slow: false, result: result.build, changed: new Set() });
-      setUpload({ status: "done", result, target: chosen });
+      await showUpload(result, chosen);
     },
-    [target, upload.status, boards, chooseTarget, flushAll, projectPath, ensureModel, board],
+    [target, upload.status, boards, chooseTarget, flushAll, projectPath, showUpload],
   );
   useEffect(() => {
     uploadRef.current = () => void runUpload();
   }, [runUpload]);
+  // The lab's Run uses the board picked here for a run on a real board.
+  const targetRef = useRef<UploadTarget | null>(null);
+  useEffect(() => {
+    targetRef.current = plugged ? target : null;
+  }, [plugged, target]);
+  useEffect(() => {
+    if (!bridge) return;
+    bridge.current = {
+      flush: flushAll,
+      showBuild: (result) => void showBuild(result, false),
+      target: () => targetRef.current,
+      showUpload: (result, chosen) => void showUpload(result, chosen),
+    };
+    return () => {
+      bridge.current = null;
+    };
+  }, [bridge, flushAll, showBuild, showUpload]);
 
   const reveal = useCallback(
     async (d: Diagnostic) => {
@@ -492,7 +509,7 @@ export function EditorPane({ projectPath, board, boardPart, bridge, running, onR
           {build.status === "building" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Hammer className="size-3.5" aria-hidden />}
           <span className="hidden @[680px]:inline">Build</span>
         </button>
-        <button type="button" onClick={onRun} disabled={running} title={`Run your code in the lab (${shortcut("↵")})`} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] bg-primary px-2.5 text-[12.5px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40" data-testid="editor-run">
+        <button type="button" onClick={onRun} disabled={running} title={`Run your code (${shortcut("↵")})`} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] bg-primary px-2.5 text-[12.5px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40" data-testid="editor-run">
           <Play className="size-3.5" aria-hidden />
           Run
         </button>

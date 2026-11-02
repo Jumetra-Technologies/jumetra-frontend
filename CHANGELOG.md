@@ -10,6 +10,31 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.29.0] - 2026-11-02
+
+Phase Two, Sprint 9: Hybrid runs. Mark the board Physical and Run puts your own code on the real board, while the lab plays the parts you don't have and mirrors what the board drives. The desktop app is 0.9.0.
+
+### Added
+- **Run on the real board (RUN-01, RUN-04).** In the desktop app, a board marked **Physical** or **Hybrid** in the Inspector runs your code for real. Run builds the sketch with Kiungo's Hybrid layer, uploads it to the board picked in **Upload to**, and opens a link to it.
+  - Parts marked **Virtual** are played by the lab: the sketch reads the values set in Inputs, unchanged code and all.
+  - Parts marked **Physical** are the real ones on your desk.
+  - Outputs are always real: the board drives them and the lab mirrors the levels and PWM it reports (OUT-01, OUT-04).
+- **Virtual sensors on a real board (INJ-01 to INJ-06).**
+  - HC-SR04 through `pulseIn` and through NewPing.
+  - DHT11 and DHT22 through the DHT library: a Kiungo adapter stands in for it, with the same API.
+  - PIR, light sensor, soil moisture and gas sensor on their analog and digital pins.
+- **Ship and Hybrid builds (HWT-02 to HWT-04).** Every Hybrid run also builds the sketch alone. The memory meters show Kiungo's share striped at the end, and the note under them gives the plain program's use, which is what the board runs after an Upload. If only the Hybrid build is too big, the message says so.
+- **The board says where it runs.** Its panel says **Runs on: The real Arduino Uno on COM3**, and the lab log names the port.
+
+### Changed
+- The Hybrid runtime reports what the sketch drives (`digitalWrite`, `analogWrite`) in a new OUT frame. It sends that frame whenever the serial port has room, so it never slows the sketch.
+- The Inspector's note under **Mode** says what Run does with each mode in the desktop app.
+- The desktop installer now ships the Hybrid runtime and adapter libraries.
+
+### Not yet
+- Hybrid runs work on the Uno and the Nano; the Mega and ESP32 come later.
+- I2C and 1-Wire parts must be Physical in a Hybrid run.
+
 ## [1.28.0] - 2026-11-02
 
 Phase Two, Sprint 8: robots in a world. A two-wheel robot built in the lab drives round a course in the desktop app, driven by your own code. The desktop app is 0.8.0.
@@ -578,6 +603,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.29.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.28.0...v1.29.0
 [1.28.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.27.0...v1.28.0
 [1.27.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.26.0...v1.27.0
 [1.26.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.25.0...v1.26.0

@@ -10,6 +10,8 @@
 #undef pulseIn
 #undef pulseInLong
 #undef serialEvent
+#undef digitalWrite
+#undef analogWrite
 #define LINK Serial
 
 #ifndef KIUNGO_PIN_TABLE
@@ -56,6 +58,7 @@ static uint8_t rxCode = 0, rxRun = 0;
 static bool rxBad = false;
 
 static void handle(const uint8_t* frame, uint8_t len);
+static void flushOut(bool force);
 
 static void rxReset() {
   rxLen = 0;
@@ -113,6 +116,8 @@ static void handle(const uint8_t* f, uint8_t len) {
     case KIUNGO_PING: {
       uint8_t seq = len > 1 ? f[1] : 0;
       kiungo_send(KIUNGO_ACK, &seq, 1);
+      // The PC pings while it listens: the outputs' latest state goes with the answer.
+      flushOut(true);
       break;
     }
     case KIUNGO_HELLO: {
@@ -129,6 +134,7 @@ static void handle(const uint8_t* f, uint8_t len) {
 
 void kiungo_poll() {
   while (LINK.available() > 0) rxByte((uint8_t)LINK.read());
+  flushOut(false);
 }
 
 // Arduino's main() calls serialEvent() between loop() iterations when bytes wait.
@@ -138,7 +144,7 @@ void serialEvent() {
 }
 
 // ----- COBS encoder: write a frame straight to the UART -----
-void kiungo_send(uint8_t type, const uint8_t* payload, uint8_t length) {
+bool kiungo_send(uint8_t type, const uint8_t* payload, uint8_t length) {
   // Encode into a small stack buffer: type + payload, COBS, trailing zero.
   if (length > KIUNGO_FRAME_MAX - 1) length = KIUNGO_FRAME_MAX - 1;
   uint8_t raw[KIUNGO_FRAME_MAX];
@@ -166,8 +172,71 @@ void kiungo_send(uint8_t type, const uint8_t* payload, uint8_t length) {
   enc[w++] = 0;
   // A frame that doesn't fit in the UART buffer is dropped whole rather than
   // blocking the user's code (OUT-01: digitalWrite must never wait on USB).
-  if (LINK.availableForWrite() < w) { framesDropped++; return; }
+  if (LINK.availableForWrite() < w) { framesDropped++; return false; }
   LINK.write(enc, w);
+  return true;
+}
+
+// ----- outputs: what the sketch drove (OUT-01) -----
+#define KIUNGO_OUT_PINS 20
+static uint32_t outLevels = 0;
+/** Pins the sketch has written: the others are inputs, or not used. */
+static uint32_t outDriven = 0;
+static uint32_t pwmPins = 0;
+static uint8_t pwmValue[KIUNGO_OUT_PINS];
+static bool outDirty = false;
+
+// Sent as soon as the UART has room. When it hasn't (a sketch writing pins in
+// a tight loop), the frame waits and the latest state goes on a later call:
+// the link never slows the sketch down.
+static void flushOut(bool force) {
+  if (!outDirty && !force) return;
+  uint8_t p[8 + 2 * KIUNGO_OUT_PINS];
+  for (uint8_t i = 0; i < 4; i++) {
+    p[i] = (uint8_t)(outLevels >> (8 * i));
+    p[4 + i] = (uint8_t)(outDriven >> (8 * i));
+  }
+  uint8_t n = 8;
+  for (uint8_t pin = 0; pin < KIUNGO_OUT_PINS; pin++) {
+    if (pwmPins & (1UL << pin)) {
+      p[n++] = pin;
+      p[n++] = pwmValue[pin];
+    }
+  }
+  // Dropped when the UART is busy: it stays due, and goes on a later call.
+  if (kiungo_send(KIUNGO_OUT, p, n)) outDirty = false;
+}
+
+void kiungo_digitalWrite(uint8_t pin, uint8_t value) {
+  digitalWrite(pin, value);
+  if (pin >= KIUNGO_OUT_PINS) return;
+  uint32_t bit = 1UL << pin;
+  uint32_t levels = value ? (outLevels | bit) : (outLevels & ~bit);
+  if (levels == outLevels && (outDriven & bit) && !(pwmPins & bit)) return;
+  outLevels = levels;
+  outDriven |= bit;
+  pwmPins &= ~bit;
+  outDirty = true;
+  flushOut(false);
+}
+
+void kiungo_analogWrite(uint8_t pin, int value) {
+  analogWrite(pin, value);
+  if (pin >= KIUNGO_OUT_PINS) return;
+  uint32_t bit = 1UL << pin;
+  outDriven |= bit;
+  // analogWrite(0) and analogWrite(255) are plain low and high, as on the board.
+  if (value <= 0 || value >= 255) {
+    pwmPins &= ~bit;
+    outLevels = value >= 255 ? (outLevels | bit) : (outLevels & ~bit);
+  } else {
+    if ((pwmPins & bit) && pwmValue[pin] == (uint8_t)value) return;
+    pwmPins |= bit;
+    pwmValue[pin] = (uint8_t)value;
+    outLevels &= ~bit;
+  }
+  outDirty = true;
+  flushOut(false);
 }
 
 // ----- pin functions -----

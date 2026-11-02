@@ -10,6 +10,34 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.27.0] - 2026-11-02
+
+Phase Two, Sprint 7: run your own code. In the desktop app, **Run** now runs the project's sketch on an emulated Arduino Uno, and the circuit does what the code says. The desktop app is 0.7.0. The website's lab works as before.
+
+### Added
+- **Run your code (RUN-02, RUN-03, EMU-01).** **Run** (or Ctrl+Enter, in the lab or the editor) saves the files, builds the sketch, loads it into an emulated ATmega328P with the Uno's real 32 KB of flash and 2 KB of RAM, and starts it. The button says **Building…**, then **Loading…**, then **Stop**. A sketch that doesn't build stops the run, with the problems in **Code problems** and on their lines.
+- **Cached builds.** When nothing in the sketch has changed since the last good build, Run and Build use it without running the compiler, so Run reaches running in a fraction of a second. Any change to a file, `sketch.yaml` or the board builds again.
+- **Parts follow the pins (OUT-02, DBG-01).**
+  - An LED is as bright as its pin's PWM duty.
+  - A servo turns to the angle its pulse width means (the Servo library's 544 to 2400 µs).
+  - A buzzer sounds at the pitch the pin toggles at (`tone()`), through the speaker, or at its own 2.3 kHz when the pin is held high.
+  - The relay module energizes on a low pin, as the real one does.
+  - A DC motor runs from its driver's pins.
+- **Sensors that answer your code like the real ones (EMU-02, PCP-03).**
+  - The HC-SR04 replies to the trigger with an echo as long as the sound's round trip, so `pulseIn()` reads the distance.
+  - The DHT11 and DHT22 answer the start signal with their 40 timed bits, so the Adafruit DHT library reads them.
+  - The LDR, soil moisture and gas sensors set a voltage that `analogRead()` reads.
+  - The PIR holds its pin high while it sees motion.
+  - Each sensor reads the value you set in the Inspector, or the lab's simulated sweep.
+- **Live pins, serial and signals (DBG-01).** The lab's **Serial** panel shows what the program prints. **Signals** traces the program's pins over the last 4 seconds.
+- **Real time, and honest about it (RUN-05).** The program runs at the Uno's real speed; the board's panel says **Real time**, or the percentage when the computer can't keep up. The speed menu is off while your code runs.
+- **Real failure behavior (HWT-07).** A program that runs out of RAM (the stack runs over the chip's registers) or jumps outside itself stops, as a real board hangs, and the board shows **Crashed**: "Stopped: ran out of memory".
+- Backend (jumetra-backend #6): the project sync API design for review, ahead of sprint 11.
+
+### Not yet
+- Only the Uno runs your code in the lab for now (EMU-01). Mega and ESP32 projects keep the built-in behavior on Run, and the Run button says why; **Upload** runs the code on a real board.
+- Displays and radios talk over I2C, SPI or serial buses the emulator doesn't model yet: they say "Not shown yet" while your code runs.
+
 ## [1.26.0] - 2026-11-02
 
 Phase Two, Sprint 6: real boards. Plug in a board, upload to it, and talk to it. The desktop app is 0.6.0.
@@ -524,6 +552,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.27.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.26.0...v1.27.0
 [1.26.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.25.0...v1.26.0
 [1.25.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.24.0...v1.25.0
 [1.24.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.23.0...v1.24.0

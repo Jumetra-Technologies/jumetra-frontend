@@ -10,10 +10,11 @@ import type { LabHost } from "@kiungo/lab/lab-context";
 import { LabWorkspace, type LabWorkspaceHandle, type TitleMenuApi } from "@kiungo/lab/LabWorkspace";
 import { flushLab, setLabPersistence, useActiveSession, useLab } from "@kiungo/lab/store";
 import { EditorPane } from "../editor/EditorPane";
+import { programDriver, type EditorBridge } from "./program";
 import { invoke, shortcut } from "../ipc";
 import { NO_PERSISTENCE, projectPersistence, type SaveState } from "./persistence";
 
-/** The desktop app has no Component library or real boards yet (sprint 6). */
+/** The desktop app has no Component library page to link parts to. */
 const HOST: LabHost = {};
 
 interface ProjectScreenProps {
@@ -51,6 +52,10 @@ export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>
   const [running, setRunning] = useState(false);
   const [code, setCode] = useState(readCodePref);
   const row = useRef<HTMLDivElement>(null);
+  // The lab's Run runs the project's own code on an emulated board; the editor saves first and shows the build's problems.
+  const editorBridge = useRef<EditorBridge | null>(null);
+  const program = useMemo(() => programDriver(project.path, project.meta.board, () => editorBridge.current), [project.path, project.meta.board]);
+  useEffect(() => () => program.stop(), [program]);
   const toggleCode = useCallback(() => setCode((c) => ({ ...c, open: !c.open })), []);
   useEffect(() => writeCodePref(code), [code]);
 
@@ -159,6 +164,7 @@ export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>
         <LabWorkspace
           ref={setLab}
           onRunningChange={setRunning}
+          program={program}
           trailing={
             <button type="button" onClick={toggleCode} aria-pressed={code.open} aria-label={code.open ? "Hide the code" : "Show the code"} title={`Code (${shortcut("E")})`} className={cn("flex h-9 items-center gap-1.5 rounded-[10px] px-2.5 text-[12.5px] font-medium transition-colors", code.open ? "bg-muted-bg text-foreground" : "text-muted hover:bg-muted-bg")} data-testid="toggle-code">
               <Code2 className="size-4" aria-hidden />
@@ -186,7 +192,7 @@ export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>
               if (e.key === "ArrowRight") setCode((c) => ({ ...c, width: Math.max(0.25, c.width - 0.03) }));
             }} className="w-1 shrink-0 cursor-col-resize bg-border transition-colors hover:bg-primary/40 focus-visible:bg-primary" />
             <div className="min-h-0 shrink-0" style={{ width: `${code.width * 100}%` }}>
-              <EditorPane projectPath={project.path} board={`the ${boardName(project.meta.board)}`} boardPart={project.meta.board} running={running} onRun={() => lab?.run()} onStop={() => lab?.stop()} onClose={toggleCode} />
+              <EditorPane projectPath={project.path} board={`the ${boardName(project.meta.board)}`} boardPart={project.meta.board} bridge={editorBridge} running={running} onRun={() => lab?.run()} onStop={() => lab?.stop()} onClose={toggleCode} />
             </div>
           </>
         ) : null}

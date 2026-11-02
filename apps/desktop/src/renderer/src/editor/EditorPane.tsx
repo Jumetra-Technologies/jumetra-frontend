@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, AlertTriangle, Check, FilePlus2, Hammer, Loader2, MoreHorizontal, Play, Search, Square, Upload, X } from "lucide-react";
-import type { SketchFile, UploadResult } from "@kiungo/api";
+import type { BuildResult, SketchFile, UploadResult } from "@kiungo/api";
+import type { EditorBridge } from "../project/program";
 import { uploadTargetsFor, type HardwareBoardId } from "@kiungo/core/hardware/boards";
 import { explain, type Diagnostic, type QuickFix } from "@kiungo/core/build";
 import { cn } from "@kiungo/ui/cn";
@@ -83,6 +84,8 @@ interface EditorPaneProps {
   board: string;
   /** The lab part the project is written for ("arduino-uno"): which boards it can upload to. */
   boardPart: string;
+  /** Lets the lab's Run save the files and show its build's problems here. */
+  bridge?: { current: EditorBridge | null };
   running: boolean;
   onRun: () => void;
   onStop: () => void;
@@ -101,7 +104,7 @@ function savedTarget(projectPath: string): UploadTarget | null {
   }
 }
 
-export function EditorPane({ projectPath, board, boardPart, running, onRun, onStop, onClose }: EditorPaneProps) {
+export function EditorPane({ projectPath, board, boardPart, bridge, running, onRun, onStop, onClose }: EditorPaneProps) {
   const host = useRef<HTMLDivElement>(null);
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const files = useRef(new Map<string, OpenFile>());
@@ -207,6 +210,26 @@ export function EditorPane({ projectPath, board, boardPart, running, onRun, onSt
   }, [save]);
 
   // ----- build (BLD-01, ERR-01) ---------------------------------------------------------
+  /** Show a build's problems: in the panel and on their lines. A Run's build opens the panel only if it failed. */
+  const showBuild = useCallback(
+    async (result: BuildResult, fromBuildButton: boolean) => {
+      diagnostics.current = result.diagnostics;
+      // Problems in files that aren't open yet: load them, so fixes can be offered.
+      for (const name of new Set(result.diagnostics.map((d) => d.file).filter((f): f is string => Boolean(f)))) await ensureModel(name);
+      for (const file of files.current.values()) monaco.editor.setModelMarkers(file.model, MARKERS, markersFor(result.diagnostics, file.name, board));
+      setBuild({ status: "done", slow: false, result, changed: new Set() });
+      if (fromBuildButton || !result.ok) setPanel((p) => ({ open: true, tab: result.ok && p.open ? p.tab : "problems" }));
+    },
+    [ensureModel, board],
+  );
+  useEffect(() => {
+    if (!bridge) return;
+    bridge.current = { flush: flushAll, showBuild: (result) => void showBuild(result, false) };
+    return () => {
+      bridge.current = null;
+    };
+  }, [bridge, flushAll, showBuild]);
+
   const runBuild = useCallback(async () => {
     if (build.status === "building") return;
     setBuild((b) => ({ ...b, status: "building", slow: false }));
@@ -214,13 +237,8 @@ export function EditorPane({ projectPath, board, boardPart, running, onRun, onSt
     await flushAll();
     const result = await invoke("build:compile", projectPath).catch(() => ({ ok: false, diagnostics: [], durationMs: 0, log: "", message: "The build didn't run. Try again." }));
     window.clearTimeout(slow);
-    diagnostics.current = result.diagnostics;
-    // Problems in files that aren't open yet: load them, so fixes can be offered.
-    for (const name of new Set(result.diagnostics.map((d) => d.file).filter((f): f is string => Boolean(f)))) await ensureModel(name);
-    for (const file of files.current.values()) monaco.editor.setModelMarkers(file.model, MARKERS, markersFor(result.diagnostics, file.name, board));
-    setBuild({ status: "done", slow: false, result, changed: new Set() });
-    setPanel((p) => ({ open: true, tab: result.ok && p.open ? p.tab : "problems" }));
-  }, [build.status, flushAll, projectPath, ensureModel, board]);
+    await showBuild(result, true);
+  }, [build.status, flushAll, projectPath, showBuild]);
   useEffect(() => {
     buildRef.current = () => void runBuild();
   }, [runBuild]);
@@ -474,7 +492,7 @@ export function EditorPane({ projectPath, board, boardPart, running, onRun, onSt
           {build.status === "building" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Hammer className="size-3.5" aria-hidden />}
           <span className="hidden @[680px]:inline">Build</span>
         </button>
-        <button type="button" onClick={onRun} disabled={running} title={`Run (${shortcut("↵")}). The lab runs each board's built-in behavior; running your own code arrives in a later update.`} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] bg-primary px-2.5 text-[12.5px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40" data-testid="editor-run">
+        <button type="button" onClick={onRun} disabled={running} title={`Run your code in the lab (${shortcut("↵")})`} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] bg-primary px-2.5 text-[12.5px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40" data-testid="editor-run">
           <Play className="size-3.5" aria-hidden />
           Run
         </button>
@@ -499,12 +517,19 @@ export function EditorPane({ projectPath, board, boardPart, running, onRun, onSt
         {!panel.open && build.result ? (
           <button type="button" onClick={() => setPanel((p) => ({ ...p, open: true }))} className={cn("inline-flex h-7 items-center gap-1 rounded-[7px] px-2 text-[11.5px] font-medium hover:bg-muted-bg", build.result.diagnostics.length ? "text-danger" : "text-muted")} data-testid="editor-problems">
             {build.result.diagnostics.length ? <AlertCircle className="size-3.5" aria-hidden /> : <Check className="size-3.5 text-success" aria-hidden />}
-            {build.result.diagnostics.length ? `${build.result.diagnostics.length} ${build.result.diagnostics.length === 1 ? "problem" : "problems"}` : "Built"}
+            {build.result.diagnostics.length ? (
+              <>
+                {build.result.diagnostics.length}
+                <span className="sr-only @[620px]:not-sr-only">{build.result.diagnostics.length === 1 ? " problem" : " problems"}</span>
+              </>
+            ) : (
+              <span className="sr-only @[620px]:not-sr-only">Built</span>
+            )}
           </button>
         ) : null}
         <span className={cn("inline-flex items-center gap-1 px-1.5 text-[11.5px]", shown.state === "error" ? "text-danger" : "text-muted")} title={shown.message} aria-live="polite" data-testid="editor-save">
           {shown.state === "saving" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : shown.state === "error" ? <AlertTriangle className="size-3.5" aria-hidden /> : <Check className="size-3.5 text-success" aria-hidden />}
-          {shown.state === "saving" ? "Saving" : shown.state === "error" ? "Not saved" : "Saved"}
+          <span className={shown.state === "error" ? undefined : "sr-only @[620px]:not-sr-only"}>{shown.state === "saving" ? "Saving" : shown.state === "error" ? "Not saved" : "Saved"}</span>
         </span>
         <button type="button" onClick={find} title={`Find (${shortcut("F")})`} aria-label="Find" className="flex size-8 items-center justify-center rounded-[8px] text-muted hover:bg-muted-bg hover:text-foreground">
           <Search className="size-4" />

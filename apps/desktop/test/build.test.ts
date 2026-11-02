@@ -55,6 +55,27 @@ describe("building a project (BLD-01, BLD-02, BLD-05)", () => {
     expect(result).toMatchObject({ ok: true, diagnostics: [], hex: ":00000001FF\n", flash: { used: 924, max: 32256 }, ram: { used: 9, max: 2048 } });
   });
 
+  it("an unchanged sketch uses the last good build, without running the compiler (Run in under 2 s)", async () => {
+    const builds = service((args) => {
+      writeFileSync(join(args[args.indexOf("--build-path") + 1], "sketch.ino.hex"), ":00000001FF\n");
+      return ok({ success: true, builder_result: { executable_sections_size: [{ name: "text", size: 924, max_size: 32256 }, { name: "data", size: 9, max_size: 2048 }] } });
+    });
+    const first = await builds.compile(project);
+    expect(first.cached).toBeUndefined();
+    const second = await builds.compile(project);
+    expect(calls).toHaveLength(1);
+    expect(second).toMatchObject({ ok: true, cached: true, hex: ":00000001FF\n", flash: { used: 924, max: 32256 } });
+    writeFileSync(join(project, "sketch", "sketch.ino"), "void setup() {}\nvoid loop() { }\n");
+    await builds.compile(project);
+    expect(calls).toHaveLength(2);
+    // A failed build is never reused.
+    writeFileSync(join(project, "sketch", "sketch.ino"), "void setup() {\n");
+    const failing = service(() => ({ code: 1, stdout: JSON.stringify({ success: false }), stderr: "" }));
+    await failing.compile(project);
+    await failing.compile(project);
+    expect(calls).toHaveLength(4);
+  });
+
   it("maps the compiler's problems to the sketch", async () => {
     const err = `${join(project, "sketch", "sketch.ino")}:4:1: error: expected ';' before '}' token`;
     const result = await service(() => ({ code: 1, stdout: JSON.stringify({ success: false, compiler_err: err }), stderr: "" })).compile(project);

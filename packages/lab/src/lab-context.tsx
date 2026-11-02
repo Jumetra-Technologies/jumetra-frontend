@@ -3,6 +3,8 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { Analysis } from "@kiungo/core/lab/circuit";
 import type { Frame } from "@kiungo/core/lab/simulate";
+import type { PeripheralInput } from "@kiungo/core/emulator/peripherals";
+import type { ProgramReadings } from "@kiungo/core/lab/program";
 import type { PowerState } from "./UsbCable";
 import type { LabNode, LabSession, LabView } from "@kiungo/core/lab/types";
 
@@ -28,6 +30,30 @@ export function useLabHost(): LabHost {
   return useContext(LabHostContext);
 }
 
+/**
+ * Runs the user's compiled program on an emulated board (the desktop app).
+ * The lab asks which board runs it, starts it on Run, and keeps its
+ * sensors' readings flowing to it.
+ */
+export interface ProgramDriver {
+  /** The board node that runs the program, or null: Run then runs the built-in behavior and says why in `whyNot`. */
+  boardFor: (nodes: LabNode[]) => string | null;
+  /** Why no board runs the program (no Uno in the circuit, a board that isn't emulated yet), for the Run button's title. */
+  whyNot?: (nodes: LabNode[]) => string | null;
+  /** Build if needed, load and start. Resolves once it's running, or with why it can't. */
+  start: (
+    boardId: string,
+    /** What its sensors read as it starts, so the first reading isn't missed. */
+    inputs: PeripheralInput[],
+    on: { readings: (r: ProgramReadings) => void; serial: (text: string) => void; stage: (stage: "building" | "starting") => void },
+  ) => Promise<{ ok: true; programBytes: number } | { ok: false; message: string }>;
+  stop: () => void;
+  /** What the board's sensors read now. */
+  setInputs: (inputs: PeripheralInput[]) => void;
+  /** Text typed in the lab's serial monitor. */
+  sendSerial?: (text: string) => void;
+}
+
 export interface LabContextValue {
   session: LabSession;
   analysis: Analysis;
@@ -38,6 +64,8 @@ export interface LabContextValue {
   power: PowerState;
   /** Kiungo online, where the host has it; undefined in the desktop app. */
   runtime?: RuntimeStatus;
+  /** Pin levels over the last few seconds of a program run, for the Signals traces (the emulator can't be sampled after the fact). */
+  history?: Array<{ t: number; pins: Record<string, number> }>;
   selectedNodes: string[];
   selectedWire: string | null;
   /** Nodes to flash briefly (after clicking a fault). */

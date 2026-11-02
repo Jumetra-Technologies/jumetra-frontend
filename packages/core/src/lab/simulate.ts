@@ -391,7 +391,12 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
     }
   }
 
-  // Wires: how much current or data each carries right now.
+  const wireLive = wireFlows(nodes, wires, analysis, pins, running);
+  return { t, running, nodes: live, pins, wires: wireLive };
+}
+
+/** How much current or data each wire carries, from the pin levels of a frame. */
+export function wireFlows(nodes: LabNode[], wires: LabWire[], analysis: Analysis, pins: Record<string, number>, running: boolean): Record<string, WireLive> {
   const wireLive: Record<string, WireLive> = {};
   const netById = new Map(analysis.nets.map((n) => [n.id, n]));
   for (const wire of wires) {
@@ -421,7 +426,7 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
     }
   }
 
-  return { t, running, nodes: live, pins, wires: wireLive };
+  return wireLive;
 }
 
 /** One line of serial output a board would print each second. */

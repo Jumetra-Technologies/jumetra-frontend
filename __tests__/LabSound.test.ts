@@ -224,7 +224,7 @@ describe("What the simulation asks the buzzer to do", () => {
 
 describe("The USB lead", () => {
   it("has the plug each board really takes", async () => {
-    const { connectorFor } = await import("@/components/lab/UsbCable");
+    const { connectorFor } = await import("@kiungo/lab/UsbCable");
     expect(connectorFor("arduino-uno")).toBe("usb-b");
     expect(connectorFor("arduino-mega")).toBe("usb-b");
     expect(connectorFor("esp32")).toBe("micro-usb");

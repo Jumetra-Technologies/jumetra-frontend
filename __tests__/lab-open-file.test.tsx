@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { EngineeringLab } from "@/components/lab/EngineeringLab";
-import { useLab } from "@/lib/lab/store";
+import { useLab } from "@kiungo/lab/store";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),

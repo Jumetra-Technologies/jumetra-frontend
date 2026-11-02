@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, Code2, LoaderCircle, Link2 } from "lucide-react";
 import { GoogleLogo } from "@/components/auth/google-logo";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { useAuthStore } from "@/lib/auth-store";
 import { describeSignInError, linkFirebaseProvider } from "@/lib/firebase-auth";
 

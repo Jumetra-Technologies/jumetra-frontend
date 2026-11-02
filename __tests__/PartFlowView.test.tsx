@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { PartFlowView } from "@/components/library/views/PartFlowView";
+import { PartFlowView } from "@kiungo/lab/views/PartFlowView";
 import { getPart } from "@kiungo/core/parts";
 
 const ldr = getPart("ldr")!;

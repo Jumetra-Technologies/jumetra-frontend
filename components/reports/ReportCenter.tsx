@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
 import { ErrorNotice } from "@/components/ui/error-notice";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/input";
 import { formatExperimentReport, type ExperimentRecord, type RoboticsProject } from "@/lib/robotics-data";

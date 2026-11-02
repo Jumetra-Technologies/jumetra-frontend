@@ -5,7 +5,7 @@ import { useEffect, useId, useState, type ReactNode } from "react";
 import { Check, Info, LogOut, Pencil, ShieldCheck, Trash2, X } from "lucide-react";
 import { Avatar } from "@/components/account/Avatar";
 import { ProviderConnections } from "@/components/account/ProviderConnections";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { ModalShell } from "@/components/ui/modal";
 import { closeAccountDialog } from "@/lib/account-dialogs";

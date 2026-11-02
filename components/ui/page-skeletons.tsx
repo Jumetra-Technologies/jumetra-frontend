@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Skeleton, SkeletonRegion } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonRegion } from "@kiungo/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 /**

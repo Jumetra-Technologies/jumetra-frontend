@@ -2,7 +2,7 @@
 
 import { ChevronRight, UserRound } from "lucide-react";
 import { Avatar } from "@/components/account/Avatar";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { openAuth, openProfile } from "@/lib/account-dialogs";
 import { useAuthStore } from "@/lib/auth-store";
 import { fieldsOf, roleLabel } from "@/lib/profile";

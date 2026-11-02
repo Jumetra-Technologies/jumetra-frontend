@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { KiungoMark } from "@/components/brand/KiungoMark";
+import { KiungoMark } from "@kiungo/ui/KiungoMark";
 
 /** A broken link, drawn with the mark: the two links of the K come apart. */
 export default function NotFound() {

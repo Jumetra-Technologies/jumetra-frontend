@@ -3,10 +3,12 @@
  * handlers the interface may call. The interface gets no Node access; it
  * talks to this process only through the channels in @kiungo/api.
  */
-import { app, BrowserWindow, ipcMain, net, protocol, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell } from "electron";
 import { join, normalize, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { EMULATED_BOARDS, EXAMPLE_SKETCHES, INSTALLABLE_CORES, isInvokeChannel, type Handlers, type Platform } from "@kiungo/api";
+import { PROJECT_FILE } from "@kiungo/core/project";
+import { ProjectService } from "./projects/service";
 import { compileSketch, installCore, locateCli, toolchainStatus } from "./toolchain/arduino-cli";
 
 const APP_SCHEME = "kiungo-app";
@@ -33,6 +35,26 @@ const CSP = [
 ].join("; ");
 
 let windowShownAt: number | null = null;
+let mainWindow: BrowserWindow | null = null;
+let projects: ProjectService | null = null;
+
+/** Made once the app is ready: the folders it uses come from Electron. */
+function projectService(): ProjectService {
+  projects ??= new ProjectService({
+    appDataDir: app.getPath("userData"),
+    defaultProjectsFolder: join(app.getPath("documents"), "Kiungo"),
+    generator: `Kiungo ${app.getVersion()}`,
+  });
+  return projects;
+}
+
+/** A folder picker attached to the window, so it opens in front of it. */
+async function chooseFolder(options: Electron.OpenDialogOptions): Promise<string | null> {
+  const result = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options);
+  return result.canceled || !result.filePaths[0] ? null : result.filePaths[0];
+}
+
+const isText = (v: unknown): v is string => typeof v === "string" && v.length > 0 && v.length < 4096;
 
 protocol.registerSchemesAsPrivileged([
   { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
@@ -96,6 +118,37 @@ const handlers: Handlers = {
     if (!location) return { ok: false, durationMs: 0, log: "Arduino CLI wasn't found." };
     return installCore(location, core);
   },
+  "projects:recent": () => projectService().recent(),
+  "projects:create": (input) => {
+    if (!input || typeof input !== "object") throw new Error("Refused: no project details.");
+    return projectService().create({ name: String(input.name ?? ""), board: String(input.board ?? ""), starter: typeof input.starter === "string" ? input.starter : null });
+  },
+  "projects:open-recent": async (path) => {
+    if (!isText(path) || !(await projectService().isRecent(path))) return { ok: false, message: "That project isn't in the recent list." };
+    return projectService().openFolder(path);
+  },
+  "projects:open-dialog": async () => {
+    const folder = await chooseFolder({ title: "Open a Kiungo project", buttonLabel: "Open project", properties: ["openDirectory"] });
+    return folder ? projectService().openFolder(folder) : null;
+  },
+  "projects:save": (path, payload) => {
+    if (!isText(path) || !payload || typeof payload !== "object") return { ok: false, message: "Refused: nothing to save." };
+    return projectService().save(path, payload);
+  },
+  "projects:close": async (path) => {
+    if (isText(path)) await projectService().close(path);
+  },
+  "projects:forget": (path) => (isText(path) ? projectService().forget(path) : projectService().recent()),
+  "projects:reveal": async (path) => {
+    if (!isText(path)) return;
+    if (projectService().isOpen(path) || (await projectService().isRecent(path))) shell.showItemInFolder(join(path, PROJECT_FILE));
+  },
+  "projects:settings": () => projectService().settings(),
+  "projects:choose-folder": async () => {
+    const current = await projectService().settings();
+    const folder = await chooseFolder({ title: "Where should new projects go?", buttonLabel: "Use this folder", defaultPath: current.projectsFolder, properties: ["openDirectory", "createDirectory"] });
+    return folder ? projectService().setProjectsFolder(folder) : current;
+  },
 };
 
 function registerIpc() {
@@ -129,6 +182,10 @@ function createWindow() {
       nodeIntegration: false,
       webSecurity: true,
     },
+  });
+  mainWindow = win;
+  win.on("closed", () => {
+    if (mainWindow === win) mainWindow = null;
   });
   win.once("ready-to-show", () => {
     // process.uptime() counts from the moment the operating system started the app.
@@ -166,6 +223,15 @@ app.whenReady().then(() => {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+// Finish every save before the app goes. A forced quit loses at most the change in flight: files are written whole or not at all.
+let quitting = false;
+app.on("will-quit", (event) => {
+  if (quitting || !projects) return;
+  event.preventDefault();
+  quitting = true;
+  void projects.closeAll().finally(() => app.quit());
 });
 
 app.on("window-all-closed", () => {

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api-client";
-import { setLabOwner, useLab } from "@/lib/lab/store";
+import { setLabOwner, useLab } from "@kiungo/lab/store";
 import type { LabSession } from "@kiungo/core/lab/types";
 
 function snapshot(sessions: LabSession[]): Map<string, string> {

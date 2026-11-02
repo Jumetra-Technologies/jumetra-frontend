@@ -37,7 +37,7 @@ describe("Lab selection", () => {
   });
 
   it("doesn't listen to React Flow's onSelectionChange (the source of the wiring crash)", () => {
-    const canvas = readFileSync(join(process.cwd(), "components/lab/LabCanvas.tsx"), "utf8");
+    const canvas = readFileSync(join(process.cwd(), "packages/lab/src/LabCanvas.tsx"), "utf8");
     expect(canvas).not.toMatch(/onSelectionChange=/);
     expect(canvas).toMatch(/onEdgesChange=\{onEdgesChange\}/);
   });

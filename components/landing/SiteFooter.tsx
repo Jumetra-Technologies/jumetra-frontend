@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { KiungoLogo } from "@/components/brand/KiungoMark";
+import { KiungoLogo } from "@kiungo/ui/KiungoMark";
 import { FOOTER } from "@/lib/landing/content";
 import { cn } from "@/lib/utils";
 

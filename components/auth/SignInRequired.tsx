@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { LockKeyhole } from "lucide-react";
 import { openAuth } from "@/lib/account-dialogs";
 import { useAuthStore } from "@/lib/auth-store";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { Card } from "@/components/ui/card";
 
 export function SignInRequired({ children }: { children: ReactNode }) {

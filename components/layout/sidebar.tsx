@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { recordError, recordPageView } from "@/lib/diagnostics/store";
 import { SiteFooter } from "@/components/landing/SiteFooter";
-import { KiungoLogo, KiungoMark } from "@/components/brand/KiungoMark";
+import { KiungoLogo, KiungoMark } from "@kiungo/ui/KiungoMark";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Menu, PanelLeftClose, PanelLeftOpen, Settings, Star, User, X } from "lucide-react";

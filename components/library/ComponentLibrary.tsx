@@ -7,7 +7,7 @@ import { PARTS, PART_GROUPS, getPart, getPartsByGroup, searchParts } from "@kiun
 import type { PartModel } from "@kiungo/core/parts/types";
 import { cn } from "@/lib/utils";
 import { PartDetail } from "./PartDetail";
-import { PartThumb } from "./PartThumb";
+import { PartThumb } from "@kiungo/lab/views/PartThumb";
 
 export function ComponentLibrary({ initialPart, initialQuery = "", compatibility = {} }: { initialPart?: string; initialQuery?: string; compatibility?: Record<string, string[]> }) {
   const router = useRouter();

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Download, FilePlus2, Pencil, Trash2 } from "lucide-react";
 import { exportExperiment } from "@/lib/reports";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { Card } from "@/components/ui/card";
 import { ErrorNotice } from "@/components/ui/error-notice";
 import { Select } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import {
   type RoboticsProject,
 } from "@/lib/robotics-data";
 import type { ExperimentSummary } from "@/lib/types";
-import { SkeletonRegion } from "@/components/ui/skeleton";
+import { SkeletonRegion } from "@kiungo/ui/skeleton";
 import { ListSkeleton } from "@/components/ui/page-skeletons";
 
 export function ExperimentJournal({

@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, Circle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { useLearningProgress } from "@/components/learning/useLearningProgress";
 import { useAuthStore } from "@/lib/auth-store";
 

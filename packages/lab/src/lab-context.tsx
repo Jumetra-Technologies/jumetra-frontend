@@ -1,12 +1,12 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
-import type { Analysis } from "@kiungo/core/lab/circuit";
+import type { Analysis, Fault } from "@kiungo/core/lab/circuit";
 import type { Frame } from "@kiungo/core/lab/simulate";
 import type { PeripheralInput } from "@kiungo/core/emulator/peripherals";
 import type { ProgramReadings } from "@kiungo/core/lab/program";
 import type { PowerState } from "./UsbCable";
-import type { LabNode, LabSession, LabView } from "@kiungo/core/lab/types";
+import type { LabNode, LabSession, LabView, LabWire } from "@kiungo/core/lab/types";
 
 /** The website's link to Kiungo online: checking, connected, saving the mirror, or offline. */
 export type RuntimeStatus = "checking" | "online" | "offline" | "syncing";
@@ -56,12 +56,26 @@ export interface ProgramDriver {
       /** The run ended by itself (a real board unplugged, its link lost): the lab stops and says why. */
       ended?: (message: string) => void;
     },
-  ) => Promise<{ ok: true; programBytes: number; /** Where it runs, for the log: "the real Arduino Uno on COM3". */ where?: string } | { ok: false; message: string }>;
+  ) => Promise<
+    | {
+        ok: true;
+        programBytes: number;
+        /** Where it runs, for the log: "the real Arduino Uno on COM3". */
+        where?: string;
+        /** The code runs on a real board: the lab shows the emergency stop. */
+        real?: boolean;
+      }
+    | { ok: false; message: string }
+  >;
   stop: () => void;
   /** What the board's sensors read now. */
   setInputs: (inputs: PeripheralInput[]) => void;
   /** Text typed in the lab's serial monitor. */
   sendSerial?: (text: string) => void;
+  /** Extra problems for the circuit as the host runs it (a real board's electrical checks), shown with the lab's own. */
+  faults?: (circuit: { nodes: LabNode[]; wires: LabWire[]; analysis: Analysis }) => Fault[];
+  /** Turn every output of a real board off at once and keep it off (SAF-01). Only for runs that say `real`. */
+  emergencyStop?: () => void;
 }
 
 export interface LabContextValue {

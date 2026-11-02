@@ -27,6 +27,7 @@ import {
   VolumeX,
   Wand2,
   Zap,
+  OctagonX,
 } from "lucide-react";
 import { SegmentedControl } from "@kiungo/ui/segmented-control";
 import { ContextMenu, Menu, type MenuEntry } from "@kiungo/ui/menu";
@@ -35,6 +36,7 @@ import { getPart } from "@kiungo/core/parts";
 import { analyze, type Analysis } from "@kiungo/core/lab/circuit";
 import { frameAt, serialLine } from "@kiungo/core/lab/simulate";
 import { peripheralInputs, programFrame, type ProgramReadings } from "@kiungo/core/lab/program";
+import { withFaults } from "@kiungo/core/hybrid/safety";
 import { LabSound } from "@kiungo/core/lab/sound";
 import { setLabSound, useLabSound } from "./sound-pref";
 import { describeChanges, RunRecorder } from "@kiungo/core/lab/activity";
@@ -222,11 +224,13 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
   const wires = useMemo(() => session?.wires ?? [], [session?.wires]);
   const inputs = session?.inputs;
   // Inputs carry part values the check needs (a resistor's ohms).
-  const analysis = useMemo(() => analyze(nodes, wires, inputs), [nodes, wires, inputs]);
+  const lab = useMemo(() => analyze(nodes, wires, inputs), [nodes, wires, inputs]);
+  // The host's own checks (a real board's, SAF-03) join the lab's problems.
+  const analysis = useMemo(() => (program?.faults ? withFaults(lab, program.faults({ nodes, wires, analysis: lab })) : lab), [program, nodes, wires, lab]);
   // The user's program, when a board runs it (desktop): its readings replace that board's built-in behavior.
   /** Stop, for a program run that ends by itself (set once stopRun exists, below). */
   const stopRunRef = useRef<() => void>(() => undefined);
-  const [programRun, setProgramRun] = useState<{ boardId: string; readings: ProgramReadings | null; stage: "building" | "starting" | "running" } | null>(null);
+  const [programRun, setProgramRun] = useState<{ boardId: string; readings: ProgramReadings | null; stage: "building" | "starting" | "running"; real?: boolean } | null>(null);
   const programBoard = useMemo(() => program?.boardFor(nodes) ?? null, [program, nodes]);
   const baseFrame = useMemo(() => frameAt(nodes, wires, analysis, t, running, inputs), [nodes, wires, analysis, t, running, inputs]);
   const frame = useMemo(() => (programRun?.readings && running ? programFrame(baseFrame, nodes, wires, analysis, programRun.readings) : baseFrame), [baseFrame, programRun, running, nodes, wires, analysis]);
@@ -382,6 +386,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
             return;
           }
           setSerial((lines) => (lines.length && lines[lines.length - 1] !== "" ? [...lines, ""] : lines));
+          if (result.real) setProgramRun((p) => (p && p.boardId === boardId ? { ...p, real: true } : p));
           begin();
           store.getState().log("note", `Your code is running on ${result.where ?? nodes.find((n) => n.id === boardId)?.label ?? "the board"} (${result.programBytes.toLocaleString("en-US")} bytes)`);
         });
@@ -436,6 +441,28 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
   useEffect(() => {
     stopRunRef.current = stopRun;
   }, [stopRun]);
+
+  /** The emergency stop (SAF-01): the real board's outputs off at once and held off, then the run stops. */
+  const emergencyStop = useCallback(() => {
+    program?.emergencyStop?.();
+    const message = "Emergency stop: the board's outputs are off and stay off. Run again to upload and start over.";
+    store.getState().log("fault", message);
+    setToast(message);
+    stopRun();
+  }, [program, store, stopRun]);
+  const realRun = Boolean(programRun?.real && running);
+  useEffect(() => {
+    if (!realRun) return;
+    // Esc stops a real board from anywhere in the window, the code editor and text fields included.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      emergencyStop();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [realRun, emergencyStop]);
 
   const reset = useCallback(() => {
     if (running) stopRun();
@@ -765,6 +792,12 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
           <SegmentedControl value={session.view} onChange={(v) => store.getState().setView(v)} options={VIEW_OPTIONS} label="Canvas view" size="sm" className="order-last mx-auto w-full sm:order-none sm:w-auto [&_[role=radio]]:pl-3 [&_[role=radio]]:pr-5" />
 
           <div className="ml-auto flex items-center gap-1.5">
+            {realRun ? (
+              <button type="button" onClick={emergencyStop} title="Emergency stop: every output on the real board off at once (Esc)" className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[8px] bg-[#c81e1e] px-3 text-[12.5px] font-semibold text-white shadow-[0_0_0_3px_color-mix(in_srgb,#c81e1e_25%,transparent)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger" data-testid="emergency-stop">
+                <OctagonX className="size-4" aria-hidden />
+                Emergency stop
+              </button>
+            ) : null}
             <Button size="sm" onClick={running || power === "plugging" ? stopRun : startRun} variant={running ? "secondary" : "default"} className="min-w-[5.5rem]" data-testid="run-toggle" aria-busy={power === "plugging" || undefined} title={running ? "Stop (⌘↵)" : power === "plugging" ? (programRun ? "Building and loading your code…" : "Plugging in the board…") : programBoard ? "Run your code (⌘↵)" : (program?.whyNot?.(nodes) ?? "Run the default sketch (⌘↵)")}>
               {running ? <Pause className="size-3.5" aria-hidden /> : <Play className="size-3.5" aria-hidden />}
               {running ? "Stop" : power === "plugging" ? (programRun?.stage === "building" ? "Building…" : programRun ? "Loading…" : "Powering…") : "Run"}

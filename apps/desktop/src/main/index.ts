@@ -326,6 +326,7 @@ const handlers: Handlers = {
     return true;
   },
   "hybrid:stop": () => link?.stop(),
+  "hybrid:emergency-stop": () => link?.emergencyStop(),
   "world:read": (path) => (openProject(path) ? projectService().readWorld(path) : null),
   "world:write": (path, world) => (openProject(path) ? projectService().writeWorld(path, world) : notOpen),
   "projects:choose-folder": async () => {

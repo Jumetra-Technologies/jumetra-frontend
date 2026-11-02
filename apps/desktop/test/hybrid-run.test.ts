@@ -62,6 +62,7 @@ function link() {
     pingMs: 10,
     batchMs: 5,
     helloMs: 5,
+    closeMs: 5,
   });
   return { l, children, events };
 }
@@ -119,6 +120,33 @@ describe("the Hybrid link to a real board (INJ-03, INJ-04, OUT-01)", () => {
     children[0].frame([Frame.HelloAck, PROTOCOL_VERSION + 1, 0]);
     await tick(20);
     expect(events.find((e) => e.hello)?.hello?.compatible).toBe(false);
+    l.stop();
+  });
+
+  it("Stop sends STOP before the port closes, so the board's outputs go safe (SAF-01)", async () => {
+    const { l, children } = link();
+    l.start("/dev/ttyACM0");
+    await tick(20);
+    l.stop();
+    await tick(20);
+    expect(children[0].of(Frame.Stop).map((f) => [...f])).toEqual([[Frame.Stop, 1]]);
+  });
+
+  it("the emergency stop sends STOP twice, stops pinging, and keeps listening for the board's SAFE", async () => {
+    const { l, children, events } = link();
+    l.start("/dev/ttyACM0");
+    await tick(20);
+    l.emergencyStop();
+    const pings = children[0].of(Frame.Ping).length;
+    expect(children[0].of(Frame.Stop).map((f) => [...f])).toEqual([
+      [Frame.Stop, 2],
+      [Frame.Stop, 2],
+    ]);
+    await tick(40);
+    expect(children[0].of(Frame.Ping).length).toBe(pings);
+    children[0].frame([Frame.Safe, 2]);
+    await tick(20);
+    expect(events.find((e) => e.safe)?.safe).toBe("emergency");
     l.stop();
   });
 

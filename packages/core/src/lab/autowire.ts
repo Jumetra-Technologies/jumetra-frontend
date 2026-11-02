@@ -170,6 +170,11 @@ export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], 
     // Rails on the side facing the part first, so wires don't wrap round the board.
     const rails = bp.pins.filter((p) => p.supplies).sort((a, b) => Number(b.side === facing) - Number(a.side === facing));
     const fits = rails.filter((p) => p.supplies! >= min - 0.2 && p.supplies! <= max + 0.25);
+    // A motor's supply goes on VIN: on the bench that's the barrel jack's battery, not the board's regulator or USB.
+    if (part.partId === "dc-motor") {
+      const vin = fits.find((p) => p.id === "VIN");
+      if (vin) return vin;
+    }
     const preferV = fits.some((p) => p.supplies === bp.logic) ? bp.logic : undefined;
     return (preferV ? fits.find((p) => p.supplies === preferV && p.id !== "VIN") : undefined) ?? fits.find((p) => p.id !== "VIN") ?? fits[0] ?? rails.find((p) => p.supplies === Math.min(...rails.map((r) => r.supplies!)));
   };

@@ -15,6 +15,7 @@ import type { BuildResult, HybridLinkEvent, UploadResult } from "@kiungo/api";
 import type { HardwareBoardId } from "@kiungo/core/hardware/boards";
 import { hardwareBoard } from "@kiungo/core/hardware/boards";
 import { boardIsReal, HYBRID_BOARDS, hybridBindings, hybridValues, outReadings, type HybridBindings } from "@kiungo/core/hybrid/plan";
+import { blockingFaults, realBoardFaults } from "@kiungo/core/hybrid/safety";
 import type { FromWorker, ToWorker } from "@kiungo/core/emulator/protocol";
 import type { PeripheralInput } from "@kiungo/core/emulator/peripherals";
 import { EMULATED_PARTS } from "@kiungo/core/lab/program";
@@ -90,6 +91,12 @@ export function programDriver(projectPath: string, projectBoard: string, editor:
       return { ok: false, message: (e as Error).message };
     }
     if (bindings.unsupported.length) return { ok: false, message: bindings.unsupported[0].why };
+    // Electrical checks first (SAF-03): real current is about to flow.
+    const blocking = blockingFaults(circuit.nodes, circuit.analysis, boardId);
+    if (blocking.length) {
+      const [first] = blocking;
+      return { ok: false, message: `Fix ${blocking.length === 1 ? "this" : `these ${blocking.length} problems`} before running on the real board: ${first.title}. ${first.detail}${blocking.length > 1 ? " The others are in Problems." : ""}` };
+    }
     on.stage("building");
     await editor()?.flush();
     if (mine !== run) return { ok: false, message: "Stopped." };
@@ -115,7 +122,9 @@ export function programDriver(projectPath: string, projectBoard: string, editor:
       }
       if (event.lines.length) on.serial(event.lines.map((l) => `${l}\n`).join(""));
       if (event.out && hello) on.readings({ boardId, t: (performance.now() - started) / 1000, speedPercent: 100, pins: outReadings(event.out), crashed: null, where: `${board.name} on ${target.port}` });
-      if (event.closed !== undefined) on.ended?.(event.closed ?? "The link to the board closed.");
+      // The board went safe on its own: it stopped hearing Kiungo (SAF-02).
+      if (event.safe === "link-lost") on.ended?.("The board stopped hearing Kiungo, so it turned its outputs off. Check the USB cable, then Run again.");
+      if (event.closed !== undefined) on.ended?.(event.closed ? `${event.closed} The board's outputs turn off by themselves within half a second.` : "The link to the board closed. The board's outputs turn off by themselves within half a second.");
     };
     const offLink = window.kiungo.on("hybrid:link", handle);
     real = { bindings, unlisten: () => (offStage(), offLink()), timer: null };
@@ -138,7 +147,7 @@ export function programDriver(projectPath: string, projectBoard: string, editor:
         if (mine === run && !hello) on.ended?.("The board didn't answer after the upload. Check it's still plugged in, then Run again.");
       }, HELLO_TIMEOUT_MS);
     }
-    return { ok: true, programBytes: result.build.flash?.used ?? 0, where: `the real ${board.name} on ${target.port}` };
+    return { ok: true, programBytes: result.build.flash?.used ?? 0, where: `the real ${board.name} on ${target.port}`, real: true };
   };
 
   return {
@@ -236,6 +245,15 @@ export function programDriver(projectPath: string, projectBoard: string, editor:
     sendSerial: (text: string) => {
       if (real) void invoke("hybrid:serial-in", text).catch(() => undefined);
       else worker?.postMessage({ type: "serial-in", text } satisfies ToWorker);
+    },
+
+    faults: ({ nodes, wires, analysis }) => {
+      const board = nodes.find((n) => n.partId === projectBoard);
+      return board ? realBoardFaults(nodes, wires, analysis, board.id) : [];
+    },
+
+    emergencyStop: () => {
+      if (real) void invoke("hybrid:emergency-stop").catch(() => undefined);
     },
 
     setObstacles: (obstacles: WorldObstacle[]) => worker?.postMessage({ type: "world-obstacles", obstacles } satisfies ToWorker),

@@ -10,6 +10,33 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.30.0] - 2026-11-02
+
+Phase Two, Sprint 10: Hybrid safety and readiness. Real outputs are always safe: Stop, the emergency stop and a dropped link all turn the board's outputs off. The lab checks the wiring before real current flows, and lists what to have on the desk. The desktop app is 0.10.0.
+
+### Added
+- **Emergency stop (SAF-01).** While your code runs on a real board, a red **Emergency stop** sits beside Run, and **Esc** does the same from anywhere in the window.
+  - It turns every pin the sketch drives off at once, PWM included, and holds them off until the next upload.
+  - **Stop** also takes the outputs to the safe state before the link closes.
+- **A watchdog on the board (SAF-02).** Once Kiungo has said hello, the board listens for it. If the link goes quiet for 300 ms, every driven output turns off: the app closed or crashed, or the USB cable came out while the board has its own power.
+  - It runs on a timer interrupt, so it works inside a long `delay()`. In CI it trips about 210 ms after the last byte.
+  - While the link is lost, virtual sensors fall back to "no value" (0, LOW, NAN or a timeout).
+  - A new hello lets the sketch drive again.
+- **Electrical checks before a run (SAF-03).** With the board marked Physical or Hybrid, Problems adds the real-board checks, and errors stop Run with the reason:
+  - Pins 0 and 1 are Kiungo's link.
+  - A DC motor must not run from the board's 5 V.
+  - An LED without its resistor is an error, not a warning.
+  - A servo on the board's 5 V gets a warning.
+  - The parts on the board's supply must stay inside what USB gives.
+  - Of the lab's own problems, those that can damage something (shorts, wrong voltages, outputs fighting) also stop Run. A part that isn't wired yet doesn't.
+- **Parts (VER-01, VER-03).** A new **Parts** tab in the lab:
+  - **In a run** shows each part as **Virtual**, **Real**, **Hybrid** or **Not available**, with what that means.
+  - **What you need** lists what to have on the desk, or the whole build: parts, jumper wires, the USB cable and a battery pack for motors. **Copy list** gives plain text and **Save CSV** saves a spreadsheet file.
+
+### Changed
+- Auto-wire puts a DC motor's VM on **VIN**, the barrel jack's supply, rather than the board's 5 V. The robot starters follow.
+- The Hybrid link is protocol 2: STOP (PC to board) and SAFE (board to PC) frames. Delay calls `yield()`, which now handles the link's frames, so a STOP lands at once even mid-delay.
+
 ## [1.29.0] - 2026-11-02
 
 Phase Two, Sprint 9: Hybrid runs. Mark the board Physical and Run puts your own code on the real board, while the lab plays the parts you don't have and mirrors what the board drives. The desktop app is 0.9.0.
@@ -605,6 +632,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.30.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.29.0...v1.30.0
 [1.29.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.28.0...v1.29.0
 [1.28.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.27.0...v1.28.0
 [1.27.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.26.0...v1.27.0

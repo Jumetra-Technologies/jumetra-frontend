@@ -110,8 +110,8 @@ export const PHASES: Phase[] = [
       },
       {
         title: "Hardware bridge",
-        status: "planned",
-        items: ["Detect boards on USB serial and flash firmware", "Live readings from real sensors in the lab", "Hybrid runs: real parts and virtual parts in one build, kept in sync"],
+        status: "active",
+        items: ["Detect boards on USB serial and flash firmware (v1.26)", "Serial monitor and plotter for a plugged-in board (v1.26)", "Live readings from real sensors in the lab", "Hybrid runs: real parts and virtual parts in one build, kept in sync"],
       },
     ],
     exit: ["A hybrid build with one real and one virtual part runs end to end on all three operating systems", "Offline work syncs without loss"],

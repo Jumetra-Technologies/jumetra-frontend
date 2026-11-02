@@ -55,6 +55,8 @@ jobs:
           - os: ubuntu-latest
             label: Ubuntu
             builder: --linux
+            # The ESP32 board package is large: one system builds for it.
+            esp32: "1"
           - os: macos-latest
             label: macOS
             builder: --mac
@@ -96,7 +98,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .ci/arduino
-          key: arduino-avr-1.8.6-profiles-${{ runner.os }}-${{ runner.arch }}
+          key: arduino-avr-1.8.6-profiles-${{ matrix.esp32 && 'esp32-3.3.12-' || '' }}${{ runner.os }}-${{ runner.arch }}
 
       - name: Install the Uno core (arduino:avr@1.8.6)
         shell: bash
@@ -121,6 +123,7 @@ jobs:
           # The shim tests compile with avr-gcc directly from the installed core (apps/desktop/test/hybrid-shim.test.ts).
           KIUNGO_ARDUINO_DATA: ${{ github.workspace }}/.ci/arduino/data
           KIUNGO_AVR_LIBRARIES: ${{ github.workspace }}/.ci/arduino/sketchbook/libraries
+          KIUNGO_TEST_ESP32: ${{ matrix.esp32 }}
         shell: bash
         run: npx vitest run packages apps 2>&1 | tee vitest.log; exit ${PIPESTATUS[0]}
 

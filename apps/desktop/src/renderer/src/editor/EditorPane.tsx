@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, AlertTriangle, Check, FilePlus2, Hammer, Loader2, MoreHorizontal, Play, Search, Square, Upload, X } from "lucide-react";
-import type { SketchFile } from "@kiungo/api";
+import type { SketchFile, UploadResult } from "@kiungo/api";
+import { uploadTargetsFor, type HardwareBoardId } from "@kiungo/core/hardware/boards";
 import { explain, type Diagnostic, type QuickFix } from "@kiungo/core/build";
 import { cn } from "@kiungo/ui/cn";
 import { Menu } from "@kiungo/ui/menu";
 import { invoke, shortcut } from "../ipc";
-import { BuildPanel, type BuildState, type BuildTab } from "./BuildPanel";
+import { BoardHelp } from "../hardware/BoardHelp";
+import { suggestTarget, UploadPicker, type UploadTarget } from "../hardware/UploadPicker";
+import { useBoards } from "../hardware/useBoards";
+import { BuildPanel, type BuildState, type BuildTab, type UploadState } from "./BuildPanel";
 import { languageFor, monaco } from "./monaco";
 
 const MARKERS = "kiungo-build";
@@ -77,6 +81,8 @@ interface EditorPaneProps {
   projectPath: string;
   /** The board's name, for explanations: "the Arduino Uno". */
   board: string;
+  /** The lab part the project is written for ("arduino-uno"): which boards it can upload to. */
+  boardPart: string;
   running: boolean;
   onRun: () => void;
   onStop: () => void;
@@ -84,7 +90,18 @@ interface EditorPaneProps {
 }
 
 /** Code beside the circuit (DSK-30, EDT-01 to EDT-03, EDT-06): the sketch's files in tabs, saved as you type. */
-export function EditorPane({ projectPath, board, running, onRun, onStop, onClose }: EditorPaneProps) {
+/** The board last uploaded to, per project, so it's chosen again next time. */
+const targetKey = (projectPath: string) => `kiungo.desktop.upload:${projectPath}`;
+function savedTarget(projectPath: string): UploadTarget | null {
+  try {
+    const raw = JSON.parse(localStorage.getItem(targetKey(projectPath)) ?? "null") as UploadTarget | null;
+    return raw && typeof raw.port === "string" && typeof raw.board === "string" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+export function EditorPane({ projectPath, board, boardPart, running, onRun, onStop, onClose }: EditorPaneProps) {
   const host = useRef<HTMLDivElement>(null);
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const files = useRef(new Map<string, OpenFile>());
@@ -104,6 +121,34 @@ export function EditorPane({ projectPath, board, running, onRun, onStop, onClose
   /** The last build's problems, for files opened after it. */
   const diagnostics = useRef<Diagnostic[]>([]);
   const buildRef = useRef<() => void>(() => undefined);
+  const uploadRef = useRef<() => void>(() => undefined);
+  const boards = useBoards();
+  const targets = useMemo(() => uploadTargetsFor(boardPart), [boardPart]);
+  const [target, setTarget] = useState<UploadTarget | null>(() => savedTarget(projectPath));
+  const [upload, setUpload] = useState<UploadState>({ status: "idle", result: null, target: null });
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const chooseTarget = useCallback(
+    (next: UploadTarget) => {
+      setTarget(next);
+      try {
+        localStorage.setItem(targetKey(projectPath), JSON.stringify(next));
+      } catch {
+        // Remembering the board is a convenience.
+      }
+    },
+    [projectPath],
+  );
+
+  // Plugged in and nothing chosen (or the chosen one is gone): suggest the first board.
+  useEffect(() => {
+    const list = boards?.boards ?? [];
+    if (!list.length) return;
+    if (target && list.some((b) => b.port === target.port)) return;
+    const first = list.find((b) => suggestTarget(b, targets)) ?? list[0];
+    const suggested = suggestTarget(first, targets);
+    if (suggested) setTarget({ port: first.port, board: suggested });
+  }, [boards, target, targets]);
 
   const report = useCallback((name: string, s: SaveState) => setStatus((all) => (all[name]?.state === s.state && all[name]?.message === s.message ? all : { ...all, [name]: s })), []);
   const save = useCallback((file: OpenFile) => writeFile(projectPath, file, report), [projectPath, report]);
@@ -180,6 +225,45 @@ export function EditorPane({ projectPath, board, running, onRun, onStop, onClose
     buildRef.current = () => void runBuild();
   }, [runBuild]);
 
+  // ----- upload (BLD-06) ----------------------------------------------------------------
+  const plugged = Boolean(target && boards?.boards.some((b) => b.port === target.port));
+  const runUpload = useCallback(
+    async (as?: HardwareBoardId) => {
+      if (!target || upload.status === "building" || upload.status === "uploading") return;
+      const chosen = { port: target.port, board: as ?? target.board };
+      if (as) chooseTarget(chosen);
+      if (!boards?.boards.some((b) => b.port === chosen.port)) {
+        setHelpOpen(true);
+        return;
+      }
+      setUpload({ status: "building", result: null, target: chosen });
+      setPanel({ open: true, tab: "problems" });
+      const stop = window.kiungo.on("upload:stage", ({ projectPath: p, stage }) => {
+        if (p === projectPath && stage === "uploading") setUpload((u) => ({ ...u, status: "uploading" }));
+      });
+      await flushAll();
+      const result: UploadResult = await invoke("upload:start", projectPath, chosen.port, chosen.board).catch(() => ({
+        ok: false,
+        stage: "upload" as const,
+        build: { ok: false, diagnostics: [], durationMs: 0, log: "" },
+        problem: { id: "unknown" as const, title: "The upload didn't run. Try again.", steps: [] },
+        log: "",
+        durationMs: 0,
+      }));
+      stop();
+      // A failed build shows its problems like any build.
+      diagnostics.current = result.build.diagnostics;
+      for (const name of new Set(result.build.diagnostics.map((d) => d.file).filter((f): f is string => Boolean(f)))) await ensureModel(name);
+      for (const file of files.current.values()) monaco.editor.setModelMarkers(file.model, MARKERS, markersFor(result.build.diagnostics, file.name, board));
+      setBuild({ status: "done", slow: false, result: result.build, changed: new Set() });
+      setUpload({ status: "done", result, target: chosen });
+    },
+    [target, upload.status, boards, chooseTarget, flushAll, projectPath, ensureModel, board],
+  );
+  useEffect(() => {
+    uploadRef.current = () => void runUpload();
+  }, [runUpload]);
+
   const reveal = useCallback(
     async (d: Diagnostic) => {
       if (!d.file) return;
@@ -222,6 +306,10 @@ export function EditorPane({ projectPath, board, running, onRun, onStop, onClose
         e.preventDefault();
         buildRef.current();
       }
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "u") {
+        e.preventDefault();
+        uploadRef.current();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -259,6 +347,7 @@ export function EditorPane({ projectPath, board, running, onRun, onStop, onClose
     // Ctrl+Enter (⌘↵) runs from the editor, as it does from the lab.
     instance.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => runRef.current());
     instance.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyB, () => buildRef.current());
+    instance.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyU, () => uploadRef.current());
     const opened = files.current;
     return () => {
       observer.disconnect();
@@ -378,24 +467,33 @@ export function EditorPane({ projectPath, board, running, onRun, onStop, onClose
   const others = list.filter((f) => !tabs.includes(f.name));
 
   return (
-    <section className="flex h-full min-h-0 min-w-0 flex-col border-l border-border bg-surface" aria-label="Code" data-testid="editor-pane" data-own-keys>
+    <section className="@container flex h-full min-h-0 min-w-0 flex-col border-l border-border bg-surface" aria-label="Code" data-testid="editor-pane" data-own-keys>
       {/* Run, upload, stop (EDT-06); find; files */}
       <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-2">
-        <button type="button" onClick={() => void runBuild()} disabled={build.status === "building"} title={`Build: check the code and see how much memory it uses (${shortcut("B")})`} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-border px-2.5 text-[12.5px] font-medium text-foreground hover:bg-muted-bg disabled:opacity-60" data-testid="editor-build">
+        <button type="button" onClick={() => void runBuild()} disabled={build.status === "building"} title={`Build: check the code and see how much memory it uses (${shortcut("B")})`} aria-label="Build" className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-border px-2.5 text-[12.5px] font-medium text-foreground hover:bg-muted-bg disabled:opacity-60" data-testid="editor-build">
           {build.status === "building" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Hammer className="size-3.5" aria-hidden />}
-          Build
+          <span className="hidden @[680px]:inline">Build</span>
         </button>
         <button type="button" onClick={onRun} disabled={running} title={`Run (${shortcut("↵")}). The lab runs each board's built-in behavior; running your own code arrives in a later update.`} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] bg-primary px-2.5 text-[12.5px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40" data-testid="editor-run">
           <Play className="size-3.5" aria-hidden />
           Run
         </button>
-        <button type="button" disabled title="Uploading to a plugged-in board arrives with USB board support in a later update." className="inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2.5 text-[12.5px] font-medium text-muted disabled:opacity-50" data-testid="editor-upload">
-          <Upload className="size-3.5" aria-hidden />
-          Upload
+        <button
+          type="button"
+          onClick={() => (plugged ? void runUpload() : setHelpOpen(true))}
+          disabled={upload.status === "building" || upload.status === "uploading"}
+          title={plugged ? `Upload to the board on ${target?.port} (${shortcut("U")})` : "Plug in a board to upload"}
+          aria-label="Upload"
+          className="inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2.5 text-[12.5px] font-medium text-foreground hover:bg-muted-bg disabled:opacity-60"
+          data-testid="editor-upload"
+        >
+          {upload.status === "building" || upload.status === "uploading" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Upload className="size-3.5" aria-hidden />}
+          <span className="hidden @[680px]:inline">Upload</span>
         </button>
-        <button type="button" onClick={onStop} disabled={!running} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2.5 text-[12.5px] font-medium text-foreground hover:bg-muted-bg disabled:opacity-40" data-testid="editor-stop">
+        <UploadPicker boards={boards} targets={targets} value={target} onChange={chooseTarget} onHelp={() => setHelpOpen(true)} />
+        <button type="button" onClick={onStop} disabled={!running} aria-label="Stop" title="Stop" className="inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2.5 text-[12.5px] font-medium text-foreground hover:bg-muted-bg disabled:opacity-40" data-testid="editor-stop">
           <Square className="size-3.5" aria-hidden />
-          Stop
+          <span className="hidden @[680px]:inline">Stop</span>
         </button>
         <span className="flex-1" />
         {!panel.open && build.result ? (
@@ -500,9 +598,14 @@ export function EditorPane({ projectPath, board, running, onRun, onStop, onClose
             }}
             onApplyFix={(fix) => void applyFix(fix)}
             onLibrariesChanged={() => void runBuild()}
+            upload={upload}
+            onRetryUpload={(as) => void runUpload(as)}
+            serialPort={target && plugged ? target.port : null}
+            boards={boards?.boards ?? []}
           />
         </div>
       ) : null}
+      <BoardHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
     </section>
   );
 }

@@ -10,6 +10,26 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.26.0] - 2026-11-02
+
+Phase Two, Sprint 6: real boards. Plug in a board, upload to it, and talk to it. The desktop app is 0.6.0.
+
+### Added
+- **Boards on USB, by name (HW-01).** **Upload to** lists what's plugged in as it's plugged in, by name: a genuine board ("Arduino Uno · COM3"), or a clone by its USB chip ("USB serial board (CH340)"). When USB can't tell which board it is, Kiungo asks and suggests the most likely one: a CH340 board is most often a Nano with the old bootloader. The choice is remembered per project.
+- **Upload (BLD-06).** **Upload** (Ctrl+U) builds for the chosen board and uploads to it. A Uno project uploads to an Arduino Nano too (same chip); each board builds in its own folder. If the serial monitor is open on that port, it closes for the upload and reconnects after.
+- **Recovery steps when an upload fails (BLD-06).** The board didn't answer, the port is busy, the port is gone, no permission, an ESP32 that needs BOOT held, or a different ESP32 chip: each one says what happened and what to try, in order. A Nano that doesn't answer offers **Upload as Arduino Nano (old bootloader)** in one click.
+- **Serial monitor and plotter (HW-02).** **Serial monitor** under the code connects to the chosen board at the speed you pick, shows what it prints, and sends what you type, with the line ending you choose. **Plot** draws the numbers on each line, read the way the Arduino IDE's plotter reads them (`temp:21.5 humidity:40`, `Distance: 20 cm`).
+- **My board isn't listed (FIX-09).** Checks this computer and gives steps. On Linux it can see a CH340 board whose port was taken by brltty and gives the command to remove it, and spots a port you're not allowed to open and gives the dialout command. On Windows and macOS it links the official CH340 and CP210x drivers from the chip makers, and reminds you that some cables only carry power.
+- **Board definitions (HWT-01)** for the Uno, Nano (both bootloaders), Mega 2560 and ESP32 Dev Module. They carry the board packages' exact limits (32,256 bytes of program storage on the Uno, 30,720 on the Nano, 253,952 on the Mega, 1,310,720 on the ESP32) and what each pin can do, with cautions such as pins 0 and 1 carrying the upload, the ESP32's boot-mode pins, and its input-only pins.
+- **ESP32 projects.** New projects can be for the ESP32 Dev Module (esp32 board package 3.3.12, pinned). Starters that aren't safe on a 3.3 V board say why: the HC-SR04's 5 V echo needs a level shifter.
+- Backend (jumetra-backend #5, stacked on #4): crash-report consent (`GET/PUT /auth/me/consents`, `POST /crash-reports` only with consent, kept 90 days), and writes from the desktop app (bearer token, no website origin) are now accepted with a valid session.
+
+### Fixed
+- **The Nano's limit was 1.5 KB too high** in the emulator's board definition (32,256 bytes). arduino:avr keeps 2 KB for the Nano's bootloader: it's 30,720.
+
+### Not in this release
+- Signing the Windows installer and the stable and beta update channels (DSK-80) are Juma's, through the CI/CD pipeline. Installers from CI are still unsigned.
+
 ## [1.25.0] - 2026-11-02
 
 Phase Two, Sprint 5: building the code, libraries, and error explanations. The desktop app is 0.5.0.
@@ -504,6 +524,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.26.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.25.0...v1.26.0
 [1.25.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.24.0...v1.25.0
 [1.24.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.23.0...v1.24.0
 [1.23.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.22.0...v1.23.0

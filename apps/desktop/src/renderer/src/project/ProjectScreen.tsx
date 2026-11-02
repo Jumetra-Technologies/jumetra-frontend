@@ -186,7 +186,7 @@ export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>
               if (e.key === "ArrowRight") setCode((c) => ({ ...c, width: Math.max(0.25, c.width - 0.03) }));
             }} className="w-1 shrink-0 cursor-col-resize bg-border transition-colors hover:bg-primary/40 focus-visible:bg-primary" />
             <div className="min-h-0 shrink-0" style={{ width: `${code.width * 100}%` }}>
-              <EditorPane projectPath={project.path} board={`the ${boardName(project.meta.board)}`} running={running} onRun={() => lab?.run()} onStop={() => lab?.stop()} onClose={toggleCode} />
+              <EditorPane projectPath={project.path} board={`the ${boardName(project.meta.board)}`} boardPart={project.meta.board} running={running} onRun={() => lab?.run()} onStop={() => lab?.stop()} onClose={toggleCode} />
             </div>
           </>
         ) : null}

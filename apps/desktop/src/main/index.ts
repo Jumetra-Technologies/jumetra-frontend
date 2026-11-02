@@ -3,18 +3,23 @@
  * handlers the interface may call. The interface gets no Node access; it
  * talks to this process only through the channels in @kiungo/api.
  */
+import { spawn } from "node:child_process";
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell } from "electron";
 import { hostname } from "node:os";
 import { join, normalize, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { EMULATED_BOARDS, EXAMPLE_SKETCHES, INSTALLABLE_CORES, isInvokeChannel, type AuthState, type Handlers, type Platform } from "@kiungo/api";
 import { PROJECT_FILE } from "@kiungo/core/project";
+import { hardwareBoard, uploadTargetsFor } from "@kiungo/core/hardware/boards";
 import { keychainStore } from "./auth/secret-store";
 import { AuthService } from "./auth/service";
 import { ProjectService } from "./projects/service";
 import { SketchFiles } from "./projects/sketch";
 import { BuildService } from "./build/service";
-import { compileSketch, installCore, locateCli, runCli, toolchainStatus } from "./toolchain/arduino-cli";
+import { BoardWatcher } from "./hardware/boards";
+import { defaultDoctorEnv, diagnosePorts, DRIVER_LINKS } from "./hardware/doctor";
+import { BAUD_RATES, SerialMonitor } from "./hardware/serial";
+import { compileSketch, installCore, locateCli, runCli, toolchainStatus, type CliLocation } from "./toolchain/arduino-cli";
 
 const APP_SCHEME = "kiungo-app";
 /** The website sends the app back to kiungo://signin after signing in. */
@@ -145,6 +150,25 @@ const buildService = () =>
     buildsDir: join(app.getPath("userData"), "builds"),
     run: runCli,
   }));
+/** Arduino CLI as a long-running child (port discovery, the serial monitor). */
+const spawnCli = (location: CliLocation, args: string[]) =>
+  spawn(location.binary, ["--config-file", location.configFile, "--no-color", ...args], { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
+
+let watcher: BoardWatcher | null = null;
+const boardWatcher = () =>
+  (watcher ??= new BoardWatcher({ cli, run: runCli, spawn: spawnCli, onChange: (boards) => mainWindow?.webContents.send("boards:changed", boards) }));
+
+let monitor: SerialMonitor | null = null;
+const serialMonitor = () =>
+  (monitor ??= new SerialMonitor({
+    cli,
+    spawn: spawnCli,
+    onData: (port, text) => mainWindow?.webContents.send("serial:data", { port, text }),
+    onClosed: (port, message) => mainWindow?.webContents.send("serial:closed", { port, message }),
+  }));
+const hostPlatform = process.platform === "win32" || process.platform === "darwin" ? process.platform : "linux";
+const DRIVER_URLS = new Set<string>(Object.values(DRIVER_LINKS).map((l) => l.url));
+
 /** A library name as the Arduino index writes it, and a version number. */
 const isLibraryName = (v: unknown): v is string => typeof v === "string" && /^[\w][\w .+\-()]{0,99}$/.test(v) && !v.includes("..");
 const isVersion = (v: unknown): v is string => typeof v === "string" && /^\d+(\.\d+){0,2}([-+][\w.]+)?$/.test(v);
@@ -226,6 +250,39 @@ const handlers: Handlers = {
     if (!openProject(path)) return notOpen;
     return isLibraryName(name) ? buildService().remove(path, name) : notAdded;
   },
+  "boards:list": async () => {
+    await boardWatcher().start();
+    return { boards: boardWatcher().list(), message: boardWatcher().message };
+  },
+  "boards:doctor": async () => {
+    await boardWatcher().start();
+    return diagnosePorts(await boardWatcher().refresh(), defaultDoctorEnv(process.platform));
+  },
+  "boards:open-link": async (url) => {
+    if (typeof url === "string" && DRIVER_URLS.has(url)) await shell.openExternal(url);
+  },
+  "upload:start": async (path, port, boardId) => {
+    const refused = (message: string) => ({ ok: false, stage: "upload" as const, build: { ok: false, diagnostics: [], durationMs: 0, log: "", message }, log: "", durationMs: 0, problem: { id: "unknown" as const, title: message, steps: [] } });
+    if (!openProject(path)) return refused(notOpen.message);
+    const board = typeof boardId === "string" ? hardwareBoard(boardId) : undefined;
+    const projectBoard = projectService().boardOf(path);
+    if (!board || !projectBoard || !uploadTargetsFor(projectBoard).some((b) => b.id === board.id)) return refused("This project's code isn't written for that board.");
+    if (!isText(port) || !boardWatcher().has(port)) return refused("That board isn't plugged in any more. Pick it again in Upload to.");
+    // The upload needs the port: close the monitor, and reopen it after.
+    const reopen = serialMonitor().open?.port === port ? serialMonitor().open : null;
+    if (reopen) serialMonitor().stop();
+    const result = await buildService().upload(path, port, board, hostPlatform, (stage) => mainWindow?.webContents.send("upload:stage", { projectPath: path, stage }));
+    // Boards reset after an upload; give the port a moment to come back.
+    if (reopen) setTimeout(() => serialMonitor().start(reopen.port, reopen.baud), 1200);
+    return { ...result, ...(reopen ? { monitorReopened: true } : {}) };
+  },
+  "serial:open": (port, baud) => {
+    if (!isText(port) || !boardWatcher().has(port)) return { ok: false, message: "That board isn't plugged in." };
+    if (!(BAUD_RATES as readonly number[]).includes(baud)) return { ok: false, message: "Pick one of the listed speeds." };
+    return serialMonitor().start(port, baud);
+  },
+  "serial:write": (text) => (typeof text === "string" && text.length <= 4096 ? serialMonitor().write(text) : false),
+  "serial:close": () => serialMonitor().stop(),
   "projects:choose-folder": async () => {
     const current = await projectService().settings();
     const folder = await chooseFolder({ title: "Where should new projects go?", buttonLabel: "Use this folder", defaultPath: current.projectsFolder, properties: ["openDirectory", "createDirectory"] });
@@ -344,6 +401,8 @@ app.whenReady().then(() => {
 let quitting = false;
 app.on("will-quit", (event) => {
   auth?.dispose();
+  watcher?.stop();
+  monitor?.stop();
   if (quitting || !projects) return;
   event.preventDefault();
   quitting = true;

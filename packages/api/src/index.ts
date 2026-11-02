@@ -11,6 +11,9 @@
 import type { LabNode, LabSession, LabWire } from "@kiungo/core/lab/types";
 import type { CircuitThumbnail, ProjectMeta } from "@kiungo/core/project";
 import type { Diagnostic, ProfileLibrary } from "@kiungo/core/build";
+import type { HardwareBoardId } from "@kiungo/core/hardware/boards";
+import type { UploadProblem } from "@kiungo/core/hardware/upload";
+import type { DetectedBoard } from "@kiungo/core/hardware/usb";
 
 export type Platform = "win32" | "linux" | "darwin";
 
@@ -171,6 +174,34 @@ export interface LibraryInfo {
 
 export type LibrarySearchResult = { ok: true; libraries: LibraryInfo[] } | { ok: false; message: string };
 
+/** Boards on USB (HW-01). `message` when finding boards can't work at all. */
+export interface BoardsState {
+  boards: DetectedBoard[];
+  message: string | null;
+}
+
+/** Why a board might not show up, and what to do (FIX-09). */
+export interface PortHint {
+  id: "brltty" | "dialout" | "no-port" | "driver-ch340" | "driver-cp210x" | "cable";
+  title: string;
+  steps: string[];
+  links?: Array<{ label: string; url: string }>;
+}
+
+/** An upload (BLD-06): it stops at the build (with its problems) or at the upload (with recovery steps). */
+export interface UploadResult {
+  ok: boolean;
+  stage: "build" | "upload";
+  build: BuildResult;
+  problem?: UploadProblem;
+  log: string;
+  durationMs: number;
+  /** The serial monitor was open on this port and was reopened after the upload. */
+  monitorReopened?: boolean;
+}
+
+export type SerialOpenResult = { ok: true } | { ok: false; message: string };
+
 /** After adding or removing: the sketch's libraries, as sketch.yaml now pins them. */
 export type LibraryChange = { ok: true; libraries: ProfileLibrary[]; added: string[] } | { ok: false; message: string };
 
@@ -224,15 +255,33 @@ export interface InvokeMap {
   "libraries:add": { args: [projectPath: string, name: string, version?: string]; result: LibraryChange };
   /** Unpin a library, and the libraries only it needed. */
   "libraries:remove": { args: [projectPath: string, name: string]; result: LibraryChange };
+  /** What's plugged in now; starts watching USB the first time. */
+  "boards:list": { args: []; result: BoardsState };
+  /** Why a board might not show up (FIX-09). */
+  "boards:doctor": { args: []; result: PortHint[] };
+  /** Open one of the driver pages the hints name. Other addresses are refused. */
+  "boards:open-link": { args: [url: string]; result: void };
+  /** Build the open project for the board, then upload to the port. The port must be plugged in now. */
+  "upload:start": { args: [projectPath: string, port: string, board: HardwareBoardId]; result: UploadResult };
+  /** Open the serial monitor on a plugged-in port. One port at a time. */
+  "serial:open": { args: [port: string, baud: number]; result: SerialOpenResult };
+  /** Send text to the board, as typed (add the line ending you want). */
+  "serial:write": { args: [text: string]; result: boolean };
+  "serial:close": { args: []; result: void };
 }
 
 /** Messages the main process sends the interface, unasked. */
 export interface EventMap {
   "auth:changed": AuthState;
+  "boards:changed": DetectedBoard[];
+  "upload:stage": { projectPath: string; stage: "building" | "uploading" };
+  "serial:data": { port: string; text: string };
+  /** The monitor stopped without being asked; `message` says why, if known. */
+  "serial:closed": { port: string; message: string | null };
 }
 
 export type EventChannel = keyof EventMap;
-export const EVENT_CHANNELS = ["auth:changed"] as const satisfies readonly EventChannel[];
+export const EVENT_CHANNELS = ["auth:changed", "boards:changed", "upload:stage", "serial:data", "serial:closed"] as const satisfies readonly EventChannel[];
 
 export function isEventChannel(value: unknown): value is EventChannel {
   return typeof value === "string" && (EVENT_CHANNELS as readonly string[]).includes(value);
@@ -272,6 +321,13 @@ export const INVOKE_CHANNELS = [
   "libraries:search",
   "libraries:add",
   "libraries:remove",
+  "boards:list",
+  "boards:doctor",
+  "boards:open-link",
+  "upload:start",
+  "serial:open",
+  "serial:write",
+  "serial:close",
 ] as const satisfies readonly InvokeChannel[];
 
 /** Fails to compile when a channel in InvokeMap is missing from INVOKE_CHANNELS (the preload would refuse it). */

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { GoogleLogo } from "@/components/auth/google-logo";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { openAuth } from "@/lib/account-dialogs";
 import { useAuthStore } from "@/lib/auth-store";
 import { HERO } from "@/lib/landing/content";

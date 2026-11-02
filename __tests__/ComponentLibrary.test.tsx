@@ -2,16 +2,16 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { PartThumb } from "@/components/library/PartThumb";
+import { PartThumb } from "@kiungo/lab/views/PartThumb";
 import { ComponentLibrary } from "@/components/library/ComponentLibrary";
 import { PartDetail } from "@/components/library/PartDetail";
 import { analyze } from "@kiungo/core/lab/circuit";
-import { labKeyFor, setLabOwner, useLab } from "@/lib/lab/store";
+import { labKeyFor, setLabOwner, useLab } from "@kiungo/lab/store";
 import { StartExperimentButton } from "@/components/library/StartExperimentButton";
-import { PartFlowView } from "@/components/library/views/PartFlowView";
-import { PartModel3D } from "@/components/library/views/PartModel3D";
-import { PartPlanView } from "@/components/library/views/PartPlanView";
-import { SegmentedControl } from "@/components/ui/segmented-control";
+import { PartFlowView } from "@kiungo/lab/views/PartFlowView";
+import { PartModel3D } from "@kiungo/lab/views/PartModel3D";
+import { PartPlanView } from "@kiungo/lab/views/PartPlanView";
+import { SegmentedControl } from "@kiungo/ui/segmented-control";
 import { ARTICLES, articleHref } from "@/lib/learning";
 import { PARTS, PART_GROUPS, getPart, getPartsByGroup, partHref, searchParts } from "@kiungo/core/parts";
 import type { PartModel, Solid } from "@kiungo/core/parts/types";
@@ -336,7 +336,7 @@ describe("ComponentLibrary", () => {
     expect(box).toHaveValue("");
     expect(screen.getByTestId("library-search-icon")).toBeInTheDocument();
     // The browser's own × is hidden for every search box, so ours is the only one.
-    const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+    const css = readFileSync(join(process.cwd(), "packages/ui/src/theme.css"), "utf8");
     expect(css).toMatch(/input\[type="search"\]::-webkit-search-cancel-button[\s\S]*?display: none/);
   });
 

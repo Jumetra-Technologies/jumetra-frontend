@@ -8,11 +8,11 @@ import { ArrowLeft, FilePlus2, FlaskConical, Trash2 } from "lucide-react";
 import { labHref } from "@/components/projects/LabSessionCard";
 import { ProjectDetailSkeleton } from "@/components/projects/ProjectsSkeleton";
 import { labHardware, ProjectLabActivity, useProjectSessions } from "@/components/projects/ProjectLabActivity";
-import { useLab } from "@/lib/lab/store";
+import { useLab } from "@kiungo/lab/store";
 import { api } from "@/lib/api-client";
 import { ExperimentRecordDialog } from "@/components/experiments/ExperimentRecordDialog";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import {

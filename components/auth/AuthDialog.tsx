@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useId } from "react";
 import { X } from "lucide-react";
-import { KiungoMark } from "@/components/brand/KiungoMark";
+import { KiungoMark } from "@kiungo/ui/KiungoMark";
 import { GoogleSignInButton } from "@/components/auth/google-signin-button";
 import { GitHubSignInButton } from "@/components/auth/github-signin-button";
 import { ModalShell } from "@/components/ui/modal";

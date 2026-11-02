@@ -4,7 +4,7 @@ import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { AlertTriangle, ArrowRight, Box, Cpu, FlaskConical, Play, Plug, Search, SkipForward, Square, Waypoints } from "lucide-react";
 import { AnimatedCircuitCanvas } from "@/components/laboratory/animated-circuit-canvas";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { Card } from "@/components/ui/card";
 import { api } from "@/lib/api-client";
 import type { ComponentSearchHit, ControllerSpec, HybridExperiment } from "@/lib/types";

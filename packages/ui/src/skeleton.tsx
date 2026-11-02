@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "./cn";
 
 /** A placeholder block with a soft moving sheen, shown while content loads. */
 export function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {

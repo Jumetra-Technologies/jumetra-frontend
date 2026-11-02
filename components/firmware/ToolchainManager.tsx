@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 
 type Tool = {
   id: string;

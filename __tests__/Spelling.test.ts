@@ -10,7 +10,7 @@ const UK = String.raw`\b(colours?|coloured|colouring|centres?|centred|behaviours
 
 describe("US English", () => {
   it("is used in the app's code and copy", () => {
-    const hits = execSync(`grep -rnEi "${UK}" app components lib --include=*.ts --include=*.tsx || true`, { encoding: "utf8" })
+    const hits = execSync(`grep -rnEi "${UK}" app components lib packages/ui/src packages/lab/src apps/desktop/src --include=*.ts --include=*.tsx || true`, { encoding: "utf8" })
       .split("\n")
       .filter(Boolean)
       .filter((line) => !/tags:|auth\//.test(line));

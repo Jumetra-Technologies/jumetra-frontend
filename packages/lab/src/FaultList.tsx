@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AlertOctagon, AlertTriangle, Check, CheckCircle2, Copy, Crosshair, Lightbulb } from "lucide-react";
-import { ContextMenu } from "@/components/ui/menu";
+import { ContextMenu } from "@kiungo/ui/menu";
 import type { Fault, Severity } from "@kiungo/core/lab/circuit";
-import { copyText } from "@/lib/ui/clipboard";
-import { cn } from "@/lib/utils";
+import { copyText } from "@kiungo/ui/clipboard";
+import { cn } from "@kiungo/ui/cn";
 import { useLabContext } from "./lab-context";
 
 export const SEVERITY_ICON: Record<Severity, typeof AlertOctagon> = { error: AlertOctagon, warning: AlertTriangle, tip: Lightbulb };

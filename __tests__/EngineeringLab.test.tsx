@@ -3,8 +3,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { EngineeringLab } from "@/components/lab/EngineeringLab";
 import { ProjectHub } from "@/components/projects/ProjectHub";
 import { LocalProjectDetail } from "@/components/projects/LocalProjectDetail";
-import { MenuList } from "@/components/ui/menu";
-import { useLab } from "@/lib/lab/store";
+import { MenuList } from "@kiungo/ui/menu";
+import { useLab } from "@kiungo/lab/store";
 import { EMPTY_ROBOTICS_DATA, writeRoboticsData } from "@/lib/robotics-data";
 import { api } from "@/lib/api-client";
 import { freshLab } from "./helpers/lab";

@@ -6,7 +6,7 @@
  */
 
 import { planAutoWire, placeNode } from "@kiungo/core/lab/autowire";
-import { flushLab, useLab } from "@/lib/lab/store";
+import { flushLab, useLab } from "@kiungo/lab/store";
 import { getPart } from "@kiungo/core/parts";
 import { labBuildFor } from "./boards";
 

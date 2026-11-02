@@ -36,7 +36,7 @@ vi.mock("@/components/firmware/CodeEditor", () => ({
 import { FirmwareStudio } from "@/components/firmware/FirmwareStudio";
 import { boardName, labBuildFor, STARTERS } from "@/lib/firmware/boards";
 import { BUILT_IN_TEMPLATES } from "@/lib/firmware/studio-data";
-import { useLab } from "@/lib/lab/store";
+import { useLab } from "@kiungo/lab/store";
 import { freshLab } from "./helpers/lab";
 
 class FakeSocket {

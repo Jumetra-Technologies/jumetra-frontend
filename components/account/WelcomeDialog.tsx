@@ -3,7 +3,7 @@
 import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { LoaderCircle, MapPin, X } from "lucide-react";
 import { ProviderConnections } from "@/components/account/ProviderConnections";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { Input } from "@/components/ui/input";
 import { ModalShell } from "@/components/ui/modal";
 import { closeAccountDialog } from "@/lib/account-dialogs";

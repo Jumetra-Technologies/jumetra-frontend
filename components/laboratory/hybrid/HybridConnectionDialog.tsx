@@ -4,7 +4,7 @@ import { ErrorNotice } from "@/components/ui/error-notice";
 import { describeError } from "@/lib/errors";
 import { useState } from "react";
 import { Link2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api-client";
 import type { HybridPinConnection } from "@/lib/hybrid-types";

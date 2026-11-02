@@ -104,7 +104,7 @@ describe("Company name", () => {
     expect(FOOTER.about).toMatch(/Kiungo Labs Technologies/);
     expect(FOOTER.copyright).toMatch(/Kiungo Labs Technologies/);
     // Repository names and the GitHub organization URL are addresses, not wording, and stay.
-    const hits = execSync("grep -rn 'Jumetra' app components lib --include=*.ts --include=*.tsx || true", { encoding: "utf8" })
+    const hits = execSync("grep -rn 'Jumetra' app components lib packages/ui/src packages/lab/src apps/desktop/src --include=*.ts --include=*.tsx || true", { encoding: "utf8" })
       .split("\n")
       .filter(Boolean)
       .filter((line) => !/github\.com\/Jumetra-Technologies|Jumetra-Backend/.test(line));

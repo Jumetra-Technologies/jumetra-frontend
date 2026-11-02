@@ -15,7 +15,7 @@ import { planAutoWire, placeNode } from "@kiungo/core/lab/autowire";
 import { suggest } from "@kiungo/core/lab/suggest";
 import { getPinout, hasPinout, PINOUTS } from "@kiungo/core/lab/pinout";
 import { controlsFor, findControl, coerceInput, SOURCE_KEY, SOURCE_SET } from "@kiungo/core/lab/controls";
-import { logEntry, makeId, newSession, nextLabel } from "@/lib/lab/store";
+import { logEntry, makeId, newSession, nextLabel } from "@kiungo/core/lab/session";
 import { parseSessionFile, sessionFileName, toSessionFile, type SessionFile } from "@kiungo/core/lab/session-file";
 import { getPart, PARTS, searchParts } from "@kiungo/core/parts";
 import type { LabNode, LabSession, LabWire, LogKind, PinRef } from "@kiungo/core/lab/types";

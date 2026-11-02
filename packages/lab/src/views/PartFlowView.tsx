@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { BlockKind, CircuitLink, LinkKind, PartModel } from "@kiungo/core/parts/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@kiungo/ui/cn";
 
 const COL = 182;
 const ROW = 86;

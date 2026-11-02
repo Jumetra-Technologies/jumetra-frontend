@@ -4,8 +4,8 @@ import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react
 import { flatColor, shade } from "@kiungo/core/parts/build";
 import { SIN_TILT, TILT, dropBelow, stageLift } from "@kiungo/core/parts/geometry";
 import type { PartModel, Solid } from "@kiungo/core/parts/types";
-import { useTurntable } from "@/lib/ui/use-turntable";
-import { cn } from "@/lib/utils";
+import { useTurntable } from "@kiungo/ui/use-turntable";
+import { cn } from "@kiungo/ui/cn";
 import styles from "./part-model.module.css";
 
 const MAX_SCALE = 40;

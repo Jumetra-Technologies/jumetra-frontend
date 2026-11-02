@@ -1,26 +1,24 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { BookOpen, Box, Cable, Copy, Grid2x2, Scissors, Trash2, Wand2, Zap } from "lucide-react";
-import { PartModel3D } from "@/components/library/views/PartModel3D";
-import { PartPlanView } from "@/components/library/views/PartPlanView";
-import { PartFlowView } from "@/components/library/views/PartFlowView";
-import { SegmentedControl } from "@/components/ui/segmented-control";
-import { Button } from "@/components/ui/button";
-import { getPart, hasScreen, partHref, withScreenText } from "@kiungo/core/parts";
+import { PartModel3D } from "./views/PartModel3D";
+import { PartPlanView } from "./views/PartPlanView";
+import { PartFlowView } from "./views/PartFlowView";
+import { SegmentedControl } from "@kiungo/ui/segmented-control";
+import { Button } from "@kiungo/ui/button";
+import { getPart, hasScreen, withScreenText } from "@kiungo/core/parts";
 import { withResistorValue } from "@kiungo/core/parts/models/passives";
 import { ohmsOf } from "@kiungo/core/lab/controls";
 import { getPinout, pinTone } from "@kiungo/core/lab/pinout";
 import { breadboardUse } from "@kiungo/core/lab/breadboard";
-import { useLab } from "@/lib/lab/store";
+import { useLab } from "./store";
 import type { DeviceMode } from "@kiungo/core/lab/types";
-import { VIEW_COPY } from "@/lib/ui/views";
-import { cn } from "@/lib/utils";
+import { VIEW_COPY } from "@kiungo/ui/views";
+import { cn } from "@kiungo/ui/cn";
 import { FaultList } from "./FaultList";
 import { InputsPanel } from "./InputsPanel";
-import { RealHardware } from "./RealHardware";
-import { useLabContext } from "./lab-context";
+import { useLabContext, useLabHost } from "./lab-context";
 import { STATUS_TEXT, TONE_VAR } from "./PartNode";
 
 type PreviewView = "model" | "plan" | "flow";
@@ -47,6 +45,7 @@ function Section({ title, children, action }: { title: string; children: React.R
 
 function NodeInspector({ id }: { id: string }) {
   const { session, analysis, frame, autowireNode, select } = useLabContext();
+  const host = useLabHost();
   const renameNode = useLab((s) => s.renameNode);
   const removeNodes = useLab((s) => s.removeNodes);
   const removeWires = useLab((s) => s.removeWires);
@@ -209,11 +208,15 @@ function NodeInspector({ id }: { id: string }) {
             <p className="mt-2 text-[11.5px] leading-4 text-muted">Physical and hybrid parts use a real board when it is plugged in and Kiungo is online.</p>
           </>
         )}
-        {part ? (
-          <Link href={partHref(part.id)} className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline">
-            <BookOpen className="size-3.5" aria-hidden /> Open in Component library
-          </Link>
-        ) : null}
+        {part && host.renderPartLink
+          ? host.renderPartLink(
+              part.id,
+              <>
+                <BookOpen className="size-3.5" aria-hidden /> Open in Component library
+              </>,
+              "mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline",
+            )
+          : null}
       </Section>
     </div>
   );
@@ -299,6 +302,7 @@ function WireInspector({ id }: { id: string }) {
 
 function Overview() {
   const { session, analysis } = useLabContext();
+  const host = useLabHost();
   const counts = { ready: 0, attention: 0, fault: 0 };
   for (const n of session.nodes) {
     const s = analysis.nodes[n.id]?.status;
@@ -331,9 +335,7 @@ function Overview() {
         <FaultList faults={analysis.faults} />
         {errors ? <p className="mt-2 text-[11.5px] text-muted">Switch to Trace to see where current stops.</p> : null}
       </Section>
-      <Section title="Real hardware">
-        <RealHardware />
-      </Section>
+      {host.realHardware ? <Section title="Real hardware">{host.realHardware}</Section> : null}
       <Section title="Legend">
         <ul className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px] text-foreground">
           {(

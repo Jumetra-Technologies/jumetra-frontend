@@ -1,5 +1,5 @@
-import { KiungoMark } from "@/components/brand/KiungoMark";
-import { Skeleton, SkeletonRegion } from "@/components/ui/skeleton";
+import { KiungoMark } from "@kiungo/ui/KiungoMark";
+import { Skeleton, SkeletonRegion } from "@kiungo/ui/skeleton";
 
 /**
  * The Engineering Lab's shape while it loads: top bar, a full-width canvas

@@ -2,7 +2,7 @@
 
 import { ErrorNotice } from "@/components/ui/error-notice";
 import { useState, type FormEvent } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/input";
 import type { ExperimentRecord, RoboticsProject } from "@/lib/robotics-data";

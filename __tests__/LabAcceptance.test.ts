@@ -12,7 +12,7 @@ import { planAutoWire } from "@kiungo/core/lab/autowire";
 import { coerceInput, findControl } from "@kiungo/core/lab/controls";
 import { DC_MOTOR_MAX_RPM, STEPPER_STEPS_PER_TURN, frameAt, stepperStepsAt } from "@kiungo/core/lab/simulate";
 import { boardSettings, planBoard, sampleSensor } from "@kiungo/core/lab/sketch";
-import { useLab } from "@/lib/lab/store";
+import { useLab } from "@kiungo/lab/store";
 import type { LabNode, LabWire, NodeInputs } from "@kiungo/core/lab/types";
 import { getPart, withScreenText } from "@kiungo/core/parts";
 

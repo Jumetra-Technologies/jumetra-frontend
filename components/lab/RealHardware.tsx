@@ -5,12 +5,12 @@ import { describeError } from "@/lib/errors";
 import Link from "next/link";
 import { useState } from "react";
 import { LoaderCircle, Plug, Usb } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { api } from "@/lib/api-client";
 import { getPart } from "@kiungo/core/parts";
-import { useLab } from "@/lib/lab/store";
+import { useLab } from "@kiungo/lab/store";
 import type { DiscoveredHardwareDevice } from "@/stores/discovery-store";
-import { useLabContext } from "./lab-context";
+import { useLabContext } from "@kiungo/lab/lab-context";
 
 /** Board types the discovery service reports, mapped to catalog parts. */
 const BOARD_PART: Record<string, string> = {

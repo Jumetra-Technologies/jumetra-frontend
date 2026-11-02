@@ -3,7 +3,7 @@
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Check, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "./cn";
 
 export type MenuEntry =
   | {

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Plug, Unplug } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { BAUD_RATES, connectBoard, webSerialSupported, type BoardConnection } from "@/lib/firmware/web-serial";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 

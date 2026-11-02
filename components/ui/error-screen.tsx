@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { KiungoMark } from "@/components/brand/KiungoMark";
-import { Button } from "@/components/ui/button";
+import { KiungoMark } from "@kiungo/ui/KiungoMark";
+import { Button } from "@kiungo/ui/button";
 import { recordError } from "@/lib/diagnostics/store";
 
 /**

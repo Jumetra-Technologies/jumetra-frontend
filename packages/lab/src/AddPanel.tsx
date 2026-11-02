@@ -2,10 +2,10 @@
 
 import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { ChevronDown, CornerDownLeft, FolderKanban, Plus, Search, Sparkles, Wand2, X } from "lucide-react";
-import { PartThumb } from "@/components/library/PartThumb";
+import { PartThumb } from "./views/PartThumb";
 import { getPartsByGroup } from "@kiungo/core/parts";
 import { fitFor, suggest, type ProjectContext, type Suggestion } from "@kiungo/core/lab/suggest";
-import { cn } from "@/lib/utils";
+import { cn } from "@kiungo/ui/cn";
 import { useLabContext } from "./lab-context";
 
 export const TEMPLATES: Array<{ id: string; title: string; blurb: string; board: string; parts: string[] }> = [
@@ -24,7 +24,8 @@ interface Props {
   autowire: boolean;
   onAutowire: (value: boolean) => void;
   onTemplate: (id: string) => void;
-  onLinkProject: () => void;
+  /** Omitted: "Link a project" isn't offered. */
+  onLinkProject?: () => void;
 }
 
 function Row({ item, active, onAdd, onHover, index }: { item: Suggestion; active: boolean; onAdd: () => void; onHover: () => void; index: number }) {
@@ -157,11 +158,11 @@ export const AddPanel = forwardRef<AddPanelHandle, Props>(function AddPanel({ pr
               <FolderKanban className="size-3 shrink-0" aria-hidden />
               <span className="truncate">{project.name}</span>
             </span>
-          ) : (
+          ) : onLinkProject ? (
             <button type="button" onClick={onLinkProject} className="text-[11px] font-medium text-primary hover:underline">
               Link a project
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 

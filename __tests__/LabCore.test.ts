@@ -7,7 +7,7 @@ import { frameAt, serialLine } from "@kiungo/core/lab/simulate";
 import { describeChanges, RunRecorder } from "@kiungo/core/lab/activity";
 import { fitFor, suggest } from "@kiungo/core/lab/suggest";
 import { runCommand, tokenize, type TerminalApi } from "@kiungo/core/lab/terminal";
-import { LAB_STORAGE_KEY, flushLab, labKeyFor, nextLabel, readLabData, setLabOwner, useLab } from "@/lib/lab/store";
+import { LAB_STORAGE_KEY, flushLab, labKeyFor, nextLabel, readLabData, setLabOwner, useLab } from "@kiungo/lab/store";
 import type { LabNode, LabWire } from "@kiungo/core/lab/types";
 
 let seq = 0;

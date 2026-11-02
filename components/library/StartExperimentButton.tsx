@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FlaskConical, LoaderCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { planAutoWire, placeNode } from "@kiungo/core/lab/autowire";
 import { getPinout } from "@kiungo/core/lab/pinout";
-import { flushLab, useLab } from "@/lib/lab/store";
+import { flushLab, useLab } from "@kiungo/lab/store";
 import type { PartModel } from "@kiungo/core/parts/types";
 
 /**

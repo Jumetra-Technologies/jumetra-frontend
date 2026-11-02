@@ -1,20 +1,24 @@
 "use client";
 
 /**
- * Lab sessions, kept per signed-in account.
+ * Lab sessions: the circuit being built, with undo and redo.
  *
- * The lab needs a signed-in account (app/laboratory/workspace). Each account's
- * sessions are cached separately in this browser and synchronized to its
- * authenticated server records. Signed out, sessions live in memory only.
- * The old shared, account-less key is cleared.
+ * Where sessions are kept is up to the host (`setLabPersistence`). On the
+ * website each signed-in account's sessions are cached separately in this
+ * browser and synchronized to its server records; signed out, they live in
+ * memory only, and the old shared, account-less key is cleared. The desktop
+ * app keeps the open project's circuit in its project folder.
  */
 
 import { create } from "zustand";
-import { getPart } from "@kiungo/core/parts";
 import { SOURCE_KEY, SOURCE_SET, coerceInput, findControl, inputOf } from "@kiungo/core/lab/controls";
 import { getPinout } from "@kiungo/core/lab/pinout";
+import { getPart } from "@kiungo/core/parts";
+import { logEntry, makeId, newSession, nextLabel } from "@kiungo/core/lab/session";
 import { stepperStepsAt } from "@kiungo/core/lab/simulate";
-import type { DeviceMode, LabData, LabNode, LabSession, LabView, LabWire, LogEntry, LogKind, NodeInputs, PinRef } from "@kiungo/core/lab/types";
+import type { DeviceMode, LabData, LabNode, LabSession, LabView, LabWire, LogKind, NodeInputs, PinRef } from "@kiungo/core/lab/types";
+
+export { logEntry, makeId, newSession, nextLabel, shortName } from "@kiungo/core/lab/session";
 
 /** The old key every visitor shared; cleared, never written. */
 export const LAB_STORAGE_KEY = "hhip.lab:v1";
@@ -27,6 +31,8 @@ let labData: LabData = { version: 1, sessions: [], activeId: null };
 /** The signed-in account whose sessions are open, or null (memory only). */
 let owner: string | null = null;
 
+const now = () => new Date().toISOString();
+
 function clearLegacyLabData(): void {
   if (typeof window === "undefined") return;
   try {
@@ -36,87 +42,29 @@ function clearLegacyLabData(): void {
   }
 }
 
-export function makeId(prefix: string): string {
-  const rand = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10);
-  return `${prefix}-${Date.now().toString(36)}-${rand}`;
+/** One step of undo history: the canvas before (or after) a change. */
+export type LabSnapshot = { nodes: LabNode[]; wires: LabWire[] };
+
+/** Undo and redo for the open session, for hosts that keep it with the work (DSK-13). */
+export interface LabHistory {
+  past: LabSnapshot[];
+  future: LabSnapshot[];
 }
 
-const now = () => new Date().toISOString();
-
-export function logEntry(kind: LogKind, text: string, nodes?: string[]): LogEntry {
-  return { id: makeId("log"), at: now(), kind, text, ...(nodes?.length ? { nodes } : {}) };
-}
-
-export function newSession(input: { name?: string; projectId?: string | null; nodes?: LabNode[]; wires?: LabWire[] } = {}): LabSession {
-  const at = now();
-  const name = input.name?.trim() || "Untitled lab";
-  return {
-    id: makeId("lab"),
-    name,
-    projectId: input.projectId ?? null,
-    createdAt: at,
-    updatedAt: at,
-    nodes: input.nodes ?? [],
-    wires: input.wires ?? [],
-    log: [logEntry("session", `Session “${name}” started`)],
-    view: "top",
-    runMs: 0,
-    inputs: {},
-    runtime: null,
-  };
-}
-
-/** Short names for the canvas; catalog names are written for the library. */
-const SHORT: Record<string, string> = {
-  "arduino-uno": "Arduino Uno",
-  "arduino-mega": "Arduino Mega",
-  esp32: "ESP32",
-  esp8266: "NodeMCU",
-  "raspberry-pi-pico": "Pico",
-  "raspberry-pi-4": "Raspberry Pi 4",
-  stm32: "Blue Pill",
-  microbit: "micro:bit",
-  teensy: "Teensy 4.1",
-  dht11: "DHT11",
-  dht22: "DHT22",
-  am2302: "AM2302",
-  "hc-sr04": "HC-SR04",
-  pir: "PIR sensor",
-  ldr: "LDR",
-  ds18b20: "DS18B20",
-  "soil-moisture": "Soil sensor",
-  mq2: "MQ-2",
-  mpu6050: "MPU-6050",
-  bmp280: "BMP280",
-  led: "LED",
-  resistor: "Resistor",
-  "breadboard-full": "Full breadboard",
-  "breadboard-mini": "Mini breadboard",
-  "rgb-led": "RGB LED",
-  buzzer: "Buzzer",
-  servo: "Servo",
-  "dc-motor": "DC motor",
-  relay: "Relay",
-  "stepper-motor": "Stepper",
-  "lcd-16x2": "LCD 16×2",
-  "oled-ssd1306": "OLED",
-  "tft-display": "TFT display",
-  "hc-05": "HC-05",
-  "wifi-module": "ESP-01",
-  nrf24l01: "nRF24",
-  lora: "LoRa",
-};
-
-export function shortName(partId: string): string {
-  return SHORT[partId] ?? (getPart(partId)?.name ?? partId).split(",")[0].replace(/\s*\(.*\)\s*$/, "");
-}
-
-/** A unique, readable label: "LED", "LED 2", … */
-export function nextLabel(nodes: LabNode[], partId: string): string {
-  const short = shortName(partId);
-  const taken = new Set(nodes.map((n) => n.label));
-  if (!taken.has(short)) return short;
-  for (let i = 2; ; i++) if (!taken.has(`${short} ${i}`)) return `${short} ${i}`;
+/**
+ * Where the lab keeps its sessions. `read` runs when the lab hydrates; `write`
+ * runs `delayMs` after the last change, and again on `flushLab`. A host that
+ * keeps history (`keepsHistory`) is given the undo stack with each write and
+ * can return it from `readHistory`.
+ */
+export interface LabPersistence {
+  read: () => LabData;
+  /** Keep the sessions; false when they couldn't be kept (storage full or blocked). */
+  write: (data: LabData, history: LabHistory) => boolean;
+  delayMs: number;
+  readHistory?: () => LabHistory | null;
+  /** Follow changes made elsewhere (another tab); returns a stop function. */
+  watch?: (onChange: () => void) => () => void;
 }
 
 function sanitize(raw: unknown): LabData {
@@ -141,7 +89,7 @@ function sanitize(raw: unknown): LabData {
   return { version: 1, sessions, activeId: typeof data.activeId === "string" ? data.activeId : null };
 }
 
-export function readLabData(): LabData {
+function readBrowserLabData(): LabData {
   clearLegacyLabData();
   if (owner && typeof window !== "undefined") {
     try {
@@ -155,7 +103,7 @@ export function readLabData(): LabData {
 }
 
 /** Keep the sessions; returns false when the browser refused to store them (full or blocked). */
-export function writeLabData(data: LabData): boolean {
+function writeBrowserLabData(data: LabData): boolean {
   clearLegacyLabData();
   labData = sanitize(data);
   if (!owner || typeof window === "undefined") return true;
@@ -167,12 +115,38 @@ export function writeLabData(data: LabData): boolean {
   }
 }
 
+/** The website's persistence: per account in this browser, memory only when signed out. */
+export const browserLabPersistence: LabPersistence = {
+  read: readBrowserLabData,
+  write: (data) => writeBrowserLabData(data),
+  delayMs: 200,
+  watch: (onChange) => {
+    if (typeof window === "undefined") return () => undefined;
+    const listener = (event: StorageEvent) => {
+      if (owner && event.key === labKeyFor(owner)) onChange();
+    };
+    window.addEventListener("storage", listener);
+    return () => window.removeEventListener("storage", listener);
+  },
+};
+
+let persistence: LabPersistence = browserLabPersistence;
+let stopWatching: (() => void) | null = null;
+
+export function readLabData(): LabData {
+  return persistence.read();
+}
+
+/** Keep the sessions; returns false when they couldn't be kept (full or blocked). */
+export function writeLabData(data: LabData): boolean {
+  const state = useLab.getState();
+  return persistence.write(sanitize(data), { past: state.past, future: state.future });
+}
+
 /** Whose sessions are open: the signed-in account's id, or null. */
 export function labOwner(): string | null {
   return owner;
 }
-
-type Snapshot = { nodes: LabNode[]; wires: LabWire[] };
 
 export interface LabState {
   hydrated: boolean;
@@ -180,8 +154,8 @@ export interface LabState {
   cloudSaveState: "idle" | "syncing" | "saved" | "error";
   sessions: LabSession[];
   activeId: string | null;
-  past: Snapshot[];
-  future: Snapshot[];
+  past: LabSnapshot[];
+  future: LabSnapshot[];
 
   hydrate: () => void;
   createSession: (input?: Parameters<typeof newSession>[0]) => LabSession;
@@ -191,6 +165,8 @@ export interface LabState {
   duplicateSession: (id: string) => LabSession | null;
   /** Open a session read from a `.kiungo.json` file (see `session-file.ts`) as a new session. */
   importSession: (session: LabSession, source?: string) => LabSession;
+  /** Put a whole build (a file's parts, wires and settings) into the open session, as one undo step. */
+  replaceBuild: (build: Pick<LabSession, "nodes" | "wires" | "inputs">, source?: string) => void;
   deleteSession: (id: string) => void;
   setView: (view: LabView) => void;
   addNode: (partId: string, at?: { x: number; y: number }, label?: string) => LabNode | null;
@@ -222,8 +198,6 @@ export interface LabState {
   zeroStepper: (nodeId: string, t: number) => void;
 }
 
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
-
 export const useLab = create<LabState>((set, get) => {
   const active = () => get().sessions.find((s) => s.id === get().activeId) ?? null;
 
@@ -253,7 +227,14 @@ export const useLab = create<LabState>((set, get) => {
 
     hydrate: () => {
       const data = readLabData();
-      set({ hydrated: true, sessions: data.sessions, activeId: data.activeId && data.sessions.some((s) => s.id === data.activeId) ? data.activeId : (data.sessions[0]?.id ?? null) });
+      const history = persistence.readHistory?.() ?? null;
+      set({
+        hydrated: true,
+        sessions: data.sessions,
+        activeId: data.activeId && data.sessions.some((s) => s.id === data.activeId) ? data.activeId : (data.sessions[0]?.id ?? null),
+        past: history?.past.slice(-MAX_HISTORY) ?? [],
+        future: history?.future.slice(0, MAX_HISTORY) ?? [],
+      });
     },
 
     createSession: (input) => {
@@ -292,6 +273,19 @@ export const useLab = create<LabState>((set, get) => {
       set((state) => ({ sessions: [opened, ...state.sessions], activeId: opened.id, past: [], future: [] }));
       return opened;
     },
+
+    replaceBuild: (build, source) =>
+      update(
+        (s) => ({
+          ...s,
+          nodes: build.nodes,
+          wires: build.wires,
+          inputs: build.inputs ?? {},
+          runtime: null,
+          log: [...s.log, logEntry("session", `Opened the build from ${source ?? "a file"}: ${build.nodes.length} parts, ${build.wires.length} wires`)],
+        }),
+        { history: true },
+      ),
 
     deleteSession: (id) =>
       set((state) => {
@@ -482,23 +476,36 @@ export const useLab = create<LabState>((set, get) => {
   };
 });
 
-/** Save shortly after any change, and follow changes made in other tabs. */
+/** Save shortly after any change, and follow changes made elsewhere. */
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+function save(): void {
+  const state = useLab.getState();
+  const ok = writeLabData({ version: 1, sessions: state.sessions, activeId: state.activeId });
+  if (ok === useLab.getState().saveError) useLab.setState({ saveError: !ok });
+}
+
+function followOutsideChanges(): void {
+  stopWatching?.();
+  stopWatching =
+    persistence.watch?.(() => {
+      if (!useLab.getState().hydrated) return;
+      const data = readLabData();
+      const { activeId } = useLab.getState();
+      useLab.setState({ sessions: data.sessions, activeId: activeId && data.sessions.some((s) => s.id === activeId) ? activeId : (data.sessions[0]?.id ?? null) });
+    }) ?? null;
+}
+
 if (typeof window !== "undefined") {
   useLab.subscribe((state, prev) => {
     if (!state.hydrated) return;
     if (state.sessions === prev.sessions && state.activeId === prev.activeId) return;
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      const ok = writeLabData({ version: 1, sessions: useLab.getState().sessions, activeId: useLab.getState().activeId });
-      if (ok === useLab.getState().saveError) useLab.setState({ saveError: !ok });
-    }, 200);
+      saveTimer = null;
+      save();
+    }, persistence.delayMs);
   });
-  window.addEventListener("storage", (event) => {
-    if (!owner || event.key !== labKeyFor(owner) || !useLab.getState().hydrated) return;
-    const data = readLabData();
-    const { activeId } = useLab.getState();
-    useLab.setState({ sessions: data.sessions, activeId: activeId && data.sessions.some((s) => s.id === activeId) ? activeId : (data.sessions[0]?.id ?? null) });
-  });
+  followOutsideChanges();
 }
 
 /** Write any pending change now (before navigating away, say). */
@@ -507,8 +514,20 @@ export function flushLab() {
     clearTimeout(saveTimer);
     saveTimer = null;
   }
-  const state = useLab.getState();
-  if (state.hydrated) writeLabData({ version: 1, sessions: state.sessions, activeId: state.activeId });
+  if (useLab.getState().hydrated) save();
+}
+
+/**
+ * Keep sessions somewhere else (the desktop app's project folder). Pending
+ * changes are written to the old place first; the lab then empties and waits
+ * for `hydrate`, which reads from the new one.
+ */
+export function setLabPersistence(next: LabPersistence): void {
+  if (next === persistence) return;
+  flushLab();
+  persistence = next;
+  useLab.setState({ hydrated: false, sessions: [], activeId: null, past: [], future: [], saveError: false, cloudSaveState: "idle" });
+  if (typeof window !== "undefined") followOutsideChanges();
 }
 
 /**
@@ -521,7 +540,7 @@ export function setLabOwner(accountId: string | null): void {
   flushLab();
   owner = accountId;
   labData = { version: 1, sessions: [], activeId: null };
-  if (accountId) labData = readLabData();
+  if (accountId) labData = readBrowserLabData();
   if (useLab.getState().hydrated) {
     const data = labData;
     useLab.setState({ sessions: data.sessions, activeId: data.activeId && data.sessions.some((s) => s.id === data.activeId) ? data.activeId : (data.sessions[0]?.id ?? null), past: [], future: [], saveError: false, cloudSaveState: "idle" });

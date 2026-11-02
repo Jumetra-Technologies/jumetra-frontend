@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "./cn";
 
 export interface SegmentOption<T extends string> {
   id: T;

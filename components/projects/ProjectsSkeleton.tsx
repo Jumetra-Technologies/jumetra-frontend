@@ -1,4 +1,4 @@
-import { Skeleton, SkeletonRegion } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonRegion } from "@kiungo/ui/skeleton";
 
 function CardSkeleton({ preview = false }: { preview?: boolean }) {
   return (

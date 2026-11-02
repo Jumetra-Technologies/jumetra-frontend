@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { analyze } from "@kiungo/core/lab/circuit";
 import { parseSessionFile, sessionFileName, SessionFileError, SESSION_FILE_FORMAT, toSessionFile } from "@kiungo/core/lab/session-file";
-import { newSession, useLab } from "@/lib/lab/store";
+import { newSession, useLab } from "@kiungo/lab/store";
 import type { LabSession } from "@kiungo/core/lab/types";
 
 const rover = readFileSync(join(__dirname, "fixtures", "sentinel-rover.kiungo.json"), "utf8");

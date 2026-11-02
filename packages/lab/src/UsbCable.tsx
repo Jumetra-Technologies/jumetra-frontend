@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@kiungo/ui/cn";
 import styles from "./usb-cable.module.css";
 
 /** The board end of each board's USB lead. The other end (USB-A) is in the computer, off the canvas. */

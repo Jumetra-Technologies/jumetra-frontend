@@ -2,14 +2,14 @@
 
 import { useMemo, type ReactNode } from "react";
 import { Handle } from "@xyflow/react";
-import { PartModel3D } from "@/components/library/views/PartModel3D";
-import { PartPlanGraphic } from "@/components/library/views/PartPlanView";
+import { PartModel3D } from "./views/PartModel3D";
+import { PartPlanGraphic } from "./views/PartPlanView";
 import type { BoardGeometry } from "@kiungo/core/lab/board-geometry";
 import type { NetKind } from "@kiungo/core/lab/circuit";
 import { getPinout } from "@kiungo/core/lab/pinout";
 import type { LabNode, LabView } from "@kiungo/core/lab/types";
 import type { PartModel } from "@kiungo/core/parts/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@kiungo/ui/cn";
 import { useLabContext } from "./lab-context";
 
 /** The color a strip takes from what its net carries. */

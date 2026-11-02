@@ -5,7 +5,7 @@ import { describeError } from "@/lib/errors";
 import { FormEvent, useState } from "react";
 import { CircuitCanvas } from "@/components/laboratory/circuit-canvas";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { api } from "@/lib/api-client";

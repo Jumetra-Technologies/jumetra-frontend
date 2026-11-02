@@ -1,17 +1,17 @@
 "use client";
 
-import { VIEW_COPY } from "@/lib/ui/views";
+import { VIEW_COPY } from "@kiungo/ui/views";
 import Link from "next/link";
 import { useState } from "react";
 import { Box, Grid2x2, Power, Zap } from "lucide-react";
-import { SegmentedControl } from "@/components/ui/segmented-control";
+import { SegmentedControl } from "@kiungo/ui/segmented-control";
 import { PART_GROUPS } from "@kiungo/core/parts";
 import type { PartModel, PinRole } from "@kiungo/core/parts/types";
 import { cn } from "@/lib/utils";
 import { StartExperimentButton } from "./StartExperimentButton";
-import { PartFlowView } from "./views/PartFlowView";
-import { PartModel3D } from "./views/PartModel3D";
-import { KIND_LABEL, PartPlanView } from "./views/PartPlanView";
+import { PartFlowView } from "@kiungo/lab/views/PartFlowView";
+import { PartModel3D } from "@kiungo/lab/views/PartModel3D";
+import { KIND_LABEL, PartPlanView } from "@kiungo/lab/views/PartPlanView";
 
 export type ViewId = "model" | "plan" | "flow";
 

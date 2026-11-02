@@ -18,7 +18,7 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-const css = readFileSync("app/globals.css", "utf8");
+const css = readFileSync("packages/ui/src/theme.css", "utf8");
 function palette(theme: string): Record<string, string> {
   const block = new RegExp(String.raw`\[data-theme="${theme}"\] \{([^}]*)\}`).exec(css)![1];
   return Object.fromEntries([...block.matchAll(/--([\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));

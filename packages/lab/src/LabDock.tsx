@@ -6,7 +6,7 @@ import { frameAt } from "@kiungo/core/lab/simulate";
 import { getPinout } from "@kiungo/core/lab/pinout";
 import { HELP, runCommand, type TermLine, type TerminalApi } from "@kiungo/core/lab/terminal";
 import type { LogKind } from "@kiungo/core/lab/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@kiungo/ui/cn";
 import { FaultList } from "./FaultList";
 import { useLabContext } from "./lab-context";
 

@@ -5,7 +5,7 @@ import { describeError } from "@/lib/errors";
 import { useCallback, useEffect, useState } from "react";
 import { Cpu, Plug, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { api } from "@/lib/api-client";
 import type { HybridPhysicalDevice } from "@/lib/hybrid-types";
 import type { DiscoveredHardwareDevice } from "@/stores/discovery-store";

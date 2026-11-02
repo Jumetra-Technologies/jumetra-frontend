@@ -5,13 +5,13 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { Activity, AlertTriangle, BarChart3, Boxes, CheckCircle2, Copy, FileText, Gauge, Lock, Network, RefreshCw, ShieldAlert, Trash2, Users, XCircle } from "lucide-react";
 import NotFound from "@/app/not-found";
 import { ReportCenter } from "@/components/reports/ReportCenter";
-import { Button } from "@/components/ui/button";
+import { Button } from "@kiungo/ui/button";
 import { API_BASE, ApiError, api, getWsUrl } from "@/lib/api-client";
 import { LAYERS } from "@/lib/architecture/model";
 import { useAuthStore } from "@/lib/auth-store";
 import { adminAccess, isUnlocked, lock } from "@/lib/diagnostics/access";
 import { clearDiagnostics, endpointStats, percentile, readDiagnostics, serverDiagnosticsSnapshot, subscribeDiagnostics, type DiagnosticsData } from "@/lib/diagnostics/store";
-import { copyText } from "@/lib/ui/clipboard";
+import { copyText } from "@kiungo/ui/clipboard";
 import type { AnalyticsOverview, DashboardOverview } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";

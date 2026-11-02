@@ -10,6 +10,7 @@
 
 import type { LabNode, LabSession, LabWire } from "@kiungo/core/lab/types";
 import type { CircuitThumbnail, ProjectMeta } from "@kiungo/core/project";
+import type { Diagnostic, ProfileLibrary } from "@kiungo/core/build";
 
 export type Platform = "win32" | "linux" | "darwin";
 
@@ -142,6 +143,37 @@ export interface SketchFile {
 
 export type SketchResult = { ok: true } | { ok: false; message: string };
 
+/** A project's build (BLD-01, BLD-02, ERR-01). */
+export interface BuildResult {
+  ok: boolean;
+  /** Compiler and linker problems, mapped to the sketch's files and lines. */
+  diagnostics: Diagnostic[];
+  /** The program as Intel HEX, when the build worked. */
+  hex?: string;
+  flash?: { used: number; max: number };
+  ram?: { used: number; max: number };
+  durationMs: number;
+  /** Why the build couldn't run at all (no Arduino CLI, no internet the first time), in plain words. */
+  message?: string;
+  /** Everything the compiler said, for the build log. */
+  log: string;
+}
+
+/** A library in the Arduino library index. */
+export interface LibraryInfo {
+  name: string;
+  version: string;
+  /** One line on what it does, from the library's own description. */
+  sentence: string;
+  author: string;
+  website: string | null;
+}
+
+export type LibrarySearchResult = { ok: true; libraries: LibraryInfo[] } | { ok: false; message: string };
+
+/** After adding or removing: the sketch's libraries, as sketch.yaml now pins them. */
+export type LibraryChange = { ok: true; libraries: ProfileLibrary[]; added: string[] } | { ok: false; message: string };
+
 /** Every request the interface can make, with its arguments and its answer. */
 export interface InvokeMap {
   "app:info": { args: []; result: AppInfo };
@@ -182,6 +214,16 @@ export interface InvokeMap {
   "sketch:rename": { args: [projectPath: string, from: string, to: string]; result: SketchResult };
   /** Move a file to the computer's trash, so it can be got back. */
   "sketch:delete": { args: [projectPath: string, name: string]; result: SketchResult };
+  /** Build the open project with its sketch.yaml profile. One build per project at a time: a second call gets the first's answer. */
+  "build:compile": { args: [projectPath: string]; result: BuildResult };
+  /** The libraries the open project's sketch.yaml pins. */
+  "libraries:list": { args: [projectPath: string]; result: ProfileLibrary[] };
+  /** Search the Arduino library index for libraries that work on AVR boards. */
+  "libraries:search": { args: [query: string]; result: LibrarySearchResult };
+  /** Pin a library, and the libraries it needs, in the open project's sketch.yaml. No version means the newest. */
+  "libraries:add": { args: [projectPath: string, name: string, version?: string]; result: LibraryChange };
+  /** Unpin a library, and the libraries only it needed. */
+  "libraries:remove": { args: [projectPath: string, name: string]; result: LibraryChange };
 }
 
 /** Messages the main process sends the interface, unasked. */
@@ -225,6 +267,11 @@ export const INVOKE_CHANNELS = [
   "sketch:create",
   "sketch:rename",
   "sketch:delete",
+  "build:compile",
+  "libraries:list",
+  "libraries:search",
+  "libraries:add",
+  "libraries:remove",
 ] as const satisfies readonly InvokeChannel[];
 
 /** Fails to compile when a channel in InvokeMap is missing from INVOKE_CHANNELS (the preload would refuse it). */

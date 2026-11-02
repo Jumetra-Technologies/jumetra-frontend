@@ -13,7 +13,8 @@ import { keychainStore } from "./auth/secret-store";
 import { AuthService } from "./auth/service";
 import { ProjectService } from "./projects/service";
 import { SketchFiles } from "./projects/sketch";
-import { compileSketch, installCore, locateCli, toolchainStatus } from "./toolchain/arduino-cli";
+import { BuildService } from "./build/service";
+import { compileSketch, installCore, locateCli, runCli, toolchainStatus } from "./toolchain/arduino-cli";
 
 const APP_SCHEME = "kiungo-app";
 /** The website sends the app back to kiungo://signin after signing in. */
@@ -137,6 +138,18 @@ function cli() {
   });
 }
 
+let builds: BuildService | null = null;
+const buildService = () =>
+  (builds ??= new BuildService({
+    cli,
+    buildsDir: join(app.getPath("userData"), "builds"),
+    run: runCli,
+  }));
+/** A library name as the Arduino index writes it, and a version number. */
+const isLibraryName = (v: unknown): v is string => typeof v === "string" && /^[\w][\w .+\-()]{0,99}$/.test(v) && !v.includes("..");
+const isVersion = (v: unknown): v is string => typeof v === "string" && /^\d+(\.\d+){0,2}([-+][\w.]+)?$/.test(v);
+const notAdded = { ok: false as const, message: "Refused: that isn't a library name." };
+
 const handlers: Handlers = {
   "app:info": () => ({
     appVersion: app.getVersion(),
@@ -201,6 +214,18 @@ const handlers: Handlers = {
   "sketch:create": (path, name) => (openProject(path) ? sketchFiles.create(path, name) : notOpen),
   "sketch:rename": (path, from, to) => (openProject(path) ? sketchFiles.rename(path, from, to) : notOpen),
   "sketch:delete": (path, name) => (openProject(path) ? sketchFiles.remove(path, name) : notOpen),
+  "build:compile": (path) => (openProject(path) ? buildService().compile(path) : { ok: false, diagnostics: [], durationMs: 0, message: notOpen.message, log: "" }),
+  "libraries:list": (path) => (openProject(path) ? buildService().libraries(path) : []),
+  "libraries:search": (query) => (typeof query === "string" ? buildService().search(query) : { ok: true, libraries: [] }),
+  "libraries:add": (path, name, version) => {
+    if (!openProject(path)) return notOpen;
+    if (!isLibraryName(name) || (version !== undefined && !isVersion(version))) return notAdded;
+    return buildService().add(path, name, version);
+  },
+  "libraries:remove": (path, name) => {
+    if (!openProject(path)) return notOpen;
+    return isLibraryName(name) ? buildService().remove(path, name) : notAdded;
+  },
   "projects:choose-folder": async () => {
     const current = await projectService().settings();
     const folder = await chooseFolder({ title: "Where should new projects go?", buttonLabel: "Use this folder", defaultPath: current.projectsFolder, properties: ["openDirectory", "createDirectory"] });

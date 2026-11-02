@@ -1,10 +1,35 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, Check, FilePlus2, Loader2, MoreHorizontal, Play, Search, Square, Upload, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, Check, FilePlus2, Hammer, Loader2, MoreHorizontal, Play, Search, Square, Upload, X } from "lucide-react";
 import type { SketchFile } from "@kiungo/api";
+import { explain, type Diagnostic, type QuickFix } from "@kiungo/core/build";
 import { cn } from "@kiungo/ui/cn";
 import { Menu } from "@kiungo/ui/menu";
 import { invoke, shortcut } from "../ipc";
+import { BuildPanel, type BuildState, type BuildTab } from "./BuildPanel";
 import { languageFor, monaco } from "./monaco";
+
+const MARKERS = "kiungo-build";
+/** After this long a build says the first one downloads the board package and libraries. */
+const SLOW_BUILD_MS = 4000;
+
+/** The build's problems as editor markers, on the file they belong to (ERR-01). */
+function markersFor(diagnostics: readonly Diagnostic[], file: string, board: string): monaco.editor.IMarkerData[] {
+  return diagnostics
+    .filter((d) => d.file === file && d.line > 0)
+    .map((d) => {
+      const why = explain(d, board);
+      return {
+        severity: d.severity === "error" ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning,
+        message: why ? `${why.title}\n${why.text}` : d.message,
+        source: why ? `The compiler said: ${d.message}` : undefined,
+        startLineNumber: d.line,
+        startColumn: Math.max(1, d.column),
+        endLineNumber: d.line,
+        // GCC gives where a problem starts; mark to the end of the word there.
+        endColumn: Math.max(1, d.column) + 1,
+      };
+    });
+}
 
 type SaveState = { state: "saved" | "saving" | "error"; message?: string };
 
@@ -50,6 +75,8 @@ async function writeFile(projectPath: string, file: OpenFile, report: (name: str
 
 interface EditorPaneProps {
   projectPath: string;
+  /** The board's name, for explanations: "the Arduino Uno". */
+  board: string;
   running: boolean;
   onRun: () => void;
   onStop: () => void;
@@ -57,7 +84,7 @@ interface EditorPaneProps {
 }
 
 /** Code beside the circuit (DSK-30, EDT-01 to EDT-03, EDT-06): the sketch's files in tabs, saved as you type. */
-export function EditorPane({ projectPath, running, onRun, onStop, onClose }: EditorPaneProps) {
+export function EditorPane({ projectPath, board, running, onRun, onStop, onClose }: EditorPaneProps) {
   const host = useRef<HTMLDivElement>(null);
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const files = useRef(new Map<string, OpenFile>());
@@ -72,6 +99,11 @@ export function EditorPane({ projectPath, running, onRun, onStop, onClose }: Edi
   const [status, setStatus] = useState<Record<string, SaveState>>({});
   const [problem, setProblem] = useState<string | null>(null);
   const [naming, setNaming] = useState<{ mode: "new" } | { mode: "rename"; from: string } | null>(null);
+  const [build, setBuild] = useState<BuildState>({ status: "idle", slow: false, result: null, changed: new Set() });
+  const [panel, setPanel] = useState<{ open: boolean; tab: BuildTab }>({ open: false, tab: "problems" });
+  /** The last build's problems, for files opened after it. */
+  const diagnostics = useRef<Diagnostic[]>([]);
+  const buildRef = useRef<() => void>(() => undefined);
 
   const report = useCallback((name: string, s: SaveState) => setStatus((all) => (all[name]?.state === s.state && all[name]?.message === s.message ? all : { ...all, [name]: s })), []);
   const save = useCallback((file: OpenFile) => writeFile(projectPath, file, report), [projectPath, report]);
@@ -82,6 +114,8 @@ export function EditorPane({ projectPath, running, onRun, onStop, onClose }: Edi
   const track = useCallback(
     (file: OpenFile) => {
       file.model.onDidChangeContent(() => {
+        // Its problems may have moved: no fixes for this file until the next build.
+        if (diagnostics.current.some((d) => d.file === file.name)) setBuild((b) => (b.changed.has(file.name) ? b : { ...b, changed: new Set(b.changed).add(file.name) }));
         if (file.timer) clearTimeout(file.timer);
         file.timer = setTimeout(() => void save(file), SAVE_DELAY_MS);
         report(file.name, { state: "saving" });
@@ -90,26 +124,108 @@ export function EditorPane({ projectPath, running, onRun, onStop, onClose }: Edi
     [save, report],
   );
 
+  /** Load a file into the editor without showing it; null if it can't be read. */
+  const ensureModel = useCallback(
+    async (name: string): Promise<OpenFile | string> => {
+      const loaded = files.current.get(name);
+      if (loaded) return loaded;
+      const read = await invoke("sketch:read", projectPath, name);
+      if (!read.ok) return read.message;
+      const again = files.current.get(name);
+      if (again) return again;
+      const file: OpenFile = { name, model: monaco.editor.createModel(read.content, languageFor(name), monaco.Uri.file(`/${name}`)), view: null, saved: read.content, writing: false };
+      monaco.editor.setModelMarkers(file.model, MARKERS, markersFor(diagnostics.current, name, board));
+      track(file);
+      files.current.set(name, file);
+      return file;
+    },
+    [projectPath, track, board],
+  );
+
   const open = useCallback(
     async (name: string) => {
       setProblem(null);
-      if (!files.current.has(name)) {
-        const read = await invoke("sketch:read", projectPath, name);
-        if (!read.ok) {
-          setProblem(read.message);
-          return;
-        }
-        if (!files.current.has(name)) {
-          const file: OpenFile = { name, model: monaco.editor.createModel(read.content, languageFor(name), monaco.Uri.file(`/${name}`)), view: null, saved: read.content, writing: false };
-          track(file);
-          files.current.set(name, file);
-        }
+      const file = await ensureModel(name);
+      if (typeof file === "string") {
+        setProblem(file);
+        return;
       }
       setTabs((t) => (t.includes(name) ? t : [...t, name]));
       setActive(name);
     },
-    [projectPath, track],
+    [ensureModel],
   );
+
+  /** Save every file now, and wait: a build compiles what's on disk. */
+  const flushAll = useCallback(async () => {
+    await Promise.all([...files.current.values()].map((file) => (file.timer || (!file.model.isDisposed() && file.model.getValue() !== file.saved) ? save(file) : undefined)));
+  }, [save]);
+
+  // ----- build (BLD-01, ERR-01) ---------------------------------------------------------
+  const runBuild = useCallback(async () => {
+    if (build.status === "building") return;
+    setBuild((b) => ({ ...b, status: "building", slow: false }));
+    const slow = window.setTimeout(() => setBuild((b) => (b.status === "building" ? { ...b, slow: true } : b)), SLOW_BUILD_MS);
+    await flushAll();
+    const result = await invoke("build:compile", projectPath).catch(() => ({ ok: false, diagnostics: [], durationMs: 0, log: "", message: "The build didn't run. Try again." }));
+    window.clearTimeout(slow);
+    diagnostics.current = result.diagnostics;
+    // Problems in files that aren't open yet: load them, so fixes can be offered.
+    for (const name of new Set(result.diagnostics.map((d) => d.file).filter((f): f is string => Boolean(f)))) await ensureModel(name);
+    for (const file of files.current.values()) monaco.editor.setModelMarkers(file.model, MARKERS, markersFor(result.diagnostics, file.name, board));
+    setBuild({ status: "done", slow: false, result, changed: new Set() });
+    setPanel((p) => ({ open: true, tab: result.ok && p.open ? p.tab : "problems" }));
+  }, [build.status, flushAll, projectPath, ensureModel, board]);
+  useEffect(() => {
+    buildRef.current = () => void runBuild();
+  }, [runBuild]);
+
+  const reveal = useCallback(
+    async (d: Diagnostic) => {
+      if (!d.file) return;
+      await open(d.file);
+      // After the model is shown.
+      window.setTimeout(() => {
+        const instance = editor.current;
+        if (!instance) return;
+        const position = { lineNumber: d.line, column: Math.max(1, d.column) };
+        instance.setPosition(position);
+        instance.revealPositionInCenter(position);
+        instance.focus();
+      }, 0);
+    },
+    [open],
+  );
+
+  /** Make a fix as one undo step (FIX-01). */
+  const applyFix = useCallback(
+    async (fix: QuickFix) => {
+      const file = await ensureModel(fix.file);
+      if (typeof file === "string") return setProblem(file);
+      file.model.pushStackElement();
+      file.model.pushEditOperations(
+        [],
+        fix.edits.map((e) => ({ range: new monaco.Range(e.line, e.column, e.line, e.column + e.length), text: e.text })),
+        () => null,
+      );
+      file.model.pushStackElement();
+      const first = fix.edits[0];
+      await reveal({ file: fix.file, path: "", line: first.line, column: first.column + first.text.length, severity: "error", message: "", notes: [] });
+    },
+    [ensureModel, reveal],
+  );
+
+  // Ctrl+B builds from anywhere in the project.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        buildRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const reloadList = useCallback(async () => {
     const next = await invoke("sketch:list", projectPath);
@@ -142,6 +258,7 @@ export function EditorPane({ projectPath, running, onRun, onStop, onClose }: Edi
     const blur = instance.onDidBlurEditorText(() => saveAll());
     // Ctrl+Enter (⌘↵) runs from the editor, as it does from the lab.
     instance.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => runRef.current());
+    instance.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyB, () => buildRef.current());
     const opened = files.current;
     return () => {
       observer.disconnect();
@@ -264,6 +381,10 @@ export function EditorPane({ projectPath, running, onRun, onStop, onClose }: Edi
     <section className="flex h-full min-h-0 min-w-0 flex-col border-l border-border bg-surface" aria-label="Code" data-testid="editor-pane" data-own-keys>
       {/* Run, upload, stop (EDT-06); find; files */}
       <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-2">
+        <button type="button" onClick={() => void runBuild()} disabled={build.status === "building"} title={`Build: check the code and see how much memory it uses (${shortcut("B")})`} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-border px-2.5 text-[12.5px] font-medium text-foreground hover:bg-muted-bg disabled:opacity-60" data-testid="editor-build">
+          {build.status === "building" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Hammer className="size-3.5" aria-hidden />}
+          Build
+        </button>
         <button type="button" onClick={onRun} disabled={running} title={`Run (${shortcut("↵")}). The lab runs each board's built-in behavior; running your own code arrives in a later update.`} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] bg-primary px-2.5 text-[12.5px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40" data-testid="editor-run">
           <Play className="size-3.5" aria-hidden />
           Run
@@ -277,6 +398,12 @@ export function EditorPane({ projectPath, running, onRun, onStop, onClose }: Edi
           Stop
         </button>
         <span className="flex-1" />
+        {!panel.open && build.result ? (
+          <button type="button" onClick={() => setPanel((p) => ({ ...p, open: true }))} className={cn("inline-flex h-7 items-center gap-1 rounded-[7px] px-2 text-[11.5px] font-medium hover:bg-muted-bg", build.result.diagnostics.length ? "text-danger" : "text-muted")} data-testid="editor-problems">
+            {build.result.diagnostics.length ? <AlertCircle className="size-3.5" aria-hidden /> : <Check className="size-3.5 text-success" aria-hidden />}
+            {build.result.diagnostics.length ? `${build.result.diagnostics.length} ${build.result.diagnostics.length === 1 ? "problem" : "problems"}` : "Built"}
+          </button>
+        ) : null}
         <span className={cn("inline-flex items-center gap-1 px-1.5 text-[11.5px]", shown.state === "error" ? "text-danger" : "text-muted")} title={shown.message} aria-live="polite" data-testid="editor-save">
           {shown.state === "saving" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : shown.state === "error" ? <AlertTriangle className="size-3.5" aria-hidden /> : <Check className="size-3.5 text-success" aria-hidden />}
           {shown.state === "saving" ? "Saving" : shown.state === "error" ? "Not saved" : "Saved"}
@@ -356,6 +483,26 @@ export function EditorPane({ projectPath, running, onRun, onStop, onClose }: Edi
       ) : null}
 
       <div ref={host} className="min-h-0 flex-1" data-native-scrollbar data-testid="code-editor" />
+
+      {panel.open ? (
+        <div className="h-[clamp(160px,40%,340px)] shrink-0">
+          <BuildPanel
+            projectPath={projectPath}
+            board={board}
+            state={build}
+            tab={panel.tab}
+            onTab={(tab) => setPanel({ open: true, tab })}
+            onClose={() => setPanel((p) => ({ ...p, open: false }))}
+            onReveal={(d) => void reveal(d)}
+            sourceOf={(name) => {
+              const file = files.current.get(name);
+              return file && !file.model.isDisposed() ? file.model.getValue() : null;
+            }}
+            onApplyFix={(fix) => void applyFix(fix)}
+            onLibrariesChanged={() => void runBuild()}
+          />
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -96,7 +96,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .ci/arduino
-          key: arduino-avr-1.8.6-${{ runner.os }}-${{ runner.arch }}
+          key: arduino-avr-1.8.6-profiles-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install the Uno core (arduino:avr@1.8.6)
         shell: bash

@@ -74,6 +74,8 @@ export function projectBoard(part: string): ProjectBoard | undefined {
 export interface PinnedLibrary {
   name: string;
   version: string;
+  /** Needed by another library, not by the sketch: Arduino CLI removes it with the library that needs it. */
+  dependency?: boolean;
 }
 
 /** `sketch/sketch.yaml`: one profile, the default, so a plain compile uses it. */
@@ -89,7 +91,7 @@ export function sketchProfile(board: ProjectBoard, libraries: readonly PinnedLib
   ];
   if (libraries.length) {
     lines.push("    libraries:");
-    for (const lib of libraries) lines.push(`      - ${lib.name} (${lib.version})`);
+    for (const lib of libraries) lines.push(`      - ${lib.dependency ? "dependency: " : ""}${lib.name} (${lib.version})`);
   }
   lines.push("default_profile: kiungo", "");
   return lines.join("\n");

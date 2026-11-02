@@ -22,6 +22,8 @@ export interface LabHost {
   openPartPage?: (partId: string) => void;
   /** The Inspector's "Real hardware" section. Omitted: the section is hidden. */
   realHardware?: ReactNode;
+  /** What the Inspector's Mode setting does in this app, under the setting. Omitted: the website's wording. */
+  modeNote?: (node: LabNode) => string;
 }
 
 export const LabHostContext = createContext<LabHost>({});
@@ -47,8 +49,14 @@ export interface ProgramDriver {
     inputs: PeripheralInput[],
     /** The circuit as it is now: a robot's wheels and sensors come from it. */
     circuit: { nodes: LabNode[]; analysis: Analysis },
-    on: { readings: (r: ProgramReadings) => void; serial: (text: string) => void; stage: (stage: "building" | "starting") => void },
-  ) => Promise<{ ok: true; programBytes: number } | { ok: false; message: string }>;
+    on: {
+      readings: (r: ProgramReadings) => void;
+      serial: (text: string) => void;
+      stage: (stage: "building" | "starting") => void;
+      /** The run ended by itself (a real board unplugged, its link lost): the lab stops and says why. */
+      ended?: (message: string) => void;
+    },
+  ) => Promise<{ ok: true; programBytes: number; /** Where it runs, for the log: "the real Arduino Uno on COM3". */ where?: string } | { ok: false; message: string }>;
   stop: () => void;
   /** What the board's sensors read now. */
   setInputs: (inputs: PeripheralInput[]) => void;

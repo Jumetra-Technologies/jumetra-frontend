@@ -10,7 +10,7 @@
  * What a real Uno adds on top is in docs/phase-two/sprint-2-hardware-check.md.
  */
 
-import { mkdtempSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 
@@ -20,6 +20,9 @@ import { AvrBoard } from "@kiungo/core/emulator";
 import { UNO } from "@kiungo/core/boards";
 import { LinkReader, encodeHello, encodeIn, encodePing, encodeSet } from "@kiungo/core/hybrid/protocol";
 import { SPRINT_2_PLAN, type HybridPlan } from "@kiungo/core/hybrid/shim";
+import { hybridBindings, hybridValues, packDht } from "@kiungo/core/hybrid/plan";
+import { analyze } from "@kiungo/core/lab/circuit";
+import { buildStarter } from "@kiungo/core/project";
 
 import { compileDirect, compileHybridDirect, hybridResourcesDir, locateDirectToolchain, type DirectToolchain } from "../src/main/toolchain/hybrid-build";
 
@@ -184,7 +187,9 @@ describe.skipIf(!tc)("the Hybrid shim on compiled code", { timeout: 180_000 }, (
     board.runMs(10);
     board.writeSerial(encodePing(42));
     board.runMs(10);
-    expect(frames.at(-1)?.frame).toEqual({ type: "ack", seq: 42 });
+    expect(frames.map((f) => f.frame).filter((f) => f.type === "ack")).toEqual([{ type: "ack", seq: 42 }]);
+    // The outputs' state comes with the answer to a PING: nothing driven yet.
+    expect(frames.at(-1)?.frame).toEqual({ type: "out", levels: 0, driven: 0, pwm: [] });
     // 100 bytes the sketch never reads: the 32-byte queue fills, the rest is counted as dropped.
     for (const frame of encodeIn(new Uint8Array(100).fill(0x41))) board.writeSerial(frame);
     board.runMs(30);
@@ -288,5 +293,73 @@ describe.skipIf(!tc)("toolchain facts the shim design rests on (#57, #59)", { ti
     const result = compileDirect(toolchain, dir, build("serwrapb"), { lto: true, noLtoForSketch: true, ldFlags: ["-Wl,--wrap=_ZN14HardwareSerial5writeEh"] });
     expect(result.ok, result.log).toBe(true);
     expect(firstLine(result.hex!)).toBe("7"); // untouched: the vtable call never goes through the wrapper
+  });
+});
+
+/** The Uno starters, as a Kiungo project writes them (the pins come from the lab's auto-wire). */
+const starterSketch = (name: string) => readFileSync(join(__dirname, "..", "..", "..", "packages", "core", "test", "fixtures", "sketches", `${name}.ino`), "utf8");
+
+describe.skipIf(!tc)("Hybrid runs of the starters (sprint 9)", { timeout: 180_000 }, () => {
+  const toolchain = tc as DirectToolchain;
+
+  /** A circuit with the board on the desk and the sensors played by Kiungo. */
+  function bindingsFor(starter: string) {
+    const { session } = buildStarter({ name: "x", board: "arduino-uno", starter });
+    const nodes = session.nodes.map((n, i) => (i === 0 ? { ...n, mode: "physical" as const } : n));
+    return { nodes, bindings: hybridBindings(nodes, analyze(nodes, session.wires), nodes[0].id) };
+  }
+
+  it("a virtual HC-SR04 answers pulseIn on the echo pin with the echo's length (Distance sensor starter)", () => {
+    const { bindings } = bindingsFor("distance");
+    const result = compileHybridDirect(toolchain, { sketchDir: sketchDir("Distance", starterSketch("distance")), buildPath: build("distance"), plan: bindings.plan, resources });
+    expect(result.ok, result.log).toBe(true);
+    const { board, lines } = runner(result.hex!);
+    board.runMs(50);
+    for (const [id, value] of hybridValues(bindings, [{ kind: "hc-sr04", id: bindings.sensors[0].nodeId, trig: 2, echo: 3, distanceCm: 42 }])) board.writeSerial(encodeSet(id, value));
+    board.runMs(700);
+    const readings = lines.map((l) => Number.parseFloat(l.text)).filter((n) => !Number.isNaN(n));
+    expect(readings.length).toBeGreaterThan(1);
+    expect(readings.at(-1)).toBeCloseTo(42, 0);
+  });
+
+  it("a virtual DHT11 answers the unchanged DHT sketch through the adapter", () => {
+    const { bindings } = bindingsFor("dht11");
+    expect(bindings.plan.sensors).toEqual([{ id: 0, part: "dht11", pins: [2], adapter: "DHT" }]);
+    const result = compileHybridDirect(toolchain, { sketchDir: sketchDir("Dht", starterSketch("dht11")), buildPath: build("dht"), plan: bindings.plan, resources });
+    expect(result.ok, result.log).toBe(true);
+    const { board, lines } = runner(result.hex!);
+    board.runMs(100);
+    board.writeSerial(encodeSet(0, packDht(23.4, 55)));
+    board.runMs(4300);
+    expect(lines.map((l) => l.text)).toContain("Temperature: 23.40 C, humidity: 55.00 %");
+  });
+
+  it("a sketch that never calls Serial.begin still answers the link (Blink)", () => {
+    const dir = sketchDir("Quiet", `void setup() { pinMode(13, OUTPUT); }
+void loop() { digitalWrite(13, HIGH); delay(100); digitalWrite(13, LOW); delay(100); }`);
+    const result = compileHybridDirect(toolchain, { sketchDir: dir, buildPath: build("quiet"), plan: { board: "arduino:avr:uno", sensors: [] }, resources });
+    expect(result.ok, result.log).toBe(true);
+    const { board, frames } = runner(result.hex!);
+    board.runMs(50);
+    board.writeSerial(encodeHello());
+    board.runMs(300);
+    expect(frames.map((f) => f.frame.type)).toContain("hello");
+    expect(frames.map((f) => f.frame.type)).toContain("out");
+  });
+
+  it("the outputs the sketch drives come back as OUT frames, without slowing it (OUT-01)", () => {
+    const dir = sketchDir("Outs", `void setup() { pinMode(13, OUTPUT); pinMode(5, OUTPUT); Serial.begin(9600); }
+void loop() { digitalWrite(13, HIGH); analogWrite(5, 128); delay(100); digitalWrite(13, LOW); analogWrite(5, 0); delay(100); }`);
+    const result = compileHybridDirect(toolchain, { sketchDir: dir, buildPath: build("outs"), plan: { board: "arduino:avr:uno", sensors: [] }, resources });
+    expect(result.ok, result.log).toBe(true);
+    const { board, frames } = runner(result.hex!);
+    const edges: number[] = [];
+    board.onPinChange((c) => c.pin === 13 && c.level === "high" && edges.push(board.timeMs));
+    board.runMs(650);
+    const outs = frames.map((f) => f.frame).filter((f) => f.type === "out");
+    expect(outs).toContainEqual({ type: "out", levels: 1 << 13, driven: (1 << 13) | (1 << 5), pwm: [[5, 128]] });
+    expect(outs).toContainEqual({ type: "out", levels: 0, driven: (1 << 13) | (1 << 5), pwm: [] });
+    // The sketch's own timing holds: pin 13 rises every 200 ms.
+    for (let i = 1; i < edges.length; i++) expect(edges[i] - edges[i - 1]).toBeCloseTo(200, -1);
   });
 });

@@ -13,6 +13,7 @@
 //   0x02 SET   [sensor u8, value i32 LE]     0x82 TEXT       [bytes...]      the user's Serial output
 //   0x03 IN    [bytes...]  user's Serial.read 0x83 ACK        [seq u8]
 //   0x04 PING  [seq u8]                      0x84 STATS      [frames_in u16, bad u16, dropped u16]
+//                                            0x85 OUT        [levels u32 LE, driven u32 LE (pins 0-19), then (pin u8, pwm u8)...]
 //
 // The board never waits on the link. Frames are read when the user's code
 // calls into the runtime (a sensor read, Serial, or serialEvent between
@@ -39,6 +40,7 @@ enum KiungoFrame : uint8_t {
   KIUNGO_TEXT = 0x82,
   KIUNGO_ACK = 0x83,
   KIUNGO_STATS = 0x84,
+  KIUNGO_OUT = 0x85,
 };
 
 // Read every byte waiting on the link and apply complete frames. Cheap when
@@ -49,8 +51,14 @@ void kiungo_poll();
 int32_t kiungo_sensor_value(uint8_t sensor, int32_t fallback);
 bool kiungo_sensor_known(uint8_t sensor);
 
-// Send a frame to the PC. Never blocks longer than the UART's own buffer.
-void kiungo_send(uint8_t type, const uint8_t* payload, uint8_t length);
+// Send a frame to the PC. Never blocks: a frame that doesn't fit in the
+// UART's buffer is dropped (and counted), and false comes back.
+bool kiungo_send(uint8_t type, const uint8_t* payload, uint8_t length);
+
+// The real digitalWrite and analogWrite, with what they drove recorded and
+// sent to the PC when the UART has room (OUT-01), never waiting on the link.
+void kiungo_digitalWrite(uint8_t pin, uint8_t value);
+void kiungo_analogWrite(uint8_t pin, int value);
 
 // Pin functions for the forced-include header. A pin that is virtual answers
 // from the sensor table; any other pin goes to the real hardware.

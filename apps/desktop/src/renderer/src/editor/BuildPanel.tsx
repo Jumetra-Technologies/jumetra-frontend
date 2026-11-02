@@ -101,19 +101,35 @@ function UploadCard({ upload, onRetry }: { upload: UploadState; onRetry: (as?: H
 
 const bytes = (n: number) => n.toLocaleString("en-US");
 
-function Meter({ label, used, max, testId }: { label: string; used: number; max: number; testId: string }) {
+/**
+ * How much of a memory the program uses. For a Hybrid build, `kiungo` is the
+ * part Kiungo's layer adds (HWT-02, HWT-04): drawn apart at the end of the
+ * bar, so what the program needs alone stays readable (HWT-03).
+ */
+function Meter({ label, used, max, kiungo = 0, testId }: { label: string; used: number; max: number; kiungo?: number; testId: string }) {
   const share = max > 0 ? used / max : 0;
+  const own = Math.max(0, used - kiungo);
   const tone = share > 1 ? "bg-danger" : share > 0.85 ? "bg-warning" : "bg-primary";
+  const pct = (n: number) => `${Math.min(100, max > 0 ? (n / max) * 100 : 0)}%`;
   return (
-    <div className="min-w-0 flex-1" data-testid={testId} title={`${bytes(used)} of ${bytes(max)} bytes`}>
+    <div className="min-w-0 flex-1" data-testid={testId} title={kiungo ? `Your program ${bytes(own)} + Kiungo's Hybrid layer ${bytes(kiungo)} of ${bytes(max)} bytes` : `${bytes(used)} of ${bytes(max)} bytes`}>
       <div className="flex items-baseline justify-between gap-2 text-[11.5px]">
         <span className="font-medium text-foreground">{label}</span>
         <span className="tabular-nums text-muted">
-          {bytes(used)} / {bytes(max)} B · {Math.round(share * 100)}%
+          {kiungo ? (
+            <>
+              {bytes(own)} + <span data-testid={`${testId}-kiungo`}>{bytes(kiungo)}</span> Kiungo / {bytes(max)} B
+            </>
+          ) : (
+            <>
+              {bytes(used)} / {bytes(max)} B · {Math.round(share * 100)}%
+            </>
+          )}
         </span>
       </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted-bg" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={used}>
-        <div className={cn("h-full rounded-full", tone)} style={{ width: `${Math.min(100, share * 100)}%` }} />
+      <div className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-muted-bg" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={used}>
+        <div className={cn("h-full", tone)} style={{ width: pct(own) }} />
+        {kiungo ? <div className="h-full bg-[repeating-linear-gradient(135deg,var(--color-muted)_0_2px,transparent_2px_4px)]" style={{ width: pct(kiungo) }} /> : null}
       </div>
     </div>
   );
@@ -444,9 +460,14 @@ export function BuildPanel({ projectPath, board, state, tab, onTab, onClose, onR
 
       {result?.flash && result.ram && (tab === "problems" || tab === "output") ? (
         <div className="flex shrink-0 gap-4 border-b border-border px-3 py-2" aria-label="Memory the program uses">
-          <Meter label="Program (flash)" used={result.flash.used} max={result.flash.max} testId="meter-flash" />
-          <Meter label="Variables (RAM)" used={result.ram.used} max={result.ram.max} testId="meter-ram" />
+          <Meter label="Program (flash)" used={result.flash.used} max={result.flash.max} kiungo={result.overhead?.flash} testId="meter-flash" />
+          <Meter label="Variables (RAM)" used={result.ram.used} max={result.ram.max} kiungo={result.overhead?.ram} testId="meter-ram" />
         </div>
+      ) : null}
+      {result?.overhead && result.ship && (tab === "problems" || tab === "output") ? (
+        <p className="shrink-0 border-b border-border px-3 py-1.5 text-[11.5px] text-muted" data-testid="hybrid-note">
+          A Hybrid build: Kiungo&apos;s layer, striped, lets the lab play the virtual parts. Without it your program uses {bytes(result.ship.flash.used)} bytes of program and {bytes(result.ship.ram.used)} of RAM, which is what the board runs when you upload it.
+        </p>
       ) : null}
 
       {tab === "problems" ? (

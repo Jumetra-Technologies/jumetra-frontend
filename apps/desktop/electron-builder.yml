@@ -19,6 +19,9 @@ files:
 extraResources:
   - from: resources/sketches
     to: sketches
+  # The Hybrid runtime and adapter libraries, compiled into the user's sketch for a Hybrid run.
+  - from: resources/hybrid
+    to: hybrid
   - from: resources/bin/${platform}-${arch}
     to: bin
     filter: ["**/*"]

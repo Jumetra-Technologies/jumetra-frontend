@@ -224,6 +224,8 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
   // Inputs carry part values the check needs (a resistor's ohms).
   const analysis = useMemo(() => analyze(nodes, wires, inputs), [nodes, wires, inputs]);
   // The user's program, when a board runs it (desktop): its readings replace that board's built-in behavior.
+  /** Stop, for a program run that ends by itself (set once stopRun exists, below). */
+  const stopRunRef = useRef<() => void>(() => undefined);
   const [programRun, setProgramRun] = useState<{ boardId: string; readings: ProgramReadings | null; stage: "building" | "starting" | "running" } | null>(null);
   const programBoard = useMemo(() => program?.boardFor(nodes) ?? null, [program, nodes]);
   const baseFrame = useMemo(() => frameAt(nodes, wires, analysis, t, running, inputs), [nodes, wires, analysis, t, running, inputs]);
@@ -355,6 +357,12 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
         .start(boardId, initial, { nodes, analysis }, {
           stage: (stage) => setProgramRun((p) => (p && p.boardId === boardId ? { ...p, stage } : p)),
           readings: (readings) => setProgramRun((p) => (p && p.boardId === boardId ? { ...p, readings, stage: "running" } : p)),
+          ended: (message) => {
+            if (programBoardRef.current !== boardId) return;
+            store.getState().log("fault", `Run stopped: ${message}`);
+            setToast(message);
+            stopRunRef.current();
+          },
           serial: (text) =>
             setSerial((lines) => {
               // The board's text arrives in pieces: join to the last line until a newline.
@@ -375,7 +383,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
           }
           setSerial((lines) => (lines.length && lines[lines.length - 1] !== "" ? [...lines, ""] : lines));
           begin();
-          store.getState().log("note", `Your code is running on ${nodes.find((n) => n.id === boardId)?.label ?? "the board"} (${result.programBytes.toLocaleString("en-US")} bytes)`);
+          store.getState().log("note", `Your code is running on ${result.where ?? nodes.find((n) => n.id === boardId)?.label ?? "the board"} (${result.programBytes.toLocaleString("en-US")} bytes)`);
         });
       return;
     }
@@ -425,6 +433,9 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
       store.getState().addRunTime(result.ms);
     }
   }, [running, power, store, unplug, program]);
+  useEffect(() => {
+    stopRunRef.current = stopRun;
+  }, [stopRun]);
 
   const reset = useCallback(() => {
     if (running) stopRun();

@@ -26,6 +26,7 @@ export const Frame = {
   Text: 0x82,
   Ack: 0x83,
   Stats: 0x84,
+  Out: 0x85,
 } as const;
 
 export type BoardFrame =
@@ -33,6 +34,9 @@ export type BoardFrame =
   | { type: "text"; bytes: Uint8Array }
   | { type: "ack"; seq: number }
   | { type: "stats"; framesIn: number; bad: number; dropped: number }
+  /** What the sketch drove: each pin's level (pins 0 to 19 as bits), and the PWM value of pins it analogWrites. */
+  /** What the sketch drove: levels as bits (bit n is pin n), which pins it has written, and PWM duty 0-255. */
+  | { type: "out"; levels: number; driven: number; pwm: Array<[pin: number, value: number]> }
   | { type: "unknown"; code: number; payload: Uint8Array };
 
 function u16(bytes: Uint8Array, at: number): number {
@@ -84,6 +88,12 @@ export function decodeFrame(raw: Uint8Array): BoardFrame {
       return { type: "ack", seq: payload[0] ?? 0 };
     case Frame.Stats:
       return { type: "stats", framesIn: u16(payload, 0), bad: u16(payload, 2), dropped: u16(payload, 4) };
+    case Frame.Out: {
+      const u32 = (o: number) => ((payload[o] ?? 0) | ((payload[o + 1] ?? 0) << 8) | ((payload[o + 2] ?? 0) << 16) | ((payload[o + 3] ?? 0) << 24)) >>> 0;
+      const pwm: Array<[number, number]> = [];
+      for (let i = 8; i + 1 < payload.length; i += 2) pwm.push([payload[i], payload[i + 1]]);
+      return { type: "out", levels: u32(0), driven: u32(4), pwm };
+    }
     default:
       return { type: "unknown", code, payload };
   }

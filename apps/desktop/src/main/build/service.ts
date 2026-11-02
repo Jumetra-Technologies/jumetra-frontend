@@ -126,23 +126,31 @@ export class BuildService {
     return job;
   }
 
-  private async doCompile(projectPath: string, fqbn?: string): Promise<BuildResult> {
+  private doCompile(projectPath: string, fqbn?: string): Promise<BuildResult> {
+    return this.compileAt(join(projectPath, SKETCH_DIR), this.buildPath(projectPath, fqbn), fqbn);
+  }
+
+  /** Build a sketch folder that isn't a project's own (the Hybrid copy), in a build folder beside it. */
+  async compileFolder(sketchDir: string, fqbn: string, buildProperties: string[] = []): Promise<{ result: BuildResult; buildPath: string }> {
+    const buildPath = join(sketchDir, "..", "build");
+    return { result: await this.compileAt(sketchDir, buildPath, fqbn, buildProperties), buildPath };
+  }
+
+  private async compileAt(sketchDir: string, buildPath: string, fqbn?: string, buildProperties: string[] = []): Promise<BuildResult> {
     const cli = this.options.cli();
     const started = this.now();
     const elapsed = () => Math.round(this.now() - started);
     if (!cli) return { ok: false, diagnostics: [], durationMs: 0, message: NO_CLI, log: "" };
-    const sketchDir = join(projectPath, SKETCH_DIR);
     if (!existsSync(join(sketchDir, SKETCH_PROFILE_FILE))) {
       return { ok: false, diagnostics: [], durationMs: 0, message: "This project has no build settings (sketch/sketch.yaml). Make a new project, or copy sketch.yaml from one.", log: "" };
     }
-    const buildPath = this.buildPath(projectPath, fqbn);
     await mkdir(buildPath, { recursive: true });
     // Nothing changed since the last good build: use it (Run starts in well under 2 s).
     const fingerprint = await sketchFingerprint(sketchDir, fqbn ?? "");
     const cached = await this.cached(buildPath, fingerprint);
     if (cached) return { ...cached, durationMs: elapsed(), cached: true };
     // A first build may download the board package and libraries: allow it time.
-    const raw = await this.options.run(cli, ["compile", "--profile", PROFILE, ...(fqbn ? ["--fqbn", fqbn] : []), "--build-path", buildPath, "--format", "json", sketchDir], 900_000);
+    const raw = await this.options.run(cli, ["compile", "--profile", PROFILE, ...(fqbn ? ["--fqbn", fqbn] : []), ...buildProperties.flatMap((p) => ["--build-property", p]), "--build-path", buildPath, "--format", "json", sketchDir], 900_000);
     const json = parseJson<CompileJson>(raw.stdout);
     const sections = json?.builder_result?.executable_sections_size ?? [];
     const text = sections.find((s) => s.name === "text");
@@ -186,16 +194,23 @@ export class BuildService {
     const cli = this.options.cli();
     if (!cli) return { ok: false, stage: "build", build, log: "", durationMs: elapsed() };
     onStage?.("uploading");
-    const raw = await this.options.run(
-      cli,
-      ["upload", "--profile", PROFILE, "--fqbn", board.fqbn, "-p", port, "--input-dir", this.buildPath(projectPath, board.fqbn), "--format", "json", join(projectPath, SKETCH_DIR)],
-      180_000,
-    );
+    const result = await this.uploadFolder(join(projectPath, SKETCH_DIR), this.buildPath(projectPath, board.fqbn), port, board, platform);
+    return { ...result, build, durationMs: elapsed() };
+  }
+
+  /** Upload a built program to the port: the project's own, or the Hybrid copy's. */
+  async uploadFolder(sketchDir: string, buildPath: string, port: string, board: HardwareBoard, platform: HostPlatform): Promise<UploadOutcome> {
+    const started = this.now();
+    const elapsed = () => Math.round(this.now() - started);
+    const empty: BuildResult = { ok: true, diagnostics: [], durationMs: 0, log: "" };
+    const cli = this.options.cli();
+    if (!cli) return { ok: false, stage: "upload", build: empty, log: NO_CLI, durationMs: 0, problem: uploadProblem("", board.id, platform) };
+    const raw = await this.options.run(cli, ["upload", "--profile", PROFILE, "--fqbn", board.fqbn, "-p", port, "--input-dir", buildPath, "--format", "json", sketchDir], 180_000);
     // Success: { stdout, stderr }. Failure: { error, output: { stdout, stderr } }.
     const json = parseJson<{ stdout?: string; stderr?: string; error?: string; output?: { stdout?: string; stderr?: string } }>(raw.stdout);
     const log = [json?.stdout, json?.stderr, json?.output?.stdout, json?.output?.stderr, json?.error, raw.stderr].filter((s) => s?.trim()).join("\n").trim() || raw.stdout.trim();
-    if (raw.code === 0) return { ok: true, stage: "upload", build, log, durationMs: elapsed() };
-    return { ok: false, stage: "upload", build, problem: uploadProblem(log, board.id, platform), log, durationMs: elapsed() };
+    if (raw.code === 0) return { ok: true, stage: "upload", build: empty, log, durationMs: elapsed() };
+    return { ok: false, stage: "upload", build: empty, problem: uploadProblem(log, board.id, platform), log, durationMs: elapsed() };
   }
 
   private async cached(buildPath: string, fingerprint: string): Promise<BuildResult | null> {

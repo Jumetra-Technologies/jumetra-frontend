@@ -55,6 +55,20 @@ The lab's Run builds the sketch (or reuses the last good build when no file chan
 
 A board with two DC motors is a robot (`@kiungo/core/world/robot`). When the project has a `world.json`, Run puts it in that world: the emulator worker steps Rapier 2D physics (`world/sim.ts`) after each slice of cycles, turns the motor pins into wheel speeds and the world into the sensors' readings (`world/harness.ts`, which CI also runs headless to check the templates finish their courses). The World pane (`src/renderer/src/world/WorldPane.tsx`) draws it at the screen's rate and lets you drag the obstacles while it runs.
 
+## Hybrid runs on a real board
+
+A board marked Physical or Hybrid in the Inspector runs the code for real (`src/renderer/src/project/program.ts`, `startReal`). `@kiungo/core/hybrid/plan` decides which parts Kiungo plays (those marked Virtual) and how each answers the sketch. The main process (`src/main/hybrid/service.ts`) builds the sketch twice:
+
+- **Ship build:** the sketch alone.
+- **Hybrid build:** a copy in the user-data `builds/<project hash>-hybrid` folder. Each source file starts with the marker and `kiungo_shim.h`, then a `#line` so problems keep their line numbers. Its `sketch.yaml` swaps replaced libraries for the adapters in `resources/hybrid` (`- dir:` entries).
+
+After the upload, `src/main/hybrid/link.ts` keeps `arduino-cli monitor` open at 115200 baud and carries COBS frames (`@kiungo/core/hybrid/protocol`) both ways:
+
+- **To the board:** HELLO, PING every 100 ms, and SET with the virtual parts' values (changes only, and all again after the board restarts).
+- **From the board:** TEXT (the sketch's Serial) and OUT (what it drove).
+
+The interface's plan is checked in `parsePlan` before it reaches the generated header.
+
 ## Boards, uploads and the serial monitor
 
 Arduino CLI finds boards (`board list --watch`, kept running while the app is open), uploads (`upload --profile kiungo --fqbn … -p …`) and runs the serial monitor (`monitor -p … --config baudrate=…`), all as child processes (`src/main/hardware/`). The interface can only name a port that discovery has found, and only open the driver pages listed in `src/main/hardware/doctor.ts`. Board limits and pins are in `@kiungo/core/hardware/boards`; upload failures are matched to recovery steps in `@kiungo/core/hardware/upload`.

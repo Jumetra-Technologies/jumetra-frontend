@@ -266,9 +266,22 @@ export interface AdminStats {
   top_pages?: Array<{ path: string; views: number }>;
 }
 
+/** A desktop app waiting for the person to approve its sign-in (jumetra-backend docs/desktop-sign-in.md). */
+export interface DesktopSignInDetails {
+  code_id: string;
+  status: "pending" | "approved" | "exchanged" | "denied" | "expired";
+  device: { name: string; platform: "windows" | "linux" | "macos"; app_version: string };
+  expires_at: string;
+}
+
 export const api = {
   /** The backend's liveness check. */
   getHealth: () => fetchJson<{ status: string; version?: string }>("/health", undefined, 8000),
+  /** The desktop app asking to sign in: which computer, and whether it's still waiting. */
+  getDesktopSignIn: (codeId: string) => fetchJson<DesktopSignInDetails>(`/auth/desktop/codes/${encodeURIComponent(codeId)}/details`, undefined, 15000),
+  /** Approve it; the answer holds the kiungo:// link that sends the browser back to the app. */
+  approveDesktopSignIn: (codeId: string) => fetchJson<{ status: "approved"; redirect_url: string }>(`/auth/desktop/codes/${encodeURIComponent(codeId)}/approve`, { method: "POST" }, 15000),
+  denyDesktopSignIn: (codeId: string) => fetchJson<{ status: "denied" }>(`/auth/desktop/codes/${encodeURIComponent(codeId)}/deny`, { method: "POST" }, 15000),
   getAdminStats: () => fetchJson<AdminStats>("/admin/stats", undefined, 8000),
   getDashboardOverview: () => fetchJson<DashboardOverview>("/analytics/dashboard"),
   getExperiments: () => fetchJson<ExperimentSummary[]>("/experiments"),

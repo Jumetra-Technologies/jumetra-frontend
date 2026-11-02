@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { FolderOpen, MoreHorizontal, Plus, Search } from "lucide-react";
 import type { RecentProject } from "@kiungo/api";
 import { STARTERS } from "@kiungo/core/project";
@@ -21,10 +22,12 @@ interface HomeProps {
   onReveal: (project: RecentProject) => void;
   onForget: (project: RecentProject) => void;
   onPalette: () => void;
+  /** Who's signed in, at the end of the top bar. */
+  account?: ReactNode;
 }
 
 /** Home is the user's projects and nothing else (DSK-10). */
-export function Home({ recent, error, onNew, onOpenFolder, onOpen, onReveal, onForget, onPalette }: HomeProps) {
+export function Home({ recent, error, onNew, onOpenFolder, onOpen, onReveal, onForget, onPalette, account }: HomeProps) {
   const empty = recent !== null && recent.length === 0;
   return (
     <div className="flex h-full flex-col bg-background text-foreground" data-testid="home">
@@ -44,6 +47,7 @@ export function Home({ recent, error, onNew, onOpenFolder, onOpen, onReveal, onF
           <Plus className="size-4" aria-hidden />
           New project
         </Button>
+        {account}
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto">

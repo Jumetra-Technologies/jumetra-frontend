@@ -1,27 +1,30 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
-import { Box, FilePlus2, FolderOpen, Grid2x2, House, Maximize, PanelRight, Play, Redo2, Search, Stethoscope, Undo2, X, Zap } from "lucide-react";
+import { Box, Code2, FilePlus2, FolderOpen, Grid2x2, House, LogIn, LogOut, Maximize, PanelRight, Play, Redo2, Search, Stethoscope, Undo2, UserRound, X, Zap } from "lucide-react";
 import type { OpenedProject, OpenResult, RecentProject } from "@kiungo/api";
-import type { LabWorkspaceHandle } from "@kiungo/lab/LabWorkspace";
+import { AccountMenu } from "./account/AccountMenu";
+import { SignInScreen } from "./account/SignInScreen";
+import { useAuth } from "./account/useAuth";
 import { Foundations } from "./foundations/Foundations";
 import { Home } from "./home/Home";
 import { NewProjectDialog } from "./home/NewProjectDialog";
 import { invoke, shortcut } from "./ipc";
 import { CommandPalette, type Command } from "./palette/CommandPalette";
-import { ProjectScreen } from "./project/ProjectScreen";
+import { ProjectScreen, type ProjectScreenHandle } from "./project/ProjectScreen";
 import { useSystemTheme } from "./theme";
 
 type Screen = { kind: "home" } | { kind: "project"; project: OpenedProject } | { kind: "foundations" };
 
 export function App() {
   useSystemTheme();
+  const auth = useAuth();
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [recent, setRecent] = useState<RecentProject[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState<{ starter: string | null } | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   // The open lab's actions, kept in state (not a ref) so the palette's commands built during render may use them.
-  const [lab, setLab] = useState<LabWorkspaceHandle | null>(null);
+  const [lab, setLab] = useState<ProjectScreenHandle | null>(null);
   const openPath = screen.kind === "project" ? screen.project.path : null;
 
   const refreshRecent = useCallback(() => {
@@ -97,8 +100,9 @@ export function App() {
     const list: Command[] = [];
     if (screen.kind === "project") {
       const g = "This project";
-      const call = (fn: (l: LabWorkspaceHandle) => void) => () => lab && fn(lab);
+      const call = (fn: (l: ProjectScreenHandle) => void) => () => lab && fn(lab);
       list.push(
+        { id: "code", title: "Show or hide the code", group: g, icon: <Code2 />, shortcut: shortcut("E"), keywords: "editor sketch ino", run: call((l) => l.toggleCode()) },
         { id: "run", title: "Run or stop", group: g, icon: <Play />, shortcut: shortcut("↵"), keywords: "start simulate", run: call((l) => l.toggleRun()) },
         { id: "parts", title: "Search parts", group: g, icon: <Search />, shortcut: "/", keywords: "add component sensor", run: call((l) => l.focusSearch()) },
         { id: "inspector", title: "Show or hide the Inspector", group: g, icon: <PanelRight />, keywords: "details pins", run: call((l) => l.toggleInspector()) },
@@ -123,9 +127,23 @@ export function App() {
       if (p.missing || p.path === openPath) continue;
       list.push({ id: `recent-${p.path}`, title: p.name ?? p.path, detail: p.boardName ?? undefined, group: "Recent projects", keywords: p.path, run: () => openRecent(p) });
     }
+    if (auth?.status === "signed-in") {
+      list.push(
+        { id: "switch", title: "Switch account", detail: auth.user.email, group: "Account", icon: <UserRound />, run: () => void invoke("auth:sign-out").then(() => invoke("auth:sign-in")) },
+        { id: "sign-out", title: "Sign out", detail: "Your projects stay on this computer", group: "Account", icon: <LogOut />, run: () => void invoke("auth:sign-out") },
+      );
+    } else list.push({ id: "sign-in", title: "Sign in", group: "Account", icon: <LogIn />, run: () => void invoke("auth:sign-in") });
     list.push({ id: "foundations", title: "Check the toolchain and emulator", group: "Help", icon: <Stethoscope />, keywords: "diagnostics arduino cli compiler", run: () => void closeOpen().then(() => setScreen({ kind: "foundations" })) });
     return list;
-  }, [screen, lab, recent, openPath, goHome, newProject, openFolder, openRecent, closeOpen]);
+  }, [screen, lab, recent, openPath, goHome, newProject, openFolder, openRecent, closeOpen, auth]);
+
+  // Signed out, or waiting for the browser: the sign-in screen (DSK-01). Open work is saved first.
+  const needsSignIn = auth !== null && (auth.status === "waiting" || (auth.status === "signed-out" && !auth.skipped));
+  useEffect(() => {
+    if (needsSignIn && openPath) void closeOpen();
+  }, [needsSignIn, openPath, closeOpen]);
+  if (auth === null) return <div className="h-full bg-background" />;
+  if (needsSignIn) return <SignInScreen state={auth as Extract<typeof auth, { status: "signed-out" | "waiting" }>} />;
 
   return (
     <>
@@ -143,6 +161,7 @@ export function App() {
           onReveal={(p) => void invoke("projects:reveal", p.path)}
           onForget={(p) => void invoke("projects:forget", p.path).then(setRecent)}
           onPalette={() => setPaletteOpen(true)}
+          account={<AccountMenu state={auth} />}
         />
       )}
       <NewProjectDialog

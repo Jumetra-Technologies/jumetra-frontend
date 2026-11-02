@@ -112,6 +112,36 @@ export interface ProjectSettings {
   projectsFolder: string;
 }
 
+/** Who is signed in to this copy of Kiungo (DSK-01 to DSK-03). */
+export interface AccountUser {
+  id: string;
+  email: string;
+  name: string;
+  photoUrl: string | null;
+}
+
+/**
+ * The sign-in state the interface shows.
+ * - `signed-out`: nobody; `canSkip` is true when signing in can't start (offline, or the
+ *   service isn't there), so the app can still be used.
+ * - `waiting`: the browser is open on the website's sign-in page.
+ * - `signed-in`: `offline` while the session can't be checked; it still counts.
+ */
+export type AuthState =
+  | { status: "signed-out"; message: string | null; canSkip: boolean; skipped: boolean }
+  | { status: "waiting"; startedAt: string; expiresAt: string; signInUrl: string }
+  | { status: "signed-in"; user: AccountUser; deviceName: string; offline: boolean; secureStorage: boolean };
+
+/** A file in a project's sketch folder. */
+export interface SketchFile {
+  name: string;
+  /** The main file: named after the folder, can't be renamed or deleted. */
+  main: boolean;
+  size: number;
+}
+
+export type SketchResult = { ok: true } | { ok: false; message: string };
+
 /** Every request the interface can make, with its arguments and its answer. */
 export interface InvokeMap {
   "app:info": { args: []; result: AppInfo };
@@ -134,6 +164,36 @@ export interface InvokeMap {
   "projects:settings": { args: []; result: ProjectSettings };
   /** Ask for a new projects folder; returns the settings, changed or not. */
   "projects:choose-folder": { args: []; result: ProjectSettings };
+  "auth:state": { args: []; result: AuthState };
+  /** Open the website's sign-in page in the browser and wait for it to send the app back. */
+  "auth:sign-in": { args: []; result: AuthState };
+  /** Stop waiting for the browser. */
+  "auth:cancel": { args: []; result: AuthState };
+  /** End this computer's session. Projects on disk are never touched. */
+  "auth:sign-out": { args: []; result: AuthState };
+  /** Use Kiungo without signing in, when signing in can't start. */
+  "auth:skip": { args: []; result: AuthState };
+  /** The open project's sketch files, main file first. */
+  "sketch:list": { args: [projectPath: string]; result: SketchFile[] };
+  "sketch:read": { args: [projectPath: string, name: string]; result: { ok: true; content: string } | { ok: false; message: string } };
+  /** Save a file whole (crash-safe). */
+  "sketch:write": { args: [projectPath: string, name: string, content: string]; result: SketchResult };
+  "sketch:create": { args: [projectPath: string, name: string]; result: SketchResult };
+  "sketch:rename": { args: [projectPath: string, from: string, to: string]; result: SketchResult };
+  /** Move a file to the computer's trash, so it can be got back. */
+  "sketch:delete": { args: [projectPath: string, name: string]; result: SketchResult };
+}
+
+/** Messages the main process sends the interface, unasked. */
+export interface EventMap {
+  "auth:changed": AuthState;
+}
+
+export type EventChannel = keyof EventMap;
+export const EVENT_CHANNELS = ["auth:changed"] as const satisfies readonly EventChannel[];
+
+export function isEventChannel(value: unknown): value is EventChannel {
+  return typeof value === "string" && (EVENT_CHANNELS as readonly string[]).includes(value);
 }
 
 export type InvokeChannel = keyof InvokeMap;
@@ -154,6 +214,17 @@ export const INVOKE_CHANNELS = [
   "projects:reveal",
   "projects:settings",
   "projects:choose-folder",
+  "auth:state",
+  "auth:sign-in",
+  "auth:cancel",
+  "auth:sign-out",
+  "auth:skip",
+  "sketch:list",
+  "sketch:read",
+  "sketch:write",
+  "sketch:create",
+  "sketch:rename",
+  "sketch:delete",
 ] as const satisfies readonly InvokeChannel[];
 
 /** Fails to compile when a channel in InvokeMap is missing from INVOKE_CHANNELS (the preload would refuse it). */
@@ -166,6 +237,8 @@ export const EMULATED_BOARDS: readonly EmulatedBoardId[] = ["uno", "nano"];
 /** What `window.kiungo` looks like in the interface. */
 export interface KiungoBridge {
   invoke<C extends InvokeChannel>(channel: C, ...args: InvokeMap[C]["args"]): Promise<InvokeMap[C]["result"]>;
+  /** Listen for a message from the main process; returns a function that stops listening. */
+  on<E extends EventChannel>(channel: E, listener: (payload: EventMap[E]) => void): () => void;
 }
 
 export type Handler<C extends InvokeChannel> = (...args: InvokeMap[C]["args"]) => Promise<InvokeMap[C]["result"]> | InvokeMap[C]["result"];

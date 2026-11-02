@@ -10,6 +10,32 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.28.0] - 2026-11-02
+
+Phase Two, Sprint 8: robots in a world. A two-wheel robot built in the lab drives round a course in the desktop app, driven by your own code. The desktop app is 0.8.0.
+
+### Added
+- **The World (WLD-01 to WLD-03).** Beside the code there's now a **World** tab. It shows the robot's arena from above: walls, boxes, a line on the floor and the course's checkpoints, with the robot driving as your code says.
+  - Physics (Rapier 2D) stops the robot at walls and boxes, and counts each bump.
+  - The world steps in the same simulated time as the emulated board, so a run is the same every time.
+  - The pane shows the time, speed, distance driven, bumps and checkpoints passed, and says **Finished** at the end of the course.
+- **Move the walls while it runs.** Drag a box and the running robot sees it move at once. **Box** adds one; the turn and bin buttons rotate or remove the selected box. The world is saved in the project's `world.json`.
+- **Sensors that measure the world (WLD-02, WLD-05).** The sensors sit at fixed places on the chassis.
+  - The HC-SR04 looks forward from the front. Three rays across its 15° cone find the nearest echo, drawn on the World as a dashed line to what it sees.
+  - The light sensors look down either side of the middle and read dark over the tape.
+- **The robot is the circuit (OUT-03).** A board with two DC motors is a two-wheel robot: DC motor 1 is the left wheel and DC motor 2 the right. Each wheel turns at its driver's EN PWM duty, in the direction IN1 and IN2 say, at the TT gear motor's 140 rpm on 65 mm wheels. The lab's circuit shows the same motors spinning.
+- **Two robot templates (PRJ-03)**, each with its course:
+  - **Obstacle avoider:** drives forward and spins away from anything closer than 25 cm, through a field of boxes to the goal.
+  - **Line follower:** two light sensors either side of a black oval, steering back onto the line.
+  - Starter code can now name a second part of the same kind (`{{dc-motor#2.EN}}`).
+- **Courses checked in CI.** A test harness runs the templates' compiled code in their worlds, with no screen: the emulated board, the part models and the physics stepped together. The line follower must finish a lap without leaving the tape by more than 6 cm, and the obstacle avoider must reach its goal.
+
+### Changed
+- The desktop app's content policy allows WebAssembly (for the physics), and still no JavaScript eval.
+
+### Not yet
+- One robot per project, on the Uno.
+
 ## [1.27.0] - 2026-11-02
 
 Phase Two, Sprint 7: run your own code. In the desktop app, **Run** now runs the project's sketch on an emulated Arduino Uno, and the circuit does what the code says. The desktop app is 0.7.0. The website's lab works as before.
@@ -552,6 +578,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.28.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.27.0...v1.28.0
 [1.27.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.26.0...v1.27.0
 [1.26.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.25.0...v1.26.0
 [1.25.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.24.0...v1.25.0

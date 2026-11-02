@@ -19,9 +19,11 @@
     "./project/*": "./src/project/*.ts",
     "./build": "./src/build/index.ts",
     "./build/*": "./src/build/*.ts",
-    "./hardware/*": "./src/hardware/*.ts"
+    "./hardware/*": "./src/hardware/*.ts",
+    "./world/*": "./src/world/*.ts"
   },
   "dependencies": {
+    "@dimforge/rapier2d-compat": "0.21.0",
     "@xyflow/system": "0.0.80",
     "avr8js": "0.21.1"
   }

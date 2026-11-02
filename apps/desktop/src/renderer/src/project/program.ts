@@ -14,6 +14,8 @@ import type { LabNode } from "@kiungo/core/lab/types";
 import { boardName } from "@kiungo/core/project";
 import type { ProgramDriver } from "@kiungo/lab/lab-context";
 import EmulatorWorker from "@kiungo/core/emulator/worker?worker";
+import { robotFromCircuit, robotWiring } from "@kiungo/core/world/robot";
+import type { RobotSpec, WorldObstacle, WorldSpec, WorldState } from "@kiungo/core/world/types";
 import { invoke } from "../ipc";
 
 export interface EditorBridge {
@@ -26,12 +28,23 @@ export interface EditorBridge {
 /** How long loading may take before the run gives up (a worker that never answers). */
 const LOAD_TIMEOUT_MS = 10_000;
 
-export function programDriver(projectPath: string, projectBoard: string, editor: () => EditorBridge | null): ProgramDriver {
+/** The robot's world while the program runs (sprint 8): the World pane listens and moves obstacles. */
+export interface WorldLink {
+  /** The world the next run uses; null for a project without one. */
+  world: () => WorldSpec | null;
+  /** The world's state about 20 times a second, and null when the run stops. */
+  onState: (state: WorldState | null, robot: RobotSpec | null) => void;
+}
+
+export type ProjectProgramDriver = ProgramDriver & { setObstacles: (obstacles: WorldObstacle[]) => void };
+
+export function programDriver(projectPath: string, projectBoard: string, editor: () => EditorBridge | null, world?: WorldLink): ProjectProgramDriver {
   let worker: Worker | null = null;
   let run = 0;
 
   const stop = () => {
     run++;
+    world?.onState(null, null);
     if (worker) {
       worker.postMessage({ type: "stop" } satisfies ToWorker);
       worker.terminate();
@@ -48,7 +61,7 @@ export function programDriver(projectPath: string, projectBoard: string, editor:
       return null;
     },
 
-    start: async (boardId, inputs, on) => {
+    start: async (boardId, inputs, circuit, on) => {
       stop();
       const mine = ++run;
       on.stage("building");
@@ -62,6 +75,9 @@ export function programDriver(projectPath: string, projectBoard: string, editor:
         return { ok: false, message: build.message ?? (errors ? `Your code didn't build: ${errors === 1 ? "1 problem" : `${errors} problems`} in Code problems.` : "Your code didn't build. The build log says why.") };
       }
       on.stage("starting");
+      // A circuit with two motors on the board is a robot: it drives in the project's world.
+      const spec = world?.world() ?? null;
+      const robot = spec ? robotFromCircuit(circuit.nodes, circuit.analysis, boardId) : null;
       const w = new EmulatorWorker();
       worker = w;
       return new Promise((resolve) => {
@@ -70,18 +86,31 @@ export function programDriver(projectPath: string, projectBoard: string, editor:
           stop();
           resolve({ ok: false, message: "The emulated board didn't start. Try Run again." });
         }, LOAD_TIMEOUT_MS);
+        let programBytes = 0;
+        const begin = () => {
+          window.clearTimeout(timer);
+          w.postMessage({ type: "peripherals", inputs } satisfies ToWorker);
+          w.postMessage({ type: "start" } satisfies ToWorker);
+          resolve({ ok: true, programBytes });
+        };
         w.onmessage = (event: MessageEvent<FromWorker>) => {
           if (mine !== run) return;
           const m = event.data;
           switch (m.type) {
             case "loaded":
-              window.clearTimeout(timer);
-              w.postMessage({ type: "peripherals", inputs } satisfies ToWorker);
-              w.postMessage({ type: "start" } satisfies ToWorker);
-              resolve({ ok: true, programBytes: m.programBytes });
+              programBytes = m.programBytes;
+              if (spec && robot) {
+                w.postMessage({ type: "world", world: spec, robot, wiring: robotWiring(robot, circuit.nodes, circuit.analysis, boardId) } satisfies ToWorker);
+                break;
+              }
+              begin();
+              break;
+            case "world-ready":
+              begin();
               break;
             case "readings":
               on.readings({ boardId, t: m.simMs / 1000, speedPercent: m.speedPercent, pins: m.pins, crashed: m.crashed });
+              if (m.world) world?.onState(m.world, robot);
               break;
             case "serial":
               on.serial(m.text);
@@ -108,5 +137,7 @@ export function programDriver(projectPath: string, projectBoard: string, editor:
     setInputs: (inputs: PeripheralInput[]) => worker?.postMessage({ type: "peripherals", inputs } satisfies ToWorker),
 
     sendSerial: (text: string) => worker?.postMessage({ type: "serial-in", text } satisfies ToWorker),
+
+    setObstacles: (obstacles: WorldObstacle[]) => worker?.postMessage({ type: "world-obstacles", obstacles } satisfies ToWorker),
   };
 }

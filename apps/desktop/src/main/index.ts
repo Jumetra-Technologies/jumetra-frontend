@@ -38,7 +38,8 @@ const ISOLATION_HEADERS = {
 };
 const CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  // WebAssembly only (the robot world's physics, Rapier): no JavaScript eval.
+  "script-src 'self' 'wasm-unsafe-eval'",
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
@@ -283,6 +284,8 @@ const handlers: Handlers = {
   },
   "serial:write": (text) => (typeof text === "string" && text.length <= 4096 ? serialMonitor().write(text) : false),
   "serial:close": () => serialMonitor().stop(),
+  "world:read": (path) => (openProject(path) ? projectService().readWorld(path) : null),
+  "world:write": (path, world) => (openProject(path) ? projectService().writeWorld(path, world) : notOpen),
   "projects:choose-folder": async () => {
     const current = await projectService().settings();
     const folder = await chooseFolder({ title: "Where should new projects go?", buttonLabel: "Use this folder", defaultPath: current.projectsFolder, properties: ["openDirectory", "createDirectory"] });

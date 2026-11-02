@@ -37,7 +37,7 @@ function fakeDriver(result: { ok: true; programBytes: number } | { ok: false; me
     stopped: 0,
     inputs: [],
     boardFor: (nodes) => nodes.find((n) => n.partId === "arduino-uno")?.id ?? null,
-    start: async (boardId, inputs, on) => {
+    start: async (boardId, inputs, _circuit, on) => {
       driver.started.push(boardId);
       driver.inputs.push(inputs);
       handlers.readings = on.readings;

@@ -22,6 +22,7 @@ The home page downloads the desktop app itself, and says how it went. The first 
   - A download in flight warns before the tab is closed, and Escape closes a finished notice.
 
 ### Changed
+- **Where the home page finds the release.** After the backend, it now reads the manifest of the GitHub release for the desktop version it was built with (`apps/desktop/package.json`), straight from GitHub's download CDN, which has no rate limit; the releases API (60 requests an hour per IP unauthenticated, which a shared host exhausts) is the last resort, and uses `GITHUB_TOKEN` when the site has one.
 - Sizes are set with a no-break space, so "148 MB" never splits across lines.
 
 ## [1.31.0] - 2026-11-02

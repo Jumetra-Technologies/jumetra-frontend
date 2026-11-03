@@ -7,7 +7,7 @@ import { AppPreview } from "@/components/landing/AppPreview";
 import { DesktopRelease } from "@/components/landing/DesktopRelease";
 import { DownloadBlock } from "@/components/landing/DownloadBlock";
 import { DESKTOP, structuredData } from "@/lib/landing/content";
-import { classifyInstaller, detectPlatform, fileLabel, fileName, githubRelease, latestRelease, primaryFile, releaseFromGitHub, type Release } from "@/lib/releases";
+import { classifyInstaller, detectPlatform, fileLabel, fileName, githubRelease, latestRelease, manifestRelease, primaryFile, releaseFromGitHub, type Release } from "@/lib/releases";
 import { buildManifest, classify, latestChangelogSection } from "../.github/scripts/desktop-release-manifest.mjs";
 
 const files: Release["files"] = [
@@ -77,6 +77,34 @@ describe("where the release comes from", () => {
     const fromGitHub = await latestRelease(fallback);
     expect(fromGitHub).toMatchObject({ version: "0.11.0", source: "github", releaseUrl: gh.html_url });
     expect(fromGitHub?.files).toHaveLength(5);
+  });
+
+  it("the manifest of the version this site was built with comes straight from the download CDN, before the API", async () => {
+    const manifest = { channel: "beta", version: "0.11.0", notes: "n", published_at: gh.published_at, files };
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (url === "https://github.com/Jumetra-Technologies/jumetra-frontend/releases/download/desktop-v0.11.0/kiungo-release.json") return json(manifest);
+      if (url.endsWith("/kiungo-release.json")) return json({ detail: "none" }, 404);
+      throw new Error(`unexpected ${url}`);
+    }) as unknown as typeof fetch;
+    expect(await manifestRelease("0.11.0", fetchImpl)).toMatchObject({ version: "0.11.0", source: "github", releaseUrl: "https://github.com/Jumetra-Technologies/jumetra-frontend/releases/tag/desktop-v0.11.0" });
+    expect(await manifestRelease("0.12.0", fetchImpl)).toBeNull();
+    expect(await manifestRelease("../evil", fetchImpl)).toBeNull();
+    expect(await manifestRelease("", fetchImpl)).toBeNull();
+
+    // With the backend empty, latestRelease takes the built-with version's manifest and never calls the API.
+    vi.stubEnv("NEXT_PUBLIC_DESKTOP_VERSION", "0.11.0");
+    const calls: string[] = [];
+    const ordered = vi.fn(async (url: string) => {
+      calls.push(url);
+      if (url.includes("/releases/latest")) return json({ detail: "none" }, 404);
+      if (url.endsWith("/kiungo-release.json")) return json(manifest);
+      throw new Error(`unexpected ${url}`);
+    }) as unknown as typeof fetch;
+    vi.resetModules();
+    const { latestRelease: fresh } = await import("@/lib/releases");
+    expect(await fresh(ordered)).toMatchObject({ version: "0.11.0", source: "github" });
+    expect(calls.some((u) => u.startsWith("https://api.github.com/"))).toBe(false);
+    vi.unstubAllEnvs();
   });
 
   it("without a manifest, the installers' names say what they are", async () => {

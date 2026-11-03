@@ -6,8 +6,9 @@ The backend needs jumetra-backend #7 (project sync) deployed for steps 3 and 4. 
 
 ## 1. The website sends people to the app
 
-1. Open the home page and scroll to the end, **Then take it to your desk** (or follow **Get the desktop app** from the hybrid section, or **Desktop app** in the footer).
-   - On your Windows PC the big button says **Download for Windows** and downloads `Kiungo-0.11.0-win-x64.exe`. **All downloads** lists every installer with its size.
+1. Open the home page and scroll to the end, **Then take it to your desk** (or follow **Desktop app** in the footer; the hybrid section's button is the same download).
+   - On your Windows PC the big button says **Download for Windows**. Press it: the button turns into **Downloading 12%**, a notice in the corner shows how far it is (MB of MB, with Cancel), and when the file is in your downloads the notice says **Downloaded! Kiungo for Windows is ready to install**, that it matches the release's checksum, and what to do next. **All downloads** lists every installer with its size; each downloads the same way.
+   - Turn Wi-Fi off part-way: the notice says where the connection dropped, and **Try again** carries on from there once you're back. (Every other problem has its own words too: a file that's gone, too many downloads at once, the download server down, a damaged file, a browser that couldn't hold it.)
    - On a phone there's no button: it says the app runs on computers, and the list is still there.
    - The four tabs (**Code and run**, **Real board**, **Robot world**, **Fix mistakes**) swap the screenshot and its caption; the arrow keys work on them too.
    - **How to open the beta** says what to do about the Windows and macOS warnings (the installers aren't signed yet).
@@ -17,13 +18,11 @@ The backend needs jumetra-backend #7 (project sync) deployed for steps 3 and 4. 
 5. The website's lab has a **Desktop app** link in its toolbar (on wide screens).
 6. Lighthouse on the home page, mobile: performance ______, LCP ______ s. Pass: 90 or more, and 2.5 s or less.
 
-Where the download comes from: the backend's `/releases/latest` when the release pipeline has published there (Juma's token), otherwise the newest GitHub release from the **Release the desktop app** workflow. Until a release exists, the section says the first beta is being prepared.
+Where the download comes from: the backend's `/releases/latest` when the release pipeline has published there (Juma's token); otherwise the GitHub release of the desktop version the site was built with, read from its `kiungo-release.json` on GitHub's download CDN; otherwise the newest GitHub release from the API (rate-limited for a shared host like Vercel, so it's last; `GITHUB_TOKEN` in the site's environment lifts the limit). The first beta, `desktop-v0.11.0`, was published on 2026-11-03 from `main` by that workflow (six installers and the checksum manifest). Until a release exists, the section says the first beta is being prepared.
 
-**To publish the first beta** (one of these; the workflow builds the installers on Windows, Ubuntu and macOS, about 25 minutes):
-- Push the tag from the Sprint 11 branch: `git tag desktop-v0.11.0 && git push origin desktop-v0.11.0`.
-- Or, once the branch is merged, open **Actions → Release the desktop app → Run workflow** with the channel set to beta.
+**To publish the next one**: bump `apps/desktop/package.json`, then either push the tag (`git tag desktop-v<version> && git push origin desktop-v<version>`) or open **Actions → Release the desktop app → Run workflow** on `main` with the channel set to beta. The workflow builds the installers on Windows, Ubuntu and macOS (about five minutes), refuses a version that already has a release, and the home page picks the new one up within five minutes.
 
-The home page picks the release up within five minutes.
+How the download works: GitHub's release downloads carry no CORS headers, so a plain link hands the file to the browser and the page can't tell how it went. The page therefore fetches the file through its own `/api/desktop/download`, which streams the release asset (only this project's release URLs are allowed) in 8 MB ranges, so that it can show progress, carry on after a dropped connection, and check the file against the manifest's SHA-512 before saving it. The bytes pass through Vercel, which counts them as data transfer (about 150 MB per download); `KIUNGO_DOWNLOAD_MODE=browser` in the site's environment switches the buttons back to plain links if that ever matters. If the route itself is down, the page falls back to the plain link on its own and says so.
 
 ## 2. Phase One work comes across (DSK-15)
 

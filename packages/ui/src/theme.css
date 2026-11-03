@@ -915,3 +915,31 @@ input[type="search"]::-webkit-search-decoration {
     animation: none;
   }
 }
+
+/* The home page's download notice: it rises into the corner, and a bar with no size yet sweeps. */
+@keyframes hhip-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes hhip-notice-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+.hhip-notice-in {
+  animation: hhip-notice-in 180ms ease-out;
+}
+.hhip-notice-indeterminate {
+  animation: hhip-notice-sweep 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hhip-notice-in,
+  .hhip-notice-indeterminate {
+    animation: none;
+  }
+}

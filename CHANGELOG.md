@@ -10,6 +10,21 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.32.0] - 2026-11-03
+
+The home page downloads the desktop app itself, and says how it went. The first beta, `desktop-v0.11.0`, is published.
+
+### Added
+- **The download happens on the page.** Pressing **Download for Windows** (or macOS, or Linux) fetches the installer right there: the button turns into *Downloading 12%*, a notice in the corner shows megabytes and percent with a Cancel button, and when the file is saved the notice says **Downloaded! Kiungo for Windows is ready to install**, that it matches the release's SHA-512, and what to do next (open it, the Start menu, and the SmartScreen step for a beta). Every installer under **All downloads** works the same way, and so does the hybrid section's button, which is now the download itself rather than a link to the section.
+  - The file comes through the site's own `/api/desktop/download`, which streams the release asset from GitHub (only this project's release URLs are allowed; GitHub's downloads carry no CORS headers, so a page can't read them directly). It's fetched in 8 MB ranges: a dropped connection costs only the piece in flight, and the download carries on from where it was, on its own while the browser is still online and from **Try again** after it gives up.
+  - **Problems say exactly what happened and what to do**: you're offline; the file isn't on the release page any more (404); too many downloads at once (429); the download server couldn't send the file (HTTP 503); the connection dropped at 34 MB of 148 MB; the file arrived damaged (checksum mismatch); the browser couldn't hold the file. Each has its fix, and the relevant action: Try again, Reload the page, Let the browser download it, or Open the release page.
+  - If the download route itself is down before anything arrived, the browser is handed the plain link and the notice says why. `KIUNGO_DOWNLOAD_MODE=browser` turns the page's own download off altogether (plain links, no notice beyond "your browser is downloading it").
+  - A download in flight warns before the tab is closed, and Escape closes a finished notice.
+
+### Changed
+- **Where the home page finds the release.** After the backend, it now reads the manifest of the GitHub release for the desktop version it was built with (`apps/desktop/package.json`), straight from GitHub's download CDN, which has no rate limit; the releases API (60 requests an hour per IP unauthenticated, which a shared host exhausts) is the last resort, and uses `GITHUB_TOKEN` when the site has one.
+- Sizes are set with a no-break space, so "148 MB" never splits across lines.
+
 ## [1.31.0] - 2026-11-02
 
 Phase Two, Sprint 11: the website companion, sync and import. The website is now the way into the desktop app. Phase One work comes across, and projects can sync between computers through the account. The desktop app is 0.11.0.
@@ -664,6 +679,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.32.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.31.0...v1.32.0
 [1.31.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.30.0...v1.31.0
 [1.30.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.29.0...v1.30.0
 [1.29.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.28.0...v1.29.0

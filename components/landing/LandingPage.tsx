@@ -2,9 +2,11 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "@kiungo/ui/button";
 import { HERO, HYBRID, LEARN, LIBRARY, SIMULATE } from "@/lib/landing/content";
-import type { Release } from "@/lib/releases";
+import type { DownloadMode, Release } from "@/lib/releases";
 import { cn } from "@/lib/utils";
+import { DesktopCta } from "./DesktopCta";
 import { DesktopRelease } from "./DesktopRelease";
+import { DownloadProvider } from "./DownloadProvider";
 import { ScrollToHash } from "./ScrollToHash";
 import { HeroActions } from "./HeroActions";
 import { HeroBoard } from "./HeroBoard";
@@ -71,7 +73,19 @@ function Beat({
   );
 }
 
-export function LandingPage({ release = null }: { release?: Release | null }) {
+/**
+ * The home page. `release` is the desktop app's newest release (null before
+ * the first), and `downloadMode` how its installers download (lib/releases).
+ */
+export function LandingPage({ release = null, downloadMode = "page" }: { release?: Release | null; downloadMode?: DownloadMode }) {
+  return (
+    <DownloadProvider release={release} mode={downloadMode}>
+      <LandingBody release={release} />
+    </DownloadProvider>
+  );
+}
+
+function LandingBody({ release }: { release: Release | null }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-background" data-testid="landing">
       {/* Hero */}
@@ -123,7 +137,7 @@ export function LandingPage({ release = null }: { release?: Release | null }) {
         <Beat id="hybrid" heading={HYBRID.heading} body={HYBRID.body} last>
           <HybridSwitch />
           <div className="mt-8 flex flex-wrap gap-3">
-            <CallToAction href={HYBRID.cta.href} label={HYBRID.cta.label} />
+            <DesktopCta release={release} />
             <CallToAction href={HYBRID.secondary.href} label={HYBRID.secondary.label} primary={false} />
           </div>
         </Beat>

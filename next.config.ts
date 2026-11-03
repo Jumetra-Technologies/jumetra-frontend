@@ -4,6 +4,8 @@ import { join } from "node:path";
 
 // The app version, from package.json (see CHANGELOG.md for how it's bumped).
 const APP_VERSION = (JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as { version: string }).version;
+// The desktop app's version in this checkout: the home page offers its GitHub release (lib/releases.ts).
+const DESKTOP_VERSION = (JSON.parse(readFileSync(join(process.cwd(), "apps/desktop/package.json"), "utf8")) as { version: string }).version;
 const PRODUCTION_API_URL = "https://europe-west4-hhipsystemv0.cloudfunctions.net/api";
 const PRODUCTION_WS_URL = "wss://api-aoxa3kagvq-ez.a.run.app";
 const localDevOrigins = Object.values(networkInterfaces()).flatMap((addresses) =>
@@ -33,6 +35,7 @@ const nextConfig = {
   },
   env: {
     NEXT_PUBLIC_APP_VERSION: APP_VERSION,
+    NEXT_PUBLIC_DESKTOP_VERSION: DESKTOP_VERSION,
     NEXT_PUBLIC_API_URL:
       process.env.NODE_ENV === "production"
         ? PRODUCTION_API_URL

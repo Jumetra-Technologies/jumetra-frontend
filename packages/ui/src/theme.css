@@ -900,3 +900,18 @@ input[type="search"]::-webkit-search-decoration {
     inset: -3px;
   }
 }
+
+/* The home page's app preview: a new screenshot settles in rather than snapping. */
+@keyframes hhip-preview-swap {
+  from {
+    opacity: 0;
+  }
+}
+.hhip-preview-swap {
+  animation: hhip-preview-swap 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hhip-preview-swap {
+    animation: none;
+  }
+}

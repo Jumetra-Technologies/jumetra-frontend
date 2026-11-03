@@ -20,7 +20,7 @@ import {
 
 describe("starters (DSK-11)", () => {
   for (const board of PROJECT_BOARDS) {
-    for (const starter of STARTERS) {
+    for (const starter of STARTERS.filter((s) => !s.notOn?.[board.part])) {
       it(`${starter.title} on the ${board.name}: wired with no errors, and the code uses the wired pins`, () => {
         const { session, code } = buildStarter({ name: "Test", board: board.part, starter: starter.id });
         expect(session.nodes.map((n) => n.partId)).toEqual([board.part, ...starter.parts]);
@@ -49,6 +49,14 @@ describe("starters (DSK-11)", () => {
     expect(session.wires).toEqual([]);
     expect(code).toContain("void setup()");
     expect(libraries).toEqual([]);
+  });
+
+  it("a starter that isn't safe on a board says why", () => {
+    expect(() => buildStarter({ name: "x", board: "esp32", starter: "distance" })).toThrow(/level shifter/);
+  });
+
+  it("the ESP32's profile names the board package's own index", () => {
+    expect(sketchProfile(PROJECT_BOARDS[2])).toContain("      - platform: esp32:esp32 (3.3.12)\n        platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json\n");
   });
 
   it("refuses an unknown starter or a part that isn't a board", () => {

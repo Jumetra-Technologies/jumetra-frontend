@@ -47,6 +47,49 @@ KIUNGO_API_URL=http://127.0.0.1:8000 npm run desktop
 
 The compiler's output is turned into problems, explanations and fixes by `@kiungo/core/build` (`packages/core/src/build/`), tested against real avr-gcc 7.3 messages in `packages/core/test/fixtures/gcc/`. Libraries are added and removed with `arduino-cli profile lib add|remove`, which also pins what they depend on.
 
+## Running your code
+
+The lab's Run builds the sketch (or reuses the last good build when no file changed: `kiungo-build.json` in the build folder holds the sketch's fingerprint), then runs the HEX in `@kiungo/core/emulator/worker` (`src/renderer/src/project/program.ts`). The worker reports each pin's level, PWM duty, toggle rate and last pulse width about 20 times a second (`emulator/pinstats.ts`); `@kiungo/core/lab/program` turns those into the parts' states and feeds the sensors' readings back as part models (`emulator/peripherals.ts`: HC-SR04, DHT11/22, analog and digital sensors). The test sketches and the script that compiles them like Arduino CLI are in `packages/core/test/fixtures/sketches/`.
+
+## Robots in a world
+
+A board with two DC motors is a robot (`@kiungo/core/world/robot`). When the project has a `world.json`, Run puts it in that world: the emulator worker steps Rapier 2D physics (`world/sim.ts`) after each slice of cycles, turns the motor pins into wheel speeds and the world into the sensors' readings (`world/harness.ts`, which CI also runs headless to check the templates finish their courses). The World pane (`src/renderer/src/world/WorldPane.tsx`) draws it at the screen's rate and lets you drag the obstacles while it runs.
+
+## Hybrid runs on a real board
+
+A board marked Physical or Hybrid in the Inspector runs the code for real (`src/renderer/src/project/program.ts`, `startReal`). `@kiungo/core/hybrid/plan` decides which parts Kiungo plays (those marked Virtual) and how each answers the sketch. The main process (`src/main/hybrid/service.ts`) builds the sketch twice:
+
+- **Ship build:** the sketch alone.
+- **Hybrid build:** a copy in the user-data `builds/<project hash>-hybrid` folder. Each source file starts with the marker and `kiungo_shim.h`, then a `#line` so problems keep their line numbers. Its `sketch.yaml` swaps replaced libraries for the adapters in `resources/hybrid` (`- dir:` entries).
+
+After the upload, `src/main/hybrid/link.ts` keeps `arduino-cli monitor` open at 115200 baud and carries COBS frames (`@kiungo/core/hybrid/protocol`) both ways:
+
+- **To the board:** HELLO, PING every 100 ms, and SET with the virtual parts' values (changes only, and all again after the board restarts).
+- **From the board:** TEXT (the sketch's Serial) and OUT (what it drove).
+
+The interface's plan is checked in `parsePlan` before it reaches the generated header.
+
+Safety (sprint 10):
+
+- **STOP:** Stop sends STOP before the port closes; the emergency stop sends it twice and stops pinging.
+- **Board watchdog:** the runtime's watchdog runs on Timer0's compare-A interrupt. It turns every driven pin off when the link is quiet for 300 ms after a hello.
+- **Checks before a run:** `@kiungo/core/hybrid/safety` adds the real-board checks to the lab's problems through `ProgramDriver.faults`, and `blockingFaults` decides what stops Run.
+- **Parts tab:** `@kiungo/core/hybrid/readiness` gives the Parts tab its statuses and the bill of materials.
+
+## Import and sync
+
+**Import:** `src/main/account/import.ts` turns a website lab session into a project. The session file or `/auth/me/lab-sessions` gives the circuit, and `boardForSession` picks the board. A website project gives `records/about.md`.
+
+**Sync:** `src/main/sync/service.ts` keeps a project in step with `/auth/me/projects-sync` (jumetra-backend `docs/sync-api.md`).
+- `.kiungo/sync.json` holds the last agreed tree.
+- `@kiungo/core/project` `mergeTrees` does the three-way merge, and `conflictCopyPath` names the other side of a conflict.
+- Pushes go through `If-Match`, and a 409 means pull and go again.
+- The account calls use the desktop session's bearer token, in the main process only (`src/main/account/client.ts`).
+
+## Boards, uploads and the serial monitor
+
+Arduino CLI finds boards (`board list --watch`, kept running while the app is open), uploads (`upload --profile kiungo --fqbn … -p …`) and runs the serial monitor (`monitor -p … --config baudrate=…`), all as child processes (`src/main/hardware/`). The interface can only name a port that discovery has found, and only open the driver pages listed in `src/main/hardware/doctor.ts`. Board limits and pins are in `@kiungo/core/hardware/boards`; upload failures are matched to recovery steps in `@kiungo/core/hardware/upload`.
+
 ## Keyboard
 
 | Keys | What |
@@ -57,6 +100,7 @@ The compiler's output is turned into problems, explanations and fixes by `@kiung
 | Ctrl+Shift+H (⇧⌘H) | Home |
 | Ctrl+E (⌘E) | Show or hide the code |
 | Ctrl+B (⌘B) | Build |
+| Ctrl+U (⌘U) | Upload |
 | Ctrl+F (⌘F) | Find, in the code |
 | Ctrl+Enter (⌘↵) | Run or stop, in the lab |
 | / | Search parts, in the lab |
@@ -77,7 +121,8 @@ Before a release build, CI runs `npm run fetch:arduino-cli -w @kiungo/desktop --
 | `src/main/index.ts` | Window, the `kiungo-app://` protocol (isolation headers and content policy), IPC handlers |
 | `src/main/projects/` | Projects on disk: making, opening, the recent list, crash-safe autosave, sketch files |
 | `src/main/auth/` | Signing in through the website, the keychain-encrypted session |
-| `src/main/build/` | Building a project with its profile, and its libraries |
+| `src/main/build/` | Building a project with its profile, its libraries, and uploading |
+| `src/main/hardware/` | Finding boards on USB, the serial monitor, and why a board might not show up |
 | `src/main/toolchain/arduino-cli.ts` | Finding and running Arduino CLI with JSON output |
 | `src/preload/index.ts` | The only bridge: `window.kiungo.invoke(channel, ...args)` |
 | `src/renderer/` | The interface: the sign-in screen, Home, the project screen (the shared lab from `@kiungo/lab` and the code editor), the command palette |

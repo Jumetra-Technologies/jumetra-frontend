@@ -19,18 +19,25 @@ files:
 extraResources:
   - from: resources/sketches
     to: sketches
+  # The Hybrid runtime and adapter libraries, compiled into the user's sketch for a Hybrid run.
+  - from: resources/hybrid
+    to: hybrid
   - from: resources/bin/${platform}-${arch}
     to: bin
     filter: ["**/*"]
+# Installer names are plain and predictable (no spaces), so the download page and
+# the release manifest can name them: Kiungo-0.11.0-win-x64.exe, Kiungo-0.11.0-mac-arm64.dmg,
+# Kiungo-0.11.0-linux-x86_64.AppImage.
 win:
   target: [{ target: nsis, arch: [x64] }]
+  artifactName: ${productName}-${version}-win-${arch}.${ext}
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
 linux:
   target: [AppImage, deb, rpm]
-  artifactName: ${productName}-${version}-${arch}.${ext}
+  artifactName: ${productName}-${version}-linux-${arch}.${ext}
   maintainer: Kiungo Labs Technologies
   category: Education
   synopsis: Build, code and run robotics projects
@@ -41,4 +48,5 @@ linux:
       MimeType: x-scheme-handler/kiungo;
 mac:
   target: [{ target: dmg, arch: [x64, arm64] }]
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
   category: public.app-category.education

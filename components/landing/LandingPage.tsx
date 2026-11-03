@@ -2,7 +2,10 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "@kiungo/ui/button";
 import { HERO, HYBRID, LEARN, LIBRARY, SIMULATE } from "@/lib/landing/content";
+import type { Release } from "@/lib/releases";
 import { cn } from "@/lib/utils";
+import { DesktopRelease } from "./DesktopRelease";
+import { ScrollToHash } from "./ScrollToHash";
 import { HeroActions } from "./HeroActions";
 import { HeroBoard } from "./HeroBoard";
 import { HybridSwitch } from "./HybridSwitch";
@@ -68,7 +71,7 @@ function Beat({
   );
 }
 
-export function LandingPage() {
+export function LandingPage({ release = null }: { release?: Release | null }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-background" data-testid="landing">
       {/* Hero */}
@@ -119,13 +122,16 @@ export function LandingPage() {
 
         <Beat id="hybrid" heading={HYBRID.heading} body={HYBRID.body} last>
           <HybridSwitch />
-          <div className="mt-8">
-            <CallToAction href={HYBRID.cta.href} label={HYBRID.cta.label} primary={false} />
+          <div className="mt-8 flex flex-wrap gap-3">
+            <CallToAction href={HYBRID.cta.href} label={HYBRID.cta.label} />
+            <CallToAction href={HYBRID.secondary.href} label={HYBRID.secondary.label} primary={false} />
           </div>
         </Beat>
       </main>
 
+      <DesktopRelease release={release} />
       <SiteFooter />
+      <ScrollToHash />
     </div>
   );
 }

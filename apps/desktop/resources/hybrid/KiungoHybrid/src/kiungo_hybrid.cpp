@@ -2,6 +2,7 @@
 #include "kiungo_hybrid.h"
 
 #include <string.h>
+#include <util/atomic.h>
 
 // The shim header renamed these for the sketch; this file wants the real ones.
 #undef Serial
@@ -10,6 +11,8 @@
 #undef pulseIn
 #undef pulseInLong
 #undef serialEvent
+#undef digitalWrite
+#undef analogWrite
 #define LINK Serial
 
 #ifndef KIUNGO_PIN_TABLE
@@ -41,6 +44,23 @@ bool kiungo_sensor_known(uint8_t sensor) {
   return known(sensor);
 }
 
+// ----- safety (SAF-01, SAF-02) -----
+static volatile uint8_t safeReason = KIUNGO_SAFE_NONE;
+static volatile bool safePending = false;
+/** The watchdog runs once the PC has said hello. */
+static volatile bool armed = false;
+/** Timer0 compare-A ticks (about 1.024 ms each), and the tick the link was last heard. */
+static volatile uint16_t ticks = 0;
+static volatile uint16_t heardAt = 0;
+static volatile int lastAvailable = 0;
+static void enterSafe(uint8_t reason);
+
+uint8_t kiungo_safe_reason() { return safeReason; }
+
+static void heard() {
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { heardAt = ticks; }
+}
+
 // ----- stats -----
 static uint16_t framesIn = 0, framesBad = 0, framesDropped = 0;
 
@@ -56,6 +76,7 @@ static uint8_t rxCode = 0, rxRun = 0;
 static bool rxBad = false;
 
 static void handle(const uint8_t* frame, uint8_t len);
+static void flushOut(bool force);
 
 static void rxReset() {
   rxLen = 0;
@@ -93,6 +114,7 @@ static void rxByte(uint8_t b) {
 
 static void handle(const uint8_t* f, uint8_t len) {
   if (len < 1) return;
+  heard();
   switch (f[0]) {
     case KIUNGO_SET:
       if (len == 6 && f[1] < KIUNGO_MAX_SENSORS) {
@@ -113,9 +135,21 @@ static void handle(const uint8_t* f, uint8_t len) {
     case KIUNGO_PING: {
       uint8_t seq = len > 1 ? f[1] : 0;
       kiungo_send(KIUNGO_ACK, &seq, 1);
+      // The PC pings while it listens: the outputs' latest state goes with the answer.
+      flushOut(true);
+      if (safeReason != KIUNGO_SAFE_NONE) safePending = true;
       break;
     }
+    case KIUNGO_STOP:
+      enterSafe(len > 1 && f[1] == KIUNGO_SAFE_EMERGENCY ? KIUNGO_SAFE_EMERGENCY : KIUNGO_SAFE_STOP);
+      armed = false;
+      break;
     case KIUNGO_HELLO: {
+      // The PC is back: a link-lost safe state ends (the outputs stay low until the sketch writes them).
+      ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        if (safeReason == KIUNGO_SAFE_LINK_LOST) safeReason = KIUNGO_SAFE_NONE;
+        armed = true;
+      }
       uint8_t p[2] = {KIUNGO_PROTOCOL, KIUNGO_MAX_SENSORS};
       kiungo_send(KIUNGO_HELLO_ACK, p, 2);
       uint8_t s[6] = {(uint8_t)framesIn, (uint8_t)(framesIn >> 8), (uint8_t)framesBad, (uint8_t)(framesBad >> 8), (uint8_t)framesDropped, (uint8_t)(framesDropped >> 8)};
@@ -129,6 +163,7 @@ static void handle(const uint8_t* f, uint8_t len) {
 
 void kiungo_poll() {
   while (LINK.available() > 0) rxByte((uint8_t)LINK.read());
+  flushOut(false);
 }
 
 // Arduino's main() calls serialEvent() between loop() iterations when bytes wait.
@@ -138,7 +173,7 @@ void serialEvent() {
 }
 
 // ----- COBS encoder: write a frame straight to the UART -----
-void kiungo_send(uint8_t type, const uint8_t* payload, uint8_t length) {
+bool kiungo_send(uint8_t type, const uint8_t* payload, uint8_t length) {
   // Encode into a small stack buffer: type + payload, COBS, trailing zero.
   if (length > KIUNGO_FRAME_MAX - 1) length = KIUNGO_FRAME_MAX - 1;
   uint8_t raw[KIUNGO_FRAME_MAX];
@@ -166,8 +201,150 @@ void kiungo_send(uint8_t type, const uint8_t* payload, uint8_t length) {
   enc[w++] = 0;
   // A frame that doesn't fit in the UART buffer is dropped whole rather than
   // blocking the user's code (OUT-01: digitalWrite must never wait on USB).
-  if (LINK.availableForWrite() < w) { framesDropped++; return; }
+  if (LINK.availableForWrite() < w) { framesDropped++; return false; }
   LINK.write(enc, w);
+  return true;
+}
+
+// ----- outputs: what the sketch drove (OUT-01) -----
+#define KIUNGO_OUT_PINS 20
+static uint32_t outLevels = 0;
+/** Pins the sketch has written: the others are inputs, or not used. */
+static volatile uint32_t outDriven = 0;
+static uint32_t pwmPins = 0;
+static uint8_t pwmValue[KIUNGO_OUT_PINS];
+static bool outDirty = false;
+
+// Sent as soon as the UART has room. When it hasn't (a sketch writing pins in
+// a tight loop), the frame waits and the latest state goes on a later call:
+// the link never slows the sketch down.
+static void flushOut(bool force) {
+  if (safePending) {
+    uint8_t r = safeReason;
+    if (kiungo_send(KIUNGO_SAFE, &r, 1)) safePending = false;
+  }
+  if (!outDirty && !force) return;
+  uint8_t p[8 + 2 * KIUNGO_OUT_PINS];
+  for (uint8_t i = 0; i < 4; i++) {
+    p[i] = (uint8_t)(outLevels >> (8 * i));
+    p[4 + i] = (uint8_t)(outDriven >> (8 * i));
+  }
+  uint8_t n = 8;
+  for (uint8_t pin = 0; pin < KIUNGO_OUT_PINS; pin++) {
+    if (pwmPins & (1UL << pin)) {
+      p[n++] = pin;
+      p[n++] = pwmValue[pin];
+    }
+  }
+  // Dropped when the UART is busy: it stays due, and goes on a later call.
+  if (kiungo_send(KIUNGO_OUT, p, n)) outDirty = false;
+}
+
+void kiungo_digitalWrite(uint8_t pin, uint8_t value) {
+  if (pin >= KIUNGO_OUT_PINS) {
+    if (safeReason == KIUNGO_SAFE_NONE) digitalWrite(pin, value);
+    return;
+  }
+  uint32_t bit = 1UL << pin;
+  bool wasDriven;
+  // Checked and written with interrupts off, so the watchdog can't trip in between and miss this pin.
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    if (safeReason != KIUNGO_SAFE_NONE) return;
+    digitalWrite(pin, value);
+    wasDriven = outDriven & bit;
+    outDriven |= bit;
+  }
+  uint32_t levels = value ? (outLevels | bit) : (outLevels & ~bit);
+  if (levels == outLevels && wasDriven && !(pwmPins & bit)) return;
+  outLevels = levels;
+  pwmPins &= ~bit;
+  outDirty = true;
+  flushOut(false);
+}
+
+void kiungo_analogWrite(uint8_t pin, int value) {
+  if (pin >= KIUNGO_OUT_PINS) {
+    if (safeReason == KIUNGO_SAFE_NONE) analogWrite(pin, value);
+    return;
+  }
+  uint32_t bit = 1UL << pin;
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    if (safeReason != KIUNGO_SAFE_NONE) return;
+    analogWrite(pin, value);
+    outDriven |= bit;
+  }
+  // analogWrite(0) and analogWrite(255) are plain low and high, as on the board.
+  if (value <= 0 || value >= 255) {
+    pwmPins &= ~bit;
+    outLevels = value >= 255 ? (outLevels | bit) : (outLevels & ~bit);
+  } else {
+    if ((pwmPins & bit) && pwmValue[pin] == (uint8_t)value) return;
+    pwmPins |= bit;
+    pwmValue[pin] = (uint8_t)value;
+    outLevels &= ~bit;
+  }
+  outDirty = true;
+  flushOut(false);
+}
+
+// ----- the safe state -----
+// Every driven pin low, PWM off, virtual sensors back to "no value". Runs in
+// the watchdog's interrupt or with interrupts off; digitalWrite is safe there.
+static void enterSafe(uint8_t reason) {
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    if (safeReason == KIUNGO_SAFE_EMERGENCY) return;  // the strongest reason holds
+    if (safeReason != KIUNGO_SAFE_NONE && reason == KIUNGO_SAFE_LINK_LOST) return;
+    safeReason = reason;
+    for (uint8_t pin = 0; pin < KIUNGO_OUT_PINS; pin++) {
+      if (outDriven & (1UL << pin)) digitalWrite(pin, LOW);
+    }
+    outLevels = 0;
+    pwmPins = 0;
+    outDirty = true;
+    memset(sensorKnown, 0, sizeof(sensorKnown));
+    safePending = true;
+  }
+}
+
+// The watchdog (SAF-02): Timer0 overflows drive millis(); its compare-A
+// interrupt is free and fires once per overflow, about every 1.024 ms,
+// whatever OCR0A is set to (analogWrite on pin 6 included).
+ISR(TIMER0_COMPA_vect) {
+  ticks++;
+  // Bytes arriving, or the sketch reading them, mean the PC is there.
+  int available = LINK.available();
+  if (available != lastAvailable || available >= SERIAL_RX_BUFFER_SIZE - 8) {
+    // A full buffer can't show new bytes: count it as heard until the sketch reads it.
+    lastAvailable = available;
+    heardAt = ticks;
+    return;
+  }
+  if (armed && safeReason == KIUNGO_SAFE_NONE && (uint16_t)(ticks - heardAt) > KIUNGO_WATCHDOG_MS) enterSafe(KIUNGO_SAFE_LINK_LOST);
+}
+
+
+// delay() calls yield() while it waits: frames are handled then, so a STOP
+// reaches the outputs at once even in the middle of a long delay. A sketch
+// with its own serialEvent() keeps the bytes for it instead (the core only
+// calls serialEvent when bytes wait on the port); a STOP then lands through
+// the watchdog, within KIUNGO_WATCHDOG_MS, as the PC stops pinging.
+void yield() {
+  if (!kiungo_user_serialEvent) kiungo_poll();
+}
+
+// The Arduino core calls initVariant() after init() and before setup(): the
+// link starts here, so a sketch that never calls Serial.begin (Blink) still
+// talks to Kiungo.
+static bool linkStarted = false;
+static void startLink() {
+  if (linkStarted) return;
+  LINK.begin(KIUNGO_LINK_BAUD);
+  linkStarted = true;
+}
+// The watchdog's interrupt starts here too.
+void initVariant() {
+  startLink();
+  TIMSK0 |= _BV(OCIE0A);
 }
 
 // ----- pin functions -----
@@ -206,9 +383,11 @@ unsigned long kiungo_pulseInLong(uint8_t pin, uint8_t state, unsigned long timeo
 // ----- the user's Serial -----
 KiungoSerial kiungoSerial;
 
-void KiungoSerial::begin(unsigned long) { LINK.begin(KIUNGO_LINK_BAUD); }
-void KiungoSerial::begin(unsigned long, uint8_t) { LINK.begin(KIUNGO_LINK_BAUD); }
-void KiungoSerial::end() { flush(); LINK.end(); }
+// The link is already running (initVariant): the sketch's baud rate doesn't apply to it.
+void KiungoSerial::begin(unsigned long) { startLink(); }
+void KiungoSerial::begin(unsigned long, uint8_t) { startLink(); }
+// The link stays open: Kiungo needs it after the sketch is done with Serial.
+void KiungoSerial::end() { flush(); }
 
 int KiungoSerial::available() {
   kiungo_poll();

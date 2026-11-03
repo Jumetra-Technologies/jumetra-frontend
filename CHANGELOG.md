@@ -10,6 +10,166 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.31.0] - 2026-11-02
+
+Phase Two, Sprint 11: the website companion, sync and import. The website is now the way into the desktop app. Phase One work comes across, and projects can sync between computers through the account. The desktop app is 0.11.0.
+
+### Added
+- **The desktop app on the home page.** The page's last section, *Then take it to your desk*, is the release: a download button for the visitor's computer (Windows, macOS on Apple silicon or Intel, or Linux), every installer with its size, and four screenshots of the app behind tabs: code and run, the real board, the robot world, and a mistake fixed.
+  - The release comes from the backend's `/releases/latest`, or, until the release pipeline publishes there, from the newest GitHub release made by the new **Release the desktop app** workflow. Both are read on the server and refreshed every five minutes.
+  - A beta is labeled as one, with how to get past the Windows and macOS warnings about an unsigned installer, and what a computer needs.
+  - On a phone there's no button to press, only the list, since the app runs on computers.
+  - Before the first release it says so and points to the lab in the browser.
+- **A release workflow** (`.github/workflows/release-desktop.yml`). Run from the Actions tab, or push a tag `desktop-v<version>`: it builds the installers on Windows, Ubuntu and macOS, writes a manifest with each file's SHA-512, publishes a GitHub release (a pre-release for a beta), and, once the pipeline's token is set, posts the same to the backend. Installers now have plain names: `Kiungo-0.11.0-win-x64.exe`, `Kiungo-0.11.0-mac-arm64.dmg`, `Kiungo-0.11.0-linux-x86_64.AppImage`.
+- **Import Phase One work (DSK-15).** Home > **Import** takes either:
+  - a lab session file (`.kiungo.json`) saved from the website, or
+  - the lab sessions and projects on the signed-in account.
+
+  A lab session becomes a project with the same circuit and a blank sketch for its board. A website project becomes a blank project with its details in `records/about.md`. Importing the same thing again makes a second copy and says so (`kiungo.json` records `importedFrom`).
+- **Project sync (DSK-14)**, with jumetra-backend #7. It's off until the person turns it on, from Home > **On your account**.
+  - Projects sync about 30 seconds after edits settle, and when they close.
+  - On opening, changes from another computer are taken first.
+  - A file changed in both places keeps this computer's version, and saves the other beside it (a sketch's copy as `.txt`, so it isn't built).
+  - A chip by **Saved** shows the state and syncs on click.
+  - Home lists the account's projects that aren't on this computer, with **Bring to this computer**.
+  - Only a project's own files sync: never `.kiungo/`, the local undo history.
+
+### Changed
+- **Landing page:** the hybrid section hands over to the desktop release below it, and the facts, footer and search-engine data (version and download) mention the app.
+- **Navigation:** the footer gains **Desktop app**, which goes to that section.
+- **Desktop app:** the build panel's tabs no longer wrap onto two lines in a narrow Code pane.
+- **Hybrid Hardware and the docs:** both show three device modes. The external Simulator binding is gone (Phase Two decision).
+- **Firmware** is marked as a Preview: building and uploading moved to the desktop app.
+- **Website lab:** gains a **Desktop app** link in its toolbar.
+
+## [1.30.0] - 2026-11-02
+
+Phase Two, Sprint 10: Hybrid safety and readiness. Real outputs are always safe: Stop, the emergency stop and a dropped link all turn the board's outputs off. The lab checks the wiring before real current flows, and lists what to have on the desk. The desktop app is 0.10.0.
+
+### Added
+- **Emergency stop (SAF-01).** While your code runs on a real board, a red **Emergency stop** sits beside Run, and **Esc** does the same from anywhere in the window.
+  - It turns every pin the sketch drives off at once, PWM included, and holds them off until the next upload.
+  - **Stop** also takes the outputs to the safe state before the link closes.
+- **A watchdog on the board (SAF-02).** Once Kiungo has said hello, the board listens for it. If the link goes quiet for 300 ms, every driven output turns off: the app closed or crashed, or the USB cable came out while the board has its own power.
+  - It runs on a timer interrupt, so it works inside a long `delay()`. In CI it trips about 210 ms after the last byte.
+  - While the link is lost, virtual sensors fall back to "no value" (0, LOW, NAN or a timeout).
+  - A new hello lets the sketch drive again.
+- **Electrical checks before a run (SAF-03).** With the board marked Physical or Hybrid, Problems adds the real-board checks, and errors stop Run with the reason:
+  - Pins 0 and 1 are Kiungo's link.
+  - A DC motor must not run from the board's 5 V.
+  - An LED without its resistor is an error, not a warning.
+  - A servo on the board's 5 V gets a warning.
+  - The parts on the board's supply must stay inside what USB gives.
+  - Of the lab's own problems, those that can damage something (shorts, wrong voltages, outputs fighting) also stop Run. A part that isn't wired yet doesn't.
+- **Parts (VER-01, VER-03).** A new **Parts** tab in the lab:
+  - **In a run** shows each part as **Virtual**, **Real**, **Hybrid** or **Not available**, with what that means.
+  - **What you need** lists what to have on the desk, or the whole build: parts, jumper wires, the USB cable and a battery pack for motors. **Copy list** gives plain text and **Save CSV** saves a spreadsheet file.
+
+### Changed
+- Auto-wire puts a DC motor's VM on **VIN**, the barrel jack's supply, rather than the board's 5 V. The robot starters follow.
+- The Hybrid link is protocol 2: STOP (PC to board) and SAFE (board to PC) frames. Delay calls `yield()`, which now handles the link's frames, so a STOP lands at once even mid-delay.
+
+## [1.29.0] - 2026-11-02
+
+Phase Two, Sprint 9: Hybrid runs. Mark the board Physical and Run puts your own code on the real board, while the lab plays the parts you don't have and mirrors what the board drives. The desktop app is 0.9.0.
+
+### Added
+- **Run on the real board (RUN-01, RUN-04).** In the desktop app, a board marked **Physical** or **Hybrid** in the Inspector runs your code for real. Run builds the sketch with Kiungo's Hybrid layer, uploads it to the board picked in **Upload to**, and opens a link to it.
+  - Parts marked **Virtual** are played by the lab: the sketch reads the values set in Inputs, unchanged code and all.
+  - Parts marked **Physical** are the real ones on your desk.
+  - Outputs are always real: the board drives them and the lab mirrors the levels and PWM it reports (OUT-01, OUT-04).
+- **Virtual sensors on a real board (INJ-01 to INJ-06).**
+  - HC-SR04 through `pulseIn` and through NewPing.
+  - DHT11 and DHT22 through the DHT library: a Kiungo adapter stands in for it, with the same API.
+  - PIR, light sensor, soil moisture and gas sensor on their analog and digital pins.
+- **Ship and Hybrid builds (HWT-02 to HWT-04).** Every Hybrid run also builds the sketch alone. The memory meters show Kiungo's share striped at the end, and the note under them gives the plain program's use, which is what the board runs after an Upload. If only the Hybrid build is too big, the message says so.
+- **The board says where it runs.** Its panel says **Runs on: The real Arduino Uno on COM3**, and the lab log names the port.
+
+### Changed
+- The Hybrid runtime reports what the sketch drives (`digitalWrite`, `analogWrite`) in a new OUT frame. It sends that frame whenever the serial port has room, so it never slows the sketch.
+- The Inspector's note under **Mode** says what Run does with each mode in the desktop app.
+- The desktop installer now ships the Hybrid runtime and adapter libraries.
+- The Hybrid link starts before `setup()`, so a sketch that never calls `Serial.begin` (Blink) still talks to Kiungo. The sketch's `Serial.begin` and `Serial.end` leave the link alone.
+- With Arduino CLI, the shim is forced into every C++ file of a Hybrid build (`compiler.cpp.extra_flags`), so the runtime and the adapters get the virtual pins.
+
+### Not yet
+- Hybrid runs work on the Uno and the Nano; the Mega and ESP32 come later.
+- I2C and 1-Wire parts must be Physical in a Hybrid run.
+
+## [1.28.0] - 2026-11-02
+
+Phase Two, Sprint 8: robots in a world. A two-wheel robot built in the lab drives round a course in the desktop app, driven by your own code. The desktop app is 0.8.0.
+
+### Added
+- **The World (WLD-01 to WLD-03).** Beside the code there's now a **World** tab. It shows the robot's arena from above: walls, boxes, a line on the floor and the course's checkpoints, with the robot driving as your code says.
+  - Physics (Rapier 2D) stops the robot at walls and boxes, and counts each bump.
+  - The world steps in the same simulated time as the emulated board, so a run is the same every time.
+  - The pane shows the time, speed, distance driven, bumps and checkpoints passed, and says **Finished** at the end of the course.
+- **Move the walls while it runs.** Drag a box and the running robot sees it move at once. **Box** adds one; the turn and bin buttons rotate or remove the selected box. The world is saved in the project's `world.json`.
+- **Sensors that measure the world (WLD-02, WLD-05).** The sensors sit at fixed places on the chassis.
+  - The HC-SR04 looks forward from the front. Three rays across its 15° cone find the nearest echo, drawn on the World as a dashed line to what it sees.
+  - The light sensors look down either side of the middle and read dark over the tape.
+- **The robot is the circuit (OUT-03).** A board with two DC motors is a two-wheel robot: DC motor 1 is the left wheel and DC motor 2 the right. Each wheel turns at its driver's EN PWM duty, in the direction IN1 and IN2 say, at the TT gear motor's 140 rpm on 65 mm wheels. The lab's circuit shows the same motors spinning.
+- **Two robot templates (PRJ-03)**, each with its course:
+  - **Obstacle avoider:** drives forward and spins away from anything closer than 25 cm, through a field of boxes to the goal.
+  - **Line follower:** two light sensors either side of a black oval, steering back onto the line.
+  - Starter code can now name a second part of the same kind (`{{dc-motor#2.EN}}`).
+- **Courses checked in CI.** A test harness runs the templates' compiled code in their worlds, with no screen: the emulated board, the part models and the physics stepped together. The line follower must finish a lap without leaving the tape by more than 6 cm, and the obstacle avoider must reach its goal.
+
+### Changed
+- The desktop app's content policy allows WebAssembly (for the physics), and still no JavaScript eval.
+
+### Not yet
+- One robot per project, on the Uno.
+
+## [1.27.0] - 2026-11-02
+
+Phase Two, Sprint 7: run your own code. In the desktop app, **Run** now runs the project's sketch on an emulated Arduino Uno, and the circuit does what the code says. The desktop app is 0.7.0. The website's lab works as before.
+
+### Added
+- **Run your code (RUN-02, RUN-03, EMU-01).** **Run** (or Ctrl+Enter, in the lab or the editor) saves the files, builds the sketch, loads it into an emulated ATmega328P with the Uno's real 32 KB of flash and 2 KB of RAM, and starts it. The button says **Building…**, then **Loading…**, then **Stop**. A sketch that doesn't build stops the run, with the problems in **Code problems** and on their lines.
+- **Cached builds.** When nothing in the sketch has changed since the last good build, Run and Build use it without running the compiler, so Run reaches running in a fraction of a second. Any change to a file, `sketch.yaml` or the board builds again.
+- **Parts follow the pins (OUT-02, DBG-01).**
+  - An LED is as bright as its pin's PWM duty.
+  - A servo turns to the angle its pulse width means (the Servo library's 544 to 2400 µs).
+  - A buzzer sounds at the pitch the pin toggles at (`tone()`), through the speaker, or at its own 2.3 kHz when the pin is held high.
+  - The relay module energizes on a low pin, as the real one does.
+  - A DC motor runs from its driver's pins.
+- **Sensors that answer your code like the real ones (EMU-02, PCP-03).**
+  - The HC-SR04 replies to the trigger with an echo as long as the sound's round trip, so `pulseIn()` reads the distance.
+  - The DHT11 and DHT22 answer the start signal with their 40 timed bits, so the Adafruit DHT library reads them.
+  - The LDR, soil moisture and gas sensors set a voltage that `analogRead()` reads.
+  - The PIR holds its pin high while it sees motion.
+  - Each sensor reads the value you set in the Inspector, or the lab's simulated sweep.
+- **Live pins, serial and signals (DBG-01).** The lab's **Serial** panel shows what the program prints. **Signals** traces the program's pins over the last 4 seconds.
+- **Real time, and honest about it (RUN-05).** The program runs at the Uno's real speed; the board's panel says **Real time**, or the percentage when the computer can't keep up. The speed menu is off while your code runs.
+- **Real failure behavior (HWT-07).** A program that runs out of RAM (the stack runs over the chip's registers) or jumps outside itself stops, as a real board hangs, and the board shows **Crashed**: "Stopped: ran out of memory".
+- Backend (jumetra-backend #6): the project sync API design for review, ahead of sprint 11.
+
+### Not yet
+- Only the Uno runs your code in the lab for now (EMU-01). Mega and ESP32 projects keep the built-in behavior on Run, and the Run button says why; **Upload** runs the code on a real board.
+- Displays and radios talk over I2C, SPI or serial buses the emulator doesn't model yet: they say "Not shown yet" while your code runs.
+
+## [1.26.0] - 2026-11-02
+
+Phase Two, Sprint 6: real boards. Plug in a board, upload to it, and talk to it. The desktop app is 0.6.0.
+
+### Added
+- **Boards on USB, by name (HW-01).** **Upload to** lists what's plugged in as it's plugged in, by name: a genuine board ("Arduino Uno · COM3"), or a clone by its USB chip ("USB serial board (CH340)"). When USB can't tell which board it is, Kiungo asks and suggests the most likely one: a CH340 board is most often a Nano with the old bootloader. The choice is remembered per project.
+- **Upload (BLD-06).** **Upload** (Ctrl+U) builds for the chosen board and uploads to it. A Uno project uploads to an Arduino Nano too (same chip); each board builds in its own folder. If the serial monitor is open on that port, it closes for the upload and reconnects after.
+- **Recovery steps when an upload fails (BLD-06).** The board didn't answer, the port is busy, the port is gone, no permission, an ESP32 that needs BOOT held, or a different ESP32 chip: each one says what happened and what to try, in order. A Nano that doesn't answer offers **Upload as Arduino Nano (old bootloader)** in one click.
+- **Serial monitor and plotter (HW-02).** **Serial monitor** under the code connects to the chosen board at the speed you pick, shows what it prints, and sends what you type, with the line ending you choose. **Plot** draws the numbers on each line, read the way the Arduino IDE's plotter reads them (`temp:21.5 humidity:40`, `Distance: 20 cm`).
+- **My board isn't listed (FIX-09).** Checks this computer and gives steps. On Linux it can see a CH340 board whose port was taken by brltty and gives the command to remove it, and spots a port you're not allowed to open and gives the dialout command. On Windows and macOS it links the official CH340 and CP210x drivers from the chip makers, and reminds you that some cables only carry power.
+- **Board definitions (HWT-01)** for the Uno, Nano (both bootloaders), Mega 2560 and ESP32 Dev Module. They carry the board packages' exact limits (32,256 bytes of program storage on the Uno, 30,720 on the Nano, 253,952 on the Mega, 1,310,720 on the ESP32) and what each pin can do, with cautions such as pins 0 and 1 carrying the upload, the ESP32's boot-mode pins, and its input-only pins.
+- **ESP32 projects.** New projects can be for the ESP32 Dev Module (esp32 board package 3.3.12, pinned). Starters that aren't safe on a 3.3 V board say why: the HC-SR04's 5 V echo needs a level shifter.
+- Backend (jumetra-backend #5, stacked on #4): crash-report consent (`GET/PUT /auth/me/consents`, `POST /crash-reports` only with consent, kept 90 days), and writes from the desktop app (bearer token, no website origin) are now accepted with a valid session.
+
+### Fixed
+- **The Nano's limit was 1.5 KB too high** in the emulator's board definition (32,256 bytes). arduino:avr keeps 2 KB for the Nano's bootloader: it's 30,720.
+
+### Not in this release
+- Signing the Windows installer and the stable and beta update channels (DSK-80) are Juma's, through the CI/CD pipeline. Installers from CI are still unsigned.
+
 ## [1.25.0] - 2026-11-02
 
 Phase Two, Sprint 5: building the code, libraries, and error explanations. The desktop app is 0.5.0.
@@ -504,6 +664,12 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.31.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.30.0...v1.31.0
+[1.30.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.29.0...v1.30.0
+[1.29.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.28.0...v1.29.0
+[1.28.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.27.0...v1.28.0
+[1.27.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.26.0...v1.27.0
+[1.26.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.25.0...v1.26.0
 [1.25.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.24.0...v1.25.0
 [1.24.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.23.0...v1.24.0
 [1.23.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.22.0...v1.23.0

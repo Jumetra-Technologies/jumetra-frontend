@@ -11,6 +11,12 @@
 import type { LabNode, LabSession, LabWire } from "@kiungo/core/lab/types";
 import type { CircuitThumbnail, ProjectMeta } from "@kiungo/core/project";
 import type { Diagnostic, ProfileLibrary } from "@kiungo/core/build";
+import type { HardwareBoardId } from "@kiungo/core/hardware/boards";
+import type { UploadProblem } from "@kiungo/core/hardware/upload";
+import type { DetectedBoard } from "@kiungo/core/hardware/usb";
+import type { WorldSpec } from "@kiungo/core/world/types";
+import type { HybridPlan } from "@kiungo/core/hybrid/shim";
+import type { SafeReason } from "@kiungo/core/hybrid/protocol";
 
 export type Platform = "win32" | "linux" | "darwin";
 
@@ -89,7 +95,25 @@ export interface OpenedProject {
   history: ProjectHistory | null;
   /** Parts or wires in circuit.json the lab couldn't use, already dropped. */
   warnings: string[];
+  /** Things to know about a project just imported (DSK-15): a second copy, a board the desktop can't build for. */
+  notes?: string[];
+  /** How the sync on opening went, when sync is on (DSK-14). */
+  sync?: SyncStatus;
 }
+
+/** Something on the person's website account that can become a desktop project (DSK-15). */
+export interface ImportCandidate {
+  kind: "lab-session" | "phase-one-project";
+  id: string;
+  name: string;
+  /** "4 parts, Arduino Uno" or "Robotics project". */
+  detail: string;
+  updatedAt: string | null;
+  /** Projects on this computer already imported from it. */
+  copies: string[];
+}
+
+export type ImportList = { ok: true; items: ImportCandidate[] } | { ok: false; message: string };
 
 export type OpenResult = { ok: true; project: OpenedProject } | { ok: false; message: string };
 
@@ -111,6 +135,34 @@ export type SaveResult = { ok: true; savedAt: string } | { ok: false; message: s
 export interface ProjectSettings {
   /** Where new projects are made. Documents/Kiungo unless the user picked another folder. */
   projectsFolder: string;
+  /** Keep a copy of projects on the signed-in account (DSK-14). Off until the person turns it on. */
+  sync?: boolean;
+}
+
+/** A project's sync with the account (DSK-14). */
+export interface SyncStatus {
+  /**
+   * off: sync isn't on. synced: this copy and the account agree. behind: the
+   * account has newer changes, taken next time the project opens. conflict:
+   * a file changed in both places; the other copy is saved beside it.
+   */
+  state: "off" | "syncing" | "synced" | "behind" | "conflict" | "offline" | "signed-out" | "removed" | "error";
+  at: string;
+  message?: string;
+  revision?: number;
+  /** Files taken from the account. */
+  pulled?: number;
+  /** Where the other side of each conflict was saved. */
+  conflicts?: string[];
+}
+
+/** A project on the account that isn't on this computer. */
+export interface RemoteProject {
+  id: string;
+  name: string;
+  board: string;
+  updatedAt: string | null;
+  sizeBytes: number;
 }
 
 /** Who is signed in to this copy of Kiungo (DSK-01 to DSK-03). */
@@ -155,6 +207,12 @@ export interface BuildResult {
   durationMs: number;
   /** Why the build couldn't run at all (no Arduino CLI, no internet the first time), in plain words. */
   message?: string;
+  /** Nothing in the sketch changed since the last good build, so that one was used. */
+  cached?: boolean;
+  /** A Hybrid build: what Kiungo's layer adds over the sketch alone (HWT-02, HWT-04). */
+  overhead?: { flash: number; ram: number };
+  /** A Hybrid build: the Ship build's use, the sketch without Kiungo: what the board runs in the end (HWT-03). */
+  ship?: { flash: { used: number; max: number }; ram: { used: number; max: number } };
   /** Everything the compiler said, for the build log. */
   log: string;
 }
@@ -170,6 +228,34 @@ export interface LibraryInfo {
 }
 
 export type LibrarySearchResult = { ok: true; libraries: LibraryInfo[] } | { ok: false; message: string };
+
+/** Boards on USB (HW-01). `message` when finding boards can't work at all. */
+export interface BoardsState {
+  boards: DetectedBoard[];
+  message: string | null;
+}
+
+/** Why a board might not show up, and what to do (FIX-09). */
+export interface PortHint {
+  id: "brltty" | "dialout" | "no-port" | "driver-ch340" | "driver-cp210x" | "cable";
+  title: string;
+  steps: string[];
+  links?: Array<{ label: string; url: string }>;
+}
+
+/** An upload (BLD-06): it stops at the build (with its problems) or at the upload (with recovery steps). */
+export interface UploadResult {
+  ok: boolean;
+  stage: "build" | "upload";
+  build: BuildResult;
+  problem?: UploadProblem;
+  log: string;
+  durationMs: number;
+  /** The serial monitor was open on this port and was reopened after the upload. */
+  monitorReopened?: boolean;
+}
+
+export type SerialOpenResult = { ok: true } | { ok: false; message: string };
 
 /** After adding or removing: the sketch's libraries, as sketch.yaml now pins them. */
 export type LibraryChange = { ok: true; libraries: ProfileLibrary[]; added: string[] } | { ok: false; message: string };
@@ -224,15 +310,80 @@ export interface InvokeMap {
   "libraries:add": { args: [projectPath: string, name: string, version?: string]; result: LibraryChange };
   /** Unpin a library, and the libraries only it needed. */
   "libraries:remove": { args: [projectPath: string, name: string]; result: LibraryChange };
+  /** What's plugged in now; starts watching USB the first time. */
+  "boards:list": { args: []; result: BoardsState };
+  /** Why a board might not show up (FIX-09). */
+  "boards:doctor": { args: []; result: PortHint[] };
+  /** Open one of the driver pages the hints name. Other addresses are refused. */
+  "boards:open-link": { args: [url: string]; result: void };
+  /** Build the open project for the board, then upload to the port. The port must be plugged in now. */
+  "upload:start": { args: [projectPath: string, port: string, board: HardwareBoardId]; result: UploadResult };
+  /** Open the serial monitor on a plugged-in port. One port at a time. */
+  "serial:open": { args: [port: string, baud: number]; result: SerialOpenResult };
+  /** Send text to the board, as typed (add the line ending you want). */
+  "serial:write": { args: [text: string]; result: boolean };
+  "serial:close": { args: []; result: void };
+  /**
+   * A Hybrid run (RUN-01): build the open project with Kiungo's layer for the
+   * board, upload it to the port, and open the link. `ok` means the link is up;
+   * otherwise it stopped at the build or the upload, as an upload does.
+   */
+  "hybrid:start": { args: [projectPath: string, port: string, board: HardwareBoardId, plan: HybridPlan]; result: UploadResult };
+  /** Values for the virtual parts: [sensor id, value] pairs. Only changes reach the board. */
+  "hybrid:set": { args: [pairs: Array<[number, number]>]; result: void };
+  /** Text for the sketch's Serial.read(), as typed in the serial monitor. */
+  "hybrid:serial-in": { args: [text: string]; result: boolean };
+  /** End the run: the board's outputs go to the safe state, then the link closes. */
+  "hybrid:stop": { args: []; result: void };
+  /** Every output of the real board off at once, and held off until the next upload (SAF-01). */
+  "hybrid:emergency-stop": { args: []; result: void };
+  /** Turn sync with the account on or off for every project (DSK-14). */
+  "sync:set-enabled": { args: [enabled: boolean]; result: ProjectSettings };
+  /** Sync the open project now. */
+  "sync:now": { args: [projectPath: string]; result: SyncStatus };
+  /** Projects on the account that aren't on this computer. */
+  "sync:remote": { args: []; result: { ok: true; projects: RemoteProject[] } | { ok: false; message: string } };
+  /** Bring one of them to this computer and open it. */
+  "sync:download": { args: [id: string]; result: OpenResult };
+  /** Import a lab session file (.kiungo.json) saved from the website (DSK-15). Null if the person cancelled. */
+  "import:file": { args: []; result: OpenResult | null };
+  /** The lab sessions and projects on the signed-in person's website account. */
+  "import:account-list": { args: []; result: ImportList };
+  /** Import one of them as a new project. */
+  "import:account": { args: [kind: ImportCandidate["kind"], id: string]; result: OpenResult };
+  /** The open project's world (world.json), or null when it has none. */
+  "world:read": { args: [projectPath: string]; result: WorldSpec | null };
+  /** Save the open project's world. */
+  "world:write": { args: [projectPath: string, world: WorldSpec]; result: SketchResult };
 }
 
 /** Messages the main process sends the interface, unasked. */
 export interface EventMap {
   "auth:changed": AuthState;
+  "boards:changed": DetectedBoard[];
+  "upload:stage": { projectPath: string; stage: "building" | "uploading" };
+  "serial:data": { port: string; text: string };
+  /** The monitor stopped without being asked; `message` says why, if known. */
+  "serial:closed": { port: string; message: string | null };
+  /** A project's sync status changed. */
+  "sync:status": { projectPath: string; status: SyncStatus };
+  /** The Hybrid link (sprint 9): the sketch's Serial lines, what it drove, the handshake, or that the link closed. */
+  "hybrid:link": HybridLinkEvent;
+}
+
+export interface HybridLinkEvent {
+  port: string;
+  lines: string[];
+  /** Pin levels as bits (bit n is pin n), the pins the sketch has written, and the PWM duty (0 to 255) on PWM pins. */
+  out?: { levels: number; driven: number; pwm: Array<[number, number]> };
+  hello?: { protocol: number; compatible: boolean };
+  /** The board's outputs are in the safe state, and why. */
+  safe?: SafeReason;
+  closed?: string | null;
 }
 
 export type EventChannel = keyof EventMap;
-export const EVENT_CHANNELS = ["auth:changed"] as const satisfies readonly EventChannel[];
+export const EVENT_CHANNELS = ["auth:changed", "boards:changed", "upload:stage", "serial:data", "serial:closed", "hybrid:link", "sync:status"] as const satisfies readonly EventChannel[];
 
 export function isEventChannel(value: unknown): value is EventChannel {
   return typeof value === "string" && (EVENT_CHANNELS as readonly string[]).includes(value);
@@ -272,6 +423,27 @@ export const INVOKE_CHANNELS = [
   "libraries:search",
   "libraries:add",
   "libraries:remove",
+  "boards:list",
+  "boards:doctor",
+  "boards:open-link",
+  "upload:start",
+  "serial:open",
+  "serial:write",
+  "serial:close",
+  "hybrid:start",
+  "hybrid:set",
+  "hybrid:serial-in",
+  "hybrid:stop",
+  "hybrid:emergency-stop",
+  "import:file",
+  "sync:set-enabled",
+  "sync:now",
+  "sync:remote",
+  "sync:download",
+  "import:account-list",
+  "import:account",
+  "world:read",
+  "world:write",
 ] as const satisfies readonly InvokeChannel[];
 
 /** Fails to compile when a channel in InvokeMap is missing from INVOKE_CHANNELS (the preload would refuse it). */

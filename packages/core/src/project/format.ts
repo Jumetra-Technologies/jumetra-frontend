@@ -45,7 +45,11 @@ export interface ProjectMeta {
   updatedAt: string;
   /** The app that last wrote it: "Kiungo 0.3.0". */
   generator?: string;
+  /** What it was imported from (DSK-15), so a second import can say it's a copy. */
+  importedFrom?: { kind: ImportKind; id: string };
 }
+
+export type ImportKind = "lab-session" | "phase-one-project" | "session-file";
 
 /** A board a project can be written for, and how Arduino CLI builds for it. */
 export interface ProjectBoard {
@@ -53,17 +57,23 @@ export interface ProjectBoard {
   part: string;
   name: string;
   fqbn: string;
-  /** The board package, pinned so a project builds the same on every computer. */
-  platform: { id: string; version: string };
+  /** The board package, pinned so a project builds the same on every computer; `indexUrl` for a package outside Arduino's own index. */
+  platform: { id: string; version: string; indexUrl?: string };
 }
 
 /**
- * Boards a new project can target. Both use the pinned AVR core the app
- * installs; more join as their toolchains are pinned (sprint 6).
+ * Boards a new project can target, each with its board package pinned. A Uno
+ * project also uploads to a Nano (same chip); see `@kiungo/core/hardware/boards`.
  */
 export const PROJECT_BOARDS: readonly ProjectBoard[] = [
   { part: "arduino-uno", name: "Arduino Uno", fqbn: "arduino:avr:uno", platform: { id: "arduino:avr", version: "1.8.6" } },
   { part: "arduino-mega", name: "Arduino Mega 2560", fqbn: "arduino:avr:mega:cpu=atmega2560", platform: { id: "arduino:avr", version: "1.8.6" } },
+  {
+    part: "esp32",
+    name: "ESP32 Dev Module",
+    fqbn: "esp32:esp32:esp32",
+    platform: { id: "esp32:esp32", version: "3.3.12", indexUrl: "https://espressif.github.io/arduino-esp32/package_esp32_index.json" },
+  },
 ];
 
 export function projectBoard(part: string): ProjectBoard | undefined {
@@ -88,6 +98,7 @@ export function sketchProfile(board: ProjectBoard, libraries: readonly PinnedLib
     `    fqbn: ${board.fqbn}`,
     "    platforms:",
     `      - platform: ${board.platform.id} (${board.platform.version})`,
+    ...(board.platform.indexUrl ? [`        platform_index_url: ${board.platform.indexUrl}`] : []),
   ];
   if (libraries.length) {
     lines.push("    libraries:");
@@ -130,6 +141,9 @@ export function parseProjectMeta(input: string): ProjectMeta {
     createdAt,
     updatedAt: iso(raw.updatedAt, createdAt),
     ...(typeof raw.generator === "string" ? { generator: raw.generator } : {}),
+    ...(isObj(raw.importedFrom) && ["lab-session", "phase-one-project", "session-file"].includes(raw.importedFrom.kind as string) && typeof raw.importedFrom.id === "string"
+      ? { importedFrom: { kind: raw.importedFrom.kind as ImportKind, id: raw.importedFrom.id.slice(0, 120) } }
+      : {}),
   };
 }
 

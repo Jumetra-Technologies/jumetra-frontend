@@ -56,6 +56,7 @@ describe("landing copy", () => {
       LEARN.cta.href,
       LIBRARY.cta.href,
       HYBRID.cta.href,
+      HYBRID.secondary.href,
       ...FOOTER.columns.flatMap((column) => column.links.map((link) => link.href)),
     ];
     expect(hrefs.filter((href) => !routeExists(href))).toEqual([]);
@@ -134,7 +135,8 @@ describe("LandingPage", () => {
     expect(h2s[1]).toMatch(/learning path/);
     expect(h2s[2]).toMatch(/component library/);
     expect(h2s[3]).toMatch(/Plug it in/);
-    expect(h2s).toHaveLength(4);
+    expect(h2s[4]).toMatch(/take it to your desk/i);
+    expect(h2s).toHaveLength(5);
   });
 
   it("puts a real action under every beat", () => {
@@ -143,6 +145,9 @@ describe("LandingPage", () => {
     expect(screen.getByRole("link", { name: "Start the learning path" })).toHaveAttribute("href", "/learn");
     expect(screen.getByRole("link", { name: "Open the component library" })).toHaveAttribute("href", "/components");
     expect(screen.getByRole("link", { name: "See how hybrid works" })).toHaveAttribute("href", "/docs/technical-guides/device-modes");
+    // The hybrid beat hands over to the desktop release right below it.
+    expect(screen.getByRole("link", { name: "Get the desktop app" })).toHaveAttribute("href", "/#desktop");
+    expect(screen.getByTestId("desktop-release")).toHaveAttribute("id", "desktop");
   });
 
   it("offers one way to log in, at the top, and no second sign-in block further down", () => {

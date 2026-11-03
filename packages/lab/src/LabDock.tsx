@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Activity, AlertTriangle, Cable, ChevronDown, ChevronUp, CircleDot, Hammer, Play, Radio, ScrollText, SquareTerminal, Trash2, Waves, Wrench } from "lucide-react";
+import { Activity, AlertTriangle, Cable, ChevronDown, ChevronUp, CircleDot, Hammer, ListChecks, Play, Radio, ScrollText, SquareTerminal, Trash2, Waves, Wrench } from "lucide-react";
 import { frameAt } from "@kiungo/core/lab/simulate";
 import { getPinout } from "@kiungo/core/lab/pinout";
 import { HELP, runCommand, type TermLine, type TerminalApi } from "@kiungo/core/lab/terminal";
 import type { LogKind } from "@kiungo/core/lab/types";
 import { cn } from "@kiungo/ui/cn";
 import { FaultList } from "./FaultList";
+import { PartsPanel } from "./PartsPanel";
 import { useLabContext } from "./lab-context";
 
-export type DockTab = "terminal" | "activity" | "serial" | "signals" | "problems";
+export type DockTab = "terminal" | "activity" | "serial" | "signals" | "problems" | "parts";
 
 const KIND_META: Record<LogKind, { icon: typeof Activity; tone: string; label: string }> = {
   session: { icon: CircleDot, tone: "text-muted", label: "Session" },
@@ -190,7 +191,7 @@ function Serial({ lines, onClear }: { lines: string[]; onClear: () => void }) {
 }
 
 function Signals() {
-  const { session, analysis, frame, running } = useLabContext();
+  const { session, analysis, frame, running, history } = useLabContext();
   const traces = useMemo(() => {
     const list: Array<{ key: string; label: string; color: string }> = [];
     for (const node of session.nodes) {
@@ -212,11 +213,21 @@ function Signals() {
   const samples = useMemo(() => {
     if (!traces.length) return [];
     const t1 = frame.t;
+    // A program run: its recorded pin levels, resampled onto the window (the emulator can't be asked about the past).
+    if (history?.length) {
+      const end = history[history.length - 1].t;
+      return Array.from({ length: SAMPLES + 1 }, (_, i) => {
+        const at = end - WINDOW + (i * WINDOW) / SAMPLES;
+        let found = history[0];
+        for (const h of history) if (h.t <= at) found = h;
+        return at < history[0].t ? {} : found.pins;
+      });
+    }
     return Array.from({ length: SAMPLES + 1 }, (_, i) => {
       const t = Math.max(0, t1 - WINDOW + (i * WINDOW) / SAMPLES);
       return frameAt(session.nodes, session.wires, analysis, t, running || frame.t > 0, session.inputs).pins;
     });
-  }, [traces.length, frame.t, session.nodes, session.wires, session.inputs, analysis, running]);
+  }, [traces.length, frame.t, session.nodes, session.wires, session.inputs, analysis, running, history]);
 
   if (!traces.length) {
     return <p className="p-4 text-[13px] text-muted">Wire a part to a board to see its signals over time, like a logic analyser.</p>;
@@ -258,6 +269,7 @@ export function LabDock({ tab, onTab, open, onOpen, height, onHeight, serial, on
     { id: "serial", label: "Serial", icon: Radio },
     { id: "signals", label: "Signals", icon: Waves },
     { id: "problems", label: "Problems", icon: AlertTriangle, count: problems },
+    { id: "parts", label: "Parts", icon: ListChecks },
   ];
 
   const startResize = (e: React.PointerEvent) => {
@@ -312,6 +324,7 @@ export function LabDock({ tab, onTab, open, onOpen, height, onHeight, serial, on
           {tab === "activity" ? <ActivityLog /> : null}
           {tab === "serial" ? <Serial lines={serial} onClear={onClearSerial} /> : null}
           {tab === "signals" ? <Signals /> : null}
+          {tab === "parts" ? <PartsPanel fileName={session.name} /> : null}
           {tab === "problems" ? (
             <div className="hhip-scroll h-full overflow-y-auto p-3">
               <FaultList faults={analysis.faults} />

@@ -107,7 +107,7 @@ describe("Company name", () => {
     const hits = execSync("grep -rn 'Jumetra' app components lib packages/ui/src packages/lab/src apps/desktop/src --include=*.ts --include=*.tsx || true", { encoding: "utf8" })
       .split("\n")
       .filter(Boolean)
-      .filter((line) => !/github\.com\/Jumetra-Technologies|Jumetra-Backend/.test(line));
+      .filter((line) => !/github\.com\/(repos\/)?Jumetra-Technologies|Jumetra-Backend/.test(line));
     expect(hits).toEqual([]);
   });
 });

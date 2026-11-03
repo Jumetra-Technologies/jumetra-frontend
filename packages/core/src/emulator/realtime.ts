@@ -18,6 +18,8 @@ export interface PacerOptions {
   /** How to wait before the next slice; tests pass their own. */
   defer?: (fn: () => void) => void;
   onStatus?: (status: { simMs: number; speedPercent: number }) => void;
+  /** After each slice of cycles: the robot's world steps here, in the same simulated time. */
+  onSlice?: () => void;
 }
 
 // eslint-disable-next-line no-restricted-properties -- pacing only; see the file comment.
@@ -82,7 +84,10 @@ export class Pacer {
     // Cycles the board should have run by now at 1x, never more than one slice at a time.
     const due = this.startCycles + Math.floor(((wall - this.startWall) / 1000) * clockHz);
     const behind = due - this.board.cycles;
-    if (behind > 0) this.board.runCycles(Math.min(behind, this.sliceCycles));
+    if (behind > 0) {
+      this.board.runCycles(Math.min(behind, this.sliceCycles));
+      this.options.onSlice?.();
+    }
     // When the computer can't keep up, run slower than real time instead of piling up a backlog
     // to race through later; the speed report then shows the real percentage.
     if (behind > this.sliceCycles * 10) {

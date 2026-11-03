@@ -9,8 +9,10 @@
  * libraries see the KiungoHybrid include path. LTO stays on; `--wrap` is
  * not used, because LTO silently drops it on the Arduino toolchain.
  *
- * Sensors with their own libraries (NewPing today; DHT at launch) are
- * swapped at the library level with an adapter of the same name.
+ * Sensors with their own libraries (NewPing, DHT) are swapped at the
+ * library level with an adapter of the same name. digitalWrite and
+ * analogWrite still drive the real pins, and the runtime reports what they
+ * drove so the lab mirrors the real outputs (OUT-01, OUT-04).
  */
 
 import { MAX_SENSORS } from "./protocol";
@@ -22,13 +24,14 @@ export interface VirtualSensor {
   /** The Kiungo part id (e.g. "hc-sr04", "ldr", "button"). */
   part: string;
   /** Which adapter library stands in for the real one, if the part needs one. */
-  adapter?: "NewPing";
+  adapter?: "NewPing" | "DHT";
   /** Pins the sketch reads this sensor on: the trigger pin for an HC-SR04, the data pin for a button. */
   pins: number[];
 }
 
 export interface HybridPlan {
-  board: "arduino:avr:uno" | "arduino:avr:nano";
+  /** The board's FQBN. Hybrid runs on the ATmega328 boards (Uno, Nano): their 20 pins are the shim's table. */
+  board: string;
   sensors: VirtualSensor[];
 }
 
@@ -63,7 +66,7 @@ export function pinTable(plan: HybridPlan): number[] {
 
 export function generateShim(plan: HybridPlan, shimHeaderPath = "kiungo_shim.h"): ShimOutput {
   const table = pinTable(plan);
-  const adapters = [...new Set(plan.sensors.map((s) => s.adapter).filter((a): a is "NewPing" => Boolean(a)))];
+  const adapters = [...new Set(plan.sensors.map((s) => s.adapter).filter((a): a is "NewPing" | "DHT" => Boolean(a)))];
   const comment = plan.sensors.length
     ? plan.sensors.map((s) => `//   sensor ${s.id}: ${s.part} on pin${s.pins.length === 1 ? "" : "s"} ${s.pins.join(", ")}${s.adapter ? ` (adapter: ${s.adapter})` : ""}`).join("\n")
     : "//   no virtual sensors: only Serial is redirected";
@@ -84,6 +87,8 @@ ${comment}
 #define analogRead kiungo_analogRead
 #define pulseIn kiungo_pulseIn
 #define pulseInLong kiungo_pulseInLong
+#define digitalWrite kiungo_digitalWrite
+#define analogWrite kiungo_analogWrite
 #endif
 `;
   return { header, cppFlags: ["-include", shimHeaderPath], adapters, pinTable: table };

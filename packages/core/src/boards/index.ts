@@ -70,8 +70,8 @@ export const NANO: BoardDefinition = {
   mcu: "atmega328p",
   clockHz: 16_000_000,
   flashBytes: 32_768,
-  // The Nano's current bootloader (Optiboot, "ATmega328P" in the IDE) is 512 bytes; the old one is 2 KB.
-  bootloaderBytes: 512,
+  // The Nano's bootloader is Optiboot (512 bytes), but arduino:avr keeps 2 KB for it (upload.maximum_size=30720), as the old one needed.
+  bootloaderBytes: 2048,
   sramBytes: 2048,
   eepromBytes: 1024,
   ledBuiltin: 13,

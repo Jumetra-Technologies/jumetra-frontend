@@ -5,7 +5,16 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { applyEdits, explain, libraryForHeader, quickFix } from "@kiungo/core/build";
 import { buildStarter, PROJECT_BOARDS, sketchProfile, STARTERS } from "@kiungo/core/project";
+import { hardwareBoard } from "@kiungo/core/hardware/boards";
 import { BuildService, setupProblem } from "../src/main/build/service";
+import { BoardWatcher } from "../src/main/hardware/boards";
+import { HybridService } from "../src/main/hybrid/service";
+import { hybridResourcesDir } from "../src/main/toolchain/hybrid-build";
+import { hybridBindings, hybridValues, packDht } from "@kiungo/core/hybrid/plan";
+import { encodeSet, LinkReader } from "@kiungo/core/hybrid/protocol";
+import { analyze } from "@kiungo/core/lab/circuit";
+import { AvrBoard } from "@kiungo/core/emulator";
+import { UNO } from "@kiungo/core/boards";
 import { runCli, type CliLocation, type RunResult } from "../src/main/toolchain/arduino-cli";
 
 const CLI: CliLocation = { binary: "/fake/arduino-cli", configFile: "/fake/arduino-cli.yaml" };
@@ -51,6 +60,27 @@ describe("building a project (BLD-01, BLD-02, BLD-05)", () => {
     expect(calls[0].at(-1)).toBe(join(project, "sketch"));
     expect(calls[0][calls[0].indexOf("--build-path") + 1].startsWith(join(root, "builds"))).toBe(true);
     expect(result).toMatchObject({ ok: true, diagnostics: [], hex: ":00000001FF\n", flash: { used: 924, max: 32256 }, ram: { used: 9, max: 2048 } });
+  });
+
+  it("an unchanged sketch uses the last good build, without running the compiler (Run in under 2 s)", async () => {
+    const builds = service((args) => {
+      writeFileSync(join(args[args.indexOf("--build-path") + 1], "sketch.ino.hex"), ":00000001FF\n");
+      return ok({ success: true, builder_result: { executable_sections_size: [{ name: "text", size: 924, max_size: 32256 }, { name: "data", size: 9, max_size: 2048 }] } });
+    });
+    const first = await builds.compile(project);
+    expect(first.cached).toBeUndefined();
+    const second = await builds.compile(project);
+    expect(calls).toHaveLength(1);
+    expect(second).toMatchObject({ ok: true, cached: true, hex: ":00000001FF\n", flash: { used: 924, max: 32256 } });
+    writeFileSync(join(project, "sketch", "sketch.ino"), "void setup() {}\nvoid loop() { }\n");
+    await builds.compile(project);
+    expect(calls).toHaveLength(2);
+    // A failed build is never reused.
+    writeFileSync(join(project, "sketch", "sketch.ino"), "void setup() {\n");
+    const failing = service(() => ({ code: 1, stdout: JSON.stringify({ success: false }), stderr: "" }));
+    await failing.compile(project);
+    await failing.compile(project);
+    expect(calls).toHaveLength(4);
   });
 
   it("maps the compiler's problems to the sketch", async () => {
@@ -228,4 +258,93 @@ describe.skipIf(!realCli)("building with the real Arduino CLI", () => {
     expect(explain(problem)).toMatchObject({ id: "missing-library", header: "Servo.h" });
     expect(libraryForHeader("Servo.h")?.name).toBe("Servo");
   }, 600_000);
+});
+
+describe.skipIf(!realCli)("Hybrid builds with the real Arduino CLI (sprint 9)", () => {
+  /** The starter's project, its board on the desk and its sensors played by Kiungo. */
+  const hybridProject = (starter: string) => {
+    const { code, libraries, session } = buildStarter({ name: "Test", board: "arduino-uno", starter });
+    writeFileSync(join(project, "sketch", "sketch.ino"), code);
+    writeFileSync(join(project, "sketch", "sketch.yaml"), sketchProfile(PROJECT_BOARDS[0], libraries));
+    const nodes = session.nodes.map((n, i) => (i === 0 ? { ...n, mode: "physical" as const } : n));
+    return hybridBindings(nodes, analyze(nodes, session.wires), nodes[0].id);
+  };
+  const hybrid = () => new HybridService(new BuildService({ cli: () => realCli, buildsDir: join(root, "builds"), run: runCli }), { resources: hybridResourcesDir(), workDir: join(root, "hybrid") });
+  const run = (hex: string) => {
+    const board = new AvrBoard(UNO, hex);
+    const reader = new LinkReader();
+    const lines: string[] = [];
+    board.onSerialByte((b) => lines.push(...reader.feedLines(Uint8Array.of(b)).lines));
+    return { board, lines };
+  };
+
+  it("the Distance sensor starter: Ship and Hybrid builds, Kiungo's share apart, and a virtual HC-SR04 answers it", async () => {
+    const bindings = hybridProject("distance");
+    const { build, ship } = await hybrid().build(project, hardwareBoard("uno")!, bindings.plan);
+    expect(build.ok, build.log).toBe(true);
+    expect(ship.ok).toBe(true);
+    expect(build.ship?.flash.used).toBe(ship.flash?.used);
+    expect(build.overhead!.flash).toBeGreaterThan(0);
+    expect(build.overhead!.ram).toBeGreaterThan(0);
+    console.log(`Hybrid layer for the Distance sensor: +${build.overhead!.flash} B flash, +${build.overhead!.ram} B RAM`);
+    const { board, lines } = run(build.hex!);
+    board.runMs(50);
+    for (const [id, value] of hybridValues(bindings, [{ kind: "hc-sr04", id: bindings.sensors[0].nodeId, trig: 2, echo: 3, distanceCm: 42 }])) board.writeSerial(encodeSet(id, value));
+    board.runMs(700);
+    const readings = lines.map((l) => Number.parseFloat(l)).filter((n) => !Number.isNaN(n));
+    expect(readings.at(-1)).toBeCloseTo(42, 0);
+  }, 600_000);
+
+  it("the DHT11 starter builds with the adapter in place of the DHT library, and reads what Kiungo sends", async () => {
+    const bindings = hybridProject("dht11");
+    const { build } = await hybrid().build(project, hardwareBoard("uno")!, bindings.plan);
+    expect(build.ok, build.log).toBe(true);
+    const { board, lines } = run(build.hex!);
+    board.runMs(100);
+    board.writeSerial(encodeSet(0, packDht(23.4, 55)));
+    board.runMs(4300);
+    expect(lines).toContain("Temperature: 23.40 C, humidity: 55.00 %");
+  }, 600_000);
+
+  it("a mistake stops at the Ship build, on the sketch's own line", async () => {
+    const bindings = hybridProject("distance");
+    const file = join(project, "sketch", "sketch.ino");
+    writeFileSync(file, readFileSync(file, "utf8").replace("pinMode(TRIG_PIN, OUTPUT);", "pinMode(TRIG_PIN, OUTPUT)"));
+    const { build } = await hybrid().build(project, hardwareBoard("uno")!, bindings.plan);
+    expect(build.ok).toBe(false);
+    // The Ship build stops first, with the sketch's own lines.
+    expect(build.diagnostics[0]).toMatchObject({ file: "sketch.ino", severity: "error" });
+  }, 600_000);
+});
+
+describe.skipIf(!realCli)("boards and uploads with the real Arduino CLI", () => {
+  it("finds the serial ports (none on a CI machine) without failing", async () => {
+    const watcher = new BoardWatcher({ cli: () => realCli, run: runCli, spawn: () => { throw new Error("not watching in this test"); }, onChange: () => undefined });
+    const boards = await watcher.refresh();
+    expect(Array.isArray(boards)).toBe(true);
+    expect(watcher.message).toBeNull();
+  }, 120_000);
+
+  it("an upload to a port that isn't there fails with steps, not a crash", async () => {
+    const { code, libraries } = buildStarter({ name: "Test", board: "arduino-uno", starter: "blink" });
+    writeFileSync(join(project, "sketch", "sketch.ino"), code);
+    writeFileSync(join(project, "sketch", "sketch.yaml"), sketchProfile(PROJECT_BOARDS[0], libraries));
+    const builds = new BuildService({ cli: () => realCli, buildsDir: join(root, "builds"), run: runCli });
+    const port = process.platform === "win32" ? "COM250" : "/dev/ttyKIUNGO0";
+    const result = await builds.upload(project, port, hardwareBoard("uno")!, process.platform === "win32" ? "win32" : process.platform === "darwin" ? "darwin" : "linux");
+    console.log(`upload to a missing port: ${result.problem?.id}\n${result.log}`);
+    expect(result).toMatchObject({ ok: false, stage: "upload" });
+    expect(result.problem?.steps.length).toBeGreaterThan(0);
+    expect(["port-missing", "unknown"]).toContain(result.problem?.id);
+  }, 600_000);
+
+  // The ESP32 board package is large: CI builds it on one system (KIUNGO_TEST_ESP32).
+  it.skipIf(!process.env.KIUNGO_TEST_ESP32)("Blink builds for the ESP32 with its pinned board package", async () => {
+    const { code, libraries } = buildStarter({ name: "Test", board: "esp32", starter: "blink" });
+    writeFileSync(join(project, "sketch", "sketch.ino"), code);
+    writeFileSync(join(project, "sketch", "sketch.yaml"), sketchProfile(PROJECT_BOARDS[2], libraries));
+    const result = await new BuildService({ cli: () => realCli, buildsDir: join(root, "builds"), run: runCli }).compile(project);
+    expect(result.ok, result.log).toBe(true);
+    expect(result.flash?.max).toBe(1_310_720);
+  }, 1_800_000);
 });

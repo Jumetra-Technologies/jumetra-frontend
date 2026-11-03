@@ -27,6 +27,7 @@ import {
   VolumeX,
   Wand2,
   Zap,
+  OctagonX,
 } from "lucide-react";
 import { SegmentedControl } from "@kiungo/ui/segmented-control";
 import { ContextMenu, Menu, type MenuEntry } from "@kiungo/ui/menu";
@@ -34,6 +35,8 @@ import { Button } from "@kiungo/ui/button";
 import { getPart } from "@kiungo/core/parts";
 import { analyze, type Analysis } from "@kiungo/core/lab/circuit";
 import { frameAt, serialLine } from "@kiungo/core/lab/simulate";
+import { peripheralInputs, programFrame, type ProgramReadings } from "@kiungo/core/lab/program";
+import { withFaults } from "@kiungo/core/hybrid/safety";
 import { LabSound } from "@kiungo/core/lab/sound";
 import { setLabSound, useLabSound } from "./sound-pref";
 import { describeChanges, RunRecorder } from "@kiungo/core/lab/activity";
@@ -48,7 +51,7 @@ import { cn } from "@kiungo/ui/cn";
 import { AddPanel, TEMPLATES, type AddPanelHandle } from "./AddPanel";
 import { Inspector } from "./Inspector";
 import { LabCanvas, type LabCanvasHandle } from "./LabCanvas";
-import { LabContext, LabHostContext, type LabContextValue, type LabHost, type RuntimeStatus } from "./lab-context";
+import { LabContext, LabHostContext, type LabContextValue, type LabHost, type ProgramDriver, type RuntimeStatus } from "./lab-context";
 import { LabDock, type DockTab } from "./LabDock";
 import { LabSkeleton } from "./LabSkeleton";
 import type { PowerState } from "./UsbCable";
@@ -127,6 +130,8 @@ export interface LabWorkspaceProps {
   trailing?: ReactNode;
   /** Told when a run starts or stops, so the host can show it (the desktop app's editor). */
   onRunningChange?: (running: boolean) => void;
+  /** Runs the user's own program on an emulated board (the desktop app). Omitted: every board runs its built-in behavior. */
+  program?: ProgramDriver;
   /** Written into exported `.kiungo.json` files. */
   generator?: string;
   /** Open a `.kiungo.json` build. Default: as a new session. Returns what to report. */
@@ -134,7 +139,7 @@ export interface LabWorkspaceProps {
 }
 
 export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(function LabWorkspace(
-  { host, runtime, project = null, projectChip, onLinkProject, titleMenu, titleMenuLabel = "Session menu", saveStatus, leading, trailing, onRunningChange, generator = "Kiungo Engineering Lab", onOpenBuild },
+  { host, runtime, project = null, projectChip, onLinkProject, titleMenu, titleMenuLabel = "Session menu", saveStatus, leading, trailing, onRunningChange, program, generator = "Kiungo Engineering Lab", onOpenBuild },
   ref,
 ) {
   const hydrated = useLab((s) => s.hydrated);
@@ -219,8 +224,27 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
   const wires = useMemo(() => session?.wires ?? [], [session?.wires]);
   const inputs = session?.inputs;
   // Inputs carry part values the check needs (a resistor's ohms).
-  const analysis = useMemo(() => analyze(nodes, wires, inputs), [nodes, wires, inputs]);
-  const frame = useMemo(() => frameAt(nodes, wires, analysis, t, running, inputs), [nodes, wires, analysis, t, running, inputs]);
+  const lab = useMemo(() => analyze(nodes, wires, inputs), [nodes, wires, inputs]);
+  // The host's own checks (a real board's, SAF-03) join the lab's problems.
+  const analysis = useMemo(() => (program?.faults ? withFaults(lab, program.faults({ nodes, wires, analysis: lab })) : lab), [program, nodes, wires, lab]);
+  // The user's program, when a board runs it (desktop): its readings replace that board's built-in behavior.
+  /** Stop, for a program run that ends by itself (set once stopRun exists, below). */
+  const stopRunRef = useRef<() => void>(() => undefined);
+  const [programRun, setProgramRun] = useState<{ boardId: string; readings: ProgramReadings | null; stage: "building" | "starting" | "running"; real?: boolean } | null>(null);
+  const programBoard = useMemo(() => program?.boardFor(nodes) ?? null, [program, nodes]);
+  const baseFrame = useMemo(() => frameAt(nodes, wires, analysis, t, running, inputs), [nodes, wires, analysis, t, running, inputs]);
+  const frame = useMemo(() => (programRun?.readings && running ? programFrame(baseFrame, nodes, wires, analysis, programRun.readings) : baseFrame), [baseFrame, programRun, running, nodes, wires, analysis]);
+  // Signals can't re-run the emulator for past moments, so a program run keeps its recent pin levels.
+  const historyRef = useRef<Array<{ t: number; pins: Record<string, number> }>>([]);
+  const [history, setHistory] = useState<Array<{ t: number; pins: Record<string, number> }> | undefined>(undefined);
+  useEffect(() => {
+    if (!programRun?.readings || !running) return;
+    const at = programRun.readings.t;
+    const list = historyRef.current.filter((h) => h.t > at - 4.5 && h.t < at);
+    list.push({ t: at, pins: frame.pins });
+    historyRef.current = list;
+    setHistory(list);
+  }, [frame, programRun, running]);
 
   const prevAnalysis = useRef<{ id: string; analysis: Analysis } | null>(null);
   useEffect(() => {
@@ -239,6 +263,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
     latest.current = { nodes, wires, analysis, t, inputs };
   }, [nodes, wires, analysis, t, inputs]);
   const lastSecond = useRef(-1);
+  const programBoardRef = useRef<string | null>(null);
   useEffect(() => {
     if (!running) return;
     const id = window.setInterval(() => {
@@ -249,12 +274,25 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
       const second = Math.floor(next);
       if (second !== lastSecond.current) {
         lastSecond.current = second;
-        const line = serialLine(ns, frameAt(ns, ws, an, next, true, ins));
+        const own = programBoardRef.current;
+        // The program's board prints what the program prints: leave it and its parts out of the built-in lines.
+        const others = own ? ns.filter((n) => n.id !== own && !an.nodes[n.id]?.links.some((l) => l.board === own)) : ns;
+        const line = serialLine(others, frameAt(ns, ws, an, next, true, ins));
         if (line) setSerial((lines) => [...lines, line].slice(-300));
       }
     }, TICK_MS);
     return () => window.clearInterval(id);
   }, [running, speed]);
+
+  const sentInputs = useRef("");
+  useEffect(() => {
+    if (!program || !programRun || programRun.stage !== "running" || !running) return;
+    const { inputs: list } = peripheralInputs(nodes, analysis, inputs, programRun.boardId, programRun.readings?.t ?? 0);
+    const key = JSON.stringify(list);
+    if (key === sentInputs.current) return;
+    sentInputs.current = key;
+    program.setInputs(list);
+  }, [program, programRun, running, nodes, analysis, inputs, t]);
 
   useEffect(() => {
     if (!running || !session) return;
@@ -309,6 +347,51 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
       setRunning(true);
       setPower(hasBoard ? "on" : "off");
     };
+    // The user's program: build and load it while the lead plugs in; the run starts when it's ready.
+    if (program && programBoard) {
+      const boardId = programBoard;
+      programBoardRef.current = boardId;
+      historyRef.current = [];
+      setProgramRun({ boardId, readings: null, stage: "building" });
+      setPower("plugging");
+      if (hasBoard) engine.click(PLUG_CLICK_MS / 1000);
+      const initial = peripheralInputs(nodes, analysis, inputs, boardId, 0).inputs;
+      sentInputs.current = JSON.stringify(initial);
+      void program
+        .start(boardId, initial, { nodes, analysis }, {
+          stage: (stage) => setProgramRun((p) => (p && p.boardId === boardId ? { ...p, stage } : p)),
+          readings: (readings) => setProgramRun((p) => (p && p.boardId === boardId ? { ...p, readings, stage: "running" } : p)),
+          ended: (message) => {
+            if (programBoardRef.current !== boardId) return;
+            store.getState().log("fault", `Run stopped: ${message}`);
+            setToast(message);
+            stopRunRef.current();
+          },
+          serial: (text) =>
+            setSerial((lines) => {
+              // The board's text arrives in pieces: join to the last line until a newline.
+              const parts = text.replace(/\r/g, "").split("\n");
+              const next = lines.length ? [...lines.slice(0, -1), lines[lines.length - 1] + parts[0], ...parts.slice(1)] : parts;
+              return next.slice(-300);
+            }),
+        })
+        .then((result) => {
+          if (programBoardRef.current !== boardId) return;
+          if (!result.ok) {
+            programBoardRef.current = null;
+            setProgramRun(null);
+            setPower("off");
+            store.getState().log("fault", `Run stopped: ${result.message}`);
+            setToast(result.message);
+            return;
+          }
+          setSerial((lines) => (lines.length && lines[lines.length - 1] !== "" ? [...lines, ""] : lines));
+          if (result.real) setProgramRun((p) => (p && p.boardId === boardId ? { ...p, real: true } : p));
+          begin();
+          store.getState().log("note", `Your code is running on ${result.where ?? nodes.find((n) => n.id === boardId)?.label ?? "the board"} (${result.programBytes.toLocaleString("en-US")} bytes)`);
+        });
+      return;
+    }
     clearPowerTimer();
     if (!hasBoard || calm()) {
       if (hasBoard) engine.click();
@@ -318,7 +401,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
     setPower("plugging");
     engine.click(PLUG_CLICK_MS / 1000);
     powerTimer.current = window.setTimeout(begin, PLUG_SEATED_MS);
-  }, [running, power, session, nodes, t, store, soundEngine, soundOn, hasBoard]);
+  }, [running, power, session, nodes, t, store, soundEngine, soundOn, hasBoard, program, programBoard, analysis, inputs]);
 
   const unplug = useCallback(() => {
     clearPowerTimer();
@@ -334,6 +417,12 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
   }, []);
 
   const stopRun = useCallback(() => {
+    if (programBoardRef.current) {
+      program?.stop();
+      programBoardRef.current = null;
+      setProgramRun(null);
+      setHistory(undefined);
+    }
     if (power === "plugging") {
       // Stopped before the plug seated: nothing ran.
       unplug();
@@ -348,7 +437,32 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
       store.getState().log(result.draft.kind, result.draft.text);
       store.getState().addRunTime(result.ms);
     }
-  }, [running, power, store, unplug]);
+  }, [running, power, store, unplug, program]);
+  useEffect(() => {
+    stopRunRef.current = stopRun;
+  }, [stopRun]);
+
+  /** The emergency stop (SAF-01): the real board's outputs off at once and held off, then the run stops. */
+  const emergencyStop = useCallback(() => {
+    program?.emergencyStop?.();
+    const message = "Emergency stop: the board's outputs are off and stay off. Run again to upload and start over.";
+    store.getState().log("fault", message);
+    setToast(message);
+    stopRun();
+  }, [program, store, stopRun]);
+  const realRun = Boolean(programRun?.real && running);
+  useEffect(() => {
+    if (!realRun) return;
+    // Esc stops a real board from anywhere in the window, the code editor and text fields included.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      emergencyStop();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [realRun, emergencyStop]);
 
   const reset = useCallback(() => {
     if (running) stopRun();
@@ -494,9 +608,9 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
   const ctx = useMemo<LabContextValue | null>(
     () =>
       session
-        ? { session, analysis, frame, view: session.view, running, power, runtime, selectedNodes, selectedWire, flash, select, focusNode, addPart, autowireNode, openContextMenu }
+        ? { session, analysis, frame, view: session.view, running, power, runtime, history: running ? history : undefined, selectedNodes, selectedWire, flash, select, focusNode, addPart, autowireNode, openContextMenu }
         : null,
-    [session, analysis, frame, running, power, runtime, selectedNodes, selectedWire, flash, select, focusNode, addPart, autowireNode, openContextMenu],
+    [session, analysis, frame, running, power, runtime, history, selectedNodes, selectedWire, flash, select, focusNode, addPart, autowireNode, openContextMenu],
   );
 
   // ----- keyboard -----------------------------------------------------------------
@@ -678,9 +792,15 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
           <SegmentedControl value={session.view} onChange={(v) => store.getState().setView(v)} options={VIEW_OPTIONS} label="Canvas view" size="sm" className="order-last mx-auto w-full sm:order-none sm:w-auto [&_[role=radio]]:pl-3 [&_[role=radio]]:pr-5" />
 
           <div className="ml-auto flex items-center gap-1.5">
-            <Button size="sm" onClick={running || power === "plugging" ? stopRun : startRun} variant={running ? "secondary" : "default"} className="min-w-[5.5rem]" data-testid="run-toggle" aria-busy={power === "plugging" || undefined} title={running ? "Stop (⌘↵)" : power === "plugging" ? "Plugging in the board…" : "Run the default sketch (⌘↵)"}>
+            {realRun ? (
+              <button type="button" onClick={emergencyStop} title="Emergency stop: every output on the real board off at once (Esc)" className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[8px] bg-[#c81e1e] px-3 text-[12.5px] font-semibold text-white shadow-[0_0_0_3px_color-mix(in_srgb,#c81e1e_25%,transparent)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger" data-testid="emergency-stop">
+                <OctagonX className="size-4" aria-hidden />
+                Emergency stop
+              </button>
+            ) : null}
+            <Button size="sm" onClick={running || power === "plugging" ? stopRun : startRun} variant={running ? "secondary" : "default"} className="min-w-[5.5rem]" data-testid="run-toggle" aria-busy={power === "plugging" || undefined} title={running ? "Stop (⌘↵)" : power === "plugging" ? (programRun ? "Building and loading your code…" : "Plugging in the board…") : programBoard ? "Run your code (⌘↵)" : (program?.whyNot?.(nodes) ?? "Run the default sketch (⌘↵)")}>
               {running ? <Pause className="size-3.5" aria-hidden /> : <Play className="size-3.5" aria-hidden />}
-              {running ? "Stop" : power === "plugging" ? "Powering…" : "Run"}
+              {running ? "Stop" : power === "plugging" ? (programRun?.stage === "building" ? "Building…" : programRun ? "Loading…" : "Powering…") : "Run"}
             </Button>
             <span className="hidden w-14 text-right font-mono text-xs tabular-nums text-muted sm:inline" data-testid="sim-time" aria-label={`Simulated time ${t.toFixed(1)} seconds`}>
               {t.toFixed(1)} s
@@ -692,7 +812,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
               <button type="button" onClick={reset} title="Reset to 0 s" aria-label="Reset simulation" className="flex size-8 items-center justify-center rounded-[8px] text-muted hover:bg-muted-bg hover:text-foreground">
                 <RotateCcw className="size-4" />
               </button>
-              <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} aria-label="Simulation speed" className="h-8 rounded-[8px] border border-border bg-surface px-1.5 text-xs">
+              <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} disabled={Boolean(programRun)} title={programRun ? "Your code runs at real time, as on the board" : undefined} aria-label="Simulation speed" className="h-8 rounded-[8px] border border-border bg-surface px-1.5 text-xs">
                 {SPEEDS.map((s) => (
                   <option key={s} value={s}>
                     {s}×

@@ -13,6 +13,8 @@ import { getPinout } from "../lab/pinout";
 import { logEntry, makeId, newSession, nextLabel } from "../lab/session";
 import type { LabNode, LabSession, LabWire } from "../lab/types";
 import type { PinnedLibrary } from "./format";
+import { AVOIDER_COURSE, LINE_COURSE } from "../world/courses";
+import type { WorldSpec } from "../world/types";
 
 export interface Starter {
   id: string;
@@ -24,7 +26,31 @@ export interface Starter {
   libraries: PinnedLibrary[];
   /** The sketch, with {{part.PIN}} placeholders. `part` is the lab part id. */
   code: string;
+  /** Boards (lab part ids) it can't be built for as it is, and why. */
+  notOn?: Record<string, string>;
+  /** A robot starter's course: the project's world.json (PRJ-03). */
+  world?: WorldSpec;
 }
+
+/** Driving two DC motors through their driver: positive forward, negative back, -255 to 255. */
+const DRIVE = `void setMotor(int en, int in1, int in2, int speed) {
+  digitalWrite(in1, speed > 0 ? HIGH : LOW);
+  digitalWrite(in2, speed < 0 ? HIGH : LOW);
+  analogWrite(en, abs(speed));
+}
+
+void drive(int left, int right) {
+  setMotor(LEFT_EN, LEFT_IN1, LEFT_IN2, left);
+  setMotor(RIGHT_EN, RIGHT_IN1, RIGHT_IN2, right);
+}`;
+
+const MOTOR_PINS = `// The left wheel is DC motor 1, the right wheel DC motor 2.
+const int LEFT_EN = {{dc-motor.EN}};
+const int LEFT_IN1 = {{dc-motor.IN1}};
+const int LEFT_IN2 = {{dc-motor.IN2}};
+const int RIGHT_EN = {{dc-motor#2.EN}};
+const int RIGHT_IN1 = {{dc-motor#2.IN1}};
+const int RIGHT_IN2 = {{dc-motor#2.IN2}};`;
 
 const SERVO: PinnedLibrary = { name: "Servo", version: "1.3.0" };
 const DHT: PinnedLibrary = { name: "DHT sensor library", version: "1.4.7" };
@@ -129,6 +155,7 @@ void loop() {
     does: "Measures distance with an HC-SR04 and prints it in centimeters.",
     parts: ["hc-sr04"],
     libraries: [],
+    notOn: { esp32: "The HC-SR04 sends 5 V back, which damages a 3.3 V ESP32 pin without a level shifter." },
     code: `// Distance sensor: the HC-SR04 sends a ping and times the echo.
 const int TRIG_PIN = {{hc-sr04.TRIG}};
 const int ECHO_PIN = {{hc-sr04.ECHO}};
@@ -209,6 +236,101 @@ void loop() {
 `,
   },
   {
+    id: "obstacle-avoider",
+    title: "Obstacle avoider",
+    does: "A two-wheel robot that drives forward and turns away from anything closer than 25 cm.",
+    parts: ["dc-motor", "dc-motor", "hc-sr04"],
+    libraries: [],
+    notOn: { esp32: "The HC-SR04 sends 5 V back, which damages a 3.3 V ESP32 pin without a level shifter." },
+    world: AVOIDER_COURSE,
+    code: `// Obstacle avoider: drive forward; when something is closer than CLEAR_CM, turn right until the way is clear.
+${MOTOR_PINS}
+const int TRIG_PIN = {{hc-sr04.TRIG}};
+const int ECHO_PIN = {{hc-sr04.ECHO}};
+
+const int SPEED = 170;      // 0 to 255
+const int TURN_SPEED = 150;
+const int CLEAR_CM = 25;
+
+${DRIVE}
+
+long distanceCm() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  long echo = pulseIn(ECHO_PIN, HIGH, 30000);
+  return echo == 0 ? 400 : echo * 0.0343 / 2;
+}
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(LEFT_EN, OUTPUT);
+  pinMode(LEFT_IN1, OUTPUT);
+  pinMode(LEFT_IN2, OUTPUT);
+  pinMode(RIGHT_EN, OUTPUT);
+  pinMode(RIGHT_IN1, OUTPUT);
+  pinMode(RIGHT_IN2, OUTPUT);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+}
+
+void loop() {
+  long d = distanceCm();
+  Serial.println(d);
+  if (d < CLEAR_CM) {
+    drive(TURN_SPEED, -TURN_SPEED);  // spin right on the spot
+    delay(250);
+  } else {
+    drive(SPEED, SPEED);
+    delay(40);
+  }
+}
+`,
+  },
+  {
+    id: "line-follower",
+    title: "Line follower",
+    does: "A two-wheel robot that follows a black line with two light sensors looking at the floor.",
+    parts: ["dc-motor", "dc-motor", "ldr", "ldr"],
+    libraries: [],
+    world: LINE_COURSE,
+    code: `// Line follower: the light sensors sit either side of the line. When one sees the dark tape,
+// the robot has drifted that way: slow that side's wheel to turn back onto the line.
+${MOTOR_PINS}
+const int LEFT_SENSOR = {{ldr.L2}};
+const int RIGHT_SENSOR = {{ldr#2.L2}};
+
+const int SPEED = 140;   // 0 to 255
+const int DARK = 300;    // below this (0 to 1023) the sensor is over the tape
+
+${DRIVE}
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(LEFT_EN, OUTPUT);
+  pinMode(LEFT_IN1, OUTPUT);
+  pinMode(LEFT_IN2, OUTPUT);
+  pinMode(RIGHT_EN, OUTPUT);
+  pinMode(RIGHT_IN1, OUTPUT);
+  pinMode(RIGHT_IN2, OUTPUT);
+}
+
+void loop() {
+  bool leftDark = analogRead(LEFT_SENSOR) < DARK;
+  bool rightDark = analogRead(RIGHT_SENSOR) < DARK;
+  if (leftDark && !rightDark) {
+    drive(0, SPEED);   // the line is to the left: turn left
+  } else if (rightDark && !leftDark) {
+    drive(SPEED, 0);   // the line is to the right: turn right
+  } else {
+    drive(SPEED, SPEED);
+  }
+}
+`,
+  },
+  {
     id: "night-light",
     title: "Night light",
     does: "Turns an LED on when a light sensor reads dark.",
@@ -258,6 +380,8 @@ export interface StarterBuild {
   session: LabSession;
   code: string;
   libraries: PinnedLibrary[];
+  /** The robot starters' course, for the project's world.json. */
+  world: WorldSpec | null;
 }
 
 /**
@@ -267,26 +391,29 @@ export interface StarterBuild {
 export function buildStarter(opts: { name: string; board: string; starter: string | null }): StarterBuild {
   const starter = opts.starter ? getStarter(opts.starter) : undefined;
   if (opts.starter && !starter) throw new StarterError(`There's no starter called “${opts.starter}”.`);
+  const notOn = starter?.notOn?.[opts.board];
+  if (notOn) throw new StarterError(`The “${starter?.title}” starter isn't for this board. ${notOn}`);
   if (!getPinout(opts.board).controller) throw new StarterError(`“${opts.board}” isn't a board.`);
 
   const board: LabNode = { id: makeId("n"), partId: opts.board, label: nextLabel([], opts.board), x: 80, y: 80, mode: "virtual" };
   let nodes: LabNode[] = [board];
   let wires: LabWire[] = [];
-  /** part id → the node made for it (the first, if a starter used a part twice). */
+  /** "part" and "part#2" → the node made for it (the first and second of that part). */
   const byPart = new Map<string, LabNode>();
 
   for (const partId of starter?.parts ?? []) {
     const at = placeNode(partId, nodes, board);
     const node: LabNode = { id: makeId("n"), partId, label: nextLabel(nodes, partId), x: Math.round(at.x), y: Math.round(at.y), mode: "virtual" };
     nodes = [...nodes, node];
-    if (!byPart.has(partId)) byPart.set(partId, node);
+    const count = nodes.filter((n) => n.partId === partId).length;
+    byPart.set(count === 1 ? partId : `${partId}#${count}`, node);
     const plan = planAutoWire(node, nodes, wires, board.id);
     const remove = new Set(plan.remove ?? []);
     wires = [...wires.filter((w) => !remove.has(w.id)), ...plan.wires.map((w) => ({ id: makeId("w"), from: w.from, to: w.to }))];
   }
 
   const code = starter
-    ? starter.code.replace(/\{\{([a-z0-9-]+)\.([A-Za-z0-9_]+)\}\}/g, (_match, partId: string, pin: string) => {
+    ? starter.code.replace(/\{\{([a-z0-9-]+(?:#\d+)?)\.([A-Za-z0-9_]+)\}\}/g, (_match, partId: string, pin: string) => {
         const node = byPart.get(partId);
         const wire = node && wires.find((w) => (w.to.node === node.id && w.to.pin === pin) || (w.from.node === node.id && w.from.pin === pin));
         const boardEnd = wire && (wire.from.node === board.id ? wire.from.pin : wire.to.node === board.id ? wire.to.pin : null);
@@ -298,5 +425,5 @@ export function buildStarter(opts: { name: string; board: string; starter: strin
 
   const session = newSession({ name: opts.name, nodes, wires });
   session.log = [...session.log, logEntry("note", starter ? `Started from the “${starter.title}” starter` : `Started with a ${board.label}`)];
-  return { session, code, libraries: starter?.libraries ?? [] };
+  return { session, code, libraries: starter?.libraries ?? [], world: starter?.world ?? null };
 }

@@ -3,18 +3,33 @@
  * handlers the interface may call. The interface gets no Node access; it
  * talks to this process only through the channels in @kiungo/api.
  */
+import { spawn } from "node:child_process";
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell } from "electron";
 import { hostname } from "node:os";
+import { readFile, rm, stat } from "node:fs/promises";
 import { join, normalize, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { EMULATED_BOARDS, EXAMPLE_SKETCHES, INSTALLABLE_CORES, isInvokeChannel, type AuthState, type Handlers, type Platform } from "@kiungo/api";
 import { PROJECT_FILE } from "@kiungo/core/project";
+import { hardwareBoard, uploadTargetsFor } from "@kiungo/core/hardware/boards";
 import { keychainStore } from "./auth/secret-store";
 import { AuthService } from "./auth/service";
 import { ProjectService } from "./projects/service";
 import { SketchFiles } from "./projects/sketch";
 import { BuildService } from "./build/service";
-import { compileSketch, installCore, locateCli, runCli, toolchainStatus } from "./toolchain/arduino-cli";
+import { BoardWatcher } from "./hardware/boards";
+import { defaultDoctorEnv, diagnosePorts, DRIVER_LINKS } from "./hardware/doctor";
+import { BAUD_RATES, SerialMonitor } from "./hardware/serial";
+import { HybridService } from "./hybrid/service";
+import { HybridLink } from "./hybrid/link";
+import { HYBRID_BOARDS, parsePlan } from "@kiungo/core/hybrid/plan";
+import { AccountClient } from "./account/client";
+import { importFromAccount, importSessionText, listAccount } from "./account/import";
+import { SyncService } from "./sync/service";
+import { parseProjectMeta } from "@kiungo/core/project";
+import type { SyncStatus } from "@kiungo/api";
+import { createHash } from "node:crypto";
+import { compileSketch, installCore, locateCli, runCli, toolchainStatus, type CliLocation } from "./toolchain/arduino-cli";
 
 const APP_SCHEME = "kiungo-app";
 /** The website sends the app back to kiungo://signin after signing in. */
@@ -33,7 +48,8 @@ const ISOLATION_HEADERS = {
 };
 const CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  // WebAssembly only (the robot world's physics, Rapier): no JavaScript eval.
+  "script-src 'self' 'wasm-unsafe-eval'",
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
@@ -145,6 +161,89 @@ const buildService = () =>
     buildsDir: join(app.getPath("userData"), "builds"),
     run: runCli,
   }));
+/** Arduino CLI as a long-running child (port discovery, the serial monitor). */
+const spawnCli = (location: CliLocation, args: string[]) =>
+  spawn(location.binary, ["--config-file", location.configFile, "--no-color", ...args], { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
+
+let watcher: BoardWatcher | null = null;
+const boardWatcher = () =>
+  (watcher ??= new BoardWatcher({ cli, run: runCli, spawn: spawnCli, onChange: (boards) => mainWindow?.webContents.send("boards:changed", boards) }));
+
+let monitor: SerialMonitor | null = null;
+const serialMonitor = () =>
+  (monitor ??= new SerialMonitor({
+    cli,
+    spawn: spawnCli,
+    onData: (port, text) => mainWindow?.webContents.send("serial:data", { port, text }),
+    onClosed: (port, message) => mainWindow?.webContents.send("serial:closed", { port, message }),
+  }));
+let account: AccountClient | null = null;
+const accountClient = () => (account ??= new AccountClient({ apiBase: API_BASE, token: () => authService().token(), timeoutMs: 15_000 }));
+
+// ----- project sync (DSK-14) -----
+let syncer: SyncService | null = null;
+const syncService = () =>
+  (syncer ??= new SyncService({
+    account: accountClient(),
+    device: () => {
+      const auth = authService().current();
+      return auth.status === "signed-in" ? auth.deviceName : hostname();
+    },
+  }));
+const syncTimers = new Map<string, ReturnType<typeof setTimeout>>();
+/** How long after a save settles before it's sent: at most one sync every 30 s while editing. */
+const SYNC_AFTER_MS = 30_000;
+const sendSync = (projectPath: string, status: SyncStatus) => mainWindow?.webContents.send("sync:status", { projectPath, status });
+
+async function syncProject(path: string, mode: "open" | "push"): Promise<SyncStatus> {
+  const at = new Date().toISOString();
+  if (!(await projectService().settings()).sync) return { state: "off", at };
+  if (authService().current().status !== "signed-in") {
+    const status: SyncStatus = { state: "signed-out", at, message: "Sign in to sync projects with your account." };
+    sendSync(path, status);
+    return status;
+  }
+  const meta = mode === "open" ? await readFile(join(path, PROJECT_FILE), "utf8").then(parseProjectMeta).catch(() => null) : projectService().metaOf(path);
+  if (!meta) return { state: "error", at, message: "This project couldn't be read." };
+  sendSync(path, { state: "syncing", at });
+  const status = await syncService().sync(path, { id: meta.id, name: meta.name, board: meta.board }, mode);
+  sendSync(path, status);
+  return status;
+}
+
+function scheduleSync(path: string, delay = SYNC_AFTER_MS): void {
+  const pending = syncTimers.get(path);
+  if (pending) clearTimeout(pending);
+  syncTimers.set(
+    path,
+    setTimeout(() => {
+      syncTimers.delete(path);
+      if (projectService().isOpen(path)) void syncProject(path, "push");
+    }, delay),
+  );
+}
+
+/** Open a project folder, taking the account's newer changes first when sync is on. */
+async function openWithSync(path: string) {
+  const sync = await syncProject(path, "open").catch(() => null);
+  const result = await projectService().openFolder(path);
+  if (!result.ok) return result;
+  scheduleSync(result.project.path, 2_000);
+  return sync && sync.state !== "off" ? { ...result, project: { ...result.project, sync } } : result;
+}
+
+let hybrid: HybridService | null = null;
+const hybridService = (projectPath: string) => {
+  // One work folder per project, so its build cache survives between runs.
+  const workDir = join(app.getPath("userData"), "builds", `${createHash("sha256").update(projectPath).digest("hex").slice(0, 16)}-hybrid`);
+  if (!hybrid || hybrid.workDir !== workDir) hybrid = new HybridService(buildService(), { resources: join(resourcesDir(), "hybrid"), workDir });
+  return hybrid;
+};
+let link: HybridLink | null = null;
+const hybridLink = () => (link ??= new HybridLink({ cli, spawn: spawnCli, onEvent: (port, event) => mainWindow?.webContents.send("hybrid:link", { port, ...event }) }));
+const hostPlatform = process.platform === "win32" || process.platform === "darwin" ? process.platform : "linux";
+const DRIVER_URLS = new Set<string>(Object.values(DRIVER_LINKS).map((l) => l.url));
+
 /** A library name as the Arduino index writes it, and a version number. */
 const isLibraryName = (v: unknown): v is string => typeof v === "string" && /^[\w][\w .+\-()]{0,99}$/.test(v) && !v.includes("..");
 const isVersion = (v: unknown): v is string => typeof v === "string" && /^\d+(\.\d+){0,2}([-+][\w.]+)?$/.test(v);
@@ -184,18 +283,31 @@ const handlers: Handlers = {
   },
   "projects:open-recent": async (path) => {
     if (!isText(path) || !(await projectService().isRecent(path))) return { ok: false, message: "That project isn't in the recent list." };
-    return projectService().openFolder(path);
+    return openWithSync(path);
   },
   "projects:open-dialog": async () => {
     const folder = await chooseFolder({ title: "Open a Kiungo project", buttonLabel: "Open project", properties: ["openDirectory"] });
-    return folder ? projectService().openFolder(folder) : null;
+    return folder ? openWithSync(folder) : null;
   },
   "projects:save": (path, payload) => {
     if (!isText(path) || !payload || typeof payload !== "object") return { ok: false, message: "Refused: nothing to save." };
-    return projectService().save(path, payload);
+    return projectService()
+      .save(path, payload)
+      .then((result) => {
+        if (result.ok) scheduleSync(path);
+        return result;
+      });
   },
   "projects:close": async (path) => {
-    if (isText(path)) await projectService().close(path);
+    if (!isText(path)) return;
+    const pending = syncTimers.get(path);
+    await projectService().close(path);
+    // What changed since the last sync goes now, without holding up the close.
+    if (pending) {
+      clearTimeout(pending);
+      syncTimers.delete(path);
+      void syncProject(path, "open").catch(() => undefined);
+    }
   },
   "projects:forget": (path) => (isText(path) ? projectService().forget(path) : projectService().recent()),
   "projects:reveal": async (path) => {
@@ -226,6 +338,113 @@ const handlers: Handlers = {
     if (!openProject(path)) return notOpen;
     return isLibraryName(name) ? buildService().remove(path, name) : notAdded;
   },
+  "boards:list": async () => {
+    await boardWatcher().start();
+    return { boards: boardWatcher().list(), message: boardWatcher().message };
+  },
+  "boards:doctor": async () => {
+    await boardWatcher().start();
+    return diagnosePorts(await boardWatcher().refresh(), defaultDoctorEnv(process.platform));
+  },
+  "boards:open-link": async (url) => {
+    if (typeof url === "string" && DRIVER_URLS.has(url)) await shell.openExternal(url);
+  },
+  "upload:start": async (path, port, boardId) => {
+    const refused = (message: string) => ({ ok: false, stage: "upload" as const, build: { ok: false, diagnostics: [], durationMs: 0, log: "", message }, log: "", durationMs: 0, problem: { id: "unknown" as const, title: message, steps: [] } });
+    if (!openProject(path)) return refused(notOpen.message);
+    const board = typeof boardId === "string" ? hardwareBoard(boardId) : undefined;
+    const projectBoard = projectService().boardOf(path);
+    if (!board || !projectBoard || !uploadTargetsFor(projectBoard).some((b) => b.id === board.id)) return refused("This project's code isn't written for that board.");
+    if (!isText(port) || !boardWatcher().has(port)) return refused("That board isn't plugged in any more. Pick it again in Upload to.");
+    // The upload needs the port: close the monitor, and reopen it after.
+    const reopen = serialMonitor().open?.port === port ? serialMonitor().open : null;
+    if (reopen) serialMonitor().stop();
+    const result = await buildService().upload(path, port, board, hostPlatform, (stage) => mainWindow?.webContents.send("upload:stage", { projectPath: path, stage }));
+    // Boards reset after an upload; give the port a moment to come back.
+    if (reopen) setTimeout(() => serialMonitor().start(reopen.port, reopen.baud), 1200);
+    return { ...result, ...(reopen ? { monitorReopened: true } : {}) };
+  },
+  "serial:open": (port, baud) => {
+    if (!isText(port) || !boardWatcher().has(port)) return { ok: false, message: "That board isn't plugged in." };
+    if (!(BAUD_RATES as readonly number[]).includes(baud)) return { ok: false, message: "Pick one of the listed speeds." };
+    return serialMonitor().start(port, baud);
+  },
+  "serial:write": (text) => (typeof text === "string" && text.length <= 4096 ? serialMonitor().write(text) : false),
+  "serial:close": () => serialMonitor().stop(),
+  "hybrid:start": async (path, port, boardId, rawPlan) => {
+    const refused = (message: string) => ({ ok: false, stage: "upload" as const, build: { ok: false, diagnostics: [], durationMs: 0, log: "", message }, log: "", durationMs: 0, problem: { id: "unknown" as const, title: message, steps: [] } });
+    if (!openProject(path)) return refused(notOpen.message);
+    const board = typeof boardId === "string" ? hardwareBoard(boardId) : undefined;
+    const projectBoard = projectService().boardOf(path);
+    if (!board || !projectBoard || !uploadTargetsFor(projectBoard).some((b) => b.id === board.id)) return refused("This project's code isn't written for that board.");
+    if (!HYBRID_BOARDS.has(board.id)) return refused(`Hybrid runs work on the Uno and the Nano for now. Run it all in the lab, or upload it to the ${board.name} without Kiungo.`);
+    if (!isText(port) || !boardWatcher().has(port)) return refused("That board isn't plugged in any more. Pick it again in Upload to.");
+    const parsed = parsePlan(rawPlan, board.fqbn);
+    if (!parsed.ok) return refused(parsed.message);
+    // The upload and the link both need the port.
+    hybridLink().stop();
+    if (serialMonitor().open?.port === port) serialMonitor().stop();
+    const result = await hybridService(path).upload(path, port, board, parsed.plan, hostPlatform, (stage) => mainWindow?.webContents.send("upload:stage", { projectPath: path, stage }));
+    if (!result.ok) return result;
+    const started = hybridLink().start(port);
+    return started.ok ? result : { ...result, ok: false, problem: { id: "unknown" as const, title: started.message, steps: [] } };
+  },
+  "hybrid:set": (pairs) => {
+    if (!Array.isArray(pairs) || pairs.length > 64) return;
+    const ok = pairs.filter((p): p is [number, number] => Array.isArray(p) && p.length === 2 && Number.isInteger(p[0]) && p[0] >= 0 && p[0] < 8 && Number.isInteger(p[1]) && p[1] >= -2147483648 && p[1] <= 2147483647);
+    hybridLink().set(ok);
+  },
+  "hybrid:serial-in": (text) => {
+    if (typeof text !== "string" || text.length > 4096 || !hybridLink().open) return false;
+    hybridLink().sendText(text);
+    return true;
+  },
+  "hybrid:stop": () => link?.stop(),
+  "hybrid:emergency-stop": () => link?.emergencyStop(),
+  "sync:set-enabled": async (enabled) => {
+    const settings = await projectService().setSync(enabled === true);
+    return settings;
+  },
+  "sync:now": (path) => (openProject(path) ? syncProject(path, "push") : { state: "error", at: new Date().toISOString(), message: notOpen.message }),
+  "sync:remote": async () => {
+    try {
+      const here = await projectService().recentIds();
+      const projects = (await syncService().list()).filter((p) => !p.deleted && !here.has(p.id));
+      return { ok: true, projects: projects.map((p) => ({ id: p.id, name: p.name, board: p.board, updatedAt: p.updated_at, sizeBytes: p.size_bytes })) };
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : "Your account couldn't be read." };
+    }
+  },
+  "sync:download": async (id) => {
+    if (!isText(id) || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(id)) return { ok: false, message: "Refused: that isn't a project on your account." };
+    let folder: string | null = null;
+    try {
+      const remote = await syncService().remote(id);
+      if (!remote || remote.deleted) return { ok: false, message: "That project isn't on your account any more." };
+      folder = await projectService().newFolder(remote.name || "Project");
+      await syncService().download(id, folder);
+      return projectService().openFolder(folder);
+    } catch (error) {
+      if (folder) await rm(folder, { recursive: true, force: true }).catch(() => undefined);
+      return { ok: false, message: error instanceof Error ? error.message : "That project couldn't be brought here." };
+    }
+  },
+  "import:file": async () => {
+    const options: Electron.OpenDialogOptions = { title: "Import a lab session", buttonLabel: "Import", properties: ["openFile"], filters: [{ name: "Kiungo lab session", extensions: ["json"] }] };
+    const result = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options);
+    const file = result.canceled ? null : result.filePaths[0];
+    if (!file) return null;
+    const info = await stat(file).catch(() => null);
+    if (!info?.isFile() || info.size > 5 * 1024 * 1024) return { ok: false, message: "That file is too big to be a lab session." };
+    return importSessionText(projectService(), await readFile(file, "utf8"));
+  },
+  "import:account-list": () => listAccount(projectService(), accountClient()),
+  "import:account": (kind, id) => {
+    if ((kind !== "lab-session" && kind !== "phase-one-project") || !isText(id) || id.length > 64) return { ok: false, message: "Refused: that isn't something on your account." };
+    return importFromAccount(projectService(), accountClient(), kind, id);
+  },
+  "world:read": (path) => (openProject(path) ? projectService().readWorld(path) : null),
+  "world:write": (path, world) => (openProject(path) ? projectService().writeWorld(path, world) : notOpen),
   "projects:choose-folder": async () => {
     const current = await projectService().settings();
     const folder = await chooseFolder({ title: "Where should new projects go?", buttonLabel: "Use this folder", defaultPath: current.projectsFolder, properties: ["openDirectory", "createDirectory"] });
@@ -344,6 +563,9 @@ app.whenReady().then(() => {
 let quitting = false;
 app.on("will-quit", (event) => {
   auth?.dispose();
+  watcher?.stop();
+  monitor?.stop();
+  link?.stop();
   if (quitting || !projects) return;
   event.preventDefault();
   quitting = true;

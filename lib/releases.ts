@@ -206,7 +206,41 @@ export function detectPlatform(userAgent: string): { platform: ReleasePlatform; 
   return null;
 }
 
+/** "148 MB" or "640 KB", with a no-break space so a size never splits across lines. */
 export function formatSize(bytes: number): string {
   if (!bytes) return "";
-  return bytes >= 1024 * 1024 ? `${Math.round(bytes / (1024 * 1024))} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return bytes >= 1024 * 1024 ? `${Math.round(bytes / (1024 * 1024))}\u00a0MB` : `${Math.max(1, Math.round(bytes / 1024))}\u00a0KB`;
+}
+
+/**
+ * How the home page downloads an installer.
+ * - `page`: the page fetches the file through its own origin (`/api/desktop/download`,
+ *   which passes the release asset through, since GitHub's downloads don't allow a
+ *   page to read them) so it can show progress, check the file against the release's
+ *   checksum, and say exactly what went wrong when something does.
+ * - `browser`: a plain link to the asset; the browser downloads it and the page
+ *   can't tell how it went. Set KIUNGO_DOWNLOAD_MODE=browser to use this.
+ */
+export type DownloadMode = "page" | "browser";
+
+export const DOWNLOAD_ROUTE = "/api/desktop/download";
+
+/** Where this repository's release assets live (the GitHub organization keeps its pre-rebrand name). */
+const RELEASE_ASSETS = "https://github.com/Jumetra-Technologies/jumetra-frontend/releases/download/";
+
+/**
+ * Whether the download route may fetch this URL: only installers of this
+ * project's releases, on GitHub or on the backend, plus any origins listed in
+ * `extra` (KIUNGO_DOWNLOAD_ORIGINS, for a local check against a local file server).
+ */
+export function isReleaseFileUrl(url: string, extra: readonly string[] = []): boolean {
+  if (typeof url !== "string" || url.length > 2048) return false;
+  if (url.startsWith(RELEASE_ASSETS) && /^[^/?#]+\/[^/?#]+$/.test(url.slice(RELEASE_ASSETS.length))) return true;
+  if (url.startsWith(`${API_BASE}/releases/`)) return true;
+  return extra.some((origin) => origin && url.startsWith(origin));
+}
+
+/** The link under a download button: the pass-through for the page's own download, the asset itself otherwise. */
+export function downloadHref(file: Pick<ReleaseFile, "url">, mode: DownloadMode): string {
+  return mode === "page" ? `${DOWNLOAD_ROUTE}?url=${encodeURIComponent(file.url)}` : file.url;
 }

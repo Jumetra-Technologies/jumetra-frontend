@@ -1,20 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useSyncExternalStore } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { ChevronRight, Download } from "lucide-react";
 import { Button } from "@kiungo/ui/button";
 import { DESKTOP } from "@/lib/landing/content";
-import { detectPlatform, fileLabel, fileName, formatSize, PLATFORM_NAMES, primaryFile, type Release, type ReleaseFile, type ReleasePlatform } from "@/lib/releases";
-
-const subscribe = () => () => undefined;
-/** The visitor's browser, read after hydration so the first paint matches the server's. */
-const useUserAgent = () =>
-  useSyncExternalStore(
-    subscribe,
-    () => navigator.userAgent,
-    () => "",
-  );
+import { cn } from "@/lib/utils";
+import { downloadHref, fileLabel, fileName, formatSize, PLATFORM_NAMES, primaryFile, type Release, type ReleaseFile, type ReleasePlatform } from "@/lib/releases";
+import { useDownload } from "./DownloadProvider";
+import { useVisitor } from "./use-visitor";
 
 const ORDER: ReleasePlatform[] = ["windows", "macos", "linux"];
 
@@ -22,11 +16,14 @@ const ORDER: ReleasePlatform[] = ["windows", "macos", "linux"];
  * The download: one button for this computer, every installer under it, and
  * what to expect from a beta build. On a phone there's no button to press,
  * only the list, since the app runs on computers.
+ *
+ * Each link is a real link to the file, so it works without a script; with
+ * one, the click starts the page's own download (DownloadProvider), which
+ * shows its progress here and in the corner and says how it went.
  */
 export function DownloadBlock({ release }: { release: Release | null }) {
-  const ua = useUserAgent();
-  const visitor = ua ? detectPlatform(ua) : null;
-  const phone = Boolean(ua) && !visitor;
+  const { visitor, phone } = useVisitor();
+  const dl = useDownload();
 
   if (!release) {
     return (
@@ -46,6 +43,9 @@ export function DownloadBlock({ release }: { release: Release | null }) {
   const label = visitor && main ? DESKTOP.download.label(PLATFORM_NAMES[main.platform]) : DESKTOP.download.generic;
   const beta = release.channel === "beta";
   const platforms = ORDER.filter((p) => release.files.some((f) => f.platform === p));
+  const state = dl?.state ?? { phase: "idle" as const };
+  const running = state.phase === "downloading";
+  const pct = running && state.total ? Math.min(100, Math.floor((state.received / state.total) * 100)) : null;
 
   return (
     <div data-testid="desktop-download" data-state={phone ? "phone" : visitor ? "detected" : "pending"}>
@@ -53,12 +53,12 @@ export function DownloadBlock({ release }: { release: Release | null }) {
         <p className="max-w-[52ch] text-[15px] leading-7 text-muted">{DESKTOP.download.phones}</p>
       ) : main ? (
         <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-          <a href={main.url} className="inline-flex" data-testid="download-main">
-            <Button size="lg" className="h-12 min-w-[15.5rem] px-7 text-[15px]">
+          <FileAnchor file={main} className="inline-flex" testId="download-main">
+            <Button size="lg" className="h-12 min-w-[15.5rem] px-7 text-[15px]" aria-busy={running} tabIndex={-1}>
               <Download className="size-4" aria-hidden />
-              {label}
+              {running ? DESKTOP.download.status.button(pct) : label}
             </Button>
-          </a>
+          </FileAnchor>
           <span className="font-mono text-xs leading-5 text-muted" data-testid="download-main-file">
             {fileName(main)}
             {main.size ? ` · ${formatSize(main.size)}` : ""}
@@ -85,7 +85,12 @@ export function DownloadBlock({ release }: { release: Release | null }) {
                 {release.files
                   .filter((f) => f.platform === platform)
                   .map((f) => (
-                    <FileLink key={f.url} file={f} />
+                    <li key={f.url}>
+                      <FileAnchor file={f} className="group/file block rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] aria-disabled:opacity-60" testId="download-file">
+                        <span className="text-[13.5px] text-foreground underline-offset-4 group-hover/file:underline">{fileLabel(f)}</span>
+                        {f.size ? <span className="ml-1.5 font-mono text-[11.5px] text-muted">{formatSize(f.size)}</span> : null}
+                      </FileAnchor>
+                    </li>
                   ))}
               </ul>
             </div>
@@ -113,6 +118,25 @@ export function DownloadBlock({ release }: { release: Release | null }) {
   );
 }
 
+/**
+ * A link to an installer that, with a script running, becomes the page's own
+ * download. While one runs, the others wait (a click does nothing, and says so).
+ */
+export function FileAnchor({ file, className, testId, children }: { file: ReleaseFile; className?: string; testId?: string; children: ReactNode }) {
+  const dl = useDownload();
+  const running = dl?.state.phase === "downloading";
+  const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (!dl || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    if (!running) dl.start(file);
+  };
+  return (
+    <a href={downloadHref(file, dl?.mode ?? "browser")} onClick={onClick} className={cn(className, running && "cursor-progress")} aria-disabled={running || undefined} data-testid={testId} data-file={fileName(file)}>
+      {children}
+    </a>
+  );
+}
+
 /** A short list behind one line, so the block stays small until someone wants the detail. */
 function Disclosure({ title, items }: { title: string; items: Array<{ lead?: string; text: string }> }) {
   return (
@@ -130,16 +154,5 @@ function Disclosure({ title, items }: { title: string; items: Array<{ lead?: str
         ))}
       </ul>
     </details>
-  );
-}
-
-function FileLink({ file }: { file: ReleaseFile }) {
-  return (
-    <li>
-      <a href={file.url} className="group/file block rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]" data-testid="download-file">
-        <span className="text-[13.5px] text-foreground underline-offset-4 group-hover/file:underline">{fileLabel(file)}</span>
-        {file.size ? <span className="ml-1.5 font-mono text-[11.5px] text-muted">{formatSize(file.size)}</span> : null}
-      </a>
-    </li>
   );
 }

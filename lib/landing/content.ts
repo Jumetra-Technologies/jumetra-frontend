@@ -154,6 +154,51 @@ export const DESKTOP = {
       "Internet the first time you sign in and the first time you build for a board. After that it works offline.",
       "For real boards: a USB port and a data cable. Some clone boards need a driver; the app tells you when.",
     ],
+    /** The notice in the corner while a download runs, when it's done, and when it isn't. */
+    status: {
+      /** The notice's title while the file comes in. */
+      downloading: (platform: string) => `Downloading Kiungo for ${platform}`,
+      /** The button's label meanwhile: short, so it never wraps. */
+      button: (percent: number | null) => `Downloading${percent === null ? "" : ` ${percent}%`}`,
+      starting: "Starting the download",
+      progress: (received: string, total: string) => `${received} of ${total}`,
+      keepOpen: "Keep this tab open until it's done.",
+      cancel: "Cancel",
+      cancelled: "Download cancelled.",
+      done: {
+        title: (platform: string) => `Downloaded! Kiungo for ${platform} is ready to install.`,
+        verified: (file: string, size: string) => `${file} (${size}) is in your downloads, and matches the release's checksum.`,
+        saved: (file: string, size: string) => `${file} (${size}) is in your downloads.`,
+        /** What to do with the file, by platform. */
+        next: {
+          windows: "Open it to install, then start Kiungo from the Start menu.",
+          macos: "Open the disk image and drag Kiungo into Applications.",
+          linux: "Make the AppImage executable and run it, or install the .deb or .rpm.",
+        } as Record<string, string>,
+        close: "Close",
+      },
+      /** The browser is downloading the file itself, so this page can't follow it. */
+      browser: {
+        title: (file: string) => `Your browser is downloading ${file}.`,
+        body: "Look for it in your downloads. This page can't tell when it finishes, so the install steps are under How to open the beta.",
+        because: (status: number) => `The download server didn't answer (HTTP ${status}), so your browser is fetching the file directly.`,
+      },
+      problems: {
+        offline: { title: "You're offline.", fix: "Connect to the internet, then press Download again." },
+        missing: (status: number) => ({ title: `The file isn't on the release page any more (${status}).`, fix: "Reload this page to get the newest release, then download again." }),
+        refused: (status: number) => ({ title: `The download was refused (${status}).`, fix: "Reload the page and try again. If it keeps happening, download from the release page on GitHub instead." }),
+        busy: { title: "Too many downloads at once (429).", fix: "Wait a minute, then press Try again." },
+        server: (status: number) => ({ title: `The download server couldn't send the file (HTTP ${status}).`, fix: "Wait a minute, then press Try again. If it keeps happening, download from the release page on GitHub instead." }),
+        dropped: (received: string, total: string) => ({ title: `The connection dropped at ${received} of ${total}.`, fix: "Check your connection, then press Try again: it carries on from where it stopped." }),
+        damaged: { title: "The file arrived damaged: its checksum doesn't match the release's.", fix: "Download it again. If it happens twice, something on your network is changing the file; try another connection." },
+        memory: (size: string) => ({ title: `Your browser couldn't hold the file (${size}) in memory.`, fix: "Close other tabs and try again, or let your browser download it instead." }),
+        unknown: { title: "The download stopped with a problem in your browser.", fix: "Try again, or let your browser download it instead." },
+      },
+      tryAgain: "Try again",
+      reload: "Reload the page",
+      useBrowser: "Let the browser download it",
+      releasePage: "Open the release page",
+    },
   },
 };
 

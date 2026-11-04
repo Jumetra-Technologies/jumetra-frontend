@@ -1,12 +1,19 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { CircleAlert, CircleCheck, Download, Loader2, RefreshCw, X } from "lucide-react";
 import { Button } from "@kiungo/ui/button";
+import { cn } from "@kiungo/ui/cn";
 import type { UpdateControls } from "./useUpdate";
 
 /**
- * A small card in the corner for Kiungo's own update: shown when one is ready
- * to install, and while a check the person asked for runs and ends. Checks
- * nobody asked for stay out of sight.
+ * Kiungo's own update, as a card in the bottom-left corner. It appears the
+ * moment a new version is found and follows the download; once the version
+ * is ready, the card itself is the button: one click saves every project,
+ * installs, and reopens Kiungo on the new version. Later puts that version's
+ * card away until the next start (it installs anyway when Kiungo quits).
+ *
+ * A check the person asked for also reports here (checking, up to date, or
+ * what went wrong); checks nobody asked for stay quiet unless they find
+ * something.
  */
 export function UpdateBanner({ update }: { update: UpdateControls }) {
   const { info, asked, refused, later, install, dismiss, putOff } = update;
@@ -21,45 +28,76 @@ export function UpdateBanner({ update }: { update: UpdateControls }) {
   }, [asked, state?.status, dismiss]);
 
   if (!info || !state) return null;
-  let body: { icon: ReactNode; title: string; detail?: string; actions?: ReactNode } | null = null;
+
+  const frame = (phase: string, children: ReactNode, extra?: ReactNode) => (
+    <div role="status" aria-live="polite" data-testid="update-banner" data-phase={phase} className="fixed bottom-4 left-4 z-50 w-[340px] max-w-[calc(100vw-2rem)]">
+      {children}
+      {extra}
+    </div>
+  );
+  const card = "flex w-full gap-3 rounded-[12px] border border-border bg-surface p-3.5 text-left text-foreground shadow-[var(--shadow-md)]";
   const close = (
     <Button variant="ghost" size="sm" onClick={dismiss} aria-label="Close">
       <X className="size-3.5" aria-hidden />
     </Button>
   );
 
+  // The update is coming: say so, and how far it is.
+  if (state.status === "downloading") {
+    return frame(
+      "downloading",
+      <div className={card}>
+        <Download className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium leading-5">Kiungo {state.version} is on its way</p>
+          <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted-bg" role="progressbar" aria-label={`Downloading Kiungo ${state.version}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={state.percent}>
+            <div className="h-full rounded-full bg-primary" style={{ width: `${state.percent}%` }} />
+          </div>
+          <p className="mt-1.5 text-[12px] leading-[18px] text-muted" data-testid="update-progress">
+            {state.percent}% downloaded. Keep working; it installs when you say.
+          </p>
+        </div>
+      </div>,
+    );
+  }
+
+  // Ready: the card is the button.
   if (state.status === "ready" && later !== state.version) {
-    body = {
-      icon: <Download className="size-4 text-primary" aria-hidden />,
-      title: `Kiungo ${state.version} is ready`,
-      detail: refused ?? "Restart to update. Your projects are saved first, and it installs anyway the next time Kiungo quits.",
-      actions: (
-        <>
-          <Button variant="ghost" size="sm" onClick={() => putOff(state.version)}>
-            Later
-          </Button>
-          <Button
-            size="sm"
-            disabled={restarting}
-            data-testid="update-restart"
-            onClick={() => {
-              setRestarting(true);
-              void install().then((r) => {
-                if (!r.ok) setRestarting(false);
-              });
-            }}
-          >
-            {restarting ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <RefreshCw className="size-3.5" aria-hidden />}
-            Restart to update
-          </Button>
-        </>
+    const detail = restarting ? "Saving your projects, then installing. Kiungo opens again by itself." : (refused ?? "Click to restart and update. Your projects are saved first; it takes a few seconds.");
+    return frame(
+      "ready",
+      <button
+        type="button"
+        disabled={restarting}
+        data-testid="update-restart"
+        aria-busy={restarting}
+        onClick={() => {
+          setRestarting(true);
+          void install().then((r) => {
+            if (!r.ok) setRestarting(false);
+          });
+        }}
+        className={cn(card, "cursor-pointer pr-14 transition-colors hover:border-primary hover:bg-muted-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:cursor-progress")}
+      >
+        {restarting ? <Loader2 className="mt-0.5 size-4 shrink-0 animate-spin text-primary" aria-hidden /> : <RefreshCw className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />}
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13px] font-medium leading-5">{restarting ? `Restarting to update to Kiungo ${state.version}…` : `Kiungo ${state.version} is ready`}</span>
+          <span className={cn("mt-0.5 block text-[12px] leading-[18px]", refused && !restarting ? "text-danger" : "text-muted")}>{detail}</span>
+        </span>
+      </button>,
+      restarting ? null : (
+        <Button variant="ghost" size="sm" onClick={() => putOff(state.version)} className="absolute right-2 top-2 h-7 px-2 text-[11.5px]" data-testid="update-later">
+          Later
+        </Button>
       ),
-    };
-  } else if (state.status === "error" && (!state.quiet || asked)) {
+    );
+  }
+
+  let body: { icon: ReactNode; title: string; detail?: string; actions?: ReactNode } | null = null;
+  if (state.status === "error" && (!state.quiet || asked)) {
     body = { icon: <CircleAlert className="size-4 text-danger" aria-hidden />, title: "Update didn't work", detail: state.message, actions: close };
   } else if (asked) {
     if (state.status === "checking" || state.status === "idle") body = { icon: <Loader2 className="size-4 animate-spin text-muted" aria-hidden />, title: "Checking for updates…" };
-    else if (state.status === "downloading") body = { icon: <Loader2 className="size-4 animate-spin text-primary" aria-hidden />, title: `Downloading Kiungo ${state.version}… ${state.percent}%`, detail: "Keep working; you'll be asked to restart when it's ready.", actions: close };
     else if (state.status === "up-to-date") body = { icon: <CircleCheck className="size-4 text-success" aria-hidden />, title: `Kiungo ${info.currentVersion} is the newest version`, actions: close };
     else if (state.status === "unsupported")
       body = {
@@ -80,14 +118,15 @@ export function UpdateBanner({ update }: { update: UpdateControls }) {
   }
   if (!body) return null;
 
-  return (
-    <div role="status" aria-live="polite" data-testid="update-banner" className="fixed bottom-4 right-4 z-50 flex w-[340px] max-w-[calc(100vw-2rem)] gap-3 rounded-[12px] border border-border bg-surface p-3.5 text-foreground shadow-[var(--shadow-md)]">
+  return frame(
+    state.status,
+    <div className={card}>
       <span className="mt-0.5 shrink-0">{body.icon}</span>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-medium leading-5">{body.title}</p>
         {body.detail ? <p className="mt-0.5 text-[12px] leading-[18px] text-muted">{body.detail}</p> : null}
         {body.actions ? <div className="mt-2.5 flex items-center justify-end gap-1.5">{body.actions}</div> : null}
       </div>
-    </div>
+    </div>,
   );
 }

@@ -10,6 +10,9 @@ import { readFileSync } from "node:fs";
 import { readFile, rm, stat } from "node:fs/promises";
 import { join, normalize, sep } from "node:path";
 import { pathToFileURL } from "node:url";
+// The app icon, for the window on Linux and for a development copy (installed copies on Windows
+// and macOS get it from the installer: electron-builder.yml). electron-vite copies the file into out/main.
+import appIcon from "../../build/icon.png?asset";
 import { EMULATED_BOARDS, EXAMPLE_SKETCHES, INSTALLABLE_CORES, isInvokeChannel, type AuthState, type Handlers, type Platform } from "@kiungo/api";
 import { PROJECT_FILE } from "@kiungo/core/project";
 import { hardwareBoard, uploadTargetsFor } from "@kiungo/core/hardware/boards";
@@ -287,6 +290,8 @@ const updateService = () => {
       const { autoUpdater } = require("electron-updater") as typeof import("electron-updater");
       // Stable copies read latest.yml; beta copies read beta.yml, which the workflow also points at each stable release.
       autoUpdater.setFeedURL({ provider: "generic", url: UPDATE_FEED, channel: channel === "stable" ? "latest" : "beta", useMultipleRangeRequest: false });
+      // A development copy only gets here with KIUNGO_UPDATE_URL set (updateSupport): let it check its feed.
+      autoUpdater.forceDevUpdateConfig = !app.isPackaged;
       autoUpdater.autoDownload = true;
       autoUpdater.autoInstallOnAppQuit = true;
       autoUpdater.allowDowngrade = false;
@@ -540,6 +545,7 @@ function createWindow() {
     minHeight: 600,
     show: false,
     title: "Kiungo",
+    icon: appIcon,
     backgroundColor: "#f6f8fb",
     autoHideMenuBar: true,
     webPreferences: {
@@ -609,6 +615,8 @@ function registerLinkScheme() {
 }
 
 app.whenReady().then(() => {
+  // A development copy on macOS shows Electron's icon in the Dock otherwise.
+  if (process.platform === "darwin" && !app.isPackaged) app.dock?.setIcon(appIcon);
   // No camera, microphone or other device access until a feature asks the user for it (PCP-02).
   session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
   serveRenderer();

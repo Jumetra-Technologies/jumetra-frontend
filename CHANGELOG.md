@@ -10,6 +10,17 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.33.1] - 2026-11-04
+
+The desktop app is 0.12.1: its own icon, and the update card in the bottom-left corner. This is the first version that installed copies of 0.12.0 receive through the app rather than by download.
+
+### Added
+- **The Kiungo icon.** The installers, the Start menu, the Dock, the taskbar and the window carry the Kiungo mark on a white tile (`apps/desktop/build/icon.svg`; the macOS one sits on Apple's icon grid) instead of Electron's. `node apps/desktop/build/rasterize.mjs` draws the PNGs electron-builder packages.
+- **Trying an update without a release.** A development copy with `KIUNGO_UPDATE_URL` set checks that feed (with `dev-app-update.yml` as electron-updater's settings), so the flow can be watched end to end against a local folder.
+
+### Changed
+- **The update card** now sits in the bottom-left corner and appears the moment a new version is found, following the download with a bar and its percent. Once the version is ready the card itself is the button: one click saves every project, installs, and reopens Kiungo on the new version (it says so while it happens). **Later** puts that version's card away until the next start; the update still installs when Kiungo quits. The restart is unavoidable: an update replaces the app's own files, which a reload of the window can't do.
+
 ## [1.33.0] - 2026-11-04
 
 The desktop app updates itself. Kiungo looks for a new version a little after it starts and every four hours, downloads it in the background, and offers **Restart to update**; nobody has to download an installer again. The desktop app is 0.12.0.
@@ -695,6 +706,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.33.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.33.0...v1.33.1
 [1.33.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.32.0...v1.33.0
 [1.32.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.31.0...v1.32.0
 [1.31.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.30.0...v1.31.0

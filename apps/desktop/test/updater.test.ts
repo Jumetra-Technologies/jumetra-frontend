@@ -72,6 +72,8 @@ describe("which copies update themselves", () => {
     expect(updateSupport({ platform: "linux", packaged: true, env: {} })).toMatchObject({ ok: false, reason: "platform" });
     expect(updateSupport({ platform: "darwin", packaged: true, env: {} })).toMatchObject({ ok: false, reason: "platform" });
     expect(updateSupport({ platform: "win32", packaged: false, env: {} })).toMatchObject({ ok: false, reason: "development" });
+    // A development copy pointed at a feed of its own can try the flow.
+    expect(updateSupport({ platform: "linux", packaged: false, env: { KIUNGO_UPDATE_URL: "http://127.0.0.1:8777" } })).toEqual({ ok: true });
   });
 
   it("a school can turn updates off with KIUNGO_UPDATES=off", () => {

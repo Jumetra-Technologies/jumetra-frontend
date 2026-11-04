@@ -112,7 +112,16 @@ Arduino CLI finds boards (`board list --watch`, kept running while the app is op
 npm run dist -w @kiungo/desktop
 ```
 
-Before a release build, CI runs `npm run fetch:arduino-cli -w @kiungo/desktop -- --all`. Signing and the update feed come in sprint 6.
+Before a release build, CI runs `npm run fetch:arduino-cli -w @kiungo/desktop -- --all`. Signing comes later (DSK-80).
+
+## Updates
+
+Kiungo updates itself on Windows and from the Linux AppImage (`src/main/updater/service.ts`, with electron-updater). It checks 15 seconds after starting and every four hours, downloads a new version in the background, and the interface shows **Restart to update** (`src/renderer/src/update/`). Restarting saves every project and stops the board link first, and is refused while a Hybrid run or an upload is going. A downloaded update also installs when Kiungo quits.
+
+- **The feed:** `<channel>.yml` files on the `desktop-feed` GitHub release, written by `.github/scripts/desktop-update-feed.mjs` in the release workflow. They name the installers on the versioned release (`desktop-v<version>`), whose blockmaps let Windows download only what changed.
+- **Channels:** the workflow writes `kiungo.updateChannel` (beta or stable) into the packaged `package.json`. Beta copies read `beta.yml` (Windows) or `beta-linux.yml`, which stable releases update too; stable copies read `latest.yml` or `latest-linux.yml`.
+- **Can't update itself:** development copies, macOS (until signing), and the .deb and .rpm packages. Those show where to download a new version instead.
+- `KIUNGO_UPDATE_URL` points the app at another feed; `KIUNGO_UPDATES=off` turns updates off.
 
 ## Where things are
 
@@ -121,6 +130,7 @@ Before a release build, CI runs `npm run fetch:arduino-cli -w @kiungo/desktop --
 | `src/main/index.ts` | Window, the `kiungo-app://` protocol (isolation headers and content policy), IPC handlers |
 | `src/main/projects/` | Projects on disk: making, opening, the recent list, crash-safe autosave, sketch files |
 | `src/main/auth/` | Signing in through the website, the keychain-encrypted session |
+| `src/main/updater/` | Kiungo's own updates: when to check, the state the interface shows, when a restart must wait |
 | `src/main/build/` | Building a project with its profile, its libraries, and uploading |
 | `src/main/hardware/` | Finding boards on USB, the serial monitor, and why a board might not show up |
 | `src/main/toolchain/arduino-cli.ts` | Finding and running Arduino CLI with JSON output |

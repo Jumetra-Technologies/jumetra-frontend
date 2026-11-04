@@ -10,6 +10,22 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.33.0] - 2026-11-04
+
+The desktop app updates itself. Kiungo looks for a new version a little after it starts and every four hours, downloads it in the background, and offers **Restart to update**; nobody has to download an installer again. The desktop app is 0.12.0.
+
+### Added
+- **In-app updates on Windows and the Linux AppImage.** A card in the corner says **Kiungo 0.12.0 is ready** with **Restart to update** and **Later**. Restarting saves every project first, installs silently into the same folder (no administrator: the installer is per-user) and opens the new version. **Later** waits: the update installs anyway the next time Kiungo quits.
+  - **It never restarts in the middle of a board run.** While a Hybrid run is live or an upload is in flight, Restart to update says to stop the run (or wait for the upload) first.
+  - **Search and commands** gains **Check for updates**, with the version you have and whether it's a beta, and **Restart to update** once one is ready. A check you asked for shows how it went (checking, downloading with its percent, up to date, or what went wrong in plain words); checks nobody asked for stay quiet unless an update is ready.
+  - Downloads are checked against the release's SHA-512 before anything installs. On Windows only the parts that changed are downloaded when the old version's blockmap is on its release (from 0.12.0 on).
+  - Beta copies follow betas and stable releases; stable copies follow stable releases only.
+  - macOS can't update itself until the app is signed (DSK-80), and the .deb and .rpm packages update from the website: on those, **Check for updates** says so and opens the download page. `KIUNGO_UPDATES=off` turns updates off, for computers a school manages.
+- **The update feed** (`.github/scripts/desktop-update-feed.mjs`). Each run of **Release the desktop app** now also uploads the installers' blockmaps and refreshes the `desktop-feed` release: `beta.yml` and `beta-linux.yml`, plus `latest.yml` and `latest-linux.yml` for a stable release. They're electron-builder's own files pointed at the versioned release, and the script refuses one for another version or naming another file. `KIUNGO_UPDATE_URL` points the app at another feed, e.g. the backend's later.
+
+### Changed
+- The release workflow writes the channel (beta or stable) into the packaged app, so it knows which feed file to read.
+
 ## [1.32.0] - 2026-11-03
 
 The home page downloads the desktop app itself, and says how it went. The first beta, `desktop-v0.11.0`, is published.
@@ -679,6 +695,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.33.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.32.0...v1.33.0
 [1.32.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.31.0...v1.32.0
 [1.31.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.30.0...v1.31.0
 [1.30.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.29.0...v1.30.0

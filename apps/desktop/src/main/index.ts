@@ -6,6 +6,7 @@
 import { spawn } from "node:child_process";
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell } from "electron";
 import { hostname } from "node:os";
+import { readFileSync } from "node:fs";
 import { readFile, rm, stat } from "node:fs/promises";
 import { join, normalize, sep } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -30,12 +31,21 @@ import { parseProjectMeta } from "@kiungo/core/project";
 import type { SyncStatus } from "@kiungo/api";
 import { createHash } from "node:crypto";
 import { compileSketch, installCore, locateCli, runCli, toolchainStatus, type CliLocation } from "./toolchain/arduino-cli";
+import { UpdateService, updateSupport, type Updater } from "./updater/service";
 
 const APP_SCHEME = "kiungo-app";
 /** The website sends the app back to kiungo://signin after signing in. */
 const LINK_SCHEME = "kiungo";
 /** The backend the app signs in with. KIUNGO_API_URL points it at another one (staging, a local backend). */
 const API_BASE = (process.env.KIUNGO_API_URL || "https://europe-west4-hhipsystemv0.cloudfunctions.net/api").replace(/\/+$/, "");
+/**
+ * Where the app looks for new versions: <channel>.yml files (beta.yml, latest.yml, and -linux for the
+ * AppImage) that the release workflow keeps on the desktop-feed release. KIUNGO_UPDATE_URL points it
+ * at another feed, e.g. the backend's once the release pipeline serves one.
+ */
+const UPDATE_FEED = (process.env.KIUNGO_UPDATE_URL || "https://github.com/Jumetra-Technologies/jumetra-frontend/releases/download/desktop-feed").replace(/\/+$/, "");
+/** Where a copy that can't update itself gets a new version. */
+const DOWNLOAD_PAGE = "https://jumetra-frontendv0.vercel.app/#desktop";
 const FQBN = { uno: "arduino:avr:uno", nano: "arduino:avr:nano:cpu=atmega328" } as const;
 
 /**
@@ -241,7 +251,60 @@ const hybridService = (projectPath: string) => {
 };
 let link: HybridLink | null = null;
 const hybridLink = () => (link ??= new HybridLink({ cli, spawn: spawnCli, onEvent: (port, event) => mainWindow?.webContents.send("hybrid:link", { port, ...event }) }));
+/** Uploads in flight (plain and Hybrid): the app mustn't restart to update in the middle of one. */
+let uploading = 0;
+async function whileUploading<T>(work: () => Promise<T>): Promise<T> {
+  uploading++;
+  try {
+    return await work();
+  } finally {
+    uploading--;
+  }
+}
 const hostPlatform = process.platform === "win32" || process.platform === "darwin" ? process.platform : "linux";
+// ----- Kiungo's own updates -----
+/** beta or stable: the release workflow writes it into the packaged package.json (kiungo.updateChannel). */
+function updateChannel(): "beta" | "stable" {
+  try {
+    const pkg = JSON.parse(readFileSync(join(app.getAppPath(), "package.json"), "utf8")) as { kiungo?: { updateChannel?: string } };
+    return pkg.kiungo?.updateChannel === "stable" ? "stable" : "beta";
+  } catch {
+    return "beta";
+  }
+}
+let updates: UpdateService | null = null;
+const updateService = () => {
+  if (updates) return updates;
+  const channel = updateChannel();
+  updates = new UpdateService({
+    currentVersion: app.getVersion(),
+    channel,
+    support: updateSupport({ platform: process.platform, packaged: app.isPackaged, env: process.env }),
+    downloadUrl: DOWNLOAD_PAGE,
+    updater: () => {
+      // Loaded only when this copy can update itself.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { autoUpdater } = require("electron-updater") as typeof import("electron-updater");
+      // Stable copies read latest.yml; beta copies read beta.yml, which the workflow also points at each stable release.
+      autoUpdater.setFeedURL({ provider: "generic", url: UPDATE_FEED, channel: channel === "stable" ? "latest" : "beta", useMultipleRangeRequest: false });
+      autoUpdater.autoDownload = true;
+      autoUpdater.autoInstallOnAppQuit = true;
+      autoUpdater.allowDowngrade = false;
+      autoUpdater.logger = { info: () => undefined, warn: (m: unknown) => console.warn("updater:", m), error: (m: unknown) => console.error("updater:", m), debug: () => undefined };
+      return autoUpdater as unknown as Updater;
+    },
+    busy: () => {
+      if (link?.open) return "Stop the run on your board first, then restart to update.";
+      if (uploading > 0) return "Wait for the upload to finish, then restart to update.";
+      return null;
+    },
+    prepareToQuit,
+    onChange: (info) => mainWindow?.webContents.send("update:changed", info),
+    log: (m) => console.warn(m),
+  });
+  return updates;
+};
+
 const DRIVER_URLS = new Set<string>(Object.values(DRIVER_LINKS).map((l) => l.url));
 
 /** A library name as the Arduino index writes it, and a version number. */
@@ -359,7 +422,7 @@ const handlers: Handlers = {
     // The upload needs the port: close the monitor, and reopen it after.
     const reopen = serialMonitor().open?.port === port ? serialMonitor().open : null;
     if (reopen) serialMonitor().stop();
-    const result = await buildService().upload(path, port, board, hostPlatform, (stage) => mainWindow?.webContents.send("upload:stage", { projectPath: path, stage }));
+    const result = await whileUploading(() => buildService().upload(path, port, board, hostPlatform, (stage) => mainWindow?.webContents.send("upload:stage", { projectPath: path, stage })));
     // Boards reset after an upload; give the port a moment to come back.
     if (reopen) setTimeout(() => serialMonitor().start(reopen.port, reopen.baud), 1200);
     return { ...result, ...(reopen ? { monitorReopened: true } : {}) };
@@ -384,7 +447,7 @@ const handlers: Handlers = {
     // The upload and the link both need the port.
     hybridLink().stop();
     if (serialMonitor().open?.port === port) serialMonitor().stop();
-    const result = await hybridService(path).upload(path, port, board, parsed.plan, hostPlatform, (stage) => mainWindow?.webContents.send("upload:stage", { projectPath: path, stage }));
+    const result = await whileUploading(() => hybridService(path).upload(path, port, board, parsed.plan, hostPlatform, (stage) => mainWindow?.webContents.send("upload:stage", { projectPath: path, stage })));
     if (!result.ok) return result;
     const started = hybridLink().start(port);
     return started.ok ? result : { ...result, ok: false, problem: { id: "unknown" as const, title: started.message, steps: [] } };
@@ -445,6 +508,9 @@ const handlers: Handlers = {
   },
   "world:read": (path) => (openProject(path) ? projectService().readWorld(path) : null),
   "world:write": (path, world) => (openProject(path) ? projectService().writeWorld(path, world) : notOpen),
+  "update:status": () => updateService().info(),
+  "update:check": () => updateService().check(true),
+  "update:install": () => updateService().install(),
   "projects:choose-folder": async () => {
     const current = await projectService().settings();
     const folder = await chooseFolder({ title: "Where should new projects go?", buttonLabel: "Use this folder", defaultPath: current.projectsFolder, properties: ["openDirectory", "createDirectory"] });
@@ -549,6 +615,7 @@ app.whenReady().then(() => {
   registerIpc();
   registerLinkScheme();
   createWindow();
+  updateService().start();
   void authService()
     .restore()
     .then(() => {
@@ -561,11 +628,21 @@ app.whenReady().then(() => {
 
 // Finish every save before the app goes. A forced quit loses at most the change in flight: files are written whole or not at all.
 let quitting = false;
-app.on("will-quit", (event) => {
+function stopChildren() {
+  updates?.stop();
   auth?.dispose();
   watcher?.stop();
   monitor?.stop();
   link?.stop();
+}
+/** Before Restart to update: the board's outputs go safe and every project is saved, so the installer can close the app at once. */
+async function prepareToQuit(): Promise<void> {
+  stopChildren();
+  quitting = true;
+  await projects?.closeAll();
+}
+app.on("will-quit", (event) => {
+  stopChildren();
   if (quitting || !projects) return;
   event.preventDefault();
   quitting = true;

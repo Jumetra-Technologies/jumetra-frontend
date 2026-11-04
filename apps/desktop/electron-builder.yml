@@ -1,5 +1,5 @@
 # Installers for Windows, Linux and macOS (Phase Two section 13).
-# Signing, notarization and the update feed are added by Masden (sprint 6).
+# Signing and notarization are still to come (DSK-80).
 appId: com.kiungolabs.kiungo
 productName: Kiungo
 # The package is @kiungo/desktop; the binary and bundle are plain "kiungo".
@@ -13,6 +13,13 @@ directories:
 protocols:
   - name: Kiungo
     schemes: [kiungo]
+# In-app updates. electron-builder writes the .blockmap beside each installer (for downloading only
+# what changed) and app-update.yml into the app; the app sets the feed itself (src/main/index.ts,
+# UPDATE_FEED), and .github/scripts/desktop-update-feed.mjs writes the feed's <channel>.yml files.
+publish:
+  provider: generic
+  url: https://github.com/Jumetra-Technologies/jumetra-frontend/releases/download/desktop-feed
+  useMultipleRangeRequest: false
 files:
   - out/**
   - package.json

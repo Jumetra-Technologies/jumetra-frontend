@@ -13,6 +13,12 @@ name: Release the desktop app
 #
 # Signing is not part of this yet: the installers are unsigned, so the release
 # is marked as a pre-release and the notes say what Windows and macOS warn about.
+#
+# In-app updates: each release also refreshes the update feed, the <channel>.yml
+# files on the desktop-feed release that the app checks (beta.yml and
+# beta-linux.yml, plus latest.yml and latest-linux.yml for a stable release; see
+# .github/scripts/desktop-update-feed.mjs). The feed is what every installed copy
+# will download and run, so only this workflow writes it.
 
 on:
   push:
@@ -71,7 +77,8 @@ jobs:
       - name: Build the renderer, preload and main bundles
         run: npm run build -w @kiungo/desktop
       - name: Package the installer
-        run: npx electron-builder ${{ matrix.builder }} --publish never
+        # The channel goes into the packaged package.json, so the app knows which feed file to follow.
+        run: npx electron-builder ${{ matrix.builder }} --publish never -c.extraMetadata.kiungo.updateChannel=${{ github.event.inputs.channel || 'beta' }}
         working-directory: apps/desktop
       - uses: actions/upload-artifact@v4
         with:
@@ -85,11 +92,17 @@ jobs:
             apps/desktop/dist/*.rpm
             apps/desktop/dist/*.dmg
             apps/desktop/dist/*.zip
+            apps/desktop/dist/*.blockmap
+            apps/desktop/dist/latest*.yml
 
   publish:
     name: Publish the release
     needs: build
     runs-on: ubuntu-latest
+    # One release at a time writes the update feed, whatever its tag.
+    concurrency:
+      group: desktop-update-feed
+      cancel-in-progress: false
     timeout-minutes: 15
     env:
       # Set as a repository secret by whoever runs the release pipeline (Juma). Empty: the backend step is skipped.
@@ -134,7 +147,19 @@ jobs:
           title="Kiungo desktop ${{ steps.meta.outputs.version }}"
           [[ "${{ steps.meta.outputs.channel }}" == beta ]] && title="$title (beta)" && pre=--prerelease || pre=""
           gh release create "${{ steps.meta.outputs.tag }}" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$title" --notes-file release/notes.md $pre \
-            dist/*.exe dist/*.dmg dist/*.AppImage dist/*.deb dist/*.rpm release/kiungo-release.json
+            dist/*.exe dist/*.dmg dist/*.AppImage dist/*.deb dist/*.rpm dist/*.blockmap release/kiungo-release.json
+      - name: Update the in-app update feed
+        # After the release above, so every installer the feed names is already there to download.
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node .github/scripts/desktop-update-feed.mjs dist "$GITHUB_REPOSITORY" "${{ steps.meta.outputs.tag }}" "${{ steps.meta.outputs.channel }}" feed
+          if ! gh release view desktop-feed --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create desktop-feed --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+              --title "Kiungo update feed" --notes "What installed copies of Kiungo check for updates. Nothing to download here: get Kiungo from the newest desktop-v release."
+          fi
+          gh release upload desktop-feed --repo "$GITHUB_REPOSITORY" --clobber feed/*.yml
       - name: Tell the backend
         # Only when the release pipeline's token is configured (Juma): the backend's
         # /releases is what the app's update check and the home page read first.

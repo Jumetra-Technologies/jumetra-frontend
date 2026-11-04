@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, CheckCircle2, Info, XCircle } from "lucide-react";
+import { RobotTyping } from "@/components/ui/robot-typing";
 
 /**
  * What the compiler said. When the Kiungo server has no compiler for the
@@ -15,6 +16,7 @@ export function BuildOutput({
   buildTimeMs,
   success,
   simulated,
+  busy = false,
 }: {
   logs: string[];
   warnings?: string[];
@@ -22,6 +24,8 @@ export function BuildOutput({
   buildTimeMs?: number;
   success?: boolean;
   simulated?: boolean;
+  /** A build is running: Kiungo's robot types until the compiler answers. */
+  busy?: boolean;
 }) {
   const finished = success !== undefined;
   return (
@@ -54,6 +58,15 @@ export function BuildOutput({
         </p>
       ) : null}
       <div className="hhip-scroll flex-1 overflow-auto p-2">
+        {busy ? (
+          <div role="status" className="mb-2 flex items-center gap-3 rounded-[8px] bg-slate-800/50 px-2.5 py-2 font-sans" data-testid="build-busy">
+            <RobotTyping className="w-14 shrink-0" />
+            <span>
+              <span className="block text-[12px] font-medium text-slate-100">Compiling your code…</span>
+              <span className="block text-[11px] text-slate-400">The compiler&apos;s messages show up below as they arrive.</span>
+            </span>
+          </div>
+        ) : null}
         {logs.length === 0 && !errors?.length && <p className="font-sans text-slate-500">Press Compile to turn your code into a program the board can run. Errors and warnings show up here.</p>}
         {logs.map((l, i) => (
           <div key={i} className={/error/i.test(l) ? "text-red-400" : /warning/i.test(l) ? "text-amber-300" : ""}>

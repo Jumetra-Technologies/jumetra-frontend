@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { KiungoMark } from "@kiungo/ui/KiungoMark";
+import { RobotTyping } from "@/components/ui/robot-typing";
 import { Button } from "@kiungo/ui/button";
 import { recordError } from "@/lib/diagnostics/store";
 
 /**
- * A page that broke while drawing: a short message, what to do, and a
- * reference to quote. The error itself goes to System Diagnostics.
+ * A page that broke while drawing: Kiungo's robot with a short message, what
+ * to do, and a reference to quote. The error itself goes to System Diagnostics.
  */
 export function ErrorScreen({
   error,
@@ -37,7 +37,7 @@ export function ErrorScreen({
 
   return (
     <div role="alert" className="flex min-h-[70svh] flex-col items-center justify-center px-6 text-center" data-testid={testId}>
-      <KiungoMark state="broken" className="size-16" title="Kiungo mark with its two links pulled apart" />
+      <RobotTyping className="w-36" />
       <h1 className="mt-6 text-xl font-semibold tracking-tight text-foreground">{title}</h1>
       <p className="mt-2 max-w-md text-sm leading-6 text-muted">{body}</p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">

@@ -575,6 +575,7 @@ export function FirmwareStudio() {
                   buildTimeMs={build?.build_time_ms}
                   success={build?.success}
                   simulated={!!build?.dry_run}
+                  busy={buildBusy}
                 />
               )}
               {rightTab === "serial" && <SerialMonitorPanel />}

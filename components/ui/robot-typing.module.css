@@ -1,0 +1,17 @@
+/*
+ * The animation is drawn in one teal (#0f9e9b) and white. They follow the theme: the robot in its
+ * primary color, the eyes, mouth and dots in the color that reads on it (black in Dark contrast,
+ * where primary is white).
+ */
+.robot :global(svg) [fill="rgb(15,158,155)"] {
+  fill: var(--primary);
+}
+.robot :global(svg) [stroke="rgb(15,158,155)"] {
+  stroke: var(--primary);
+}
+.robot :global(svg) [fill="rgb(255,255,255)"] {
+  fill: var(--primary-foreground);
+}
+.robot :global(svg) [stroke="rgb(255,255,255)"] {
+  stroke: var(--primary-foreground);
+}

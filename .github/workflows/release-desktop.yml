@@ -78,7 +78,9 @@ jobs:
         run: npm run build -w @kiungo/desktop
       - name: Package the installer
         # The channel goes into the packaged package.json, so the app knows which feed file to follow.
-        run: npx electron-builder ${{ matrix.builder }} --publish never -c.extraMetadata.kiungo.updateChannel=${{ github.event.inputs.channel || 'beta' }}
+        # bash on every system: PowerShell splits "-c.extraMetadata…" into -c and a file name.
+        shell: bash
+        run: npx electron-builder ${{ matrix.builder }} --publish never "-c.extraMetadata.kiungo.updateChannel=${{ github.event.inputs.channel || 'beta' }}"
         working-directory: apps/desktop
       - uses: actions/upload-artifact@v4
         with:

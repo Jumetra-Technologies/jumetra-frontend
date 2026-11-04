@@ -14,6 +14,10 @@ const useMounted = () => useSyncExternalStore(subscribe, () => true, () => false
 
 const STATUS = DESKTOP.download.status;
 
+/** Buttons on the blue: a quiet one, and a solid white one for the main action. */
+const noticeButton = "border border-white/30 bg-white/10 text-white shadow-none hover:bg-white/20 focus-visible:ring-white/70";
+const noticeButtonStrong = "bg-white text-[var(--kiungo-navy)] shadow-none hover:bg-white/90 focus-visible:ring-white/70";
+
 /**
  * The notice in the corner: what the download is doing, that it's done and
  * what to do next, or what went wrong and how to fix it. One at a time, since
@@ -48,7 +52,7 @@ function Notice({
   const name = fileName(state.file);
   const problem = state.phase === "problem";
 
-  let icon = <Download className="size-[18px] text-primary" aria-hidden />;
+  let icon = <Download className="size-[18px] text-[var(--notice-accent)]" aria-hidden />;
   let title = "";
   let body: string[] = [];
   let actions: ReactNode = null;
@@ -59,10 +63,10 @@ function Notice({
     title = state.total || state.received ? STATUS.downloading(platform) : STATUS.starting;
     bar = (
       <div className="mt-3">
-        <div className="h-1 w-full overflow-hidden rounded-full bg-muted-bg" role="progressbar" aria-label={title} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}>
-          <div className={cn("h-full rounded-full bg-primary", pct === null && "hhip-notice-indeterminate w-1/3")} style={pct === null ? undefined : { width: `${pct}%` }} />
+        <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--notice-track)]" role="progressbar" aria-label={title} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}>
+          <div className={cn("h-full rounded-full bg-[var(--notice-accent)]", pct === null && "hhip-notice-indeterminate w-1/3")} style={pct === null ? undefined : { width: `${pct}%` }} />
         </div>
-        <div className="mt-2 flex items-baseline justify-between gap-4 font-mono text-[11.5px] leading-4 text-muted" data-testid="download-progress">
+        <div className="mt-2 flex items-baseline justify-between gap-4 font-mono text-[11.5px] leading-4 text-[var(--notice-muted)]" data-testid="download-progress">
           <span>{state.total ? STATUS.progress(formatSize(state.received) || "0 MB", formatSize(state.total)) : formatSize(state.received) || "0 MB"}</span>
           {pct === null ? null : <span>{pct}%</span>}
         </div>
@@ -70,13 +74,13 @@ function Notice({
     );
     body = [STATUS.keepOpen];
     actions = (
-      <Button size="sm" variant="secondary" onClick={onCancel} data-testid="download-cancel">
+      <Button size="sm" className={noticeButton} onClick={onCancel} data-testid="download-cancel">
         {STATUS.cancel}
       </Button>
     );
   } else if (state.phase === "done") {
-    icon = <CircleCheck className="size-[18px] text-success" aria-hidden />;
-    title = STATUS.done.title(platform);
+    icon = <CircleCheck className="size-[18px] text-[var(--notice-accent)]" aria-hidden />;
+    title = STATUS.done.title();
     const size = formatSize(state.bytes) || formatSize(state.file.size);
     body = [state.verified ? STATUS.done.verified(name, size) : STATUS.done.saved(name, size), STATUS.done.next[state.file.platform] ?? ""];
     const step = beta ? DESKTOP.download.steps.find(([system]) => system === platform) : undefined;
@@ -85,7 +89,7 @@ function Notice({
     title = STATUS.browser.title(name);
     body = [...(state.because ? [STATUS.browser.because(state.because)] : []), STATUS.browser.body];
   } else {
-    icon = <TriangleAlert className="size-[18px] text-danger" aria-hidden />;
+    icon = <TriangleAlert className="size-[18px] text-[var(--warning)]" aria-hidden />;
     const p = STATUS.problems;
     const words =
       state.kind === "offline"
@@ -111,22 +115,22 @@ function Notice({
     actions = (
       <>
         {again ? (
-          <Button size="sm" onClick={onRetry} data-testid="download-retry">
+          <Button size="sm" className={noticeButtonStrong} onClick={onRetry} data-testid="download-retry">
             {STATUS.tryAgain}
           </Button>
         ) : (
-          <Button size="sm" onClick={() => window.location.reload()} data-testid="download-reload">
+          <Button size="sm" className={noticeButtonStrong} onClick={() => window.location.reload()} data-testid="download-reload">
             {STATUS.reload}
           </Button>
         )}
         {state.kind === "memory" || state.kind === "unknown" || state.kind === "dropped" ? (
-          <Button size="sm" variant="secondary" onClick={onBrowser} data-testid="download-browser">
+          <Button size="sm" className={noticeButton} onClick={onBrowser} data-testid="download-browser">
             {STATUS.useBrowser}
           </Button>
         ) : null}
         {(state.kind === "refused" || state.kind === "server") && releaseUrl ? (
           <a href={releaseUrl} target="_blank" rel="noopener noreferrer" className="inline-flex">
-            <Button size="sm" variant="secondary">
+            <Button size="sm" className={noticeButton}>
               {STATUS.releasePage}
             </Button>
           </a>
@@ -141,7 +145,7 @@ function Notice({
       role={problem ? "alert" : "status"}
       aria-live={problem ? "assertive" : "polite"}
       aria-labelledby={titleId}
-      className="hhip-notice-in fixed inset-x-4 bottom-[5.5rem] z-[60] rounded-[12px] border border-border bg-surface p-4 shadow-[var(--shadow-md)] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[400px]"
+      className="hhip-notice hhip-notice-in fixed inset-x-4 bottom-[5.5rem] z-[60] rounded-[12px] p-4 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[400px]"
       data-testid="download-notice"
       data-phase={state.phase}
       {...(problem ? { "data-kind": state.kind } : {})}
@@ -149,19 +153,19 @@ function Notice({
       <div className="flex items-start gap-3">
         <span className="mt-[3px] shrink-0">{icon}</span>
         <div className="min-w-0 flex-1">
-          <h3 id={titleId} className="text-[15px] font-semibold leading-6 text-foreground" data-testid="download-notice-title">
+          <h3 id={titleId} className="text-[15px] font-semibold leading-6" data-testid="download-notice-title">
             {title}
           </h3>
           {bar}
           {body.filter(Boolean).map((line) => (
-            <p key={line} className="mt-1.5 text-[13.5px] leading-5 text-muted">
+            <p key={line} className="mt-1.5 text-[13.5px] leading-5 text-[var(--notice-muted)]">
               {line}
             </p>
           ))}
           {actions ? <div className="mt-3 flex flex-wrap gap-2">{actions}</div> : null}
         </div>
         {state.phase === "downloading" ? null : (
-          <button type="button" onClick={onClose} aria-label={STATUS.done.close} className="-mr-1 -mt-1 rounded-[8px] p-1 text-muted hover:bg-muted-bg hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]" data-testid="download-close">
+          <button type="button" onClick={onClose} aria-label={STATUS.done.close} className="-mr-1 -mt-1 rounded-[8px] p-1 text-[var(--notice-muted)] hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70" data-testid="download-close">
             <X className="size-4" aria-hidden />
           </button>
         )}

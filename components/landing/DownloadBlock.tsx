@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { MouseEvent, ReactNode } from "react";
-import { ChevronRight, Download } from "lucide-react";
+import { ChevronRight, CircleCheck, Download } from "lucide-react";
 import { Button } from "@kiungo/ui/button";
 import { DESKTOP } from "@/lib/landing/content";
 import { cn } from "@/lib/utils";
@@ -46,6 +46,7 @@ export function DownloadBlock({ release }: { release: Release | null }) {
   const state = dl?.state ?? { phase: "idle" as const };
   const running = state.phase === "downloading";
   const pct = running && state.total ? Math.min(100, Math.floor((state.received / state.total) * 100)) : null;
+  const downloaded = Boolean(main) && dl?.downloaded?.url === main?.url;
 
   return (
     <div data-testid="desktop-download" data-state={phone ? "phone" : visitor ? "detected" : "pending"}>
@@ -54,9 +55,9 @@ export function DownloadBlock({ release }: { release: Release | null }) {
       ) : main ? (
         <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
           <FileAnchor file={main} className="inline-flex" testId="download-main">
-            <Button size="lg" className="h-12 min-w-[15.5rem] px-7 text-[15px]" aria-busy={running} tabIndex={-1}>
-              <Download className="size-4" aria-hidden />
-              {running ? DESKTOP.download.status.button(pct) : label}
+            <Button size="lg" variant={downloaded ? "success" : "default"} className="h-12 min-w-[15.5rem] px-7 text-[15px]" aria-busy={running} tabIndex={-1} data-state={downloaded ? "downloaded" : running ? "downloading" : "ready"}>
+              {downloaded ? <CircleCheck className="size-4" aria-hidden /> : <Download className="size-4" aria-hidden />}
+              {downloaded ? DESKTOP.download.status.downloaded : running ? DESKTOP.download.status.button(pct) : label}
             </Button>
           </FileAnchor>
           <span className="font-mono text-xs leading-5 text-muted" data-testid="download-main-file">

@@ -12,6 +12,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),
+      // jsdom has no canvas, which the Lottie player needs as it loads: tests get one that draws nothing.
+      "lottie-web/build/player/lottie_light": path.resolve(__dirname, "__tests__/stubs/lottie-player.ts"),
     },
   },
 });

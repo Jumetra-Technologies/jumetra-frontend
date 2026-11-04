@@ -10,12 +10,16 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
-## [1.33.1] - 2026-11-04
+## [1.34.0] - 2026-11-04
 
-### Changed
-- **Pop-up notices are Kiungo blue.** The download notice on the website and the update card in the desktop app sit on the brand navy with white text, in every theme (`.hhip-notice` in `@kiungo/ui/theme.css`). Buttons on them are white, or quiet white outlines.
-- **The download notice says less.** When the file is in, the title is **Downloaded** and the line under it names the file and its size; the checksum sentence is gone (the check still runs). The install step and the SmartScreen note stay.
-- **The download button says Downloaded.** Once the file is in your downloads, the button turns green and reads **Downloaded**, and stays that way after the notice is closed, until another download starts.
+Kiungo's robot types while the app works on an answer, and tells you when a page breaks.
+
+### Added
+- **The robot animation** (`components/ui/robot-typing.tsx`): a typing bubble that becomes Kiungo's robot, talks, and turns back into the bubble, on a 5.75 s loop. It's drawn in the theme's primary color (grey in Dark, white with black eyes in Dark contrast), holds still on the robot's face for people who ask for less motion, and is decorative: the words beside it say what's happening. The player (lottie-web's light SVG build, no `eval`) and the 47 KB animation load only when a robot is on screen, once per page.
+- **Where it shows:**
+  - **Firmware, while compiling:** *Compiling your code…* at the top of Compiler messages, until the compiler answers.
+  - **Hybrid experiments:** *Building your experiment…* where the circuit will appear while it's created, and *Starting your experiment…*, *Moving it forward 100 ms…* or *Stopping your experiment…* in the Run card while the server works.
+  - **When a page breaks:** the error screen (every route, and *The lab hit a snag*) shows the robot above the message, in place of the broken Kiungo mark. The 404 page keeps the broken mark.
 
 ## [1.33.0] - 2026-11-04
 
@@ -702,7 +706,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
-[1.33.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.33.0...v1.33.1
+[1.34.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.33.0...v1.34.0
 [1.33.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.32.0...v1.33.0
 [1.32.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.31.0...v1.32.0
 [1.31.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.30.0...v1.31.0

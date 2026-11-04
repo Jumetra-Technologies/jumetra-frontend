@@ -18,6 +18,8 @@ export interface DownloadController {
   state: DownloadState;
   mode: DownloadMode;
   release: Release | null;
+  /** The file that finished downloading on this page, if any: the button for it says "Downloaded" until another download starts. */
+  downloaded: ReleaseFile | null;
   /** Starts (or, after a drop, carries on) downloading the file. Ignored while one is running. */
   start: (file: ReleaseFile) => void;
   cancel: () => void;
@@ -51,6 +53,7 @@ export function DownloadProvider({
   children: ReactNode;
 }) {
   const [state, setState] = useState<DownloadState>({ phase: "idle" });
+  const [downloaded, setDownloaded] = useState<ReleaseFile | null>(null);
   const abort = useRef<AbortController | null>(null);
   const partial = useRef<{ file: ReleaseFile; bytes: Partial } | null>(null);
   const busy = useRef(false);
@@ -62,6 +65,7 @@ export function DownloadProvider({
       const controller = new AbortController();
       abort.current = controller;
       setState({ phase: "downloading", file, received: resume?.received ?? 0, total: resume?.total ?? (file.size || null) });
+      setDownloaded(null);
       let last = 0;
       try {
         const result = await downloader({
@@ -80,6 +84,7 @@ export function DownloadProvider({
         saveBlob(result.blob, fileName(file));
         partial.current = null;
         setState({ phase: "done", file, bytes: result.bytes, verified: result.verified });
+        setDownloaded(file);
       } catch (error) {
         if (controller.signal.aborted) {
           partial.current = null;
@@ -155,7 +160,7 @@ export function DownloadProvider({
     return () => window.removeEventListener("keydown", onKey);
   }, [state.phase, dismiss]);
 
-  const value = useMemo<DownloadController>(() => ({ state, mode, release, start, cancel, dismiss, retry, useBrowser }), [state, mode, release, start, cancel, dismiss, retry, useBrowser]);
+  const value = useMemo<DownloadController>(() => ({ state, mode, release, downloaded, start, cancel, dismiss, retry, useBrowser }), [state, mode, release, downloaded, start, cancel, dismiss, retry, useBrowser]);
 
   return (
     <Context.Provider value={value}>

@@ -10,6 +10,13 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.33.1] - 2026-11-04
+
+### Changed
+- **Pop-up notices are Kiungo blue.** The download notice on the website and the update card in the desktop app sit on the brand navy with white text, in every theme (`.hhip-notice` in `@kiungo/ui/theme.css`). Buttons on them are white, or quiet white outlines.
+- **The download notice says less.** When the file is in, the title is **Downloaded** and the line under it names the file and its size; the checksum sentence is gone (the check still runs). The install step and the SmartScreen note stay.
+- **The download button says Downloaded.** Once the file is in your downloads, the button turns green and reads **Downloaded**, and stays that way after the notice is closed, until another download starts.
+
 ## [1.33.0] - 2026-11-04
 
 The desktop app updates itself. Kiungo looks for a new version a little after it starts and every four hours, downloads it in the background, and offers **Restart to update**; nobody has to download an installer again. The desktop app is 0.12.0.
@@ -695,6 +702,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.33.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.33.0...v1.33.1
 [1.33.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.32.0...v1.33.0
 [1.32.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.31.0...v1.32.0
 [1.31.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.30.0...v1.31.0

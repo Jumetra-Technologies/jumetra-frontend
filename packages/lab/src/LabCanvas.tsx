@@ -112,6 +112,22 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
     return () => window.clearTimeout(id);
   }, [session.id, session.nodes.length, initialized, flow]);
 
+  // Retries waiting for parts to be measured: dropped when the canvas goes, so none runs after it.
+  const retries = useRef(new Set<ReturnType<typeof setTimeout>>());
+  useEffect(() => {
+    const pending = retries.current;
+    return () => {
+      for (const t of pending) clearTimeout(t);
+      pending.clear();
+    };
+  }, []);
+  const retry = useCallback((fn: () => void) => {
+    const t = setTimeout(() => {
+      retries.current.delete(t);
+      fn();
+    }, 50);
+    retries.current.add(t);
+  }, []);
   useImperativeHandle(
     ref,
     () => ({
@@ -128,7 +144,7 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
           const nodes = ids.map((id) => flow.getInternalNode(id)).filter(Boolean);
           if (nodes.length === ids.length && nodes.every((n) => n!.measured.width)) {
             void flow.fitView({ nodes: ids.map((id) => ({ id })), padding: 0.18, maxZoom: Math.max(0.6, Math.min(1, flow.getZoom())), duration: 450 });
-          } else if (tries++ < 20) window.setTimeout(attempt, 50);
+          } else if (tries++ < 20) retry(attempt);
         };
         attempt();
       },
@@ -136,7 +152,7 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
         let tries = 0;
         const attempt = () => {
           if (flow.getNodes().every((n) => flow.getInternalNode(n.id)?.measured.width) || tries++ > 20) void flow.fitView({ padding: 0.12, maxZoom: 1.1, duration: 400 });
-          else window.setTimeout(attempt, 50);
+          else retry(attempt);
         };
         attempt();
       },
@@ -146,7 +162,7 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
       },
       toFlow: (screen) => flow.screenToFlowPosition(screen),
     }),
-    [flow, session.nodes, view],
+    [flow, session.nodes, view, retry],
   );
 
   // Selection: React Flow reports what the user did, the lab owns the result

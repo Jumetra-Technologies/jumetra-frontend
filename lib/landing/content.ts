@@ -160,14 +160,16 @@ export const DESKTOP = {
       downloading: (platform: string) => `Downloading Kiungo for ${platform}`,
       /** The button's label meanwhile: short, so it never wraps. */
       button: (percent: number | null) => `Downloading${percent === null ? "" : ` ${percent}%`}`,
+      /** The button once the file is in the downloads folder. */
+      downloaded: "Downloaded",
       starting: "Starting the download",
       progress: (received: string, total: string) => `${received} of ${total}`,
       keepOpen: "Keep this tab open until it's done.",
       cancel: "Cancel",
       cancelled: "Download cancelled.",
       done: {
-        title: (platform: string) => `Downloaded! Kiungo for ${platform} is ready to install.`,
-        verified: (file: string, size: string) => `${file} (${size}) is in your downloads, and matches the release's checksum.`,
+        title: () => "Downloaded",
+        verified: (file: string, size: string) => `${file} (${size}) is in your downloads.`,
         saved: (file: string, size: string) => `${file} (${size}) is in your downloads.`,
         /** What to do with the file, by platform. */
         next: {

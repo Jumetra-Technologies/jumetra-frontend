@@ -6,6 +6,7 @@ import { AlertTriangle, ArrowRight, Box, Cpu, FlaskConical, Play, Plug, Search, 
 import { AnimatedCircuitCanvas } from "@/components/laboratory/animated-circuit-canvas";
 import { Button } from "@kiungo/ui/button";
 import { Card } from "@/components/ui/card";
+import { RobotTyping } from "@/components/ui/robot-typing";
 import { api } from "@/lib/api-client";
 import type { ComponentSearchHit, ControllerSpec, HybridExperiment } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,14 @@ const FRIENDLY_ERROR = {
   start: "The experiment couldn't start. Try again in a moment.",
   step: "The experiment couldn't move forward. Try again in a moment.",
   stop: "The experiment couldn't be stopped. Try again in a moment.",
+} as const;
+
+/** What the robot says while the experiment server works. */
+const BUSY_TEXT = {
+  create: "Building your experiment…",
+  start: "Starting your experiment…",
+  step: "Moving it forward 100 ms…",
+  stop: "Stopping your experiment…",
 } as const;
 
 function StepHeading({ n, title, hint }: { n: number; title: string; hint?: string }) {
@@ -277,6 +286,13 @@ export function HybridPanel({ controllers, componentHits }: { controllers: Contr
             </div>
           ) : null}
 
+          {busy && busy !== "create" ? (
+            <div role="status" className="mt-4 flex items-center gap-3 rounded-[12px] bg-primary/6 px-3 py-2.5" data-testid="hybrid-busy">
+              <RobotTyping className="w-14 shrink-0" />
+              <p className="text-sm font-medium text-foreground">{BUSY_TEXT[busy]}</p>
+            </div>
+          ) : null}
+
           <h4 className="mt-6 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Hardware Availability</h4>
           {availability ? (
             <dl className="mt-2 space-y-2.5 text-sm">
@@ -328,6 +344,11 @@ export function HybridPanel({ controllers, componentHits }: { controllers: Contr
             edges={circuit.edges ?? []}
             activeNodeIds={((state?.devices as Array<{ instance_id?: string; device_id?: string }>) ?? []).map((d) => String(d.instance_id || d.device_id || "")).filter(Boolean)}
           />
+        ) : busy === "create" ? (
+          <div role="status" className="flex h-40 flex-col items-center justify-center gap-2 rounded-[12px] border border-dashed border-primary/30 bg-primary/5" data-testid="hybrid-busy">
+            <RobotTyping className="w-20" />
+            <p className="text-sm font-medium text-foreground">{BUSY_TEXT.create}</p>
+          </div>
         ) : (
           <div className="flex h-40 items-center justify-center rounded-[12px] border border-dashed border-border text-sm text-muted">The circuit appears here when you create an experiment.</div>
         )}

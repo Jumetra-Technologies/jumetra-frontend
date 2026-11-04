@@ -255,15 +255,21 @@ describe("the download on the page, and the notice in the corner", () => {
     const notice = await screen.findByTestId("download-notice");
     expect(notice).toHaveAttribute("data-phase", "done");
     expect(notice).toHaveAttribute("role", "status");
-    expect(screen.getByTestId("download-notice-title")).toHaveTextContent(STATUS.done.title("Windows"));
-    expect(notice).toHaveTextContent("Kiungo-0.11.0-win-x64.exe (148 MB) is in your downloads, and matches the release's checksum.");
+    expect(screen.getByTestId("download-notice-title")).toHaveTextContent(STATUS.done.title());
+    expect(notice).toHaveTextContent("Kiungo-0.11.0-win-x64.exe (148 MB) is in your downloads.");
+    expect(notice).not.toHaveTextContent("checksum");
+    expect(screen.getByTestId("download-main").querySelector("button")).toHaveAttribute("data-state", "downloaded");
+    expect(screen.getByTestId("download-main")).toHaveTextContent("Downloaded");
     expect(notice).toHaveTextContent(STATUS.done.next.windows);
     expect(notice).toHaveTextContent("SmartScreen");
     expect(clicks).toEqual(["Kiungo-0.11.0-win-x64.exe|blob:kiungo"]);
-    expect(main).toHaveTextContent("Download for Windows");
+    expect(main).toHaveTextContent("Downloaded");
 
+    // Closing the notice doesn't forget the download: the button still says so.
     fireEvent.click(screen.getByTestId("download-close"));
     expect(screen.queryByTestId("download-notice")).toBeNull();
+    expect(main).toHaveTextContent("Downloaded");
+    expect(main.querySelector("button")).toHaveAttribute("data-state", "downloaded");
   });
 
   it("while it runs, the buttons say so and a second click waits; Cancel stops it", async () => {

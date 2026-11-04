@@ -119,6 +119,12 @@ jobs:
       KIUNGO_API_URL: ${{ vars.KIUNGO_API_URL || 'https://europe-west4-hhipsystemv0.cloudfunctions.net/api' }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # The feed script reads and writes YAML with js-yaml; no install scripts (nothing here needs Electron).
+      - run: npm ci --ignore-scripts --no-audit --no-fund
       - uses: actions/download-artifact@v4
         with:
           pattern: installers-*

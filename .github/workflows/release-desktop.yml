@@ -10,6 +10,9 @@ name: Release the desktop app
 # Run it from the Actions tab (Run workflow) on the branch to release, or push
 # a tag desktop-v<version>. The tag is desktop-v<apps/desktop version>; the
 # build fails if that tag already has a release, because releases don't change.
+# The one exception is the republish input, for a publish that went wrong before
+# anyone installed the version: the same version is built again and every file
+# on its release, and the feed, replaced.
 #
 # Signing is not part of this yet: the installers are unsigned, so the release
 # is marked as a pre-release and the notes say what Windows and macOS warn about.
@@ -30,6 +33,10 @@ on:
         type: choice
         options: [beta, stable]
         default: beta
+      republish:
+        description: "Replace the installers and feed of a version that already has a release, after a publish that went wrong. Never for a version people have installed."
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -129,10 +136,16 @@ jobs:
           else
             tag="desktop-v$version"
           fi
+          exists=false
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "::error::Release $tag already exists. Releases don't change: bump apps/desktop/package.json and publish a new version."
-            exit 1
+            if [[ "${{ github.event.inputs.republish }}" == "true" ]]; then
+              exists=true
+            else
+              echo "::error::Release $tag already exists. Releases don't change: bump apps/desktop/package.json and publish a new version (or run again with republish, after a publish that went wrong)."
+              exit 1
+            fi
           fi
+          echo "exists=$exists" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
@@ -147,9 +160,15 @@ jobs:
         run: |
           shopt -s nullglob
           title="Kiungo desktop ${{ steps.meta.outputs.version }}"
-          [[ "${{ steps.meta.outputs.channel }}" == beta ]] && title="$title (beta)" && pre=--prerelease || pre=""
-          gh release create "${{ steps.meta.outputs.tag }}" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$title" --notes-file release/notes.md $pre \
-            dist/*.exe dist/*.dmg dist/*.AppImage dist/*.deb dist/*.rpm dist/*.blockmap release/kiungo-release.json
+          [[ "${{ steps.meta.outputs.channel }}" == beta ]] && title="$title (beta)" && pre=--prerelease || pre="--prerelease=false"
+          files=(dist/*.exe dist/*.dmg dist/*.AppImage dist/*.deb dist/*.rpm dist/*.blockmap release/kiungo-release.json)
+          if [[ "${{ steps.meta.outputs.exists }}" == "true" ]]; then
+            # Republishing: the same version again, every file replaced.
+            gh release edit "${{ steps.meta.outputs.tag }}" --repo "$GITHUB_REPOSITORY" --title "$title" --notes-file release/notes.md $pre
+            gh release upload "${{ steps.meta.outputs.tag }}" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"
+          else
+            gh release create "${{ steps.meta.outputs.tag }}" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$title" --notes-file release/notes.md ${pre/--prerelease=false/} "${files[@]}"
+          fi
       - name: Update the in-app update feed
         # After the release above, so every installer the feed names is already there to download.
         shell: bash

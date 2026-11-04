@@ -260,6 +260,32 @@ export type SerialOpenResult = { ok: true } | { ok: false; message: string };
 /** After adding or removing: the sketch's libraries, as sketch.yaml now pins them. */
 export type LibraryChange = { ok: true; libraries: ProfileLibrary[]; added: string[] } | { ok: false; message: string };
 
+/**
+ * Kiungo's own updates, downloaded and installed inside the app. Windows (the
+ * NSIS installer) and the Linux AppImage update themselves; macOS waits for
+ * signing (DSK-80), and the .deb and .rpm packages update from the website.
+ */
+export type UpdateState =
+  /** This copy can't update itself: `downloadUrl` is where a new version comes from instead. */
+  | { status: "unsupported"; reason: "development" | "platform" | "disabled"; message: string; downloadUrl: string }
+  | { status: "idle"; checkedAt: string | null }
+  | { status: "checking"; checkedAt: string | null }
+  | { status: "up-to-date"; checkedAt: string }
+  | { status: "downloading"; version: string; percent: number; checkedAt: string }
+  /** Downloaded and checked: it installs on Restart to update, or the next time Kiungo quits. */
+  | { status: "ready"; version: string; checkedAt: string }
+  /** `quiet` when a check nobody asked for failed: the interface doesn't show it. */
+  | { status: "error"; message: string; quiet: boolean; checkedAt: string | null };
+
+export interface UpdateInfo {
+  currentVersion: string;
+  /** "beta" or "stable": the releases this copy follows. */
+  channel: string;
+  state: UpdateState;
+}
+
+export type UpdateInstallResult = { ok: true } | { ok: false; message: string };
+
 /** Every request the interface can make, with its arguments and its answer. */
 export interface InvokeMap {
   "app:info": { args: []; result: AppInfo };
@@ -355,6 +381,12 @@ export interface InvokeMap {
   "world:read": { args: [projectPath: string]; result: WorldSpec | null };
   /** Save the open project's world. */
   "world:write": { args: [projectPath: string, world: WorldSpec]; result: SketchResult };
+  /** Where Kiungo's own update stands. */
+  "update:status": { args: []; result: UpdateInfo };
+  /** Look for a new version now; one that's found downloads in the background. */
+  "update:check": { args: []; result: UpdateInfo };
+  /** Save everything, quit, install the downloaded version and open it. Refused while a board is running or uploading. */
+  "update:install": { args: []; result: UpdateInstallResult };
 }
 
 /** Messages the main process sends the interface, unasked. */
@@ -369,6 +401,8 @@ export interface EventMap {
   "sync:status": { projectPath: string; status: SyncStatus };
   /** The Hybrid link (sprint 9): the sketch's Serial lines, what it drove, the handshake, or that the link closed. */
   "hybrid:link": HybridLinkEvent;
+  /** Kiungo's own update moved on: checking, downloading, ready to install. */
+  "update:changed": UpdateInfo;
 }
 
 export interface HybridLinkEvent {
@@ -383,7 +417,7 @@ export interface HybridLinkEvent {
 }
 
 export type EventChannel = keyof EventMap;
-export const EVENT_CHANNELS = ["auth:changed", "boards:changed", "upload:stage", "serial:data", "serial:closed", "hybrid:link", "sync:status"] as const satisfies readonly EventChannel[];
+export const EVENT_CHANNELS = ["auth:changed", "boards:changed", "upload:stage", "serial:data", "serial:closed", "hybrid:link", "sync:status", "update:changed"] as const satisfies readonly EventChannel[];
 
 export function isEventChannel(value: unknown): value is EventChannel {
   return typeof value === "string" && (EVENT_CHANNELS as readonly string[]).includes(value);
@@ -444,6 +478,9 @@ export const INVOKE_CHANNELS = [
   "import:account",
   "world:read",
   "world:write",
+  "update:status",
+  "update:check",
+  "update:install",
 ] as const satisfies readonly InvokeChannel[];
 
 /** Fails to compile when a channel in InvokeMap is missing from INVOKE_CHANNELS (the preload would refuse it). */

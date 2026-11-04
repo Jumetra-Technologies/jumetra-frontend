@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
-import { Box, Code2, FilePlus2, FolderOpen, Grid2x2, House, LogIn, LogOut, Maximize, PanelRight, Play, Redo2, Search, Stethoscope, Undo2, UserRound, X, Zap } from "lucide-react";
+import { Box, CloudDownload, Code2, FilePlus2, FolderOpen, Grid2x2, House, LogIn, LogOut, Maximize, PanelRight, Play, Redo2, RefreshCw, Search, Stethoscope, Undo2, UserRound, X, Zap } from "lucide-react";
 import type { OpenedProject, OpenResult, RecentProject, RemoteProject } from "@kiungo/api";
 import { AccountMenu } from "./account/AccountMenu";
 import { SignInScreen } from "./account/SignInScreen";
@@ -13,12 +13,15 @@ import { invoke, shortcut } from "./ipc";
 import { CommandPalette, type Command } from "./palette/CommandPalette";
 import { ProjectScreen, type ProjectScreenHandle } from "./project/ProjectScreen";
 import { useSystemTheme } from "./theme";
+import { UpdateBanner } from "./update/UpdateBanner";
+import { useUpdate } from "./update/useUpdate";
 
 type Screen = { kind: "home" } | { kind: "project"; project: OpenedProject } | { kind: "foundations" };
 
 export function App() {
   useSystemTheme();
   const auth = useAuth();
+  const update = useUpdate();
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [recent, setRecent] = useState<RecentProject[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -150,9 +153,17 @@ export function App() {
         { id: "sign-out", title: "Sign out", detail: "Your projects stay on this computer", group: "Account", icon: <LogOut />, run: () => void invoke("auth:sign-out") },
       );
     } else list.push({ id: "sign-in", title: "Sign in", group: "Account", icon: <LogIn />, run: () => void invoke("auth:sign-in") });
+    const u = update.info;
+    if (u?.state.status === "ready") {
+      const version = u.state.version;
+      list.push({ id: "update-install", title: `Restart to update to Kiungo ${version}`, group: "Help", icon: <RefreshCw />, keywords: "update upgrade new version install", run: () => void update.install() });
+    } else if (u) {
+      const detail = u.state.status === "downloading" ? `Downloading ${u.state.version}, ${u.state.percent}%` : `You have ${u.currentVersion}${u.channel === "beta" ? " (beta)" : ""}`;
+      list.push({ id: "update-check", title: "Check for updates", detail, group: "Help", icon: <CloudDownload />, keywords: "update upgrade new version", run: update.check });
+    }
     list.push({ id: "foundations", title: "Check the toolchain and emulator", group: "Help", icon: <Stethoscope />, keywords: "diagnostics arduino cli compiler", run: () => void closeOpen().then(() => setScreen({ kind: "foundations" })) });
     return list;
-  }, [screen, lab, recent, openPath, goHome, newProject, openFolder, openRecent, closeOpen, auth]);
+  }, [screen, lab, recent, openPath, goHome, newProject, openFolder, openRecent, closeOpen, auth, update]);
 
   // Signed out, or waiting for the browser: the sign-in screen (DSK-01). Open work is saved first.
   const needsSignIn = auth !== null && (auth.status === "waiting" || (auth.status === "signed-out" && !auth.skipped));
@@ -221,6 +232,7 @@ export function App() {
         />
       ) : null}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
+      <UpdateBanner update={update} />
     </>
   );
 }

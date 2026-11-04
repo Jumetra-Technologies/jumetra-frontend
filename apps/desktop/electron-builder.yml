@@ -35,9 +35,13 @@ extraResources:
 # Installer names are plain and predictable (no spaces), so the download page and
 # the release manifest can name them: Kiungo-0.11.0-win-x64.exe, Kiungo-0.11.0-mac-arm64.dmg,
 # Kiungo-0.11.0-linux-x86_64.AppImage.
+# The app icon: the Kiungo mark on a white tile, from build/icon.svg (Windows and Linux) and
+# build/icon-mac.svg (the same on Apple's icon grid). node apps/desktop/build/rasterize.mjs draws the
+# PNGs; electron-builder makes the .ico and .icns from them.
 win:
   target: [{ target: nsis, arch: [x64] }]
   artifactName: ${productName}-${version}-win-${arch}.${ext}
+  icon: build/icon.png
 nsis:
   oneClick: false
   perMachine: false
@@ -45,6 +49,7 @@ nsis:
 linux:
   target: [AppImage, deb, rpm]
   artifactName: ${productName}-${version}-linux-${arch}.${ext}
+  icon: build/icon.png
   maintainer: Kiungo Labs Technologies
   category: Education
   synopsis: Build, code and run robotics projects
@@ -56,4 +61,5 @@ linux:
 mac:
   target: [{ target: dmg, arch: [x64, arm64] }]
   artifactName: ${productName}-${version}-mac-${arch}.${ext}
+  icon: build/icon-mac.png
   category: public.app-category.education

@@ -116,12 +116,15 @@ Before a release build, CI runs `npm run fetch:arduino-cli -w @kiungo/desktop --
 
 ## Updates
 
-Kiungo updates itself on Windows and from the Linux AppImage (`src/main/updater/service.ts`, with electron-updater). It checks 15 seconds after starting and every four hours, downloads a new version in the background, and the interface shows **Restart to update** (`src/renderer/src/update/`). Restarting saves every project and stops the board link first, and is refused while a Hybrid run or an upload is going. A downloaded update also installs when Kiungo quits.
+Kiungo updates itself on Windows and from the Linux AppImage (`src/main/updater/service.ts`, with electron-updater). It checks 15 seconds after starting and every four hours, downloads a new version in the background, and a card in the bottom-left corner follows it (`src/renderer/src/update/`): the download's progress, then **Kiungo 0.12.1 is ready**, which is itself the button: one click saves every project, stops the board link, installs, and reopens Kiungo on the new version (it's refused while a Hybrid run or an upload is going, and the card says so). **Later** puts the card away; the update installs anyway when Kiungo quits. The restart is unavoidable: an update replaces the app's own files, which a reload of the window can't do.
 
 - **The feed:** `<channel>.yml` files on the `desktop-feed` GitHub release, written by `.github/scripts/desktop-update-feed.mjs` in the release workflow. They name the installers on the versioned release (`desktop-v<version>`), whose blockmaps let Windows download only what changed.
 - **Channels:** the workflow writes `kiungo.updateChannel` (beta or stable) into the packaged `package.json`. Beta copies read `beta.yml` (Windows) or `beta-linux.yml`, which stable releases update too; stable copies read `latest.yml` or `latest-linux.yml`.
 - **Can't update itself:** development copies, macOS (until signing), and the .deb and .rpm packages. Those show where to download a new version instead.
 - `KIUNGO_UPDATE_URL` points the app at another feed; `KIUNGO_UPDATES=off` turns updates off.
+- **Trying it without a release:** a development copy with `KIUNGO_UPDATE_URL` set checks that feed (electron-updater's dev switch is turned on for it, with `dev-app-update.yml` as its settings; start the app from this folder, `electron .`, so its version is the real one). Serve a folder with `beta-linux.yml` (or `beta.yml` on Windows) naming a newer version, its file, its `sha512` (base64) and `size`; on Linux also set `APPIMAGE` to any existing file, since the AppImage updater diffs against the running copy before falling back to a full download. The card goes through downloading and ready; don't press it on a development copy, since there's no installed app to replace.
+
+The app icon is `build/icon.svg` (Windows and Linux) and `build/icon-mac.svg` (macOS, on Apple's icon grid): `node apps/desktop/build/rasterize.mjs` draws the PNGs electron-builder packages, and the window uses the same file on Linux and in development.
 
 ## Where things are
 

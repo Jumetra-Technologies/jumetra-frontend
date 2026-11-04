@@ -24,10 +24,14 @@ export type Support = { ok: true } | { ok: false; reason: "development" | "platf
  * per-user, so no administrator). On Linux only the AppImage can, which the
  * APPIMAGE variable marks; macOS needs a signed app first (DSK-80).
  * KIUNGO_UPDATES=off turns it off, for computers a school manages.
+ *
+ * A development copy doesn't, unless KIUNGO_UPDATE_URL points it at a feed of
+ * its own: that's how the flow is tried without publishing a release
+ * (apps/desktop/README.md).
  */
 export function updateSupport(input: { platform: NodeJS.Platform; packaged: boolean; env: Record<string, string | undefined> }): Support {
   if (/^(off|0|false|no)$/i.test(input.env.KIUNGO_UPDATES ?? "")) return { ok: false, reason: "disabled", message: "Updates are turned off on this computer." };
-  if (!input.packaged) return { ok: false, reason: "development", message: "A development copy doesn't update itself." };
+  if (!input.packaged) return input.env.KIUNGO_UPDATE_URL ? { ok: true } : { ok: false, reason: "development", message: "A development copy doesn't update itself." };
   if (input.platform === "win32") return { ok: true };
   if (input.platform === "linux") {
     return input.env.APPIMAGE ? { ok: true } : { ok: false, reason: "platform", message: "Kiungo was installed from a .deb or .rpm package. Download the new package from the website to update." };

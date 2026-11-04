@@ -2,10 +2,11 @@
 /**
  * The in-app update feed for a release: the <channel>.yml files electron-updater
  * reads (its generic provider). electron-builder writes latest.yml (Windows) and
- * latest-linux.yml (the AppImage) beside the installers, naming each file
- * relative to the feed; this points them at the versioned GitHub release
- * instead, and copies them to each channel the release is for. Everything else
- * in them (SHA-512, size, the AppImage's blockMapSize) is kept as written.
+ * latest-linux.yml (every Linux package) beside the installers, naming each file
+ * relative to the feed; this keeps the installer the app can update with (the
+ * NSIS .exe, the AppImage), points it at the versioned GitHub release, and
+ * copies the file to each channel the release is for. Everything else about the
+ * installer (SHA-512, size, the AppImage's blockMapSize) is kept as written.
  *
  *   node desktop-update-feed.mjs <dist dir> <owner/repo> <tag> <channel> <out dir>
  *
@@ -28,6 +29,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { dump, load } from "js-yaml";
 
 /** electron-builder's file for each platform the app updates on, and the suffix electron-updater asks for. */
 export const FEED_SOURCES = [
@@ -40,25 +42,28 @@ export function feedChannels(channel) {
   return channel === "stable" ? ["beta", "latest"] : ["beta"];
 }
 
-const unquote = (v) => v.trim().replace(/^'(.*)'$/, (_, s) => s.replace(/''/g, "'")).replace(/^"(.*)"$/, "$1");
-
 /**
- * One of electron-builder's files with its `url:` and `path:` made absolute, on the
- * release at `base`. Throws when it names a file that isn't the expected installer,
- * or isn't for `version`, so a bad feed never goes out.
+ * One of electron-builder's files, with only the installer the app updates with
+ * (the .deb and .rpm it lists beside the AppImage can't update themselves), its
+ * `url` and `path` made absolute on the release at `base`. Throws when the file
+ * is for another version or names no such installer, so a bad feed never goes out.
  */
 export function pointAtRelease(yaml, { base, version, installer }) {
-  const declared = yaml.match(/^version:\s*(.+)$/m);
-  if (!declared || unquote(declared[1]) !== version) throw new Error(`The feed file is for ${declared ? unquote(declared[1]) : "no version"}, not ${version}.`);
-  let named = 0;
-  const out = yaml.replace(/^(\s*-\s*url|path):\s*(.+)$/gm, (_, key, value) => {
-    const name = unquote(value);
-    if (!installer.test(name) || name.includes("/")) throw new Error(`The feed file names ${name}, not an installer of this release.`);
-    named++;
-    return `${key}: '${base}/${encodeURIComponent(name)}'`;
-  });
-  if (!/^\s*-\s*url:/m.test(yaml) || named < 1) throw new Error("The feed file names no installer.");
-  return out;
+  const doc = load(yaml);
+  if (!doc || typeof doc !== "object") throw new Error("The feed file is empty.");
+  if (String(doc.version ?? "") !== version) throw new Error(`The feed file is for ${doc.version ?? "no version"}, not ${version}.`);
+  const files = (Array.isArray(doc.files) ? doc.files : []).filter((f) => f && typeof f.url === "string" && !f.url.includes("/") && installer.test(f.url));
+  if (!files.length) throw new Error("The feed file names no installer of this release.");
+  const absolute = (name) => `${base}/${encodeURIComponent(name)}`;
+  const out = {
+    version: doc.version,
+    files: files.map((f) => ({ ...f, url: absolute(f.url) })),
+    path: absolute(files[0].url),
+    sha512: files[0].sha512,
+    ...(doc.releaseDate ? { releaseDate: doc.releaseDate } : {}),
+    ...(doc.stagingPercentage ? { stagingPercentage: doc.stagingPercentage } : {}),
+  };
+  return dump(out, { lineWidth: -1, noRefs: true });
 }
 
 /** The feed files for a release from electron-builder's in `dist`: { "beta.yml": "...", ... }. */

@@ -239,13 +239,27 @@ describe("the update feed the release writes", () => {
   it("keeps what electron-builder wrote, the AppImage's blockMapSize too", () => {
     const linux = build("beta")["beta-linux.yml"];
     expect(linux).toContain("blockMapSize: 163169");
-    expect(linux).toContain(`path: '${RELEASE}Kiungo-0.12.0-linux-x86_64.AppImage'`);
+    expect(linux).toMatch(new RegExp(`^path: '?${RELEASE.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}Kiungo-0\.12\.0-linux-x86_64\.AppImage'?$`, "m"));
   });
 
-  it("refuses a file for another version, or one naming something else", () => {
+  it("keeps only the installer the app can update with: the .deb and .rpm beside the AppImage are left out", () => {
+    // What electron-builder really writes for linux: [AppImage, deb, rpm], with path naming the first.
+    const real = `version: 0.12.0\nfiles:\n  - url: Kiungo-0.12.0-linux-amd64.deb\n    sha512: debdeb\n    size: 135203216\n  - url: Kiungo-0.12.0-linux-x86_64.AppImage\n    sha512: appapp\n    size: 171417166\n    blockMapSize: 163169\n  - url: Kiungo-0.12.0-linux-x86_64.rpm\n    sha512: rpmrpm\n    size: 118101093\npath: Kiungo-0.12.0-linux-amd64.deb\nsha512: debdeb\nreleaseDate: '2026-11-04T08:53:00.000Z'\n`;
+    const linux = build("beta", dist({ "latest.yml": builderYaml("Kiungo-0.12.0-win-x64.exe"), "latest-linux.yml": real }))["beta-linux.yml"];
+    expect(linux).not.toContain(".deb");
+    expect(linux).not.toContain(".rpm");
+    expect(linux).toContain(`${RELEASE}Kiungo-0.12.0-linux-x86_64.AppImage`);
+    expect(linux).toMatch(/^sha512: appapp$/m);
+    expect(linux).toContain("blockMapSize: 163169");
+    const info = parseUpdateInfo(linux, "beta-linux.yml", new URL(`${FEED}beta-linux.yml`));
+    expect(info.files).toHaveLength(1);
+    expect(info.path).toContain("AppImage");
+  });
+
+  it("refuses a file for another version, or one naming no installer at all", () => {
     expect(() => build("beta", dist({ "latest.yml": builderYaml("Kiungo-0.12.0-win-x64.exe").replace("version: 0.12.0", "version: 0.11.0") }))).toThrow(/0.11.0, not 0.12.0/);
-    expect(() => build("beta", dist({ "latest.yml": builderYaml("../evil.exe") }))).toThrow(/not an installer/);
-    expect(() => build("beta", dist({ "latest.yml": builderYaml("Kiungo-0.12.0-linux-x86_64.AppImage") }))).toThrow(/not an installer/);
+    expect(() => build("beta", dist({ "latest.yml": builderYaml("../evil.exe") }))).toThrow(/names no installer/);
+    expect(() => build("beta", dist({ "latest.yml": builderYaml("Kiungo-0.12.0-linux-x86_64.AppImage") }))).toThrow(/names no installer/);
   });
 
   it("electron-updater reads it, and downloads from the versioned release with its blockmaps", () => {

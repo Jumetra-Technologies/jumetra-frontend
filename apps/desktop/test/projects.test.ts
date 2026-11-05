@@ -213,3 +213,18 @@ describe("crash-safe writes", () => {
     expect(existsSync(target)).toBe(true);
   }, 60_000);
 });
+
+describe("settings", () => {
+  it("default to the computer's own appearance", async () => {
+    const { svc } = service();
+    expect((await svc.settings()).appearance).toBe("system");
+  });
+
+  it("remember the appearance the person picked, and leave the projects folder and sync alone", async () => {
+    const { svc, projectsFolder } = service();
+    await svc.setSync(true);
+    const after = await svc.setAppearance("dark");
+    expect(after).toEqual({ projectsFolder, sync: true, appearance: "dark" });
+    expect((await svc.settings()).appearance).toBe("dark");
+  });
+});

@@ -1,18 +1,25 @@
 import { useEffect } from "react";
+import type { Appearance } from "@kiungo/api";
 
 /**
- * The app follows the system's light or dark mode (DSK-82), live: the shared
- * theme reads [data-theme] on <html>.
+ * Light or dark on <html>, for the shared theme to read from [data-theme].
+ * "system" follows the computer's own setting, live; "light" and "dark" hold
+ * regardless of it, until the person picks something else in Settings.
  */
-export function useSystemTheme(): void {
+export function useAppearance(appearance: Appearance): void {
   useEffect(() => {
-    const query = window.matchMedia("(prefers-color-scheme: dark)");
-    const apply = () => {
-      document.documentElement.dataset.theme = query.matches ? "dark" : "light";
-      document.documentElement.style.colorScheme = query.matches ? "dark" : "light";
+    const apply = (dark: boolean) => {
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+      document.documentElement.style.colorScheme = dark ? "dark" : "light";
     };
-    apply();
-    query.addEventListener("change", apply);
-    return () => query.removeEventListener("change", apply);
-  }, []);
+    if (appearance !== "system") {
+      apply(appearance === "dark");
+      return;
+    }
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    const follow = () => apply(query.matches);
+    follow();
+    query.addEventListener("change", follow);
+    return () => query.removeEventListener("change", follow);
+  }, [appearance]);
 }

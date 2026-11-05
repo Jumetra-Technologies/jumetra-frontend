@@ -44,7 +44,7 @@ import {
 import { makeId, newSession } from "@kiungo/core/lab/session";
 import { parseWorld, serializeWorld, WORLD_FILE } from "@kiungo/core/world/courses";
 import type { WorldSpec } from "@kiungo/core/world/types";
-import type { NewProjectInput, OpenResult, ProjectHistory, ProjectSettings, RecentProject, SavePayload, SaveResult } from "@kiungo/api";
+import { APPEARANCES, type Appearance, type NewProjectInput, type OpenResult, type ProjectHistory, type ProjectSettings, type RecentProject, type SavePayload, type SaveResult } from "@kiungo/api";
 import { cleanTempFiles, writeFileAtomic } from "./atomic";
 
 const MAX_RECENT = 30;
@@ -115,11 +115,15 @@ export class ProjectService {
   async settings(): Promise<ProjectSettings> {
     try {
       const raw = JSON.parse(await readFile(this.settingsFile, "utf8")) as Partial<ProjectSettings>;
-      return { projectsFolder: typeof raw.projectsFolder === "string" && raw.projectsFolder ? raw.projectsFolder : this.opts.defaultProjectsFolder, sync: raw.sync === true };
+      return {
+        projectsFolder: typeof raw.projectsFolder === "string" && raw.projectsFolder ? raw.projectsFolder : this.opts.defaultProjectsFolder,
+        sync: raw.sync === true,
+        appearance: (APPEARANCES as readonly string[]).includes(raw.appearance as string) ? (raw.appearance as Appearance) : "system",
+      };
     } catch {
       /* first run, or unreadable: the default */
     }
-    return { projectsFolder: this.opts.defaultProjectsFolder, sync: false };
+    return { projectsFolder: this.opts.defaultProjectsFolder, sync: false, appearance: "system" };
   }
 
   private async writeSettings(next: ProjectSettings): Promise<ProjectSettings> {
@@ -134,6 +138,10 @@ export class ProjectService {
   /** Sync with the account, for every project (DSK-14). */
   async setSync(enabled: boolean): Promise<ProjectSettings> {
     return this.writeSettings({ ...(await this.settings()), sync: enabled });
+  }
+
+  async setAppearance(appearance: Appearance): Promise<ProjectSettings> {
+    return this.writeSettings({ ...(await this.settings()), appearance });
   }
 
   /** A new, empty folder in the projects folder for a project called `name`. */

@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { CloseButton } from "@kiungo/ui/close-button";
 import { cn } from "@kiungo/ui/cn";
 
 /**
@@ -42,9 +42,7 @@ export function Dialog({ open, onClose, title, description, children, footer, cl
               </h2>
               {description ? <p className="mt-0.5 text-sm text-muted">{description}</p> : null}
             </div>
-            <button type="button" onClick={onClose} aria-label="Close" className="-mr-2 flex size-8 items-center justify-center rounded-[8px] text-muted hover:bg-muted-bg hover:text-foreground">
-              <X className="size-4" />
-            </button>
+            <CloseButton onClose={onClose} className="-mr-2" />
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">{children}</div>
           {footer ? <footer className="flex items-center gap-2 border-t border-border px-6 py-3.5">{footer}</footer> : null}

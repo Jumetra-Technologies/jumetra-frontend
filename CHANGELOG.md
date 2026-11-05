@@ -10,6 +10,11 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.35.1] - 2026-11-05
+
+### Changed
+- **The X in a dialog shows it was pressed.** Clicking or tapping it shows a gray box with an outline, and the button shrinks slightly; the box stays for about 150 ms, then the dialog closes, so the press is seen even on a quick tap. Hover still shows a light gray box. One shared `CloseButton` in `@kiungo/ui` now serves Settings, Profile, Sign in, Welcome, connect-a-provider, the generic dialog and the desktop app's dialogs. Escape and a click outside still close at once.
+
 ## [1.35.0] - 2026-11-04
 
 The desktop app is 0.12.1: its own icon, and the update card in the bottom-left corner. This is the first version that installed copies of 0.12.0 receive through the app rather than by download.
@@ -717,6 +722,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.35.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.35.0...v1.35.1
 [1.35.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.34.0...v1.35.0
 [1.34.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.33.0...v1.34.0
 [1.33.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.32.0...v1.33.0

@@ -1,7 +1,8 @@
 "use client";
 
+import { CloseButton } from "@kiungo/ui/close-button";
 import { useId } from "react";
-import { ShieldCheck, X } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { ProviderConnections } from "@/components/account/ProviderConnections";
 import { ModalShell } from "@/components/ui/modal";
 import { closeAccountDialog } from "@/lib/account-dialogs";
@@ -17,14 +18,7 @@ export function ProviderLinkDialog({ open }: { open: boolean }) {
       className="max-w-[440px]"
       testId="provider-link-dialog"
     >
-      <button
-        type="button"
-        onClick={closeAccountDialog}
-        aria-label="Close"
-        className="absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-muted-bg hover:text-foreground"
-      >
-        <X className="size-4" aria-hidden />
-      </button>
+      <CloseButton onClose={closeAccountDialog} className="absolute right-3 top-3" />
       <div className="px-6 pb-6 pt-8">
         <span className="inline-flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <ShieldCheck className="size-5" aria-hidden />

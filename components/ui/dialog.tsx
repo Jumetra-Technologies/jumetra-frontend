@@ -1,8 +1,7 @@
 "use client";
 
+import { CloseButton } from "@kiungo/ui/close-button";
 import * as React from "react";
-import { X } from "lucide-react";
-import { Button } from "@kiungo/ui/button";
 import { cn } from "@/lib/utils";
 
 export function Dialog({
@@ -36,9 +35,7 @@ export function Dialog({
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <h2 className="text-lg font-semibold tracking-tight text-foreground">{title}</h2>
-          <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close">
-            <X className="h-4 w-4" />
-          </Button>
+          <CloseButton onClose={onClose} />
         </div>
         {children}
       </div>

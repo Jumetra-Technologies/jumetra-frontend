@@ -1,7 +1,8 @@
 "use client";
 
+import { CloseButton } from "@kiungo/ui/close-button";
 import { useId, type ReactNode } from "react";
-import { Palette, X } from "lucide-react";
+import { Palette } from "lucide-react";
 import { ProfileTile } from "@/components/account/ProfileTile";
 import { SpinningBoard } from "@/components/diagnostics/SpinningBoard";
 import { ThemeSettings } from "@/components/theme/theme-settings";
@@ -57,14 +58,7 @@ export function SettingsDialog() {
             Appearance and your profile.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={closeSettings}
-          aria-label="Close settings"
-          className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-muted-bg hover:text-foreground"
-        >
-          <X className="size-4" aria-hidden />
-        </button>
+        <CloseButton onClose={closeSettings} aria-label="Close settings" />
       </header>
 
       <div className="grid min-h-0 gap-4 overflow-y-auto p-4 sm:p-6 md:grid-cols-2">

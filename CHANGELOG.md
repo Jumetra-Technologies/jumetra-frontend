@@ -10,14 +10,12 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
-## [1.35.1] - 2026-11-05
+## [1.36.0] - 2026-11-05
 
-The Hybrid Hardware page works while the hardware service is down.
+The desktop app is 0.12.2: a Settings dialog (the account gear, the command palette, or `Ctrl+,`/`⌘,`) with the signed-in profile, light/dark/system appearance, and the version Kiungo is running.
 
-### Fixed
-- **Hybrid Hardware no longer shows an empty page when the hardware service can't be reached.** Production's API currently answers 404 for `/controllers`, `/components/search` and `/hybrid/*` (jumetra-backend #8 redeploys the full API). The page now shows the boards and parts from a built-in copy of the service's catalog (`lib/hybrid/catalog.json`, 6 boards and 34 parts), so you can pick a board and parts to plan an experiment.
-  - A notice says experiments can't run right now and points to the Engineering Lab. **Create Hybrid Experiment** waits, with the reason under it.
-  - Once the service answers, the page uses its catalog again and experiments run as before, within the page's 10-second refresh.
+### Added
+- **Settings.** One dialog with three things: who's signed in (with Switch account and Sign out, or Sign in when nobody is), **Appearance** (System, Light, Dark — System follows the computer's own setting live, same as before; the other two hold regardless of it, saved to `settings.json` and applied at once), and **About** (the installed version, its channel, the platform, and, when one's ready, a button to install it without leaving Settings).
 
 ## [1.35.0] - 2026-11-04
 
@@ -726,7 +724,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
-[1.35.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.35.0...v1.35.1
+[1.36.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.35.0...v1.36.0
 [1.35.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.34.0...v1.35.0
 [1.34.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.33.0...v1.34.0
 [1.33.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.32.0...v1.33.0

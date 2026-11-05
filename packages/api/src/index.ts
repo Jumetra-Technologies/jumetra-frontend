@@ -132,11 +132,17 @@ export interface SavePayload {
 
 export type SaveResult = { ok: true; savedAt: string } | { ok: false; message: string };
 
+/** Light or dark follows the computer; the other two hold regardless of it. */
+export type Appearance = "system" | "light" | "dark";
+export const APPEARANCES: readonly Appearance[] = ["system", "light", "dark"];
+
 export interface ProjectSettings {
   /** Where new projects are made. Documents/Kiungo unless the user picked another folder. */
   projectsFolder: string;
   /** Keep a copy of projects on the signed-in account (DSK-14). Off until the person turns it on. */
   sync?: boolean;
+  /** Light, dark, or the computer's own setting (the default). */
+  appearance?: Appearance;
 }
 
 /** A project's sync with the account (DSK-14). */
@@ -308,6 +314,8 @@ export interface InvokeMap {
   "projects:settings": { args: []; result: ProjectSettings };
   /** Ask for a new projects folder; returns the settings, changed or not. */
   "projects:choose-folder": { args: []; result: ProjectSettings };
+  /** Light, dark, or follow the computer. */
+  "settings:set-appearance": { args: [appearance: Appearance]; result: ProjectSettings };
   "auth:state": { args: []; result: AuthState };
   /** Open the website's sign-in page in the browser and wait for it to send the app back. */
   "auth:sign-in": { args: []; result: AuthState };
@@ -441,6 +449,7 @@ export const INVOKE_CHANNELS = [
   "projects:reveal",
   "projects:settings",
   "projects:choose-folder",
+  "settings:set-appearance",
   "auth:state",
   "auth:sign-in",
   "auth:cancel",

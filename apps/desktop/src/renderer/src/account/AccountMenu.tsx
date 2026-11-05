@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LogIn } from "lucide-react";
+import { LogIn, Settings } from "lucide-react";
 import type { AuthState } from "@kiungo/api";
 import { Button } from "@kiungo/ui/button";
 import { Menu, type MenuEntry } from "@kiungo/ui/menu";
@@ -10,20 +10,26 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? "?") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
-function Avatar({ name, photo }: { name: string; photo: string | null }) {
+/** Shared with the Settings dialog, so the same face shows there. */
+export function Avatar({ name, photo, className = "size-8" }: { name: string; photo: string | null; className?: string }) {
   const [broken, setBroken] = useState(false);
-  if (photo && !broken) return <img src={photo} alt="" referrerPolicy="no-referrer" onError={() => setBroken(true)} className="size-8 rounded-full object-cover" />;
-  return <span className="flex size-8 items-center justify-center rounded-full bg-accent text-[12px] font-semibold text-primary">{initials(name)}</span>;
+  if (photo && !broken) return <img src={photo} alt="" referrerPolicy="no-referrer" onError={() => setBroken(true)} className={`${className} rounded-full object-cover`} />;
+  return <span className={`${className} flex items-center justify-center rounded-full bg-accent text-[12px] font-semibold text-primary`}>{initials(name)}</span>;
 }
 
-/** Who's signed in, and Sign out or Switch account (DSK-03). Signing out never touches projects on disk. */
-export function AccountMenu({ state }: { state: AuthState }) {
+/** Who's signed in, with Settings and Sign out or Switch account (DSK-03). Signing out never touches projects on disk. */
+export function AccountMenu({ state, onSettings }: { state: AuthState; onSettings: () => void }) {
   if (state.status !== "signed-in") {
     return (
-      <Button variant="ghost" onClick={() => void invoke("auth:sign-in")} data-testid="account-sign-in">
-        <LogIn className="size-4" aria-hidden />
-        Sign in
-      </Button>
+      <div className="flex items-center gap-1.5">
+        <Button variant="ghost" onClick={() => void invoke("auth:sign-in")} data-testid="account-sign-in">
+          <LogIn className="size-4" aria-hidden />
+          Sign in
+        </Button>
+        <button type="button" onClick={onSettings} aria-label="Settings" title="Settings" className="flex size-9 items-center justify-center rounded-full text-muted hover:bg-muted-bg hover:text-foreground" data-testid="open-settings">
+          <Settings className="size-4" aria-hidden />
+        </button>
+      </div>
     );
   }
   const { user, deviceName, offline, secureStorage } = state;
@@ -32,6 +38,8 @@ export function AccountMenu({ state }: { state: AuthState }) {
     ...(offline ? [{ id: "offline", label: "Offline: checked when you're back online", disabled: true }] : []),
     ...(!secureStorage ? [{ id: "keychain", label: "No keychain: you'll sign in each time", disabled: true }] : []),
     { type: "separator", id: "s1" },
+    { id: "settings", label: "Settings…", icon: <Settings />, onSelect: onSettings },
+    { type: "separator", id: "s2" },
     {
       id: "switch",
       label: "Switch account",

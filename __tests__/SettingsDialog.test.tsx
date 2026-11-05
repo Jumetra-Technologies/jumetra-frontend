@@ -2,6 +2,7 @@ import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { CLOSE_CONFIRM_MS } from "@kiungo/ui/close-button";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { closeSettings, openSettings } from "@/lib/settings-dialog";
 
@@ -61,9 +62,16 @@ describe("SettingsDialog", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
+    // The X shows its pressed box for a moment, then closes.
+    vi.useFakeTimers();
     act(() => openSettings());
-    fireEvent.click(screen.getByRole("button", { name: "Close settings" }));
+    const close = screen.getByRole("button", { name: "Close settings" });
+    fireEvent.click(close);
+    expect(close).toHaveAttribute("data-pressed", "true");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(CLOSE_CONFIRM_MS));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    vi.useRealTimers();
 
     act(() => openSettings());
     fireEvent.click(container.ownerDocument.querySelector(".hhip-dialog-backdrop")!);

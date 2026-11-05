@@ -917,6 +917,64 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 /*
+ * The X in a dialog's corner (CloseButton). Gray in every palette: the box
+ * is the text color at low strength, so it reads as gray on white pages and
+ * as a lighter gray on dark ones. Hover: a light box. Pressed: a firmer box
+ * with an outline, held for a moment after the click so it is seen.
+ */
+.hhip-close-button {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  color: var(--muted);
+  background: transparent;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, transform 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.hhip-close-button:hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+}
+.hhip-close-button:active,
+.hhip-close-button[data-pressed="true"] {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 14%, transparent);
+  border-color: color-mix(in srgb, var(--foreground) 22%, transparent);
+  transform: scale(0.94);
+  /* The press lands at once; only hover fades. */
+  transition-duration: 40ms;
+}
+.hhip-close-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ring);
+}
+/* On near-black, light gray needs more strength to read as a clear step. */
+[data-theme="dark"] .hhip-close-button:hover,
+[data-theme="dark-contrast"] .hhip-close-button:hover {
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+[data-theme="dark"] .hhip-close-button:active,
+[data-theme="dark"] .hhip-close-button[data-pressed="true"],
+[data-theme="dark-contrast"] .hhip-close-button:active,
+[data-theme="dark-contrast"] .hhip-close-button[data-pressed="true"] {
+  background: color-mix(in srgb, var(--foreground) 22%, transparent);
+  border-color: color-mix(in srgb, var(--foreground) 36%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hhip-close-button,
+  .hhip-close-button:active,
+  .hhip-close-button[data-pressed="true"] {
+    transition: none;
+    transform: none;
+  }
+}
+
+/*
  * Pop-up notices in the corner (the website's download notice, the desktop
  * app's update card): Kiungo blue, white text, in every theme. Everything
  * inside reads against the blue, so the usual muted and primary tokens are

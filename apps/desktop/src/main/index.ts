@@ -13,7 +13,7 @@ import { pathToFileURL } from "node:url";
 // The app icon, for the window on Linux and for a development copy (installed copies on Windows
 // and macOS get it from the installer: electron-builder.yml). electron-vite copies the file into out/main.
 import appIcon from "../../build/icon.png?asset";
-import { EMULATED_BOARDS, EXAMPLE_SKETCHES, INSTALLABLE_CORES, isInvokeChannel, type AuthState, type Handlers, type Platform } from "@kiungo/api";
+import { APPEARANCES, EMULATED_BOARDS, EXAMPLE_SKETCHES, INSTALLABLE_CORES, isInvokeChannel, type AuthState, type Handlers, type Platform } from "@kiungo/api";
 import { PROJECT_FILE } from "@kiungo/core/project";
 import { hardwareBoard, uploadTargetsFor } from "@kiungo/core/hardware/boards";
 import { keychainStore } from "./auth/secret-store";
@@ -520,6 +520,10 @@ const handlers: Handlers = {
     const current = await projectService().settings();
     const folder = await chooseFolder({ title: "Where should new projects go?", buttonLabel: "Use this folder", defaultPath: current.projectsFolder, properties: ["openDirectory", "createDirectory"] });
     return folder ? projectService().setProjectsFolder(folder) : current;
+  },
+  "settings:set-appearance": (appearance) => {
+    if (!(APPEARANCES as readonly string[]).includes(appearance)) throw new Error("Refused: that isn't a known appearance.");
+    return projectService().setAppearance(appearance);
   },
 };
 

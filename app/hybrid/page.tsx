@@ -1,5 +1,6 @@
 import { HybridPanel } from "@/components/hybrid/hybrid-panel";
 import { api } from "@/lib/api-client";
+import { builtInComponents, builtInControllers } from "@/lib/hybrid/catalog";
 import type { Metadata } from "next";
 import type { ComponentSearchHit, ControllerSpec } from "@/lib/types";
 
@@ -9,16 +10,19 @@ export const metadata: Metadata = {
 };
 
 export default async function HybridPage() {
-  let controllers: ControllerSpec[] = [];
-  let components: ComponentSearchHit[] = [];
+  // The hardware service's boards and parts. When it can't be reached, the page shows the
+  // built-in catalog instead, and says experiments wait for the service.
+  let controllers: ControllerSpec[] = builtInControllers;
+  let components: ComponentSearchHit[] = builtInComponents;
+  let serviceOnline = false;
   try {
-    [controllers, components] = await Promise.all([
-      api.getControllers(),
-      api.searchComponents({}),
-    ]);
+    const [c, hits] = await Promise.all([api.getControllers(), api.searchComponents({})]);
+    if (c.length && hits.length) {
+      [controllers, components] = [c, hits];
+      serviceOnline = true;
+    }
   } catch {
-    controllers = [];
-    components = [];
+    serviceOnline = false;
   }
 
   return (
@@ -30,7 +34,7 @@ export default async function HybridPage() {
           them over as parts arrive.
         </p>
       </div>
-      <HybridPanel controllers={controllers} componentHits={components} />
+      <HybridPanel controllers={controllers} componentHits={components} serviceOnline={serviceOnline} />
     </>
   );
 }

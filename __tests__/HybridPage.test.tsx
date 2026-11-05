@@ -9,6 +9,8 @@ vi.mock("@/lib/api-client", () => ({
     startHybridExperiment: vi.fn(),
     advanceHybridExperiment: vi.fn(),
     stopHybridExperiment: vi.fn(),
+    getControllers: vi.fn(),
+    searchComponents: vi.fn(),
   },
 }));
 
@@ -70,6 +72,48 @@ describe("HybridPanel", () => {
     expect(screen.getByTestId("hybrid-offline")).toHaveTextContent("The hardware service isn't available right now");
     expect(screen.getByRole("link", { name: /Open the Engineering Lab/ })).toHaveAttribute("href", "/laboratory/workspace");
     expect(screen.getByRole("button", { name: /Create Hybrid Experiment/ })).toBeDisabled();
+  });
+});
+
+describe("When the hardware service can't be reached", () => {
+  it("still lists the boards and parts to plan with, and says experiments wait", () => {
+    render(<HybridPanel controllers={controllers} componentHits={hits} serviceOnline={false} />);
+    expect(screen.getByTestId("hybrid-waiting")).toHaveTextContent("Experiments can't run right now");
+    expect(screen.queryByTestId("hybrid-offline")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: "LED" }));
+    expect(screen.getByRole("button", { name: /Create Hybrid Experiment/ })).toBeDisabled();
+    expect(screen.getByText(/Creating an experiment needs the hardware service/)).toBeInTheDocument();
+    expect(api.createHybridExperiment).not.toHaveBeenCalled();
+  });
+
+  it("the page falls back to the built-in catalog, and uses the service's when it answers", async () => {
+    const { default: HybridPage } = await import("@/app/hybrid/page");
+    const { builtInComponents, builtInControllers } = await import("@/lib/hybrid/catalog");
+    const panelProps = (tree: unknown): Record<string, unknown> => {
+      const kids = (tree as { props: { children: unknown[] } }).props.children;
+      return (kids.find((k) => (k as { type?: unknown })?.type === HybridPanel) as { props: Record<string, unknown> }).props;
+    };
+
+    vi.mocked(api.getControllers).mockRejectedValue(new Error("API /controllers failed: 404 Not Found"));
+    vi.mocked(api.searchComponents).mockRejectedValue(new Error("API /components/search failed: 404 Not Found"));
+    const down = panelProps(await HybridPage());
+    expect(down).toMatchObject({ controllers: builtInControllers, componentHits: builtInComponents, serviceOnline: false });
+
+    vi.mocked(api.getControllers).mockResolvedValue(controllers as never);
+    vi.mocked(api.searchComponents).mockResolvedValue(hits as never);
+    const up = panelProps(await HybridPage());
+    expect(up).toMatchObject({ controllers, componentHits: hits, serviceOnline: true });
+  });
+
+  it("the built-in catalog has the boards and parts the service offers", async () => {
+    const { builtInComponents, builtInControllers } = await import("@/lib/hybrid/catalog");
+    const boards = new Set(builtInControllers.map((c) => c.controller_id));
+    expect(boards).toEqual(new Set(["arduino-mega", "arduino-uno", "esp32", "esp8266", "raspberry-pi-pico", "stm32"]));
+    expect(builtInComponents.length).toBeGreaterThanOrEqual(30);
+    for (const hit of builtInComponents) {
+      expect(hit.component.component_id && hit.component.name).toBeTruthy();
+      expect(Array.isArray(hit.compatible_controllers)).toBe(true);
+    }
   });
 });
 

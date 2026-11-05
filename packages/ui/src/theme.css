@@ -917,6 +917,27 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 /*
+ * The download button while it downloads: a light gray track that fills
+ * from the left with the brand teal as the file arrives. The dark palettes'
+ * primary is a neutral gray, so they get a deep teal that keeps white text
+ * readable (4.9:1).
+ */
+.hhip-download-fill {
+  background: var(--primary);
+}
+.hhip-download-fill-text {
+  color: var(--primary-foreground);
+}
+[data-theme="dark"] .hhip-download-fill,
+[data-theme="dark-contrast"] .hhip-download-fill {
+  background: #0b7f7c;
+}
+[data-theme="dark"] .hhip-download-fill-text,
+[data-theme="dark-contrast"] .hhip-download-fill-text {
+  color: #ffffff;
+}
+
+/*
  * The X in a dialog's corner (CloseButton). Gray in every palette: the box
  * is the text color at low strength, so it reads as gray on white pages and
  * as a lighter gray on dark ones. Hover: a light box. Pressed: a firmer box

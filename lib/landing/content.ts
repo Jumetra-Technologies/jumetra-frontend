@@ -165,8 +165,11 @@ export const DESKTOP = {
       starting: "Starting the download",
       progress: (received: string, total: string) => `${received} of ${total}`,
       keepOpen: "Keep this tab open until it's done.",
-      cancel: "Cancel",
-      cancelled: "Download cancelled.",
+      /** Stops the download; the button goes back to its first state. */
+      stop: "Stop",
+      /** The notice's X while downloading: the download keeps going, the button keeps the progress. */
+      hide: "Hide",
+      hideHint: "Hide this notice. The download keeps going; the button shows how far it is.",
       done: {
         title: () => "Downloaded",
         verified: (file: string, size: string) => `${file} (${size}) is in your downloads.`,

@@ -10,6 +10,14 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.36.1] - 2026-11-05
+
+### Changed
+- **The download button fills as the file arrives.** While downloading, the button is a light gray track that fills with teal from the left: almost all gray at 1%, half and half at 50%, all teal at 99%. The label turns white where the fill passes under it. The percent always reads 1 to 99 (never 0 or 100); the done state says **Downloaded** instead. In the two dark palettes the fill is a deep teal, since their primary color is gray.
+- **The download notice no longer repeats the percent.** It shows how much has arrived ("10 MB of 149 MB") and the bar; the percent is on the button.
+- **The notice has an X while downloading.** It hides the notice and the download keeps going, with the button showing how far it is. The notice comes back when the download finishes or fails, so the result isn't missed.
+- **Cancel is now Stop.** It halts the download, and the button goes back to its first state.
+
 ## [1.36.0] - 2026-11-05
 
 The desktop app is 0.12.2: a Settings dialog (the account gear, the command palette, or `Ctrl+,`/`⌘,`) with the signed-in profile, light/dark/system appearance, and the version Kiungo is running.
@@ -724,6 +732,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.36.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.0...v1.36.1
 [1.36.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.35.0...v1.36.0
 [1.35.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.34.0...v1.35.0
 [1.34.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.33.0...v1.34.0

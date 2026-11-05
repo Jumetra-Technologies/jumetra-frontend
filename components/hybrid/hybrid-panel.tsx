@@ -68,7 +68,16 @@ function StepHeading({ n, title, hint }: { n: number; title: string; hint?: stri
   );
 }
 
-export function HybridPanel({ controllers, componentHits }: { controllers: ControllerSpec[]; componentHits: ComponentSearchHit[] }) {
+export function HybridPanel({
+  controllers,
+  componentHits,
+  serviceOnline = true,
+}: {
+  controllers: ControllerSpec[];
+  componentHits: ComponentSearchHit[];
+  /** False when the hardware service couldn't be reached: the boards and parts are the built-in catalog, and experiments wait. */
+  serviceOnline?: boolean;
+}) {
   const [name, setName] = useState("Hybrid Greenhouse");
   const [controllerId, setControllerId] = useState(controllers[0]?.controller_id ?? "esp32");
   const [selected, setSelected] = useState<string[]>(["dht22", "led", "relay"]);
@@ -80,7 +89,9 @@ export function HybridPanel({ controllers, componentHits }: { controllers: Contr
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<"" | "create" | "start" | "step" | "stop">("");
 
+  // Nothing to show at all, or a catalog to plan with but no service to run it.
   const offline = controllers.length === 0 && componentHits.length === 0;
+  const waiting = !offline && !serviceOnline;
   const names = useMemo(() => new Map(componentHits.map((h) => [h.component.component_id, h.component.name])), [componentHits]);
   const visible = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -173,6 +184,22 @@ export function HybridPanel({ controllers, componentHits }: { controllers: Contr
             </Button>
           </Link>
         </div>
+      ) : waiting ? (
+        <div className="flex flex-wrap items-center gap-4 rounded-[14px] border border-warning/30 bg-warning/5 p-5" role="status" data-testid="hybrid-waiting">
+          <AlertTriangle className="size-5 shrink-0 text-warning" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">Experiments can&apos;t run right now</p>
+            <p className="mt-0.5 text-xs leading-5 text-muted">
+              The hardware service that creates and runs hybrid experiments isn&apos;t reachable. You can still pick a board and parts below to plan one, or build and simulate the same circuit in the
+              Engineering Lab.
+            </p>
+          </div>
+          <Link href="/laboratory/workspace">
+            <Button size="sm" variant="secondary">
+              Open the Engineering Lab <ArrowRight className="size-3.5" aria-hidden />
+            </Button>
+          </Link>
+        </div>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
@@ -249,9 +276,10 @@ export function HybridPanel({ controllers, componentHits }: { controllers: Contr
 
             <div>
               <StepHeading n={3} title="Create, then run it" />
-              <Button type="submit" disabled={!!busy || chosen.length === 0 || offline}>
+              <Button type="submit" disabled={!!busy || chosen.length === 0 || offline || waiting}>
                 <FlaskConical className="size-4" aria-hidden /> {busy === "create" ? "Creating…" : "Create Hybrid Experiment"}
               </Button>
+              {waiting ? <p className="mt-2 text-xs text-muted">Creating an experiment needs the hardware service, which isn&apos;t reachable right now.</p> : null}
             </div>
           </form>
           {error ? (

@@ -1,0 +1,1567 @@
+{
+ "source": "jumetra-backend main (ad50793): GET /controllers and GET /components/search",
+ "controllers": [
+  {
+   "controller_id": "arduino-mega",
+   "name": "Arduino Mega 2560",
+   "family": "AVR",
+   "description": "Large AVR board with extended GPIO for complex projects.",
+   "voltage_v": 5.0,
+   "clock_mhz": 16.0,
+   "flash_kb": 256,
+   "ram_kb": 8,
+   "digital_pins": 54,
+   "analog_pins": 16,
+   "pwm_pins": 15,
+   "supports_i2c": true,
+   "supports_spi": true,
+   "supports_onewire": true,
+   "supports_wifi": false,
+   "supports_bluetooth": false,
+   "tags": [
+    "5v",
+    "avr",
+    "many-pins"
+   ]
+  },
+  {
+   "controller_id": "arduino-uno",
+   "name": "Arduino Uno",
+   "family": "AVR",
+   "description": "Classic ATmega328P board for learning and prototyping.",
+   "voltage_v": 5.0,
+   "clock_mhz": 16.0,
+   "flash_kb": 32,
+   "ram_kb": 2,
+   "digital_pins": 14,
+   "analog_pins": 6,
+   "pwm_pins": 6,
+   "supports_i2c": true,
+   "supports_spi": true,
+   "supports_onewire": true,
+   "supports_wifi": false,
+   "supports_bluetooth": false,
+   "tags": [
+    "beginner",
+    "5v",
+    "avr"
+   ]
+  },
+  {
+   "controller_id": "esp32",
+   "name": "ESP32",
+   "family": "Espressif",
+   "description": "Dual-core Wi-Fi + Bluetooth SoC with rich peripherals.",
+   "voltage_v": 3.3,
+   "clock_mhz": 240.0,
+   "flash_kb": 4096,
+   "ram_kb": 520,
+   "digital_pins": 34,
+   "analog_pins": 18,
+   "pwm_pins": 16,
+   "supports_i2c": true,
+   "supports_spi": true,
+   "supports_onewire": true,
+   "supports_wifi": true,
+   "supports_bluetooth": true,
+   "tags": [
+    "wifi",
+    "ble",
+    "iot"
+   ]
+  },
+  {
+   "controller_id": "esp8266",
+   "name": "ESP8266",
+   "family": "Espressif",
+   "description": "Low-cost Wi-Fi microcontroller for IoT nodes.",
+   "voltage_v": 3.3,
+   "clock_mhz": 80.0,
+   "flash_kb": 4096,
+   "ram_kb": 80,
+   "digital_pins": 11,
+   "analog_pins": 1,
+   "pwm_pins": 4,
+   "supports_i2c": true,
+   "supports_spi": true,
+   "supports_onewire": false,
+   "supports_wifi": true,
+   "supports_bluetooth": false,
+   "tags": [
+    "wifi",
+    "iot",
+    "low-cost"
+   ]
+  },
+  {
+   "controller_id": "raspberry-pi-pico",
+   "name": "Raspberry Pi Pico",
+   "family": "RP2040",
+   "description": "Dual-core RP2040 board with flexible PIO and low power.",
+   "voltage_v": 3.3,
+   "clock_mhz": 133.0,
+   "flash_kb": 2048,
+   "ram_kb": 264,
+   "digital_pins": 26,
+   "analog_pins": 3,
+   "pwm_pins": 16,
+   "supports_i2c": true,
+   "supports_spi": true,
+   "supports_onewire": false,
+   "supports_wifi": false,
+   "supports_bluetooth": false,
+   "tags": [
+    "rp2040",
+    "pio",
+    "micropython"
+   ]
+  },
+  {
+   "controller_id": "stm32",
+   "name": "STM32 (Blue Pill)",
+   "family": "STM32",
+   "description": "ARM Cortex-M3 development board for industrial applications.",
+   "voltage_v": 3.3,
+   "clock_mhz": 72.0,
+   "flash_kb": 64,
+   "ram_kb": 20,
+   "digital_pins": 37,
+   "analog_pins": 10,
+   "pwm_pins": 12,
+   "supports_i2c": true,
+   "supports_spi": true,
+   "supports_onewire": false,
+   "supports_wifi": false,
+   "supports_bluetooth": false,
+   "tags": [
+    "arm",
+    "industrial",
+    "cortex-m3"
+   ]
+  }
+ ],
+ "components": [
+  {
+   "component": {
+    "component_id": "am2302",
+    "name": "AM2302 Temperature Humidity Sensor",
+    "category": "sensor",
+    "description": "AM2302 Temperature Humidity Sensor",
+    "manufacturer": "Aosong",
+    "interfaces": [
+     "digital"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 3,
+     "interfaces": [
+      "digital"
+     ],
+     "notes": "VCC, DATA, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "temperature",
+     "humidity",
+     "dht",
+     "am2302",
+     "sensor",
+     "dht22"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "arduino-mega",
+    "name": "Arduino Mega",
+    "category": "mcu",
+    "description": "Arduino Mega",
+    "manufacturer": "Arduino",
+    "interfaces": [
+     "digital",
+     "pwm",
+     "uart",
+     "i2c",
+     "spi",
+     "analog"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 4,
+     "interfaces": [
+      "digital",
+      "pwm",
+      "uart"
+     ],
+     "notes": "D13, A0, 5V, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "arduino",
+     "mega",
+     "mcu",
+     "mega"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "arduino-uno",
+    "name": "Arduino Uno",
+    "category": "mcu",
+    "description": "Arduino Uno",
+    "manufacturer": "Arduino",
+    "interfaces": [
+     "digital",
+     "pwm",
+     "uart",
+     "i2c",
+     "spi",
+     "analog"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 7,
+     "interfaces": [
+      "digital",
+      "pwm",
+      "uart"
+     ],
+     "notes": "D13, D2, A0, 5V, GND, SDA, SCL"
+    },
+    "libraries": [],
+    "tags": [
+     "arduino",
+     "uno",
+     "mcu",
+     "microcontroller",
+     "uno",
+     "arduino uno"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "microbit",
+    "name": "BBC micro:bit",
+    "category": "mcu",
+    "description": "BBC micro:bit",
+    "manufacturer": "BBC",
+    "interfaces": [
+     "digital",
+     "pwm",
+     "uart",
+     "i2c",
+     "spi",
+     "bluetooth"
+    ],
+    "voltage_v": 3.3,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 4,
+     "interfaces": [
+      "digital",
+      "pwm",
+      "uart"
+     ],
+     "notes": "P0, P1, 3V, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "microbit",
+     "micro:bit",
+     "bbc",
+     "mcu",
+     "micro bit",
+     "micro:bit"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "microbit"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "bmp280",
+    "name": "BMP280 Pressure Sensor",
+    "category": "sensor",
+    "description": "BMP280 Pressure Sensor",
+    "manufacturer": "Bosch",
+    "interfaces": [
+     "i2c",
+     "spi"
+    ],
+    "voltage_v": 3.3,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 4,
+     "interfaces": [
+      "i2c",
+      "spi"
+     ],
+     "notes": "VCC, GND, SDA, SCL"
+    },
+    "libraries": [],
+    "tags": [
+     "pressure",
+     "barometer",
+     "temperature",
+     "sensor",
+     "i2c",
+     "bmp 280"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "hc-05",
+    "name": "Bluetooth HC-05",
+    "category": "communication",
+    "description": "Bluetooth HC-05",
+    "manufacturer": "Generic",
+    "interfaces": [
+     "uart",
+     "bluetooth"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 4,
+     "interfaces": [
+      "uart",
+      "bluetooth"
+     ],
+     "notes": "VCC, GND, TX, RX"
+    },
+    "libraries": [],
+    "tags": [
+     "bluetooth",
+     "uart",
+     "hc05",
+     "communication",
+     "hc05"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "esp32",
+    "arduino-uno",
+    "stm32",
+    "raspberry-pi-pico"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "buzzer",
+    "name": "Buzzer",
+    "category": "actuator",
+    "description": "Buzzer",
+    "manufacturer": "Generic",
+    "interfaces": [
+     "digital",
+     "pwm"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 2,
+     "interfaces": [
+      "digital",
+      "pwm"
+     ],
+     "notes": "SIG, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "buzzer",
+     "sound",
+     "actuator",
+     "beeper"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "dc-motor",
+    "name": "DC Motor",
+    "category": "actuator",
+    "description": "DC Motor",
+    "manufacturer": "Generic",
+    "interfaces": [
+     "digital",
+     "pwm"
+    ],
+    "voltage_v": 12.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 4,
+     "interfaces": [
+      "digital",
+      "pwm"
+     ],
+     "notes": "IN1, IN2, VCC, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "motor",
+     "dc",
+     "actuator",
+     "dcmotor"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "dht11",
+    "name": "DHT11",
+    "category": "sensor",
+    "description": "Digital temperature and humidity sensor",
+    "manufacturer": "Aosong",
+    "interfaces": [
+     "digital"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 3,
+     "interfaces": [
+      "digital"
+     ],
+     "notes": "VCC, DATA, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "temperature",
+     "humidity",
+     "iot",
+     "sensor",
+     "dht",
+     "environment"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "dht22",
+    "name": "DHT22 Temperature Humidity Sensor",
+    "category": "sensor",
+    "description": "DHT22 Temperature Humidity Sensor",
+    "manufacturer": "Aosong",
+    "interfaces": [
+     "digital"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 3,
+     "interfaces": [
+      "digital"
+     ],
+     "notes": "VCC, DATA, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "temperature",
+     "humidity",
+     "dht",
+     "sensor",
+     "am2302",
+     "dht 22"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "ds18b20",
+    "name": "DS18B20 Temperature",
+    "category": "sensor",
+    "description": "DS18B20 Temperature",
+    "manufacturer": "Maxim",
+    "interfaces": [
+     "digital",
+     "onewire"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 3,
+     "interfaces": [
+      "digital",
+      "onewire"
+     ],
+     "notes": "VCC, DQ, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "temperature",
+     "onewire",
+     "sensor",
+     "ds18b20",
+     "ds18b20"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "esp32",
+    "name": "ESP32 DevKit",
+    "category": "mcu",
+    "description": "ESP32 development controller",
+    "manufacturer": "Espressif",
+    "interfaces": [
+     "digital",
+     "pwm",
+     "uart",
+     "i2c",
+     "spi",
+     "analog",
+     "wifi",
+     "bluetooth"
+    ],
+    "voltage_v": 3.3,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 5,
+     "interfaces": [
+      "digital",
+      "pwm",
+      "uart"
+     ],
+     "notes": "D2, SDA, SCL, 3V3, GND"
+    },
+    "libraries": [],
+    "tags": [],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "esp32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "esp8266",
+    "name": "ESP8266 NodeMCU",
+    "category": "mcu",
+    "description": "ESP8266 NodeMCU",
+    "manufacturer": "Espressif",
+    "interfaces": [
+     "digital",
+     "pwm",
+     "uart",
+     "i2c",
+     "spi",
+     "analog",
+     "wifi"
+    ],
+    "voltage_v": 3.3,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 4,
+     "interfaces": [
+      "digital",
+      "pwm",
+      "uart"
+     ],
+     "notes": "D1, D2, 3V3, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "esp",
+     "esp8266",
+     "wifi",
+     "mcu",
+     "nodemcu"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "esp8266",
+    "esp32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "hc-sr04",
+    "name": "HC-SR04 Ultrasonic",
+    "category": "sensor",
+    "description": "HC-SR04 Ultrasonic",
+    "manufacturer": "Generic",
+    "interfaces": [
+     "digital"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 4,
+     "interfaces": [
+      "digital"
+     ],
+     "notes": "VCC, TRIG, ECHO, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "ultrasonic",
+     "distance",
+     "sensor",
+     "hcsr04"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "lcd-16x2",
+    "name": "LCD 16x2",
+    "category": "display",
+    "description": "LCD 16x2",
+    "manufacturer": "Hitachi",
+    "interfaces": [
+     "i2c",
+     "digital"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 4,
+     "interfaces": [
+      "i2c",
+      "digital"
+     ],
+     "notes": "VCC, GND, SDA, SCL"
+    },
+    "libraries": [],
+    "tags": [
+     "lcd",
+     "display",
+     "16x2",
+     "i2c",
+     "lcd",
+     "hd44780"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "ldr",
+    "name": "LDR Light Sensor",
+    "category": "sensor",
+    "description": "LDR Light Sensor",
+    "manufacturer": "Generic",
+    "interfaces": [
+     "analog"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 3,
+     "interfaces": [
+      "analog"
+     ],
+     "notes": "VCC, SIG, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "light",
+     "ldr",
+     "photoresistor",
+     "sensor",
+     "photoresistor"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "led",
+    "name": "LED",
+    "category": "actuator",
+    "description": "LED",
+    "manufacturer": "Generic",
+    "interfaces": [
+     "digital",
+     "pwm"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 2,
+     "interfaces": [
+      "digital",
+      "pwm"
+     ],
+     "notes": "ANODE, CATHODE"
+    },
+    "libraries": [],
+    "tags": [
+     "led",
+     "light",
+     "actuator",
+     "diode led"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "lora",
+    "name": "LoRa Module",
+    "category": "communication",
+    "description": "LoRa Module",
+    "manufacturer": "Semtech",
+    "interfaces": [
+     "spi",
+     "uart"
+    ],
+    "voltage_v": 3.3,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 6,
+     "interfaces": [
+      "spi",
+      "uart"
+     ],
+     "notes": "VCC, GND, NSS, SCK, MOSI, MISO"
+    },
+    "libraries": [],
+    "tags": [
+     "lora",
+     "radio",
+     "long range",
+     "communication",
+     "sx1278"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "mpu6050",
+    "name": "MPU6050 IMU",
+    "category": "sensor",
+    "description": "MPU6050 IMU",
+    "manufacturer": "InvenSense",
+    "interfaces": [
+     "i2c"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 4,
+     "interfaces": [
+      "i2c"
+     ],
+     "notes": "VCC, GND, SDA, SCL"
+    },
+    "libraries": [],
+    "tags": [
+     "imu",
+     "gyro",
+     "accelerometer",
+     "sensor",
+     "i2c",
+     "mpu 6050"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "mq2",
+    "name": "MQ2 Gas Sensor",
+    "category": "sensor",
+    "description": "MQ2 Gas Sensor",
+    "manufacturer": "Winsen",
+    "interfaces": [
+     "analog",
+     "digital"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 4,
+     "interfaces": [
+      "analog",
+      "digital"
+     ],
+     "notes": "VCC, A0, D0, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "gas",
+     "smoke",
+     "mq2",
+     "sensor",
+     "mq-2"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "nrf24l01",
+    "name": "NRF24L01",
+    "category": "communication",
+    "description": "NRF24L01",
+    "manufacturer": "Nordic",
+    "interfaces": [
+     "spi"
+    ],
+    "voltage_v": 3.3,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 7,
+     "interfaces": [
+      "spi"
+     ],
+     "notes": "VCC, GND, CE, CSN, SCK, MOSI, MISO"
+    },
+    "libraries": [],
+    "tags": [
+     "nrf",
+     "radio",
+     "spi",
+     "communication",
+     "wireless",
+     "nrf24"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "oled-ssd1306",
+    "name": "OLED SSD1306",
+    "category": "display",
+    "description": "OLED SSD1306",
+    "manufacturer": "Solomon",
+    "interfaces": [
+     "i2c",
+     "spi"
+    ],
+    "voltage_v": 3.3,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 4,
+     "interfaces": [
+      "i2c",
+      "spi"
+     ],
+     "notes": "VCC, GND, SDA, SCL"
+    },
+    "libraries": [],
+    "tags": [
+     "oled",
+     "display",
+     "ssd1306",
+     "i2c",
+     "ssd1306",
+     "oled"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "pir",
+    "name": "PIR Motion Sensor",
+    "category": "sensor",
+    "description": "PIR Motion Sensor",
+    "manufacturer": "Generic",
+    "interfaces": [
+     "digital"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 3,
+     "interfaces": [
+      "digital"
+     ],
+     "notes": "VCC, OUT, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "motion",
+     "pir",
+     "sensor",
+     "motion"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "rgb-led",
+    "name": "RGB LED",
+    "category": "actuator",
+    "description": "RGB LED",
+    "manufacturer": "Generic",
+    "interfaces": [
+     "digital",
+     "pwm"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 4,
+     "interfaces": [
+      "digital",
+      "pwm"
+     ],
+     "notes": "R, G, B, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "led",
+     "rgb",
+     "actuator",
+     "pwm",
+     "rgb"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "raspberry-pi-4",
+    "name": "Raspberry Pi 4",
+    "category": "mcu",
+    "description": "Raspberry Pi 4",
+    "manufacturer": "Raspberry Pi",
+    "interfaces": [
+     "digital",
+     "pwm",
+     "uart",
+     "i2c",
+     "spi",
+     "wifi",
+     "bluetooth"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 6,
+     "interfaces": [
+      "digital",
+      "pwm",
+      "uart"
+     ],
+     "notes": "GPIO2, GPIO3, GPIO14, GPIO15, 5V, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "raspberry",
+     "pi",
+     "pi4",
+     "wifi",
+     "linux",
+     "rpi",
+     "pi 4"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "raspberry-pi-4"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "raspberry-pi-pico",
+    "name": "Raspberry Pi Pico",
+    "category": "mcu",
+    "description": "Raspberry Pi Pico",
+    "manufacturer": "Raspberry Pi",
+    "interfaces": [
+     "digital",
+     "pwm",
+     "uart",
+     "i2c",
+     "spi",
+     "analog"
+    ],
+    "voltage_v": 3.3,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 5,
+     "interfaces": [
+      "digital",
+      "pwm",
+      "uart"
+     ],
+     "notes": "GP0, GP4, GP5, 3V3, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "pico",
+     "raspberry",
+     "rp2040",
+     "mcu",
+     "pico"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "relay",
+    "name": "Relay Module",
+    "category": "actuator",
+    "description": "Relay Module",
+    "manufacturer": "Generic",
+    "interfaces": [
+     "digital"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 3,
+     "interfaces": [
+      "digital"
+     ],
+     "notes": "VCC, IN, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "relay",
+     "switch",
+     "actuator"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "stm32",
+    "name": "STM32 Blue Pill",
+    "category": "mcu",
+    "description": "STM32 Blue Pill",
+    "manufacturer": "STMicroelectronics",
+    "interfaces": [
+     "digital",
+     "pwm",
+     "uart",
+     "i2c",
+     "spi",
+     "analog"
+    ],
+    "voltage_v": 3.3,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 5,
+     "interfaces": [
+      "digital",
+      "pwm",
+      "uart"
+     ],
+     "notes": "PA0, PB6, PB7, 3V3, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "stm32",
+     "blue pill",
+     "mcu",
+     "bluepill",
+     "blue pill"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "servo",
+    "name": "Servo Motor",
+    "category": "actuator",
+    "description": "Servo Motor",
+    "manufacturer": "Generic",
+    "interfaces": [
+     "pwm",
+     "digital"
+    ],
+    "voltage_v": 6.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 3,
+     "interfaces": [
+      "pwm",
+      "digital"
+     ],
+     "notes": "VCC, SIG, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "servo",
+     "motor",
+     "actuator",
+     "pwm",
+     "sg90"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "soil-moisture",
+    "name": "Soil Moisture Sensor",
+    "category": "sensor",
+    "description": "Soil Moisture Sensor",
+    "manufacturer": "Generic",
+    "interfaces": [
+     "analog",
+     "digital"
+    ],
+    "voltage_v": 5.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 3,
+     "interfaces": [
+      "analog",
+      "digital"
+     ],
+     "notes": "VCC, A0, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "soil",
+     "moisture",
+     "sensor",
+     "soil"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "stepper-motor",
+    "name": "Stepper Motor",
+    "category": "actuator",
+    "description": "Stepper Motor",
+    "manufacturer": "Generic",
+    "interfaces": [
+     "digital"
+    ],
+    "voltage_v": 12.0,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 6,
+     "interfaces": [
+      "digital"
+     ],
+     "notes": "IN1, IN2, IN3, IN4, VCC, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "motor",
+     "stepper",
+     "actuator",
+     "stepper"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "tft-display",
+    "name": "TFT Display",
+    "category": "display",
+    "description": "TFT Display",
+    "manufacturer": "Generic",
+    "interfaces": [
+     "spi"
+    ],
+    "voltage_v": 3.3,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 6,
+     "interfaces": [
+      "spi"
+     ],
+     "notes": "VCC, GND, CS, MOSI, SCK, DC"
+    },
+    "libraries": [],
+    "tags": [
+     "tft",
+     "display",
+     "lcd",
+     "spi",
+     "ili9341"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "teensy",
+    "name": "Teensy 4.1",
+    "category": "mcu",
+    "description": "Teensy 4.1",
+    "manufacturer": "PJRC",
+    "interfaces": [
+     "digital",
+     "pwm",
+     "uart",
+     "i2c",
+     "spi",
+     "analog"
+    ],
+    "voltage_v": 3.3,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 3,
+     "interfaces": [
+      "digital",
+      "pwm",
+      "uart"
+     ],
+     "notes": "D13, 3V3, GND"
+    },
+    "libraries": [],
+    "tags": [
+     "teensy",
+     "mcu"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "arduino-mega",
+    "arduino-uno",
+    "esp32",
+    "esp8266",
+    "raspberry-pi-pico",
+    "stm32"
+   ]
+  },
+  {
+   "component": {
+    "component_id": "wifi-module",
+    "name": "WiFi Module",
+    "category": "communication",
+    "description": "WiFi Module",
+    "manufacturer": "Espressif",
+    "interfaces": [
+     "uart",
+     "wifi"
+    ],
+    "voltage_v": 3.3,
+    "current_ma": 0.0,
+    "pins": {
+     "count": 4,
+     "interfaces": [
+      "uart",
+      "wifi"
+     ],
+     "notes": "VCC, GND, TX, RX"
+    },
+    "libraries": [],
+    "tags": [
+     "wifi",
+     "wireless",
+     "communication",
+     "esp",
+     "esp-01"
+    ],
+    "datasheet_url": "",
+    "version": "1.0.0"
+   },
+   "score": 1.0,
+   "compatible_controllers": [
+    "esp32",
+    "arduino-uno",
+    "stm32",
+    "raspberry-pi-pico"
+   ]
+  }
+ ]
+}

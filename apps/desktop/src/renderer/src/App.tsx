@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
-import { Box, CloudDownload, Code2, FilePlus2, FolderOpen, Grid2x2, House, LogIn, LogOut, Maximize, PanelRight, Play, Redo2, RefreshCw, Search, Stethoscope, Undo2, UserRound, X, Zap } from "lucide-react";
-import type { OpenedProject, OpenResult, RecentProject, RemoteProject } from "@kiungo/api";
+import { Box, CloudDownload, Code2, FilePlus2, FolderOpen, Grid2x2, House, LogIn, LogOut, Maximize, PanelRight, Play, Redo2, RefreshCw, Search, Settings, Stethoscope, Undo2, UserRound, X, Zap } from "lucide-react";
+import type { Appearance, AppInfo, OpenedProject, OpenResult, RecentProject, RemoteProject } from "@kiungo/api";
 import { AccountMenu } from "./account/AccountMenu";
 import { SignInScreen } from "./account/SignInScreen";
 import { useAuth } from "./account/useAuth";
@@ -12,14 +12,14 @@ import { NewProjectDialog } from "./home/NewProjectDialog";
 import { invoke, shortcut } from "./ipc";
 import { CommandPalette, type Command } from "./palette/CommandPalette";
 import { ProjectScreen, type ProjectScreenHandle } from "./project/ProjectScreen";
-import { useSystemTheme } from "./theme";
+import { SettingsDialog } from "./settings/SettingsDialog";
+import { useAppearance } from "./theme";
 import { UpdateBanner } from "./update/UpdateBanner";
 import { useUpdate } from "./update/useUpdate";
 
 type Screen = { kind: "home" } | { kind: "project"; project: OpenedProject } | { kind: "foundations" };
 
 export function App() {
-  useSystemTheme();
   const auth = useAuth();
   const update = useUpdate();
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
@@ -27,16 +27,28 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState<{ starter: string | null } | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // The open lab's actions, kept in state (not a ref) so the palette's commands built during render may use them.
   const [lab, setLab] = useState<ProjectScreenHandle | null>(null);
   const openPath = screen.kind === "project" ? screen.project.path : null;
   const [importOpen, setImportOpen] = useState(false);
   const [syncOn, setSyncOn] = useState(false);
+  const [appearance, setAppearance] = useState<Appearance>("system");
+  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [remote, setRemote] = useState<{ projects: RemoteProject[] | null; message: string | null }>({ projects: null, message: null });
   const [downloading, setDownloading] = useState<string | null>(null);
   const signedIn = auth?.status === "signed-in";
+  useAppearance(appearance);
   useEffect(() => {
-    void invoke("projects:settings").then((s) => setSyncOn(s.sync === true));
+    void invoke("projects:settings").then((s) => {
+      setSyncOn(s.sync === true);
+      setAppearance(s.appearance ?? "system");
+    });
+    void invoke("app:info").then(setAppInfo);
+  }, []);
+  const changeAppearance = useCallback((next: Appearance) => {
+    setAppearance(next); // Right away: no wait on the round trip to main.
+    void invoke("settings:set-appearance", next);
   }, []);
   // Projects on the account but not here, each time Home shows with sync on.
   useEffect(() => {
@@ -105,6 +117,9 @@ export function App() {
       } else if (key === "h" && e.shiftKey) {
         e.preventDefault();
         goHome();
+      } else if (key === ",") {
+        e.preventDefault();
+        setSettingsOpen(true);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -161,7 +176,10 @@ export function App() {
       const detail = u.state.status === "downloading" ? `Downloading ${u.state.version}, ${u.state.percent}%` : `You have ${u.currentVersion}${u.channel === "beta" ? " (beta)" : ""}`;
       list.push({ id: "update-check", title: "Check for updates", detail, group: "Help", icon: <CloudDownload />, keywords: "update upgrade new version", run: update.check });
     }
-    list.push({ id: "foundations", title: "Check the toolchain and emulator", group: "Help", icon: <Stethoscope />, keywords: "diagnostics arduino cli compiler", run: () => void closeOpen().then(() => setScreen({ kind: "foundations" })) });
+    list.push(
+      { id: "settings", title: "Settings", group: "Help", icon: <Settings />, shortcut: shortcut(","), keywords: "appearance theme light dark version profile account", run: () => setSettingsOpen(true) },
+      { id: "foundations", title: "Check the toolchain and emulator", group: "Help", icon: <Stethoscope />, keywords: "diagnostics arduino cli compiler", run: () => void closeOpen().then(() => setScreen({ kind: "foundations" })) },
+    );
     return list;
   }, [screen, lab, recent, openPath, goHome, newProject, openFolder, openRecent, closeOpen, auth, update]);
 
@@ -189,7 +207,7 @@ export function App() {
           onReveal={(p) => void invoke("projects:reveal", p.path)}
           onForget={(p) => void invoke("projects:forget", p.path).then(setRecent)}
           onPalette={() => setPaletteOpen(true)}
-          account={<AccountMenu state={auth} />}
+          account={<AccountMenu state={auth} onSettings={() => setSettingsOpen(true)} />}
           onImportFile={() => void invoke("import:file").then(show)}
           onImportAccount={signedIn ? () => setImportOpen(true) : undefined}
           sync={
@@ -232,6 +250,7 @@ export function App() {
         />
       ) : null}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} auth={auth} appearance={appearance} onAppearance={changeAppearance} update={update} info={appInfo} />
       <UpdateBanner update={update} />
     </>
   );

@@ -39,7 +39,7 @@ export function Assistant({ onView }: { onView: (view: View) => void }) {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Ask about code, circuits, or documentation…"
-            className="flex-1 bg-transparent px-2 text-xs outline-none placeholder:text-muted"
+            className="flex-1 bg-transparent px-2 text-xs placeholder:text-muted"
             disabled
           />
           <Button size="sm" disabled>

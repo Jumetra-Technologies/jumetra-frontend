@@ -10,6 +10,11 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.36.2] - 2026-11-05
+
+### Fixed
+- **Signing in on a new browser no longer deletes your lab sessions from your account.** When you signed in on a page that doesn't open the lab (Home, Settings, the docs) on a browser that had never held your sessions, they arrived from the account but weren't saved in the browser. Opening the Engineering Lab, Projects or Analytics afterwards loaded the browser's empty copy over them, and the account sync took the missing sessions as deleted and deleted them from the account. The sync now loads the browser's copy before it merges, so the merged list is saved and nothing reloads over it. A regression test signs in, lets the sessions arrive, then opens the lab, and checks nothing is deleted.
+
 ## [1.36.1] - 2026-11-05
 
 ### Changed
@@ -732,6 +737,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.36.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.1...v1.36.2
 [1.36.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.0...v1.36.1
 [1.36.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.35.0...v1.36.0
 [1.35.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.34.0...v1.35.0

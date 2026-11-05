@@ -103,6 +103,11 @@ export function LabAccountSync() {
       (remoteSessions) => {
         if (!active) return;
         knownRemoteIds = new Set(remoteSessions.map((session) => session.id));
+        // Read this browser's copy first. Merging into a store nobody has loaded
+        // yet isn't saved, and the page that loads it later would swap the
+        // merged list for the browser's copy; the sessions missing from that
+        // copy would then look deleted and be deleted from the account.
+        if (!useLab.getState().hydrated) useLab.getState().hydrate();
         const localSessions = useLab.getState().sessions;
         const merged = new Map(remoteSessions.map((session) => [session.id, session]));
         for (const local of localSessions) {

@@ -1,7 +1,8 @@
 "use client";
 
+import { CloseButton } from "@kiungo/ui/close-button";
 import { useId, useState, type FormEvent, type ReactNode } from "react";
-import { LoaderCircle, MapPin, X } from "lucide-react";
+import { LoaderCircle, MapPin } from "lucide-react";
 import { ProviderConnections } from "@/components/account/ProviderConnections";
 import { Button } from "@kiungo/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,9 +81,7 @@ export function WelcomeDialog({ open }: { open: boolean }) {
     <ModalShell open={open} onClose={closeAccountDialog} labelledBy={titleId} className="max-w-[520px]" testId="welcome-dialog">
       <header className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
         <h2 id={titleId} className="text-lg font-semibold tracking-tight text-foreground">Welcome to Kiungo Labs</h2>
-        <button type="button" onClick={closeAccountDialog} aria-label="Close" className="inline-flex size-8 items-center justify-center rounded-md text-muted hover:bg-muted-bg hover:text-foreground">
-          <X className="size-4" aria-hidden />
-        </button>
+        <CloseButton onClose={closeAccountDialog} />
       </header>
 
       <form onSubmit={submit} className="space-y-5 overflow-y-auto px-6 py-5">

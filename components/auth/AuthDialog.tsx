@@ -1,8 +1,8 @@
 "use client";
 
+import { CloseButton } from "@kiungo/ui/close-button";
 import Link from "next/link";
 import { useId } from "react";
-import { X } from "lucide-react";
 import { KiungoMark } from "@kiungo/ui/KiungoMark";
 import { GoogleSignInButton } from "@/components/auth/google-signin-button";
 import { GitHubSignInButton } from "@/components/auth/github-signin-button";
@@ -37,14 +37,7 @@ export function AuthDialog({ open, mode }: { open: boolean; mode: AuthMode }) {
 
   return (
     <ModalShell open={open} onClose={closeAccountDialog} labelledBy={titleId} describedBy={bodyId} className="max-w-[400px]" testId="auth-dialog" initialFocus="[data-testid=google-signin]">
-      <button
-        type="button"
-        onClick={closeAccountDialog}
-        aria-label="Close"
-        className="absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-muted-bg hover:text-foreground"
-      >
-        <X className="size-4" aria-hidden />
-      </button>
+      <CloseButton onClose={closeAccountDialog} className="absolute right-3 top-3" />
 
       <div className="flex flex-col items-center px-7 pb-6 pt-9 text-center sm:px-9">
         <KiungoMark className="size-12" />

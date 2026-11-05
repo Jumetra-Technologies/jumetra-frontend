@@ -1,8 +1,9 @@
 "use client";
 
+import { CloseButton } from "@kiungo/ui/close-button";
 import { describeError } from "@/lib/errors";
 import { useEffect, useId, useState, type ReactNode } from "react";
-import { Check, Info, LogOut, Pencil, ShieldCheck, Trash2, X } from "lucide-react";
+import { Check, Info, LogOut, Pencil, ShieldCheck, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/account/Avatar";
 import { ProviderConnections } from "@/components/account/ProviderConnections";
 import { Button } from "@kiungo/ui/button";
@@ -103,14 +104,7 @@ export function ProfileDialog({ open }: { open: boolean }) {
         <h2 id={titleId} className="text-lg font-semibold tracking-tight text-foreground">
           {editing ? "Edit profile" : "Profile"}
         </h2>
-        <button
-          type="button"
-          onClick={closeAccountDialog}
-          aria-label="Close profile"
-          className="inline-flex size-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-muted-bg hover:text-foreground"
-        >
-          <X className="size-4" aria-hidden />
-        </button>
+        <CloseButton onClose={closeAccountDialog} aria-label="Close profile" />
       </header>
 
       <div className="min-h-0 overflow-y-auto">

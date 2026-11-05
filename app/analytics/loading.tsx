@@ -1,11 +1,14 @@
-import { PageHeaderSkeleton, PageLoading, PanelPairSkeleton, StatGridSkeleton } from "@/components/ui/page-skeletons";
+import { ChartSkeleton, PageHeaderSkeleton, PageLoading, PanelPairSkeleton, StatGridSkeleton } from "@/components/ui/page-skeletons";
 
-/** Shown inside the app frame while this page's data loads. */
+/** Shown inside the app frame while the page loads. */
 export default function Loading() {
   return (
-    <PageLoading label="Loading analytics">
-      <PageHeaderSkeleton title="Analytics" description="Aggregated research metrics across all experiments" />
-      <StatGridSkeleton count={8} />
+    <PageLoading label="Loading Advanced Analytics">
+      <PageHeaderSkeleton title="Advanced Analytics" description="What you've built, tested and learned in Kiungo, and what the community is building." actions={1} />
+      <StatGridSkeleton count={5} />
+      <div className="mt-6">
+        <ChartSkeleton height={180} />
+      </div>
       <PanelPairSkeleton />
     </PageLoading>
   );

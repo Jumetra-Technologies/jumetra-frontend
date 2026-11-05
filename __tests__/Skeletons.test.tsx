@@ -48,7 +48,7 @@ describe("Every page loads its frame first", () => {
   it("shows the page's real title while its data loads, so nothing jumps when it arrives", async () => {
     const Analytics = loaders["/analytics/loading.tsx"].default;
     render(<Analytics />);
-    expect(screen.getByRole("heading", { name: "Analytics" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Advanced Analytics" })).toBeInTheDocument();
   });
 
   it("no page draws its own shell any more; the root layout does, once", () => {

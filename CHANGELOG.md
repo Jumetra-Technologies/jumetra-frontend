@@ -10,6 +10,13 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.36.0] - 2026-11-05
+
+The desktop app is 0.12.2: a Settings dialog (the account gear, the command palette, or `Ctrl+,`/`⌘,`) with the signed-in profile, light/dark/system appearance, and the version Kiungo is running.
+
+### Added
+- **Settings.** One dialog with three things: who's signed in (with Switch account and Sign out, or Sign in when nobody is), **Appearance** (System, Light, Dark — System follows the computer's own setting live, same as before; the other two hold regardless of it, saved to `settings.json` and applied at once), and **About** (the installed version, its channel, the platform, and, when one's ready, a button to install it without leaving Settings).
+
 ## [1.35.0] - 2026-11-04
 
 The desktop app is 0.12.1: its own icon, and the update card in the bottom-left corner. This is the first version that installed copies of 0.12.0 receive through the app rather than by download.
@@ -717,6 +724,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.36.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.35.0...v1.36.0
 [1.35.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.34.0...v1.35.0
 [1.34.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.33.0...v1.34.0
 [1.33.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.32.0...v1.33.0

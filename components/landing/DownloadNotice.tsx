@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useSyncExternalStore, type ReactNode } from "react";
+import { downloadPercent } from "@/lib/downloads";
+import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { CircleCheck, Download, TriangleAlert, X } from "lucide-react";
 import { Button } from "@kiungo/ui/button";
@@ -26,8 +27,13 @@ const noticeButtonStrong = "bg-white text-[var(--kiungo-navy)] shadow-none hover
 export function DownloadNotice() {
   const dl = useDownload();
   const mounted = useMounted();
+  // Hidden while this file downloads; it comes back when the download ends, so the result isn't missed.
+  const [hiddenFor, setHiddenFor] = useState<string | null>(null);
   if (!dl || !mounted || dl.state.phase === "idle") return null;
-  return createPortal(<Notice state={dl.state} releaseUrl={dl.release?.releaseUrl} beta={dl.release?.channel === "beta"} onCancel={dl.cancel} onClose={dl.dismiss} onRetry={dl.retry} onBrowser={dl.useBrowser} />, document.body);
+  const downloading = dl.state.phase === "downloading";
+  if (downloading && hiddenFor === dl.state.file.url) return null;
+  const onClose = downloading ? () => setHiddenFor(dl.state.phase === "downloading" ? dl.state.file.url : null) : dl.dismiss;
+  return createPortal(<Notice state={dl.state} releaseUrl={dl.release?.releaseUrl} beta={dl.release?.channel === "beta"} onCancel={dl.cancel} onClose={onClose} onRetry={dl.retry} onBrowser={dl.useBrowser} />, document.body);
 }
 
 function Notice({
@@ -59,23 +65,23 @@ function Notice({
   let bar: ReactNode = null;
 
   if (state.phase === "downloading") {
-    const pct = state.total ? Math.min(100, Math.floor((state.received / state.total) * 100)) : null;
+    const pct = downloadPercent(state.received, state.total);
     title = state.total || state.received ? STATUS.downloading(platform) : STATUS.starting;
     bar = (
       <div className="mt-3">
         <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--notice-track)]" role="progressbar" aria-label={title} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}>
           <div className={cn("h-full rounded-full bg-[var(--notice-accent)]", pct === null && "hhip-notice-indeterminate w-1/3")} style={pct === null ? undefined : { width: `${pct}%` }} />
         </div>
-        <div className="mt-2 flex items-baseline justify-between gap-4 font-mono text-[11.5px] leading-4 text-[var(--notice-muted)]" data-testid="download-progress">
-          <span>{state.total ? STATUS.progress(formatSize(state.received) || "0 MB", formatSize(state.total)) : formatSize(state.received) || "0 MB"}</span>
-          {pct === null ? null : <span>{pct}%</span>}
-        </div>
+        {/* The percent is on the download button; the notice says how much has arrived. */}
+        <p className="mt-2 font-mono text-[11.5px] leading-4 text-[var(--notice-muted)]" data-testid="download-progress">
+          {state.total ? STATUS.progress(formatSize(state.received) || "0 MB", formatSize(state.total)) : formatSize(state.received) || "0 MB"}
+        </p>
       </div>
     );
     body = [STATUS.keepOpen];
     actions = (
-      <Button size="sm" className={noticeButton} onClick={onCancel} data-testid="download-cancel">
-        {STATUS.cancel}
+      <Button size="sm" className={noticeButton} onClick={onCancel} data-testid="download-stop">
+        {STATUS.stop}
       </Button>
     );
   } else if (state.phase === "done") {
@@ -164,11 +170,16 @@ function Notice({
           ))}
           {actions ? <div className="mt-3 flex flex-wrap gap-2">{actions}</div> : null}
         </div>
-        {state.phase === "downloading" ? null : (
-          <button type="button" onClick={onClose} aria-label={STATUS.done.close} className="-mr-1 -mt-1 rounded-[8px] p-1 text-[var(--notice-muted)] hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70" data-testid="download-close">
-            <X className="size-4" aria-hidden />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={state.phase === "downloading" ? STATUS.hide : STATUS.done.close}
+          title={state.phase === "downloading" ? STATUS.hideHint : undefined}
+          className="-mr-1 -mt-1 rounded-[8px] p-1 text-[var(--notice-muted)] hover:bg-white/10 hover:text-white active:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+          data-testid="download-close"
+        >
+          <X className="size-4" aria-hidden />
+        </button>
       </div>
     </section>
   );

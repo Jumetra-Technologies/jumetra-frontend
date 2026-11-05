@@ -322,3 +322,14 @@ export function saveWithBrowser(url: string, doc: Document = document): void {
 export function canDownloadInPage(): boolean {
   return typeof window !== "undefined" && typeof fetch === "function" && typeof ReadableStream !== "undefined" && typeof Blob !== "undefined" && typeof URL.createObjectURL === "function";
 }
+
+/**
+ * How far a download is, as the button shows it: a whole number from 1 to 99.
+ * Never 0 (it has started) and never 100 (the done state says "Downloaded"
+ * instead). Null when the size isn't known yet.
+ */
+export function downloadPercent(received: number, total: number | null | undefined): number | null {
+  if (!total || total <= 0) return null;
+  const pct = Math.floor((received / total) * 100);
+  return Math.min(99, Math.max(1, pct));
+}

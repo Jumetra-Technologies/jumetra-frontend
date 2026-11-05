@@ -1,11 +1,11 @@
 import { createHash, webcrypto } from "node:crypto";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/desktop/download/route";
 import { DesktopCta } from "@/components/landing/DesktopCta";
 import { DownloadBlock } from "@/components/landing/DownloadBlock";
 import { DownloadProvider } from "@/components/landing/DownloadProvider";
-import { downloadToBlob, DownloadProblem, problemFor, type DownloadOptions, type Downloaded } from "@/lib/downloads";
+import { downloadPercent, downloadToBlob, DownloadProblem, problemFor, type DownloadOptions, type Downloaded } from "@/lib/downloads";
 import { DESKTOP } from "@/lib/landing/content";
 import { downloadHref, isReleaseFileUrl, type Release } from "@/lib/releases";
 
@@ -272,7 +272,7 @@ describe("the download on the page, and the notice in the corner", () => {
     expect(main.querySelector("button")).toHaveAttribute("data-state", "downloaded");
   });
 
-  it("while it runs, the buttons say so and a second click waits; Cancel stops it", async () => {
+  it("while it runs, the buttons say so and a second click waits; Stop halts it", async () => {
     let abort: AbortSignal | undefined;
     const downloader = stub(
       (opts) =>
@@ -296,23 +296,59 @@ describe("the download on the page, and the notice in the corner", () => {
     });
     expect(screen.getByTestId("download-notice")).toHaveAttribute("data-phase", "downloading");
     expect(screen.getByTestId("download-progress")).toHaveTextContent("10 MB of 148 MB");
-    expect(screen.getByTestId("download-progress")).toHaveTextContent("6%");
+    // The percent is on the button only, not repeated in the notice.
+    expect(screen.getByTestId("download-progress")).not.toHaveTextContent("%");
     expect(screen.getByTestId("download-main")).toHaveTextContent("Downloading 6%");
     expect(screen.getByTestId("download-main")).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "6");
+    // The button fills left to right with the download.
+    const button = screen.getByTestId("download-main").querySelector("button")!;
+    expect(button).toHaveAttribute("data-state", "downloading");
+    expect(button).toHaveAttribute("data-percent", "6");
+    expect(within(screen.getByTestId("download-main")).getByTestId("download-fill")).toHaveStyle({ width: "6%" });
 
     await act(async () => {
       fireEvent.click(screen.getByTestId("download-main"));
     });
     expect(downloader).toHaveBeenCalledTimes(1);
 
+    expect(screen.getByTestId("download-stop")).toHaveTextContent("Stop");
     await act(async () => {
-      fireEvent.click(screen.getByTestId("download-cancel"));
+      fireEvent.click(screen.getByTestId("download-stop"));
     });
     expect(abort?.aborted).toBe(true);
     await waitFor(() => expect(screen.queryByTestId("download-notice")).toBeNull());
     expect(screen.getByTestId("download-main")).toHaveTextContent("Download for Windows");
     expect(clicks).toEqual([]);
+  });
+
+  it("the X hides the notice while it downloads; the download keeps going and the notice comes back when it ends", async () => {
+    let finish: (() => void) | undefined;
+    const downloader = stub(
+      (opts) =>
+        new Promise<Downloaded>((resolve) => {
+          opts.onProgress?.(74 * 1024 * 1024, 148 * 1024 * 1024);
+          finish = () => resolve({ blob: new Blob([new Uint8Array(4)]), bytes: 148 * 1024 * 1024, verified: true });
+        }),
+    );
+    render(
+      <DownloadProvider release={release} mode="page" downloader={downloader}>
+        <DownloadBlock release={release} />
+      </DownloadProvider>,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("download-main"));
+    });
+    const close = screen.getByTestId("download-close");
+    expect(close).toHaveAccessibleName("Hide");
+    fireEvent.click(close);
+    expect(screen.queryByTestId("download-notice")).toBeNull();
+    // Still downloading, and the button says how far.
+    expect(screen.getByTestId("download-main")).toHaveTextContent("Downloading 50%");
+    await act(async () => {
+      finish?.();
+    });
+    await waitFor(() => expect(screen.getByTestId("download-notice")).toHaveAttribute("data-phase", "done"));
   });
 
   it("a problem names the cause and the fix; Try again carries on from the bytes that arrived", async () => {
@@ -426,5 +462,19 @@ describe("the download on the page, and the notice in the corner", () => {
       </DownloadProvider>,
     );
     expect(screen.getByTestId("hybrid-cta")).toHaveAttribute("href", "/#desktop");
+  });
+});
+
+describe("downloadPercent", () => {
+  it("counts 1 to 99: never 0 once started, never 100 before the done state", () => {
+    const mb = 1024 * 1024;
+    expect(downloadPercent(0, 148 * mb)).toBe(1);
+    expect(downloadPercent(1, 148 * mb)).toBe(1);
+    expect(downloadPercent(74 * mb, 148 * mb)).toBe(50);
+    expect(downloadPercent(147 * mb, 148 * mb)).toBe(99);
+    expect(downloadPercent(148 * mb, 148 * mb)).toBe(99);
+    expect(downloadPercent(200 * mb, 148 * mb)).toBe(99);
+    expect(downloadPercent(10 * mb, null)).toBeNull();
+    expect(downloadPercent(10 * mb, 0)).toBeNull();
   });
 });

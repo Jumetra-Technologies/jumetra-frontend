@@ -10,6 +10,17 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.37.0] - 2026-11-05
+
+The desktop app is 0.13.0: a redesigned shell — a persistent sidebar and a Dashboard — replaces the old Home/single-project layout, with several new modules and a role system to match.
+
+### Added
+- **A persistent app shell.** A left sidebar (Dashboard, Projects, Simulation, Firmware, Components, Research, Learning, Collaboration, Marketplace, AI Assistant, Settings) and a header (search, notifications, light/dark) now frame every screen, instead of Home and the open project being the only two places in the app.
+- **Dashboard.** A landing view with recent projects, a few headline numbers, role-aware focus panels, and quick actions into the rest of the app.
+- **Roles & workspace focus.** Settings → Roles & Workspaces lets someone mark themselves Student, Embedded Systems Engineer, Researcher, Electrical Engineer, STEM Trainer, University/College, Company, or Hobbyist (any number); the sidebar and Dashboard show modules and panels for the roles held, same as the Figma Make reference this shell was built from. Roles are saved to `settings.json` next to appearance. A workspace-focus picker narrows which role panels the Dashboard shows, without changing which roles are held.
+- **Projects, Components, Research, Learning, Collaboration, Marketplace, and AI Assistant** as modules reachable from the sidebar. Projects carries over Home's real functionality (new/open/import, the account sync list); Simulation and Firmware open the existing project workspace. The rest are new: Components is a real catalog of the boards and parts Kiungo already knows about; Research, Learning, Collaboration, Marketplace, and AI Assistant are previews of modules the desktop app doesn't have a backend for yet, and say so plainly where they don't yet do anything.
+- **Settings is now a full page**, not a dialog, reachable from the sidebar or `Ctrl+,`/`⌘,`: the same profile, appearance, and version sections as before, plus Roles & Workspaces and a set of sections (Preferences, Projects, Simulation, Firmware & Hardware, AI Assistant, Collaboration, Notifications, Marketplace, Institution/Company, Privacy) that are previews until they're backed by real settings.
+
 ## [1.36.1] - 2026-11-05
 
 ### Changed
@@ -732,6 +743,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.37.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.1...v1.37.0
 [1.36.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.0...v1.36.1
 [1.36.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.35.0...v1.36.0
 [1.35.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.34.0...v1.35.0

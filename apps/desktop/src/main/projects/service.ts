@@ -44,7 +44,7 @@ import {
 import { makeId, newSession } from "@kiungo/core/lab/session";
 import { parseWorld, serializeWorld, WORLD_FILE } from "@kiungo/core/world/courses";
 import type { WorldSpec } from "@kiungo/core/world/types";
-import { APPEARANCES, type Appearance, type NewProjectInput, type OpenResult, type ProjectHistory, type ProjectSettings, type RecentProject, type SavePayload, type SaveResult } from "@kiungo/api";
+import { APPEARANCES, ROLES, type Appearance, type NewProjectInput, type OpenResult, type ProjectHistory, type ProjectSettings, type RecentProject, type Role, type SavePayload, type SaveResult } from "@kiungo/api";
 import { cleanTempFiles, writeFileAtomic } from "./atomic";
 
 const MAX_RECENT = 30;
@@ -119,11 +119,12 @@ export class ProjectService {
         projectsFolder: typeof raw.projectsFolder === "string" && raw.projectsFolder ? raw.projectsFolder : this.opts.defaultProjectsFolder,
         sync: raw.sync === true,
         appearance: (APPEARANCES as readonly string[]).includes(raw.appearance as string) ? (raw.appearance as Appearance) : "system",
+        roles: Array.isArray(raw.roles) ? raw.roles.filter((r): r is Role => (ROLES as readonly string[]).includes(r as string)) : [],
       };
     } catch {
       /* first run, or unreadable: the default */
     }
-    return { projectsFolder: this.opts.defaultProjectsFolder, sync: false, appearance: "system" };
+    return { projectsFolder: this.opts.defaultProjectsFolder, sync: false, appearance: "system", roles: [] };
   }
 
   private async writeSettings(next: ProjectSettings): Promise<ProjectSettings> {
@@ -142,6 +143,11 @@ export class ProjectService {
 
   async setAppearance(appearance: Appearance): Promise<ProjectSettings> {
     return this.writeSettings({ ...(await this.settings()), appearance });
+  }
+
+  async setRoles(roles: Role[]): Promise<ProjectSettings> {
+    const clean = roles.filter((r): r is Role => (ROLES as readonly string[]).includes(r));
+    return this.writeSettings({ ...(await this.settings()), roles: clean });
   }
 
   /** A new, empty folder in the projects folder for a project called `name`. */

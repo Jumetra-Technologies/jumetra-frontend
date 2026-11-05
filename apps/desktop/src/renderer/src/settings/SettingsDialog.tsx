@@ -7,13 +7,13 @@ import { invoke } from "../ipc";
 import { Dialog } from "../ui/Dialog";
 import type { UpdateControls } from "../update/useUpdate";
 
-const APPEARANCE_OPTIONS: Array<SegmentOption<Appearance>> = [
+export const APPEARANCE_OPTIONS: Array<SegmentOption<Appearance>> = [
   { id: "system", label: "System", icon: <Monitor className="size-3.5" aria-hidden />, description: "Follows this computer's own setting" },
   { id: "light", label: "Light", icon: <Sun className="size-3.5" aria-hidden /> },
   { id: "dark", label: "Dark", icon: <Moon className="size-3.5" aria-hidden /> },
 ];
 
-const PLATFORM_NAMES: Record<AppInfo["platform"], string> = { win32: "Windows", darwin: "macOS", linux: "Linux" };
+export const PLATFORM_NAMES: Record<AppInfo["platform"], string> = { win32: "Windows", darwin: "macOS", linux: "Linux" };
 
 /**
  * The signed-in profile, the app's light or dark appearance, and the version
@@ -76,7 +76,7 @@ export function SettingsDialog({
   );
 }
 
-function AccountSummary({ state }: { state: AuthState }) {
+export function AccountSummary({ state }: { state: AuthState }) {
   if (state.status !== "signed-in") {
     return (
       <div className="flex items-center justify-between gap-3 rounded-[12px] border border-border bg-surface px-4 py-3">
@@ -113,7 +113,7 @@ function AccountSummary({ state }: { state: AuthState }) {
   );
 }
 
-function UpdateRow({ update, info }: { update: UpdateControls; info: NonNullable<UpdateControls["info"]> }) {
+export function UpdateRow({ update, info }: { update: UpdateControls; info: NonNullable<UpdateControls["info"]> }) {
   const { state } = info;
   if (state.status === "ready") {
     return (

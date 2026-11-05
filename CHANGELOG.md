@@ -10,6 +10,17 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.36.3] - 2026-11-05
+
+CI rides out GitHub's download hiccups.
+
+### Fixed
+- **Desktop CI jobs no longer fail when GitHub's release downloads answer 504.** On 5 Nov, #89's Windows job failed fetching the Arduino CLI, and #88's macOS job failed while electron-builder downloaded Electron for arm64. Both were Gateway Time-outs, not faults in those changes.
+  - `fetch-arduino-cli.mjs` tries a download again after a 408, 429 or 5xx answer, or a dropped connection, up to four times (2, 4, then 8 s apart). A 404 is final, and the checksum still decides what's installed. It downloads only when run as a script, so `download()` can be tested.
+  - CI keeps Electron, electron-builder's tools and the Arduino CLI between runs (`ELECTRON_CACHE`, `ELECTRON_BUILDER_CACHE`, `resources/bin`), so most runs download none of them.
+  - Packaging an installer is tried up to three times, in CI and in **Release the desktop app**.
+  - **Report failing tests as annotations** no longer fails on its own when the tests never ran.
+
 ## [1.36.1] - 2026-11-05
 
 ### Changed
@@ -732,6 +743,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.36.3]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.1...v1.36.3
 [1.36.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.0...v1.36.1
 [1.36.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.35.0...v1.36.0
 [1.35.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.34.0...v1.35.0

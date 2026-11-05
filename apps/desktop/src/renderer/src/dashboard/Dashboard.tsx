@@ -24,7 +24,7 @@ export function Dashboard({
   onOpenRecent: (project: RecentProject) => void;
 }) {
   const visibleRoles = rolesForFocus(roles, focus);
-  const name = auth?.status === "signed-in" ? auth.user.name.split(" ")[0] : "there";
+  const name = auth?.status === "signed-in" ? auth.user.name.split(" ")[0] : null;
   const projects = (recent ?? []).filter((p) => !p.missing).slice(0, 3);
   const attention = (recent ?? []).filter((p) => !p.missing).length;
 
@@ -33,7 +33,7 @@ export function Dashboard({
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="mb-1 text-xs font-medium text-primary">{focus}</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Good to see you, {name}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{name ? `Good to see you, ${name}` : "Good to see you"}</h1>
           <p className="mt-1 text-sm text-muted">{attention ? `Your engineering environment is ready. ${attention} project${attention === 1 ? "" : "s"} on this computer.` : "Start a project to see it here."}</p>
         </div>
         <div className="flex gap-2">

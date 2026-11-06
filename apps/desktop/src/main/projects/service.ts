@@ -391,6 +391,11 @@ export class ProjectService {
     return this.open.has(path);
   }
 
+  /** How many projects are open: the activity reporter's "Home or a project". */
+  openCount(): number {
+    return this.open.size;
+  }
+
   /** The project's world, or null when it has none (or it can't be read). */
   async readWorld(path: string): Promise<WorldSpec | null> {
     if (!this.open.has(path)) return null;

@@ -10,6 +10,33 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.38.0] - 2026-11-06
+
+Parts look like the real thing: the Component library and the Engineering Lab draw every part with WebGL, and the nine boards are redesigned from their real-world references. This is the first group of the part redesign; sensors, outputs, displays, radios and breadboards follow.
+
+### Added
+- **A WebGL part renderer** (`packages/lab/src/render3d/`, three.js 0.186).
+  - **Real light:** physically based materials for each finish. Glossy solder mask, matte chip epoxy, molded plastic, brushed steel shells, gold and tin plating, clear LED lenses.
+  - **Real detail:** soft shadows and a neutral tone map that keeps board colors true. Lit LEDs glow, and motors and servo horns move while powered.
+  - **Printed detail:** silkscreen, traces and markings print into textures. Gold and tin pads, mounting-hole rings and solder are drawn as plated metal.
+  - **One renderer for the page.** One WebGL context draws every part and copies each picture onto that view's own canvas, so a lab with dozens of parts stays inside the browser's context limit.
+  - **Pins stay put.** The camera reproduces the lab's pin projection (`@kiungo/core/parts/geometry`) exactly, so wires still land on the real holes. A test holds the two together for every part at four angles.
+- **Every view uses it.** The 3D turntable, the lab's board nodes, the top (2D) view under its hover hotspots, and the thumbnails in the library and parts panel. Without WebGL, the 3D view shows the top view, and the top view and thumbnails fall back to their drawn shapes.
+- **Part model:** solids take a `finish` (soldermask, epoxy, plastic, metal, gold, tin, copper, rubber, glass, clear, ceramic or paper), and cylinders can lie along x or y.
+- **New builders:** `wifiModule`, `crystal` (HC-49), `sot223`, `qfp`, and `smd` / `smdRow` for the small resistors and capacitors.
+
+### Changed
+- **Connectors open on their real edge.** USB-B with its white insert, micro-USB and USB-C with their slots, USB-A with its tongue (blue for USB 3), and the barrel jack with its socket and center pin. They take a `mouth` edge, so the Pi 4's ports face right and the micro:bit's USB faces up.
+- **Headers made for a breadboard hang under the board.** The ESP32, NodeMCU and Blue Pill show rows of solder joints on top, with the black plastic and pins below. The lab wires the ESP32 to those joints.
+- **Smaller parts:**
+  - Tactile buttons get their steel frame.
+  - Electrolytic capacitors are aluminium cans with the polarity mark.
+  - DIP legs sit under the body's edges.
+  - The Pi 4's BCM2711 wears its nickel lid, and its RJ45 shows its socket and LEDs.
+  - The ESP32 and ESP8266 modules have a black module PCB, the shield over the chip, and the antenna meander under the mask.
+- **Board colors** are measured from the real boards: Uno and Mega `#00878f` (the genuine Mega is teal, not blue), ESP32 `#141414`, Pico `#1e7b3a`, NodeMCU Amica `#1c4e9c`, Blue Pill `#1d50a8`, Pi 4 `#2a7d3b`, micro:bit `#151515`, Teensy 4.1 `#1f6b3a`.
+- `useTurntable` takes `onTurn`, so the WebGL view follows the drag.
+
 ## [1.37.0] - 2026-11-05
 
 Advanced Analytics is a real page: what you've built, tested and learned, and what the whole Kiungo community is building. The community figures need jumetra-backend's `GET /community/stats` (backend PR #9) on the API this site talks to; until it's there, that section says so and the rest of the page works on its own.
@@ -753,6 +780,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.38.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.37.0...v1.38.0
 [1.37.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.2...v1.37.0
 [1.36.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.1...v1.36.2
 [1.36.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.0...v1.36.1

@@ -183,14 +183,16 @@ describe("part views", () => {
   const led = getPart("led")!;
   const servo = getPart("servo")!;
 
-  it("renders the 3D model as a focusable, labeled scene with every solid", () => {
+  it("renders the 3D model as a focusable, labeled scene, lit as the part is powered", () => {
     render(<PartModel3D model={uno} powered />);
     const scene = screen.getByTestId("part-3d");
     expect(scene).toHaveAttribute("role", "group");
     expect(scene).toHaveAttribute("aria-roledescription", "interactive 3D model");
     expect(scene).toHaveAttribute("tabindex", "0");
-    expect(scene.querySelector('[data-solid="pcb"]')).not.toBeNull();
-    expect(scene.querySelector('[data-solid="led-on"]')).not.toBeNull();
+    expect(scene).toHaveAttribute("data-powered");
+    expect(scene.getAttribute("data-lit")?.split(" ")).toContain("led-on");
+    // Without WebGL (as in jsdom) the part is still shown: its top view.
+    expect(scene.querySelector('[aria-label="Arduino Uno, top view"]')).not.toBeNull();
   });
 
   it("renders every part in all three views without throwing", () => {

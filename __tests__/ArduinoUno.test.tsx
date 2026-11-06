@@ -19,7 +19,7 @@ describe("The Arduino Uno model", () => {
     expect(uno).toBe(ARDUINO_UNO);
     expect(uno.size).toMatchObject({ w: 68.6, h: 53.4 });
     const pcb = uno.solids.find((s) => s.kind === "box" && s.id === "pcb") as { top: string };
-    expect(pcb.top).toBe("#0f8b8e");
+    expect(pcb.top).toBe("#00878f");
     const usb = uno.solids.find((s) => s.kind === "box" && s.id === "usb") as { x: number; y: number; w: number; h: number };
     expect(usb.x).toBeLessThan(0); // overhangs the edge
     expect(usb.y + usb.h / 2).toBeCloseTo(13.8, 0);

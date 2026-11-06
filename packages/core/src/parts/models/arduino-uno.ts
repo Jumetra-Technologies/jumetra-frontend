@@ -76,7 +76,8 @@ const USB = { x: -6.6, y: 7.6, w: 16.2, h: 12.4, d: 10.9 };
 /** The DC barrel jack under it. */
 const JACK = { x: -2.6, y: 40.4, w: 14.3, h: 9.0, d: 11 };
 
-const TEAL = MATERIAL.pcbTeal;
+/** Arduino teal as the solder mask shows it: a little darker and bluer than the brand color. */
+const TEAL = "#00878f";
 const TRACE = shade(TEAL, 1.11);
 const SILK = "#f3f6f4";
 
@@ -186,8 +187,8 @@ export const ARDUINO_UNO: PartModel = {
     { kind: "box", x: 25.4, y: 23.8, w: 2.9, h: 1.6, d: 1.1, z: 1.6, top: MATERIAL.ic, side: MATERIAL.icSide, radius: 0.2 },
 
     // The two 47 µF, 25 V electrolytics by the jack.
-    capacitor(19.6, 44.8, 3.15, 8.6, 1.6),
-    capacitor(26.5, 44.8, 3.15, 8.6, 1.6),
+    ...capacitor(19.6, 44.8, 3.15, 8.6, 1.6),
+    ...capacitor(26.5, 44.8, 3.15, 8.6, 1.6),
 
     // The ATmega328P in its socket, bottom right.
     { kind: "box", x: 29.4, y: 32.5, w: 36.8, h: 9.8, d: 2.0, z: 1.6, top: "#1d1e22", side: "#0f1012", radius: 0.3 },

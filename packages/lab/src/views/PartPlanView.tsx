@@ -1,9 +1,39 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useMemo, useSyncExternalStore } from "react";
 import { flatColor, shade } from "@kiungo/core/parts/build";
 import type { Feature, PartModel, Solid } from "@kiungo/core/parts/types";
 import { cn } from "@kiungo/ui/cn";
+import { planImage } from "../render3d/renderer";
+
+/**
+ * The part as the WebGL renderer draws it from above (or the front), for the
+ * rectangle an SVG shows, in the same millimeters. Null until it's drawn, and
+ * without WebGL: then the SVG draws the part from its shapes instead.
+ */
+const noSubscribe = () => () => undefined;
+/** True in the browser, false while rendering on the server (and during hydration). */
+export function useInBrowser(): boolean {
+  return useSyncExternalStore(
+    noSubscribe,
+    () => true,
+    () => false,
+  );
+}
+
+function usePlanImage(model: PartModel, face: "top" | "front", region: { x: number; y: number; w: number; h: number }, powered: boolean, lit: readonly string[]): string | null {
+  const browser = useInBrowser();
+  const key = `${region.x}|${region.y}|${region.w}|${region.h}|${powered}|${lit.join(",")}`;
+  return useMemo(() => {
+    if (!browser) return null;
+    try {
+      return planImage(model, face, region, { powered, lit });
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- region, powered and lit are in `key`
+  }, [browser, model, face, key]);
+}
 
 /** Margin around the part, in mm, so small parts are not lost in white space. */
 function padFor(w: number, h: number): number {
@@ -238,6 +268,7 @@ export function PartPlanView({ model, powered, activeFeature, onFeature, classNa
         .sort((a, b) => ("y" in a.solid ? a.solid.y : "cy" in a.solid ? a.solid.cy : 0) - ("y" in b.solid ? b.solid.y : "cy" in b.solid ? b.solid.cy : 0) || a.index - b.index)
     : model.solids.map((solid, index) => ({ solid, index })).sort((a, b) => zOf(a.solid, surface) - zOf(b.solid, surface) || a.index - b.index);
   const active = model.features.find((feature) => feature.id === activeFeature) ?? null;
+  const image = usePlanImage(model, front ? "front" : "top", { x: left, y: -PAD, w: viewW, h: viewH }, powered, [...lit]);
 
   return (
     <div className={cn("relative", className)} data-testid="part-plan">
@@ -270,8 +301,12 @@ export function PartPlanView({ model, powered, activeFeature, onFeature, classNa
           </text>
         </g>
 
-        {sorted.map(({ solid, index }) =>
-          front ? <FrontShape key={index} solid={solid} size={model.size} powered={powered} lit={lit} index={index} /> : <SolidShape key={index} solid={solid} powered={powered} lit={lit} index={index} uid={uid} />,
+        {image ? (
+          <image href={image} x={left} y={-PAD} width={viewW} height={viewH} preserveAspectRatio="none" data-testid="part-plan-render" />
+        ) : (
+          sorted.map(({ solid, index }) =>
+            front ? <FrontShape key={index} solid={solid} size={model.size} powered={powered} lit={lit} index={index} /> : <SolidShape key={index} solid={solid} powered={powered} lit={lit} index={index} uid={uid} />,
+          )
         )}
 
         {/* Features: hover or focus to see what each is. Big ones first, so small ones stay reachable on top. */}
@@ -378,11 +413,16 @@ export function PartPlanGraphic({ model, powered, lit: litOverride, rotate = fal
     : model.solids.map((solid, index) => ({ solid, index })).sort((a, b) => zOf(a.solid, surface) - zOf(b.solid, surface) || a.index - b.index);
   const turned = rotate && vw > vh * 1.15;
   const box = turned ? `${vy} ${-(vx + vw)} ${vh} ${vw}` : `${vx} ${vy} ${vw} ${vh}`;
+  const image = usePlanImage(model, front ? "front" : "top", { x: vx, y: vy, w: vw, h: vh }, powered, [...lit]);
   return (
     <svg viewBox={box} className={className} role="img" aria-label={`${model.name}, ${front ? "front" : "top"} view`} preserveAspectRatio="xMidYMid meet">
       <g transform={turned ? "rotate(-90)" : undefined}>
-        {sorted.map(({ solid, index }) =>
-          front ? <FrontShape key={index} solid={solid} size={model.size} powered={powered} lit={lit} index={index} /> : <SolidShape key={index} solid={solid} powered={powered} lit={lit} index={index} uid={uid} />,
+        {image ? (
+          <image href={image} x={vx} y={vy} width={vw} height={vh} preserveAspectRatio="none" data-testid="part-plan-render" />
+        ) : (
+          sorted.map(({ solid, index }) =>
+            front ? <FrontShape key={index} solid={solid} size={model.size} powered={powered} lit={lit} index={index} /> : <SolidShape key={index} solid={solid} powered={powered} lit={lit} index={index} uid={uid} />,
+          )
         )}
       </g>
     </svg>

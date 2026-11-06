@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 /**
  * Turntable behavior for a CSS 3D scene: slow auto-rotation that pauses
@@ -8,7 +8,8 @@ import { useEffect, type RefObject } from "react";
  * release, arrow keys, and no motion for people who prefer reduced motion.
  *
  * The scene element receives `--spin` and `--tilt` custom properties and a
- * `data-dragging` attribute while a drag is in progress.
+ * `data-dragging` attribute while a drag is in progress, and `onTurn` hears
+ * every change (a WebGL view redraws from it).
  */
 export interface TurntableOptions {
   spin?: number;
@@ -21,10 +22,17 @@ export interface TurntableOptions {
   ignore?: string;
   /** Turn the behavior off (for still renders). */
   enabled?: boolean;
+  /** Called with the angles whenever they change. */
+  onTurn?: (spin: number, tilt: number) => void;
 }
 
 export function useTurntable(ref: RefObject<HTMLElement | null>, options: TurntableOptions = {}) {
-  const { spin: initialSpin = -20, tilt: initialTilt = 55, speed = 10, minTilt = 14, maxTilt = 82, ignore = '[role="switch"], button, a', enabled = true } = options;
+  const { spin: initialSpin = -20, tilt: initialTilt = 55, speed = 10, minTilt = 14, maxTilt = 82, ignore = '[role="switch"], button, a', enabled = true, onTurn } = options;
+  // The latest callback, without restarting the turntable when it changes.
+  const turned = useRef(onTurn);
+  useEffect(() => {
+    turned.current = onTurn;
+  }, [onTurn]);
 
   useEffect(() => {
     const scene = ref.current;
@@ -40,6 +48,7 @@ export function useTurntable(ref: RefObject<HTMLElement | null>, options: Turnta
     const paint = () => {
       scene.style.setProperty("--spin", `${state.spin.toFixed(2)}deg`);
       scene.style.setProperty("--tilt", `${state.tilt.toFixed(2)}deg`);
+      turned.current?.(state.spin, state.tilt);
     };
 
     const tick = (now: number) => {

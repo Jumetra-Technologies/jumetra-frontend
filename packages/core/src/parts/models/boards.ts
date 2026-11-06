@@ -1,5 +1,7 @@
 import {
   MATERIAL,
+  PCB_TOP,
+  SOLDER_STUB,
   barrelJack,
   capacitor,
   chip,
@@ -9,6 +11,7 @@ import {
   mountHole,
   pcb,
   shieldCan,
+  wifiModule,
   silk,
   smdLed,
   tactileButton,
@@ -20,16 +23,6 @@ import type { CanvasSpec, PartModel, Solid } from "../types";
 import { ARDUINO_UNO } from "./arduino-uno";
 
 
-/** The zig-zag PCB antenna printed on Wi-Fi modules. */
-function pcbAntenna(x: number, y: number, w: number, h: number): Solid {
-  const step = w / 8;
-  let d = `M ${x} ${y + h}`;
-  for (let i = 0; i < 8; i++) {
-    const px = x + i * step;
-    d += i % 2 === 0 ? ` L ${px} ${y} L ${px + step} ${y}` : ` L ${px} ${y + h} L ${px + step} ${y + h}`;
-  }
-  return { kind: "path", d, color: MATERIAL.gold, width: 0.5 };
-}
 
 
 /**
@@ -45,8 +38,8 @@ function esp32Canvas(): CanvasSpec {
   const pins: CanvasSpec["pins"] = {};
   top.forEach((id, i) => id && (pins[id] = { x: x(i), y: 1 + 1.27 }));
   bottom.forEach((id, i) => id && (pins[id] = { x: x(i), y: 24.5 + 1.27 }));
-  // Jumpers land on the top of the header bodies.
-  return { pins, pinZ: 1.6 + 2.5, usb: { x: -1.5, y: 11.2 + 2.75, z: 1.6 + 1.4, from: "left" } };
+  // Jumpers land on the solder joints: the pin ends poking through the board.
+  return { pins, pinZ: 1.6 + SOLDER_STUB, usb: { x: -1.5, y: 11.2 + 2.75, z: 1.6 + 1.4, from: "left" } };
 }
 
 /**
@@ -80,12 +73,11 @@ export const BOARDS: PartModel[] = [
     summary: "A fast dual-core board with Wi-Fi and Bluetooth built in, 3.3 V logic, and enough pins for a whole IoT project. The usual choice when a project needs the internet.",
     size: { w: 55, h: 28, d: 10 },
     solids: [
-      pcb(55, 28, MATERIAL.pcbBlack, MATERIAL.pcbBlackEdge),
+      pcb(55, 28, "#141414", MATERIAL.pcbBlackEdge, 0.6),
       ...maleHeader(0.5, 1, 15, "x"),
       ...maleHeader(0.5, 24.5, 15, "x"),
-      shieldCan(31, 4.5, 18, 19, "ESP-WROOM-32"),
-      pcbAntenna(50.5, 7, 4, 14),
-      microUsb(-1.5, 11.2),
+      ...wifiModule(30, 4.5, 25, 19, 17.8, "ESP-WROOM-32"),
+      ...microUsb(-1.5, 11.2),
       ...tactileButton(8, 4.2, 4, "btn-en"),
       ...tactileButton(8, 19.8, 4, "btn-boot"),
       chip(16, 10.5, 5, 5, "CP2102", 0.9),
@@ -175,11 +167,11 @@ export const BOARDS: PartModel[] = [
     summary: "A small, cheap RP2040 board with two cores, 26 GPIO and programmable I/O that can bit-bang almost any protocol. Programs in C or MicroPython, and shows up as a USB drive to flash.",
     size: { w: 51, h: 21, d: 6.6 },
     solids: [
-      pcb(51, 21, MATERIAL.pcbGreen, MATERIAL.pcbGreenEdge),
+      pcb(51, 21, "#1e7b3a", MATERIAL.pcbGreenEdge, 0.8),
       ...Array.from({ length: 20 }, (_, i) => ({ kind: "disc", cx: PICO_PAD_X0 + i * 2.54, cy: 1.6, r: 0.9, color: MATERIAL.gold }) as Solid),
       ...Array.from({ length: 20 }, (_, i) => ({ kind: "disc", cx: PICO_PAD_X0 + i * 2.54, cy: 19.4, r: 0.9, color: MATERIAL.gold }) as Solid),
       ...Array.from({ length: 3 }, (_, i) => ({ kind: "disc", cx: 48.5, cy: 8 + i * 2.54, r: 0.9, color: MATERIAL.gold }) as Solid),
-      microUsb(-1.3, 7.75),
+      ...microUsb(-1.3, 7.75),
       chip(22, 7.3, 7, 7, "RP2040", 0.9),
       chip(33, 7.5, 6, 5, "FLASH", 0.9),
       ...tactileButton(14, 8, 3.5, "bootsel"),
@@ -261,9 +253,9 @@ export const BOARDS: PartModel[] = [
     summary: "The Uno's big sibling: 54 digital pins, 16 analog inputs, four serial ports and far more memory, for projects that run out of pins on an Uno.",
     size: { w: 101.5, h: 53.3, d: 12.6 },
     solids: [
-      pcb(101.5, 53.3, MATERIAL.pcbBlue, MATERIAL.pcbBlueEdge),
-      usbB(-6, 5.5),
-      barrelJack(-3, 39),
+      pcb(101.5, 53.3, "#00878f", MATERIAL.pcbTealEdge, 0.4),
+      ...usbB(-6, 5.5),
+      ...barrelJack(-3, 39),
       header(18.5, 1.6, 10, "x"),
       header(44.6, 1.6, 8, "x"),
       header(66, 1.6, 8, "x"),
@@ -275,8 +267,8 @@ export const BOARDS: PartModel[] = [
       chip(60, 22, 14, 14, "ATMEGA2560", 1.2),
       chip(14.5, 17.5, 4.4, 4.4, undefined, 0.9),
       ...tactileButton(12.5, 6, 4.5),
-      capacitor(20.5, 30.5, 1.6, 4, 1.6),
-      capacitor(24.5, 30.5, 1.6, 4, 1.6),
+      ...capacitor(20.5, 30.5, 1.6, 4, 1.6),
+      ...capacitor(24.5, 30.5, 1.6, 4, 1.6),
       { kind: "cyl", cx: 48, cy: 22, r: 1.6, d: 2.5, z: 1.6, top: MATERIAL.steel, side: MATERIAL.steelSide, segments: 12 },
       { kind: "box", x: 13.5, y: 40, w: 5, h: 7, d: 2, z: 1.6, top: "linear-gradient(90deg,#b9bdc3 0 30%,#1b1c1f 30%)", side: MATERIAL.icSide, fill: MATERIAL.ic },
       smdLed(30, 8.6, "#ffb020", "led-l"),
@@ -371,12 +363,11 @@ export const BOARDS: PartModel[] = [
     summary: "The cheapest way to put a project on Wi-Fi: an ESP-12E module on a USB-programmable board. One core, 3.3 V, fewer pins than an ESP32 but plenty for a sensor that reports online.",
     size: { w: 58, h: 31, d: 10 },
     solids: [
-      pcb(58, 31, MATERIAL.pcbBlack, MATERIAL.pcbBlackEdge),
+      pcb(58, 31, "#1c4e9c", MATERIAL.pcbBlueEdge, 1),
       ...maleHeader(2, 1, 15, "x"),
       ...maleHeader(2, 27.5, 15, "x"),
-      shieldCan(34, 7, 16, 17, "ESP-12E"),
-      pcbAntenna(51, 9, 4, 13),
-      microUsb(-1.5, 12.7),
+      ...wifiModule(33, 7, 24, 16, 15, "ESP-12E"),
+      ...microUsb(-1.5, 12.7),
       ...tactileButton(8, 5, 4, "btn-rst"),
       ...tactileButton(8, 22, 4, "btn-flash"),
       chip(17, 12.5, 6, 6, "CH340", 0.9),
@@ -454,10 +445,10 @@ export const BOARDS: PartModel[] = [
     summary: "A tiny ARM Cortex-M3 board at 72 MHz with real hardware timers, three serial ports and 5 V-tolerant pins, for when an Arduino is too slow and an ESP32 is too much.",
     size: { w: 53, h: 22.5, d: 10 },
     solids: [
-      pcb(53, 22.5, MATERIAL.pcbBlue, MATERIAL.pcbBlueEdge),
+      pcb(53, 22.5, "#1d50a8", MATERIAL.pcbBlueEdge, 0.5),
       ...maleHeader(1.5, 0.8, 20, "x"),
       ...maleHeader(1.5, 19.2, 20, "x"),
-      microUsb(-1.5, 8.5),
+      ...microUsb(-1.5, 8.5),
       chip(24.5, 7.75, 7, 7, "STM32", 1),
       ...maleHeader(13, 6, 3, "y", 2, false),
       { kind: "box", x: 13, y: 6, w: 5.08, h: 2.54, d: 5, z: 2.5, top: "#f5c518", side: "#b8900f", radius: 0.3 },
@@ -543,15 +534,20 @@ export const BOARDS: PartModel[] = [
     summary: "A full Linux computer the size of a credit card, with 40 GPIO pins. Use it when a project needs a camera, a screen, networking or Python with real libraries.",
     size: { w: 85, h: 56, d: 16 },
     solids: [
-      pcb(85, 56, MATERIAL.pcbGreen, MATERIAL.pcbGreenEdge),
+      pcb(85, 56, "#2a7d3b", MATERIAL.pcbGreenEdge, 3),
       ...maleHeader(29, 1.6, 20, "x", 2, false),
-      chip(29, 24, 15, 15, "BCM2711", 1.5, "soc"),
+      // The BCM2711 wears a nickel heat spreader, not bare epoxy.
+      { kind: "box", id: "soc", x: 29, y: 24, w: 15, h: 15, d: 1.5, z: PCB_TOP, top: "linear-gradient(180deg,#cfd3d8,#b5bac1)", fill: "#c2c7cd", finish: "metal", radius: 0.6, label: { text: "BCM2711", size: 1.6, color: "#5d636b" } },
       chip(50, 25, 12, 12, "LPDDR4", 1.2),
       shieldCan(4, 24, 10, 12, "Wi-Fi", 2.2),
-      usbA(74, 2, ),
-      usbA(74, 20),
-      { kind: "box", x: 68, y: 38, w: 17, h: 16, d: 13.5, top: "linear-gradient(180deg,#d7dadf,#aeb3ba)", side: MATERIAL.steelSide, fill: MATERIAL.steel, radius: 0.5, label: { text: "ETH", size: 2, color: "#4b5059" } },
-      usbC(3, 49.5),
+      ...usbA(74, 2, PCB_TOP, "right"),
+      ...usbA(74, 20, PCB_TOP, "right", "#2b5fd9"),
+      // The Ethernet jack: a steel-shielded RJ45, its socket and two LEDs on the right edge.
+      { kind: "box", x: 68, y: 38, w: 17, h: 16, d: 13.5, top: "linear-gradient(180deg,#d7dadf,#aeb3ba)", side: MATERIAL.steelSide, fill: MATERIAL.steel, radius: 0.5, finish: "metal" },
+      { kind: "box", x: 84.6, y: 41, w: 0.6, h: 10, d: 7.5, z: 1.6 + 1.5, top: "#0c0d0f", finish: "plastic", radius: 0.3 },
+      { kind: "box", x: 84.7, y: 39.2, w: 0.5, h: 1.4, d: 1, z: 1.6 + 10.5, top: "#d8a530", finish: "plastic", radius: 0.2 },
+      { kind: "box", x: 84.7, y: 51.4, w: 0.5, h: 1.4, d: 1, z: 1.6 + 10.5, top: "#46a948", finish: "plastic", radius: 0.2 },
+      ...usbC(3, 49.5, PCB_TOP, "bottom"),
       { kind: "box", x: 15, y: 50, w: 6.5, h: 5.5, d: 3, top: MATERIAL.steel, side: MATERIAL.steelSide, radius: 0.5 },
       { kind: "box", x: 28, y: 50, w: 6.5, h: 5.5, d: 3, top: MATERIAL.steel, side: MATERIAL.steelSide, radius: 0.5 },
       { kind: "cyl", cx: 52, cy: 51.5, r: 3, d: 5, z: 1.6, top: "#1b1c1f", side: MATERIAL.icSide, segments: 14 },
@@ -644,11 +640,11 @@ export const BOARDS: PartModel[] = [
     summary: "A classroom board with a 5×5 LED display, two buttons, motion sensors, a speaker, a microphone and radio, all built in. Programs in blocks, Python or C++ with nothing extra to buy.",
     size: { w: 52, h: 42, d: 8 },
     solids: [
-      pcb(52, 42, MATERIAL.pcbBlack, MATERIAL.pcbBlackEdge, 3),
+      pcb(52, 42, "#151515", MATERIAL.pcbBlackEdge, 3),
       ...Array.from({ length: 25 }, (_, i) => smdLed(18.6 + (i % 5) * 3.2, 12 + Math.floor(i / 5) * 3.2, "#ef4444", `led-${i}`)),
       ...tactileButton(5, 16, 6, "btn-a"),
       ...tactileButton(41, 16, 6, "btn-b"),
-      microUsb(22, -1),
+      ...microUsb(22, -1, PCB_TOP, "top"),
       ...tactileButton(31, 1.5, 3, "reset"),
       { kind: "box", x: 10, y: 1.5, w: 6, h: 4.5, d: 3.5, top: MATERIAL.plasticWhite, side: "#b9bec4", radius: 0.5 },
       chip(37, 4, 5, 5, "nRF52", 0.9),
@@ -733,11 +729,11 @@ export const BOARDS: PartModel[] = [
     summary: "The fastest Arduino-compatible board by a wide margin: a 600 MHz ARM Cortex-M7 in a small package, with an SD slot, Ethernet pads and audio-grade peripherals.",
     size: { w: 61, h: 18, d: 6.6 },
     solids: [
-      pcb(61, 18, MATERIAL.pcbGreen, MATERIAL.pcbGreenEdge),
+      pcb(61, 18, "#1f6b3a", MATERIAL.pcbGreenEdge, 0.6),
       ...Array.from({ length: 24 }, (_, i) => ({ kind: "disc", cx: 1.27 + i * 2.54, cy: 1.27, r: 0.8, color: MATERIAL.gold }) as Solid),
       ...Array.from({ length: 24 }, (_, i) => ({ kind: "disc", cx: 1.27 + i * 2.54, cy: 16.73, r: 0.8, color: MATERIAL.gold }) as Solid),
       ...Array.from({ length: 5 }, (_, i) => ({ kind: "disc", cx: 59.7, cy: 4 + i * 2.54, r: 0.8, color: MATERIAL.gold }) as Solid),
-      microUsb(-1.3, 6.25),
+      ...microUsb(-1.3, 6.25),
       chip(22, 3, 12, 12, "i.MX RT1062", 1.2, "mcu"),
       chip(38, 5.5, 5, 5, "FLASH", 0.9),
       { kind: "box", x: 48, y: 3, w: 12, h: 12, d: 2, z: 1.6, top: "linear-gradient(180deg,#d7dadf,#b9bdc3)", side: MATERIAL.steelSide, fill: MATERIAL.steel, radius: 0.5, label: { text: "microSD", size: 1.4, color: "#4b5059" } },

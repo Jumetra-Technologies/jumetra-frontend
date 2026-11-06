@@ -23,6 +23,17 @@ export interface PartGroup {
 /** A CSS color (hex) or a CSS background for the top face. */
 export type Paint = string;
 
+/**
+ * What a solid is made of, for the 3D renderer's lighting. Left out, the
+ * renderer infers it from the color and the solid's id.
+ *   soldermask: the glossy lacquer on a PCB.   epoxy: a chip's matte black body.
+ *   plastic: molded parts (headers, buttons, sockets).   metal: steel shells and cans.
+ *   gold, tin, copper: plated pins and pads.   rubber: tyres, grommets.
+ *   glass: display glass.   clear: LED lenses and other clear plastic.
+ *   ceramic: SMD capacitors and resistors.   paper: labels and stickers.
+ */
+export type Finish = "soldermask" | "epoxy" | "plastic" | "metal" | "gold" | "tin" | "copper" | "rubber" | "glass" | "clear" | "ceramic" | "paper";
+
 export type Solid =
   | {
       kind: "box";
@@ -46,6 +57,7 @@ export type Solid =
       glow?: string;
       /** Text printed on the top face. */
       label?: { text: string; size?: number; color?: string };
+      finish?: Finish;
     }
   | {
       kind: "cyl";
@@ -60,6 +72,9 @@ export type Solid =
       fill?: string;
       segments?: number;
       glow?: string;
+      finish?: Finish;
+      /** The axis it stands along: z (upright, the default), or lying along x or y, centered on (cx, cy) at height z + r. */
+      axis?: "x" | "y" | "z";
     }
   | {
       /** A rounded top, built from stacked discs. LEDs, PIR lenses, caps. */
@@ -74,6 +89,7 @@ export type Solid =
       glow?: string;
       /** Draw the dome translucent, as clear LED plastic is. */
       clear?: boolean;
+      finish?: Finish;
     }
   | {
       /** Vertical pins: header pins, component legs. */
@@ -91,6 +107,7 @@ export type Solid =
       color?: string;
       /** Square pin side. */
       size?: number;
+      finish?: Finish;
     }
   | {
       /** Silkscreen text on the board surface. */

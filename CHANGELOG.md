@@ -10,6 +10,29 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.38.0] - 2026-11-06
+
+An admin portal for Kiungo's team, and usage reporting from the website and the desktop app (0.13.0) to feed it. Needs jumetra-backend's `/telemetry/heartbeat` and `/admin/*` (backend PR #10, on top of #11) on the API this site talks to.
+
+### Added
+- **The way in:** click the Kiungo logo at the top left eight times in quick succession, each within 1.5 seconds of the last. A password box opens. The server checks the password, never this site, and the right one opens `/admin` for 30 minutes in that tab. Five wrong passwords lock sign-in from that address for 15 minutes. Without a valid sign-in, `/admin` asks for the password itself, and search engines are told not to index it.
+- **The admin portal:**
+  - **Totals:** how many accounts and projects there are (website projects plus desktop projects synced to accounts, with lab sessions and experiment records), who is online now, time spent in Kiungo, and active accounts.
+  - **Online now:** each signed-in person with a Kiungo window open, the website or the desktop app, the page they're on and for how long, plus a count of signed-out visitors.
+  - **Most active pages:** by time and views.
+  - **Each day:** time, active accounts and new accounts per day.
+  - **Accounts:** a table with the time each spent in the range, split between the website and the desktop app, all-time time, active days, projects, last seen and when they joined. It can be searched and sorted, and exported as CSV.
+  - **Admin sign-ins:** the last 12 tries at the password.
+  - The range can be today, 7, 30 or 90 days. The figures refresh every 30 seconds.
+- **Usage reporting, website:** a heartbeat on each page, then every 30 seconds while the tab is visible and someone has moved, typed or scrolled in the last five minutes, and a last one when the tab is hidden or closed.
+  - Signed in, it counts for the account. Signed out, it counts for a random id the browser makes.
+  - A signed-out browser sending Do Not Track or Global Privacy Control sends nothing, and the admin portal itself isn't counted.
+  - Set `NEXT_PUBLIC_ACTIVITY=off` to switch it off.
+- **Usage reporting, desktop app 0.13.0:** the main process sends a heartbeat every minute while the window is shown and the computer is in use, with the desktop session's token. It sends Home or "a project", never what's in it, and a goodbye when the app quits.
+
+### Changed
+- **Privacy Policy and Cookie Policy** (revised 6 November 2026) now say what usage is recorded, why, for how long, and what it never includes. They also list the `kiungo.visitor` and `kiungo.admin.session` keys.
+
 ## [1.37.0] - 2026-11-05
 
 Advanced Analytics is a real page: what you've built, tested and learned, and what the whole Kiungo community is building. The community figures need jumetra-backend's `GET /community/stats` (backend PR #9) on the API this site talks to; until it's there, that section says so and the rest of the page works on its own.
@@ -753,6 +776,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.38.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.37.0...v1.38.0
 [1.37.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.2...v1.37.0
 [1.36.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.1...v1.36.2
 [1.36.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.0...v1.36.1

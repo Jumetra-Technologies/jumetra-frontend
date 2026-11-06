@@ -1,0 +1,22 @@
+/* The admin portal reuses the analytics charts, which read these. */
+.page {
+  --analytics-teal: var(--primary);
+  --analytics-navy: var(--kiungo-navy);
+}
+:global([data-theme="dark"]) .page,
+:global([data-theme="dark-contrast"]) .page {
+  --analytics-teal: #2bb5a8;
+  --analytics-navy: #7fa6d9;
+}
+
+/* Someone online now: a steady dot with one soft ring, not a blinking light. */
+.live {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 22%, transparent);
+}

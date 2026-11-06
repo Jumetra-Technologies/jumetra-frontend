@@ -163,7 +163,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
     slug: "privacy",
     title: "Privacy Policy",
     summary: "What Kiungo collects, why, where it is kept, and your choices.",
-    revised: "2026-10-06",
+    revised: "2026-11-06",
     blocks: [
       {
         type: "p",
@@ -180,6 +180,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
           ["Temporary lab sessions and simulations", "You, while using the Engineering Lab", "To run and explore designs", "Temporary session state; not saved to your account"],
           ["Theme, sidebar state, learning progress", "You", "To remember your preferences", "Your browser's local storage only"],
           ["Technical logs (requests, errors)", "Your browser's requests to Kiungo", "To keep Kiungo running and find faults", "Kiungo's servers, for a limited time"],
+          ["Usage: which page is open, and how long Kiungo is in use each day", "The website while its tab is visible and you're using it, and the desktop app while its window is in use", "So Kiungo's team can see how much Kiungo is used, which pages matter most and who is online, and plan from that", "Kiungo's servers, as daily totals for 400 days. Signed out, it is tied to a random id your browser makes, never your name; a browser sending Do Not Track or Global Privacy Control sends none"],
         ],
         caption: "Everything Kiungo collects",
       },
@@ -188,7 +189,8 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         type: "ul",
         items: [
           "We don't sell your data or share it with advertisers.",
-          "We don't run advertising or third-party analytics on Kiungo.",
+          "We don't run advertising or third-party analytics on Kiungo. The usage figures above are counted by Kiungo's own servers and seen only by Kiungo's team.",
+          "We don't record what you type, click or build to measure usage: only which page is open and for how long.",
           "We don't read your projects or experiment records except to fix a problem you ask us to look at.",
         ],
       },
@@ -224,7 +226,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
     slug: "cookies",
     title: "Cookie Policy",
     summary: "Kiungo sets no cookies of its own. Here is what it stores in your browser instead.",
-    revised: "2026-10-15",
+    revised: "2026-11-06",
     blocks: [
       {
         type: "p",
@@ -241,6 +243,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
           ["`hhip-learning-progress:v1`", "Which learning modules you have marked complete", "Until you clear site data"],
           ["`hhip-lab-sound`", "Whether the Engineering Lab's sounds are on", "Until you change it or clear site data"],
           ["`kiungo-diagnostics`", "A short log of failed requests and errors on this device, for administrators' System Diagnostics; it never leaves the browser", "The newest 300 requests and 150 errors; until you clear site data"],
+          ["`kiungo.visitor`", "A random id for this browser, so usage while signed out can be counted without knowing who you are", "Until you clear site data"],
           ["`hhip-theme`", "Your chosen theme", "Until you change it or clear site data"],
           ["`hhip-sidebar-collapsed`", "Whether the sidebar is collapsed", "Until you change it or clear site data"],
         ],
@@ -252,6 +255,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         rows: [
           ["`hhip-firmware-studio:v1`", "The Firmware page's last list of your projects and starters, so the page opens quickly", "Until you close the tab"],
           ["`kiungo-system-unlocked`", "Whether this tab opened System Diagnostics", "Until you close the tab"],
+          ["`kiungo.admin.session`", "The admin portal's sign-in, for Kiungo's team only", "30 minutes, or until you close the tab or sign out of the portal"],
         ],
         caption: "Session storage keys used by Kiungo (cleared when the tab closes)",
       },

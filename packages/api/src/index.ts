@@ -136,6 +136,20 @@ export type SaveResult = { ok: true; savedAt: string } | { ok: false; message: s
 export type Appearance = "system" | "light" | "dark";
 export const APPEARANCES: readonly Appearance[] = ["system", "light", "dark"];
 
+/** How someone works with Kiungo. A person can hold several; nav and dashboard modules show by role. */
+export type Role = "student" | "embedded-engineer" | "researcher" | "electrical-engineer" | "stem-trainer" | "university" | "company" | "hobbyist";
+export const ROLES: readonly Role[] = ["student", "embedded-engineer", "researcher", "electrical-engineer", "stem-trainer", "university", "company", "hobbyist"];
+export const ROLE_LABELS: Record<Role, string> = {
+  student: "Student",
+  "embedded-engineer": "Embedded Systems Engineer",
+  researcher: "Researcher",
+  "electrical-engineer": "Electrical Engineer",
+  "stem-trainer": "STEM Trainer",
+  university: "University / College",
+  company: "Company",
+  hobbyist: "Hobbyist",
+};
+
 export interface ProjectSettings {
   /** Where new projects are made. Documents/Kiungo unless the user picked another folder. */
   projectsFolder: string;
@@ -143,6 +157,8 @@ export interface ProjectSettings {
   sync?: boolean;
   /** Light, dark, or the computer's own setting (the default). */
   appearance?: Appearance;
+  /** How this person works with Kiungo. Empty until they pick any in Settings. */
+  roles?: Role[];
 }
 
 /** A project's sync with the account (DSK-14). */
@@ -316,6 +332,8 @@ export interface InvokeMap {
   "projects:choose-folder": { args: []; result: ProjectSettings };
   /** Light, dark, or follow the computer. */
   "settings:set-appearance": { args: [appearance: Appearance]; result: ProjectSettings };
+  /** Which roles this person works under. Replaces the whole list. */
+  "settings:set-roles": { args: [roles: Role[]]; result: ProjectSettings };
   "auth:state": { args: []; result: AuthState };
   /** Open the website's sign-in page in the browser and wait for it to send the app back. */
   "auth:sign-in": { args: []; result: AuthState };
@@ -450,6 +468,7 @@ export const INVOKE_CHANNELS = [
   "projects:settings",
   "projects:choose-folder",
   "settings:set-appearance",
+  "settings:set-roles",
   "auth:state",
   "auth:sign-in",
   "auth:cancel",

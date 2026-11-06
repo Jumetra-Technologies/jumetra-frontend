@@ -224,7 +224,22 @@ describe("settings", () => {
     const { svc, projectsFolder } = service();
     await svc.setSync(true);
     const after = await svc.setAppearance("dark");
-    expect(after).toEqual({ projectsFolder, sync: true, appearance: "dark" });
+    expect(after).toEqual({ projectsFolder, sync: true, appearance: "dark", roles: [] });
     expect((await svc.settings()).appearance).toBe("dark");
+  });
+
+  it("start with no roles, and remember whichever the person picks", async () => {
+    const { svc } = service();
+    expect((await svc.settings()).roles).toEqual([]);
+    const after = await svc.setRoles(["student", "hobbyist"]);
+    expect(after.roles).toEqual(["student", "hobbyist"]);
+    expect((await svc.settings()).roles).toEqual(["student", "hobbyist"]);
+  });
+
+  it("drops anything that isn't a known role", async () => {
+    const { svc } = service();
+    // @ts-expect-error - a bad channel call would be refused before this, but the service itself should still be defensive
+    const after = await svc.setRoles(["student", "not-a-role"]);
+    expect(after.roles).toEqual(["student"]);
   });
 });

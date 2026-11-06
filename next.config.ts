@@ -6,8 +6,8 @@ import { join } from "node:path";
 const APP_VERSION = (JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as { version: string }).version;
 // The desktop app's version in this checkout: the home page offers its GitHub release (lib/releases.ts).
 const DESKTOP_VERSION = (JSON.parse(readFileSync(join(process.cwd(), "apps/desktop/package.json"), "utf8")) as { version: string }).version;
-const PRODUCTION_API_URL = "https://europe-west4-hhipsystemv0.cloudfunctions.net/api";
-const PRODUCTION_WS_URL = "wss://api-aoxa3kagvq-ez.a.run.app";
+const PRODUCTION_API_URL = "https://kiungo-api.onrender.com";
+const PRODUCTION_WS_URL = "wss://kiungo-api.onrender.com";
 const localDevOrigins = Object.values(networkInterfaces()).flatMap((addresses) =>
   (addresses ?? [])
     .filter((address) => address.family === "IPv4" && !address.internal)

@@ -42,7 +42,7 @@ const APP_SCHEME = "kiungo-app";
 /** The website sends the app back to kiungo://signin after signing in. */
 const LINK_SCHEME = "kiungo";
 /** The backend the app signs in with. KIUNGO_API_URL points it at another one (staging, a local backend). */
-const API_BASE = (process.env.KIUNGO_API_URL || "https://europe-west4-hhipsystemv0.cloudfunctions.net/api").replace(/\/+$/, "");
+const API_BASE = (process.env.KIUNGO_API_URL || "https://kiungo-api.onrender.com").replace(/\/+$/, "");
 /**
  * Where the app looks for new versions: <channel>.yml files (beta.yml, latest.yml, and -linux for the
  * AppImage) that the release workflow keeps on the desktop-feed release. KIUNGO_UPDATE_URL points it

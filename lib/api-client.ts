@@ -57,8 +57,8 @@ export function isAuthError(error: unknown): error is ApiError {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
 }
 
-export const PRODUCTION_API_URL = "https://europe-west4-hhipsystemv0.cloudfunctions.net/api";
-export const PRODUCTION_WS_URL = "wss://api-aoxa3kagvq-ez.a.run.app";
+export const PRODUCTION_API_URL = "https://kiungo-api.onrender.com";
+export const PRODUCTION_WS_URL = "wss://kiungo-api.onrender.com";
 
 const DEFAULT_API_BASE =
   process.env.NODE_ENV === "production" ? PRODUCTION_API_URL : "http://127.0.0.1:8000";

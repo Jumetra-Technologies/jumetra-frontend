@@ -66,12 +66,25 @@ jobs:
       # Unsigned builds everywhere until signing lands (sprint 6).
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
       KIUNGO_ARDUINO_CONFIG: ${{ github.workspace }}/.ci/arduino-cli.yaml
+      # Electron and electron-builder's tools come from GitHub releases, which answer 504 now and
+      # then (5 Nov 2026, #88 and #89): kept between runs, so most runs download none of them.
+      ELECTRON_CACHE: ${{ github.workspace }}/.ci/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.ci/electron-builder
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      - name: Cache Electron, electron-builder's tools and the Arduino CLI
+        uses: actions/cache@v4
+        with:
+          path: |
+            .ci/electron
+            .ci/electron-builder
+            apps/desktop/resources/bin
+          key: desktop-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/desktop/package.json', 'apps/desktop/scripts/fetch-arduino-cli.mjs') }}
+          restore-keys: desktop-downloads-${{ runner.os }}-${{ runner.arch }}-
       - name: Linux packaging tools (rpm target)
         if: runner.os == 'Linux'
         run: sudo apt-get update -q && sudo apt-get install -y -q rpm
@@ -131,7 +144,9 @@ jobs:
         if: failure()
         shell: bash
         # The failure text as check annotations, readable from the API without downloading the log.
+        # No vitest.log means an earlier step failed: its own error says why.
         run: |
+          [ -f vitest.log ] || exit 0
           grep -nE "^ (FAIL|×)|AssertionError|Error:|expected" vitest.log | head -40 | while IFS= read -r line; do
             printf '::error title=vitest (%s)::%s\n' "${{ matrix.label }}" "${line//$'\r'/}"
           done
@@ -140,8 +155,17 @@ jobs:
         run: npm run build -w @kiungo/desktop
 
       - name: Package an unsigned installer
-        run: npx electron-builder ${{ matrix.builder }} --publish never
+        # electron-builder downloads Electron for each architecture and its own tools: a 5xx from
+        # GitHub there fails the build, so it's tried up to three times.
+        shell: bash
         working-directory: apps/desktop
+        run: |
+          for attempt in 1 2 3; do
+            npx electron-builder ${{ matrix.builder }} --publish never && exit 0
+            [ "$attempt" = 3 ] && exit 1
+            echo "::warning title=Packaging (${{ matrix.label }})::Attempt $attempt failed; trying again in $((attempt * 20)) s."
+            sleep $((attempt * 20))
+          done
 
       - name: Upload the installer
         uses: actions/upload-artifact@v4

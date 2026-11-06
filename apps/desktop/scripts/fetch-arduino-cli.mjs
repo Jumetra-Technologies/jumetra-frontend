@@ -13,7 +13,7 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const VERSION = "1.5.1";
@@ -30,6 +30,30 @@ const TARGETS = {
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const wanted = process.argv.includes("--all") ? Object.keys(TARGETS) : [`${process.platform}-${process.arch}`];
 
+/**
+ * GitHub's release downloads answer 502, 503 or 504 now and then, and a
+ * connection can drop: those are tried again, a few seconds apart. A 404 or
+ * other answer is final. The checksum below still decides what's installed.
+ */
+export async function download(url, { attempts = 4, wait = (ms) => new Promise((r) => setTimeout(r, ms)), get = fetch, log = console.warn } = {}) {
+  for (let attempt = 1; ; attempt++) {
+    let problem;
+    try {
+      const response = await get(url);
+      if (response.ok) return Buffer.from(await response.arrayBuffer());
+      if (![408, 429, 500, 502, 503, 504].includes(response.status)) throw Object.assign(new Error(`download failed (${response.status}) from ${url}`), { final: true });
+      problem = `${response.status}`;
+    } catch (error) {
+      if (error.final || attempt >= attempts) throw error.final ? error : new Error(`download failed (${error.message}) from ${url}`);
+      problem = error.message;
+    }
+    if (attempt >= attempts) throw new Error(`download failed (${problem}) from ${url}, ${attempts} tries`);
+    const ms = 2000 * 2 ** (attempt - 1);
+    log(`  ${url}: ${problem}, trying again in ${ms / 1000} s (${attempt + 1} of ${attempts})`);
+    await wait(ms);
+  }
+}
+
 async function fetchTarget(key) {
   const target = TARGETS[key];
   if (!target) throw new Error(`No Arduino CLI build is pinned for ${key}.`);
@@ -41,9 +65,12 @@ async function fetchTarget(key) {
     return;
   }
   const url = `https://github.com/arduino/arduino-cli/releases/download/v${VERSION}/${target.file}`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`${key}: download failed (${response.status}) from ${url}`);
-  const bytes = Buffer.from(await response.arrayBuffer());
+  let bytes;
+  try {
+    bytes = await download(url);
+  } catch (error) {
+    throw new Error(`${key}: ${error.message}`);
+  }
   const sha = createHash("sha256").update(bytes).digest("hex");
   if (sha !== target.sha256) throw new Error(`${key}: checksum mismatch. Expected ${target.sha256}, got ${sha}. Nothing was installed.`);
 
@@ -60,4 +87,8 @@ async function fetchTarget(key) {
   console.log(`${key}: Arduino CLI ${VERSION} installed in resources/bin/${key}`);
 }
 
-for (const key of wanted) await fetchTarget(key);
+// Run as a script (npm run fetch:arduino-cli); imported, it only offers download().
+const same = (a, b) => (process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b);
+if (process.argv[1] && same(resolve(process.argv[1]), fileURLToPath(import.meta.url))) {
+  for (const key of wanted) await fetchTarget(key);
+}

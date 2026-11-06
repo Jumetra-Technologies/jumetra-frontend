@@ -86,9 +86,16 @@ jobs:
       - name: Package the installer
         # The channel goes into the packaged package.json, so the app knows which feed file to follow.
         # bash on every system: PowerShell splits "-c.extraMetadata…" into -c and a file name.
+        # A 5xx from GitHub while it downloads Electron or its tools is tried again, up to three times.
         shell: bash
-        run: npx electron-builder ${{ matrix.builder }} --publish never "-c.extraMetadata.kiungo.updateChannel=${{ github.event.inputs.channel || 'beta' }}"
         working-directory: apps/desktop
+        run: |
+          for attempt in 1 2 3; do
+            npx electron-builder ${{ matrix.builder }} --publish never "-c.extraMetadata.kiungo.updateChannel=${{ github.event.inputs.channel || 'beta' }}" && exit 0
+            [ "$attempt" = 3 ] && exit 1
+            echo "::warning title=Packaging (${{ matrix.label }})::Attempt $attempt failed; trying again in $((attempt * 20)) s."
+            sleep $((attempt * 20))
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: installers-${{ matrix.label }}

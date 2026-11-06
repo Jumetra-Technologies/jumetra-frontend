@@ -16,6 +16,7 @@ import appIcon from "../../build/icon.png?asset";
 import { APPEARANCES, EMULATED_BOARDS, EXAMPLE_SKETCHES, INSTALLABLE_CORES, isInvokeChannel, ROLES, type AuthState, type Handlers, type Platform } from "@kiungo/api";
 import { PROJECT_FILE } from "@kiungo/core/project";
 import { hardwareBoard, uploadTargetsFor } from "@kiungo/core/hardware/boards";
+import { VENDOR_HOSTS } from "@kiungo/core/parts/vendor-links";
 import { keychainStore } from "./auth/secret-store";
 import { AuthService } from "./auth/service";
 import { ProjectService } from "./projects/service";
@@ -416,6 +417,16 @@ const handlers: Handlers = {
   },
   "boards:open-link": async (url) => {
     if (typeof url === "string" && DRIVER_URLS.has(url)) await shell.openExternal(url);
+  },
+  "marketplace:open-vendor-link": async (url) => {
+    if (typeof url !== "string") return;
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return;
+    }
+    if (parsed.protocol === "https:" && VENDOR_HOSTS.includes(parsed.hostname)) await shell.openExternal(url);
   },
   "upload:start": async (path, port, boardId) => {
     const refused = (message: string) => ({ ok: false, stage: "upload" as const, build: { ok: false, diagnostics: [], durationMs: 0, log: "", message }, log: "", durationMs: 0, problem: { id: "unknown" as const, title: message, steps: [] } });

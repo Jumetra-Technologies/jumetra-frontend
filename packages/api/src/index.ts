@@ -368,6 +368,8 @@ export interface InvokeMap {
   "boards:doctor": { args: []; result: PortHint[] };
   /** Open one of the driver pages the hints name. Other addresses are refused. */
   "boards:open-link": { args: [url: string]; result: void };
+  /** Open a vendor's page in the person's browser, for shopping the Marketplace (SHOP-01). Only known vendor hosts are opened. */
+  "marketplace:open-vendor-link": { args: [url: string]; result: void };
   /** Build the open project for the board, then upload to the port. The port must be plugged in now. */
   "upload:start": { args: [projectPath: string, port: string, board: HardwareBoardId]; result: UploadResult };
   /** Open the serial monitor on a plugged-in port. One port at a time. */
@@ -488,6 +490,7 @@ export const INVOKE_CHANNELS = [
   "boards:list",
   "boards:doctor",
   "boards:open-link",
+  "marketplace:open-vendor-link",
   "upload:start",
   "serial:open",
   "serial:write",

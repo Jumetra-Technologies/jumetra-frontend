@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { ActivityTracker } from "@/components/activity/ActivityTracker";
+import { AdminDoor } from "@/components/admin/AdminDoor";
 import { AuthBootstrap } from "@/components/auth/auth-bootstrap";
 import { AppShell } from "@/components/layout/sidebar";
 import { ThemeProvider } from "@/components/theme/theme-provider";
@@ -49,6 +51,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ElasticScrollbars />
           <LabAccountSync />
           <LearningAccountSync />
+          <ActivityTracker />
+          <AdminDoor />
           <AppShell>{children}</AppShell>
         </ThemeProvider>
       </body>

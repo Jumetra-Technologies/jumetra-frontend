@@ -4,7 +4,7 @@
  * talks to this process only through the channels in @kiungo/api.
  */
 import { spawn } from "node:child_process";
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, net, powerMonitor, protocol, session, shell } from "electron";
 import { hostname } from "node:os";
 import { readFileSync } from "node:fs";
 import { readFile, rm, stat } from "node:fs/promises";
@@ -28,6 +28,7 @@ import { HybridService } from "./hybrid/service";
 import { HybridLink } from "./hybrid/link";
 import { HYBRID_BOARDS, parsePlan } from "@kiungo/core/hybrid/plan";
 import { AccountClient } from "./account/client";
+import { ActivityReporter } from "./activity/reporter";
 import { importFromAccount, importSessionText, listAccount } from "./account/import";
 import { SyncService } from "./sync/service";
 import { parseProjectMeta } from "@kiungo/core/project";
@@ -190,6 +191,18 @@ const serialMonitor = () =>
     onData: (port, text) => mainWindow?.webContents.send("serial:data", { port, text }),
     onClosed: (port, message) => mainWindow?.webContents.send("serial:closed", { port, message }),
   }));
+// Usage for the admin portal: which screen is open and that someone is using the app (main/activity/reporter.ts).
+let activity: ActivityReporter | null = null;
+const activityReporter = () =>
+  (activity ??= new ActivityReporter({
+    apiBase: API_BASE,
+    token: () => authService().token(),
+    window: () => mainWindow,
+    idleSeconds: () => powerMonitor.getSystemIdleTime(),
+    page: () => (projects && projects.openCount() > 0 ? "/desktop/project" : "/desktop/home"),
+    appVersion: app.getVersion(),
+  }));
+
 let account: AccountClient | null = null;
 const accountClient = () => (account ??= new AccountClient({ apiBase: API_BASE, token: () => authService().token(), timeoutMs: 15_000 }));
 
@@ -628,6 +641,7 @@ app.whenReady().then(() => {
   registerLinkScheme();
   createWindow();
   updateService().start();
+  activityReporter().start();
   void authService()
     .restore()
     .then(() => {
@@ -641,6 +655,7 @@ app.whenReady().then(() => {
 // Finish every save before the app goes. A forced quit loses at most the change in flight: files are written whole or not at all.
 let quitting = false;
 function stopChildren() {
+  void activity?.stop();
   updates?.stop();
   auth?.dispose();
   watcher?.stop();

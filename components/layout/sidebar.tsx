@@ -4,6 +4,7 @@ import Link from "next/link";
 import { recordError, recordPageView } from "@/lib/diagnostics/store";
 import { SiteFooter } from "@/components/landing/SiteFooter";
 import { KiungoLogo, KiungoMark } from "@kiungo/ui/KiungoMark";
+import { logoClicked } from "@/lib/admin/door";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Menu, PanelLeftClose, PanelLeftOpen, Settings, Star, User, X } from "lucide-react";
@@ -261,7 +262,8 @@ function AccountRow({
 
 function Brand() {
   return (
-    <Link href="/" className="flex min-w-0 items-center rounded-md" aria-label="Kiungo, home" data-testid="brand">
+    // Eight quick clicks open the admin password box (lib/admin/door.ts); one is just Home.
+    <Link href="/" onClick={() => logoClicked()} className="flex min-w-0 items-center rounded-md" aria-label="Kiungo, home" data-testid="brand">
       <KiungoLogo variant="full" markClassName="size-8" />
     </Link>
   );

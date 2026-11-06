@@ -12,14 +12,24 @@ Versions before 1.2.0 were assigned after the fact to the pull requests already 
 
 ## [1.37.0] - 2026-11-05
 
-The desktop app is 0.13.0: a redesigned shell — a persistent sidebar and a Dashboard — replaces the old Home/single-project layout, with several new modules and a role system to match.
+Advanced Analytics is a real page: what you've built, tested and learned, and what the whole Kiungo community is building. The community figures need jumetra-backend's `GET /community/stats` (backend PR #9) on the API this site talks to; until it's there, that section says so and the rest of the page works on its own.
 
 ### Added
-- **A persistent app shell.** A left sidebar (Dashboard, Projects, Simulation, Firmware, Components, Research, Learning, Collaboration, Marketplace, AI Assistant, Settings) and a header (search, notifications, light/dark) now frame every screen, instead of Home and the open project being the only two places in the app.
-- **Dashboard.** A landing view with recent projects, a few headline numbers, role-aware focus panels, and quick actions into the rest of the app.
-- **Roles & workspace focus.** Settings → Roles & Workspaces lets someone mark themselves Student, Embedded Systems Engineer, Researcher, Electrical Engineer, STEM Trainer, University/College, Company, or Hobbyist (any number); the sidebar and Dashboard show modules and panels for the roles held, same as the Figma Make reference this shell was built from. Roles are saved to `settings.json` next to appearance. A workspace-focus picker narrows which role panels the Dashboard shows, without changing which roles are held.
-- **Projects, Components, Research, Learning, Collaboration, Marketplace, and AI Assistant** as modules reachable from the sidebar. Projects carries over Home's real functionality (new/open/import, the account sync list); Simulation and Firmware open the existing project workspace. The rest are new: Components is a real catalog of the boards and parts Kiungo already knows about; Research, Learning, Collaboration, Marketplace, and AI Assistant are previews of modules the desktop app doesn't have a backend for yet, and say so plainly where they don't yet do anything.
-- **Settings is now a full page**, not a dialog, reachable from the sidebar or `Ctrl+,`/`⌘,`: the same profile, appearance, and version sections as before, plus Roles & Workspaces and a set of sections (Preferences, Projects, Simulation, Firmware & Hardware, AI Assistant, Collaboration, Notifications, Marketplace, Institution/Company, Privacy) that are previews until they're backed by real settings.
+- **Your work**, for 30 days, 90 days, 12 months or all time (remembered in this browser), each compared with the stretch before it: projects, lab sessions, runs, parts explored out of the catalog, and modules completed, with a sparkline each.
+- **Insights that come with an action.** At most four, each a real finding from your own work with a link to act on it: the part you lean on most, experiment records missing a step, the fault you meet most and how many you fixed, a kind of part you haven't tried yet, and the next module.
+- **Your days in the lab**, drawn as a breadboard: one hole per day, weekdays above the center channel and the weekend below it, power rails top and bottom. A day glows brighter the more you built, ran and fixed. Arrow keys move between days, and picking one lists what you did that day.
+- **A weekly goal** (1 to 7 days a week, default 3) instead of a daily streak, with the last 12 weeks against it.
+- **Parts you use** (pick one to see the sessions it's in) and **parts to try next**, ordered by what the community uses most; **How you build** (virtual, Hybrid and physical parts) with runs, faults met, fixes, and the faults you meet most; **Learning path** progress by topic with the next module; **Projects and records** by category, and the records still missing steps.
+- **The Kiungo community**: robotics projects, lab sessions, runs, parts placed and builders across every account; a growth chart (so far, or new each month) you can point at or tab through; the most-used parts (marked when you've used them too) and what people build. No names and no rankings, and a part or category only appears once 10 or more people use it.
+- Every chart has a one-line summary of what it shows and a **Show as table** switch. Works in light and dark, and down to phone width.
+
+### Changed
+- Signed out, the page uses this browser's lab sessions and learning progress and offers to sign in for projects and experiment records. Someone with nothing yet sees three ways to start instead of a page of zeros.
+
+## [1.36.2] - 2026-11-05
+
+### Fixed
+- **Signing in on a new browser no longer deletes your lab sessions from your account.** When you signed in on a page that doesn't open the lab (Home, Settings, the docs) on a browser that had never held your sessions, they arrived from the account but weren't saved in the browser. Opening the Engineering Lab, Projects or Analytics afterwards loaded the browser's empty copy over them, and the account sync took the missing sessions as deleted and deleted them from the account. The sync now loads the browser's copy before it merges, so the merged list is saved and nothing reloads over it. A regression test signs in, lets the sessions arrive, then opens the lab, and checks nothing is deleted.
 
 ## [1.36.1] - 2026-11-05
 
@@ -743,7 +753,8 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
-[1.37.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.1...v1.37.0
+[1.37.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.2...v1.37.0
+[1.36.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.1...v1.36.2
 [1.36.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.0...v1.36.1
 [1.36.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.35.0...v1.36.0
 [1.35.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.34.0...v1.35.0

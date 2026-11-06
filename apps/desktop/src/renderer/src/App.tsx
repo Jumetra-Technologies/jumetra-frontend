@@ -218,8 +218,11 @@ export function App() {
     return list;
   }, [project, lab, recent, openPath, view, goDashboard, newProject, openFolder, openRecent, closeOpen, auth, update]);
 
-  // Signed out, or waiting for the browser: the sign-in screen (DSK-01). Open work is saved first.
-  const needsSignIn = auth !== null && (auth.status === "waiting" || (auth.status === "signed-out" && !auth.skipped));
+  // Nothing is wired up to an account backend yet, and everything is stored locally, so the app
+  // opens straight to the Dashboard instead of forcing a sign-in on launch (sign-in is still
+  // offered from the account menu). The one time we still show the full-screen sign-in state is
+  // while the browser round-trip the person just started is in flight (DSK-01).
+  const needsSignIn = auth !== null && auth.status === "waiting";
   useEffect(() => {
     if (needsSignIn && openPath) void closeOpen();
   }, [needsSignIn, openPath, closeOpen]);

@@ -10,6 +10,14 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.38.1] - 2026-11-06
+
+### Changed
+- **The website and the desktop app (0.13.1) use Kiungo's API on Render** (`https://kiungo-api.onrender.com`), with its data in a Neon PostgreSQL database (jumetra-backend #13). The old address was a hand-deployed Cloud Function that nobody here can deploy to.
+  - That old server was missing the admin portal, the community figures, desktop releases and project sync.
+  - People sign in again once: accounts on it aren't in the new database.
+  - The free plan sleeps when idle, so the first request after a quiet spell can take about a minute.
+
 ## [1.38.0] - 2026-11-06
 
 An admin portal for Kiungo's team, and usage reporting from the website and the desktop app (0.13.0) to feed it. Needs jumetra-backend's `/telemetry/heartbeat` and `/admin/*` (backend PR #10, on top of #11) on the API this site talks to.
@@ -776,6 +784,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.38.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.0...v1.38.1
 [1.38.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.37.0...v1.38.0
 [1.37.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.2...v1.37.0
 [1.36.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.1...v1.36.2

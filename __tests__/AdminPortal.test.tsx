@@ -17,7 +17,7 @@ const OVERVIEW: Overview = {
   days: 7,
   range: { start: "2026-10-31", end: "2026-11-06" },
   tracked_since: "2026-11-01",
-  totals: { accounts: 3, accounts_new_range: 1, projects: 12, lab_sessions: 30, experiments: 8, desktop_devices: 2, online_accounts: 1, online_visitors: 2, seconds_range: 9000, active_accounts_range: 2 },
+  totals: { accounts: 3, accounts_new_range: 1, projects: 12, desktop_projects: 4, lab_sessions: 30, experiments: 8, desktop_devices: 2, online_accounts: 1, online_visitors: 2, seconds_range: 9000, active_accounts_range: 2 },
   online: [{ user_id: "a", name: "Ada Lovelace", email: "ada@example.test", client: "desktop", page: "/desktop/project", since: "2026-11-06T08:40:00Z", last_seen: "2026-11-06T08:59:30Z", app_version: "0.13.0" }],
   online_visitors: { web: 2, desktop: 0 },
   accounts: [
@@ -118,6 +118,7 @@ describe("the portal", () => {
 
     expect(await screen.findByTestId("admin-accounts")).toHaveTextContent("3");
     expect(screen.getByTestId("admin-projects")).toHaveTextContent("12");
+    expect(screen.getByTestId("admin-projects")).toHaveTextContent("4 from the desktop app");
     expect(screen.getByTestId("admin-online")).toHaveTextContent("and 2 signed-out visitors");
     expect(screen.getByTestId("admin-time")).toHaveTextContent("2 h 30 min");
     expect(within(screen.getByTestId("admin-online-list")).getByText("Ada Lovelace")).toBeInTheDocument();

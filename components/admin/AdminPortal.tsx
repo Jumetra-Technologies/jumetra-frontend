@@ -214,7 +214,7 @@ function Dashboard({ data, now }: { data: Overview; now: number }) {
     <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat testId="admin-accounts" label="Accounts" value={formatCount(t.accounts)} note={t.accounts_new_range ? `${t.accounts_new_range} new ${rangeWords}` : `None new ${rangeWords}`} />
-        <Stat testId="admin-projects" label="Projects" value={formatCount(t.projects)} note={`${formatCount(t.lab_sessions)} lab sessions, ${formatCount(t.experiments)} experiment records`} />
+        <Stat testId="admin-projects" label="Projects" value={formatCount(t.projects)} note={`${t.desktop_projects ? `${formatCount(t.desktop_projects)} from the desktop app; ` : ""}${formatCount(t.lab_sessions)} lab sessions, ${formatCount(t.experiments)} experiment records`} />
         <Stat
           testId="admin-online"
           label="Online now"
@@ -459,7 +459,7 @@ function Accounts({ data, now }: { data: Overview; now: number }) {
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums text-muted">{hoursMinutes(a.seconds_total)}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums text-muted">{a.active_days}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-muted" title={`${a.lab_sessions} lab sessions`}>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-muted" title={`${a.desktop_projects ? `${a.desktop_projects} from the desktop app, ` : ""}${a.lab_sessions} lab sessions`}>
                     {a.projects}
                   </td>
                   <td className="px-3 py-2.5 text-muted">{a.online ? <span className="text-[var(--success)]">Online now</span> : ago(a.last_seen, now)}</td>

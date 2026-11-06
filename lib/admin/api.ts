@@ -25,6 +25,7 @@ export type OverviewAccount = {
   seconds_desktop: number;
   active_days: number;
   projects: number;
+  desktop_projects?: number;
   lab_sessions: number;
 };
 
@@ -37,6 +38,7 @@ export type Overview = {
     accounts: number;
     accounts_new_range: number;
     projects: number;
+    desktop_projects?: number;
     lab_sessions: number;
     experiments: number;
     desktop_devices: number;

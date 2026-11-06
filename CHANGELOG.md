@@ -12,12 +12,12 @@ Versions before 1.2.0 were assigned after the fact to the pull requests already 
 
 ## [1.38.0] - 2026-11-06
 
-An admin portal for Kiungo's team, and usage reporting from the website and the desktop app (0.13.0) to feed it. Needs jumetra-backend's `/telemetry/heartbeat` and `/admin/*` (backend PR #10) on the API this site talks to.
+An admin portal for Kiungo's team, and usage reporting from the website and the desktop app (0.13.0) to feed it. Needs jumetra-backend's `/telemetry/heartbeat` and `/admin/*` (backend PR #10, on top of #11) on the API this site talks to.
 
 ### Added
 - **The way in:** click the Kiungo logo at the top left eight times in quick succession, each within 1.5 seconds of the last. A password box opens. The server checks the password, never this site, and the right one opens `/admin` for 30 minutes in that tab. Five wrong passwords lock sign-in from that address for 15 minutes. Without a valid sign-in, `/admin` asks for the password itself, and search engines are told not to index it.
 - **The admin portal:**
-  - **Totals:** how many accounts and projects there are (with lab sessions and experiment records), who is online now, time spent in Kiungo, and active accounts.
+  - **Totals:** how many accounts and projects there are (website projects plus desktop projects synced to accounts, with lab sessions and experiment records), who is online now, time spent in Kiungo, and active accounts.
   - **Online now:** each signed-in person with a Kiungo window open, the website or the desktop app, the page they're on and for how long, plus a count of signed-out visitors.
   - **Most active pages:** by time and views.
   - **Each day:** time, active accounts and new accounts per day.

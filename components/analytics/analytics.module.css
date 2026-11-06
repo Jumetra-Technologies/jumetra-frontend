@@ -1,0 +1,267 @@
+/*
+ * The activity calendar drawn as a breadboard: one hole per day, lit like an
+ * LED in proportion to that day's lab work. Weekdays sit above the board's
+ * center channel and the weekend below it, as rows a-e and f-j do on a real
+ * board. Colors come from the theme, so every palette gets its own board.
+ */
+
+.board,
+.legend {
+  --hole: 12px;
+  --gap: 4px;
+  --board-bg: color-mix(in srgb, var(--foreground) 3.5%, var(--surface));
+  --hole-bg: color-mix(in srgb, var(--foreground) 13%, var(--surface));
+  --hole-edge: color-mix(in srgb, var(--foreground) 22%, var(--surface));
+  --led: var(--analytics-teal);
+}
+.board {
+  --hole: var(--hole-size, 12px);
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  padding: 14px 16px 12px;
+  border-radius: 12px;
+  background: var(--board-bg);
+  border: 1px solid var(--border);
+}
+
+/* Power rails along the top and bottom, as on the real thing. */
+.board::before,
+.board::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  border-radius: 1px;
+  opacity: 0.55;
+}
+.board::before {
+  top: 6px;
+  background: var(--danger);
+}
+.board::after {
+  bottom: 5px;
+  background: #3b82f6;
+}
+
+.days {
+  display: grid;
+  grid-template-rows: repeat(5, var(--hole)) 10px repeat(2, var(--hole));
+  grid-auto-flow: column;
+  grid-auto-columns: var(--hole);
+  gap: var(--gap);
+}
+
+.labels {
+  display: grid;
+  grid-template-rows: repeat(5, var(--hole)) 10px repeat(2, var(--hole));
+  gap: var(--gap);
+  font-size: 10.5px;
+  line-height: var(--hole);
+  color: var(--muted);
+}
+
+.channel {
+  /* The groove between weekdays and the weekend. */
+  grid-column: 1 / -1;
+  align-self: center;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--foreground) 8%, var(--surface));
+}
+
+.months {
+  grid-column: 2;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--hole);
+  gap: var(--gap);
+  height: 16px;
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.hole {
+  width: var(--hole);
+  height: var(--hole);
+  padding: 0;
+  border-radius: 3px;
+  border: 0;
+  background: var(--hole-bg);
+  box-shadow: inset 0 1px 1.5px var(--hole-edge);
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.hole[data-out="true"] {
+  opacity: 0.35;
+  cursor: default;
+}
+.hole[data-level="1"] {
+  background: color-mix(in srgb, var(--led) 30%, var(--hole-bg));
+  box-shadow: none;
+}
+.hole[data-level="2"] {
+  background: color-mix(in srgb, var(--led) 55%, var(--hole-bg));
+  box-shadow: 0 0 3px color-mix(in srgb, var(--led) 35%, transparent);
+}
+.hole[data-level="3"] {
+  background: color-mix(in srgb, var(--led) 80%, var(--hole-bg));
+  box-shadow: 0 0 5px color-mix(in srgb, var(--led) 50%, transparent);
+}
+.hole[data-level="4"] {
+  background: var(--led);
+  box-shadow: 0 0 7px 1px color-mix(in srgb, var(--led) 65%, transparent);
+}
+.hole[data-today="true"] {
+  outline: 1.5px solid var(--foreground);
+  outline-offset: 1.5px;
+}
+.hole[aria-selected="true"] {
+  outline: 2px solid var(--analytics-amber);
+  outline-offset: 1.5px;
+  transform: scale(1.12);
+}
+.hole:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.hole:not([data-out="true"]):hover {
+  transform: scale(1.18);
+}
+
+.legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.legend .hole {
+  cursor: default;
+}
+.legend .hole:hover {
+  transform: none;
+}
+
+.tip {
+  position: absolute;
+  z-index: 5;
+  transform: translate(-50%, calc(-100% - 8px));
+  pointer-events: none;
+  white-space: nowrap;
+  padding: 6px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: #fff;
+  background: var(--analytics-navy);
+  box-shadow: 0 6px 18px rgba(1, 34, 75, 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hole,
+  .hole:hover,
+  .hole[aria-selected="true"] {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* On a phone, a quarter still fits without scrolling the day names away. */
+@media (max-width: 640px) {
+  .board {
+    --hole: min(var(--hole-size, 12px), 14px);
+  }
+}
+
+/* Page colors: the Kiungo teal for your work, navy for emphasis and tooltips, amber only for "goal met". */
+.page {
+  --analytics-teal: var(--primary);
+  --analytics-navy: var(--kiungo-navy);
+  --analytics-amber: var(--kiungo-amber);
+}
+:global([data-theme="dark"]) .page,
+:global([data-theme="dark-contrast"]) .page {
+  /* The dark themes' primary is gray, which would put out every LED; keep the teal. */
+  --analytics-teal: #2bb5a8;
+  /* Navy disappears on near-black; a lighter steel blue keeps the same role. */
+  --analytics-navy: #7fa6d9;
+}
+:global([data-theme="dark"]) .tip,
+:global([data-theme="dark-contrast"]) .tip {
+  background: #0b2d5c;
+}
+
+/* The headline strip: one panel, divided, rather than five separate cards. */
+.strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.strip > * + * {
+  border-left: 1px solid var(--border);
+}
+@media (max-width: 1023px) {
+  .strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .strip > * + * {
+    border-left: 0;
+  }
+  .strip > * {
+    border-top: 1px solid var(--border);
+  }
+  .strip > *:nth-child(-n + 2) {
+    border-top: 0;
+  }
+  .strip > *:nth-child(even) {
+    border-left: 1px solid var(--border);
+  }
+  .strip > *:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The weekly goal: one column per week, filled up to its active days. */
+.weeks {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 6px;
+  align-items: end;
+  height: 72px;
+}
+.week {
+  position: relative;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  height: 100%;
+}
+.weekDay {
+  flex: 1;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--foreground) 8%, var(--surface));
+}
+.weekDay[data-on="true"] {
+  background: var(--analytics-teal);
+}
+.week[data-met="true"] .weekDay[data-on="true"] {
+  background: var(--analytics-amber);
+}
+.week[data-current="true"] {
+  outline: 1.5px dashed color-mix(in srgb, var(--foreground) 35%, transparent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+.goalLine {
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  height: 0;
+  border-top: 1.5px solid var(--foreground);
+  opacity: 0.55;
+}

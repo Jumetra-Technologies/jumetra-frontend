@@ -10,6 +10,22 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.37.0] - 2026-11-05
+
+Advanced Analytics is a real page: what you've built, tested and learned, and what the whole Kiungo community is building. The community figures need jumetra-backend's `GET /community/stats` (backend PR #9) on the API this site talks to; until it's there, that section says so and the rest of the page works on its own.
+
+### Added
+- **Your work**, for 30 days, 90 days, 12 months or all time (remembered in this browser), each compared with the stretch before it: projects, lab sessions, runs, parts explored out of the catalog, and modules completed, with a sparkline each.
+- **Insights that come with an action.** At most four, each a real finding from your own work with a link to act on it: the part you lean on most, experiment records missing a step, the fault you meet most and how many you fixed, a kind of part you haven't tried yet, and the next module.
+- **Your days in the lab**, drawn as a breadboard: one hole per day, weekdays above the center channel and the weekend below it, power rails top and bottom. A day glows brighter the more you built, ran and fixed. Arrow keys move between days, and picking one lists what you did that day.
+- **A weekly goal** (1 to 7 days a week, default 3) instead of a daily streak, with the last 12 weeks against it.
+- **Parts you use** (pick one to see the sessions it's in) and **parts to try next**, ordered by what the community uses most; **How you build** (virtual, Hybrid and physical parts) with runs, faults met, fixes, and the faults you meet most; **Learning path** progress by topic with the next module; **Projects and records** by category, and the records still missing steps.
+- **The Kiungo community**: robotics projects, lab sessions, runs, parts placed and builders across every account; a growth chart (so far, or new each month) you can point at or tab through; the most-used parts (marked when you've used them too) and what people build. No names and no rankings, and a part or category only appears once 10 or more people use it.
+- Every chart has a one-line summary of what it shows and a **Show as table** switch. Works in light and dark, and down to phone width.
+
+### Changed
+- Signed out, the page uses this browser's lab sessions and learning progress and offers to sign in for projects and experiment records. Someone with nothing yet sees three ways to start instead of a page of zeros.
+
 ## [1.36.2] - 2026-11-05
 
 ### Fixed
@@ -737,6 +753,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.37.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.2...v1.37.0
 [1.36.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.1...v1.36.2
 [1.36.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.0...v1.36.1
 [1.36.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.35.0...v1.36.0

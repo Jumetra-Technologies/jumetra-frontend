@@ -6,7 +6,10 @@
  * keeps only daily totals (jumetra-backend docs/admin-portal.md).
  *
  * It sends which screen is open (Home or a project), never what's in it.
- * Signed out, or offline, it sends nothing and nothing is queued.
+ * Only when the account said yes to usage counting (asked by the website's
+ * banner, or Settings, Privacy; GET /auth/me/consents, checked every
+ * CONSENT_MS). Signed out, not asked, a no, or offline: it sends nothing and
+ * nothing is queued.
  */
 
 export type DesktopPage = "/desktop/home" | "/desktop/project";
@@ -30,6 +33,7 @@ export interface ActivityReporterOptions {
 }
 
 export const BEAT_MS = 60_000;
+export const CONSENT_MS = 10 * 60_000;
 export const IDLE_SECONDS = 300;
 
 export class ActivityReporter {
@@ -37,6 +41,7 @@ export class ActivityReporter {
   private lastPage: DesktopPage | null = null;
   private active = false;
   private readonly fetchImpl: typeof fetch;
+  private consent: { allowed: boolean; at: number; token: string } | null = null;
 
   constructor(private readonly opts: ActivityReporterOptions) {
     this.fetchImpl = opts.fetch ?? fetch;
@@ -77,9 +82,24 @@ export class ActivityReporter {
     }
   }
 
+  /** Whether the account said yes, asked of the server at most every CONSENT_MS (and again after a sign-in change). */
+  private async allowed(token: string): Promise<boolean> {
+    const now = Date.now();
+    if (this.consent && this.consent.token === token && now - this.consent.at < CONSENT_MS) return this.consent.allowed;
+    try {
+      const res = await this.fetchImpl(`${this.opts.apiBase.replace(/\/+$/, "")}/auth/me/consents`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
+      const body = res.ok ? ((await res.json()) as { usage?: boolean | null }) : null;
+      this.consent = { allowed: body?.usage === true, at: now, token };
+    } catch {
+      return this.consent?.token === token ? this.consent.allowed : false; // offline: keep the last answer, or send nothing
+    }
+    return this.consent.allowed;
+  }
+
   private async send(event: "view" | "beat" | "leave", page: DesktopPage): Promise<boolean> {
     const token = await this.opts.token().catch(() => null);
     if (!token) return false;
+    if (!(await this.allowed(token))) return false;
     try {
       const res = await this.fetchImpl(`${this.opts.apiBase.replace(/\/+$/, "")}/telemetry/heartbeat`, {
         method: "POST",

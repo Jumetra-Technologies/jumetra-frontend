@@ -4,6 +4,7 @@ import { CloseButton } from "@kiungo/ui/close-button";
 import { useId, type ReactNode } from "react";
 import { Palette } from "lucide-react";
 import { ProfileTile } from "@/components/account/ProfileTile";
+import { PrivacyTile } from "@/components/consent/PrivacyTile";
 import { SpinningBoard } from "@/components/diagnostics/SpinningBoard";
 import { ThemeSettings } from "@/components/theme/theme-settings";
 import { closeSettings, useSettingsOpen } from "@/lib/settings-dialog";
@@ -55,7 +56,7 @@ export function SettingsDialog() {
             Settings
           </h2>
           <p id={descriptionId} className="mt-0.5 text-sm text-muted">
-            Appearance and your profile.
+            Appearance, your profile and privacy.
           </p>
         </div>
         <CloseButton onClose={closeSettings} aria-label="Close settings" />
@@ -71,6 +72,7 @@ export function SettingsDialog() {
           <ThemeSettings className="sm:grid-cols-2 lg:grid-cols-4" />
         </Tile>
         <ProfileTile />
+        <PrivacyTile />
       </div>
 
       <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-3 text-xs text-muted">

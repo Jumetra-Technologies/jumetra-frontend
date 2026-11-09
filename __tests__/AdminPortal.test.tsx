@@ -232,15 +232,13 @@ describe("formatting and the heartbeat", () => {
     expect(csv[1]).toBe("Ada Lovelace,ada@example.test,google,yes,120,60,60,333,4,7,20,2026-11-06T08:59:30Z,2026-10-01T00:00:00Z");
   });
 
-  it("doesn't count the admin portal, and respects Do Not Track for signed-out visitors", () => {
+  it("doesn't count the admin portal, and sends nothing without a yes", () => {
     expect(counted("/admin")).toBe(false);
     expect(counted("/administration-guide")).toBe(true);
-    const nav = navigator as Navigator & { globalPrivacyControl?: boolean };
-    Object.defineProperty(nav, "globalPrivacyControl", { value: true, configurable: true });
-    expect(mayTrack(false)).toBe(false);
-    expect(mayTrack(true)).toBe(true);
-    Object.defineProperty(nav, "globalPrivacyControl", { value: undefined, configurable: true });
-    expect(mayTrack(false)).toBe(true);
+    expect(mayTrack(null)).toBe(false);
+    expect(mayTrack(undefined)).toBe(false);
+    expect(mayTrack({ allowed: false })).toBe(false);
+    expect(mayTrack({ allowed: true })).toBe(true);
   });
 
   it("sends a visitor id only when signed out", () => {

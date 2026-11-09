@@ -57,6 +57,9 @@ export function isAuthError(error: unknown): error is ApiError {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
 }
 
+/** What a signed-in person agreed to share; null means not asked. */
+export type AccountConsents = { usage: boolean | null; crash_reports: boolean | null; decided_at: string | null; decided_in: string | null };
+
 export const PRODUCTION_API_URL = "https://kiungo-api.onrender.com";
 export const PRODUCTION_WS_URL = "wss://kiungo-api.onrender.com";
 
@@ -365,6 +368,9 @@ export const api = {
       body: JSON.stringify({ completed }),
     }),
   getMyLabSessions: () => fetchJson<LabSession[]>("/auth/me/lab-sessions"),
+  getMyConsents: () => fetchJson<AccountConsents>("/auth/me/consents"),
+  saveMyConsents: (answer: { usage?: boolean; crash_reports?: boolean; decided_in: string }) =>
+    fetchJson<AccountConsents>("/auth/me/consents", { method: "PUT", body: JSON.stringify(answer) }),
   saveMyLabSession: (session: LabSession) =>
     fetchJson<LabSession>(`/auth/me/lab-sessions/${encodeURIComponent(session.id)}`, {
       method: "PUT",

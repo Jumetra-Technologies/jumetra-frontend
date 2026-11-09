@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { ActivityTracker } from "@/components/activity/ActivityTracker";
 import { AdminDoor } from "@/components/admin/AdminDoor";
+import { UsageConsentBanner, UsageConsentSync } from "@/components/consent/UsageConsent";
 import { AuthBootstrap } from "@/components/auth/auth-bootstrap";
 import { AppShell } from "@/components/layout/sidebar";
 import { ThemeProvider } from "@/components/theme/theme-provider";
@@ -51,7 +52,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ElasticScrollbars />
           <LabAccountSync />
           <LearningAccountSync />
+          <UsageConsentSync />
           <ActivityTracker />
+          <UsageConsentBanner />
           <AdminDoor />
           <AppShell>{children}</AppShell>
         </ThemeProvider>

@@ -8,10 +8,10 @@ import { API_BASE } from "@/lib/api-client";
  * between them (at most 75 seconds each) and keeps only daily totals; see
  * jumetra-backend docs/admin-portal.md.
  *
- * Signed in, it counts for the account (the sign-in cookies go with it).
- * Signed out, for a random id this browser made, which the server hashes.
- * A signed-out browser that asks not to be tracked (Do Not Track or Global
- * Privacy Control) sends nothing.
+ * Nothing is sent until the person allows it (the banner, or Settings,
+ * Privacy: lib/consent/usage.ts). Then, signed in, it counts for the account
+ * (the sign-in cookies go with it); signed out, for a random id this browser
+ * made, which the server hashes.
  */
 
 export const BEAT_MS = 30_000;
@@ -39,15 +39,9 @@ export function visitorId(): string | null {
   }
 }
 
-export function asksNotToTrack(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const nav = navigator as Navigator & { globalPrivacyControl?: boolean };
-  return nav.globalPrivacyControl === true || nav.doNotTrack === "1";
-}
-
-/** Whether the server would have anyone to credit, and may be told. */
-export function mayTrack(signedIn: boolean): boolean {
-  return signedIn || !asksNotToTrack();
+/** Whether heartbeats may be sent: only after a yes. Not asked counts as no. */
+export function mayTrack(consent: { allowed: boolean } | null | undefined): boolean {
+  return consent?.allowed === true;
 }
 
 export function heartbeatBody(event: HeartbeatEvent, path: string, signedIn: boolean): string {

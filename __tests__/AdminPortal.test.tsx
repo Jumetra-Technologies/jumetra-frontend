@@ -5,7 +5,9 @@ import { AdminDoor } from "@/components/admin/AdminDoor";
 import { accountsCsv, ago, AdminPortal, hoursMinutes, pageName } from "@/components/admin/AdminPortal";
 import { counted, heartbeatBody, mayTrack } from "@/lib/activity/heartbeat";
 import type { Overview } from "@/lib/admin/api";
-import { DOOR_CLICKS, logoClicked, useAdminDoor } from "@/lib/admin/door";
+import { Sidebar } from "@/components/layout/sidebar";
+import { DOOR_GAP_MS, disarm, useAdminDoor } from "@/lib/admin/door";
+import { closeSettings, useSettingsOpen } from "@/lib/settings-dialog";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }), usePathname: () => "/" }));
@@ -52,31 +54,97 @@ afterEach(() => {
 });
 
 describe("the way in", () => {
-  it("opens on the eighth quick click, and a pause starts the count again", () => {
-    let t = 10_000;
-    for (let i = 0; i < 7; i++) logoClicked((t += 300));
-    expect(useAdminDoor.getState().open).toBe(false);
-    logoClicked((t += 300));
-    expect(useAdminDoor.getState().open).toBe(true);
-    useAdminDoor.setState({ open: false });
-    for (let i = 0; i < 5; i++) logoClicked((t += 300));
-    logoClicked((t += 4000)); // too slow: this is click one again
-    for (let i = 0; i < 6; i++) logoClicked((t += 300));
-    expect(useAdminDoor.getState().open).toBe(false);
-    logoClicked((t += 300));
-    expect(useAdminDoor.getState().open).toBe(true);
+  function Harness() {
+    const settingsOpen = useSettingsOpen();
+    return (
+      <>
+        <Sidebar activePath="/" collapsed={false} onToggleCollapse={() => undefined} />
+        {settingsOpen ? <div data-testid="settings-open" /> : null}
+        <AdminDoor />
+      </>
+    );
+  }
+
+  /** The gear, and a pointerdown then click at its spot, as a second click landing on whatever covers it. */
+  function secondClickOnGearSpot(gear: HTMLElement) {
+    const r = gear.getBoundingClientRect();
+    const at = { clientX: r.left + 1, clientY: r.top + 1, bubbles: true, cancelable: true };
+    const target = document.body;
+    const down = new PointerEvent("pointerdown", at);
+    const click = new MouseEvent("click", at);
+    act(() => {
+      target.dispatchEvent(down);
+      target.dispatchEvent(click);
+    });
+    return { down, click };
+  }
+
+  function placeGear(gear: HTMLElement) {
+    gear.getBoundingClientRect = () => ({ left: 10, top: 600, right: 38, bottom: 628, width: 28, height: 28, x: 10, y: 600, toJSON: () => ({}) }) as DOMRect;
+  }
+
+  afterEach(() => {
+    act(() => closeSettings());
+    disarm();
+    vi.useRealTimers();
   });
 
-  it("the logo's clicks open the password box, and the right password goes to /admin", async () => {
+  it("one click on the settings icon opens Settings, as always", () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Open settings" }));
+    expect(screen.getByTestId("settings-open")).toBeInTheDocument();
+    expect(screen.queryByTestId("admin-door")).not.toBeInTheDocument();
+  });
+
+  it("a second quick click on its spot closes Settings and opens the password box", () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    render(<Harness />);
+    const gear = screen.getByRole("button", { name: "Open settings" });
+    placeGear(gear);
+    fireEvent.click(gear);
+    expect(screen.getByTestId("settings-open")).toBeInTheDocument();
+    vi.advanceTimersByTime(200);
+    const { down, click } = secondClickOnGearSpot(gear);
+    expect(down.defaultPrevented && click.defaultPrevented).toBe(true); // nothing under it reacts, so the box stays open
+    expect(screen.queryByTestId("settings-open")).not.toBeInTheDocument();
+    expect(screen.getByTestId("admin-door")).toBeInTheDocument();
+  });
+
+  it("a slow second click, or one somewhere else, is just a click", () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    render(<Harness />);
+    const gear = screen.getByRole("button", { name: "Open settings" });
+    placeGear(gear);
+    fireEvent.click(gear);
+    vi.advanceTimersByTime(DOOR_GAP_MS + 100);
+    const slow = secondClickOnGearSpot(gear);
+    expect(slow.down.defaultPrevented).toBe(false);
+    expect(screen.queryByTestId("admin-door")).not.toBeInTheDocument();
+
+    act(() => closeSettings());
+    fireEvent.click(gear);
+    vi.advanceTimersByTime(100);
+    const elsewhere = new PointerEvent("pointerdown", { clientX: 400, clientY: 100, bubbles: true, cancelable: true });
+    act(() => {
+      document.body.dispatchEvent(elsewhere);
+    });
+    expect(elsewhere.defaultPrevented).toBe(false);
+    expect(screen.getByTestId("settings-open")).toBeInTheDocument();
+    expect(screen.queryByTestId("admin-door")).not.toBeInTheDocument();
+  });
+
+  it("the Kiungo logo is just a link home now", () => {
+    render(<Harness />);
+    const logo = screen.getByTestId("brand");
+    for (let i = 0; i < 8; i++) fireEvent.click(logo);
+    expect(screen.queryByTestId("admin-door")).not.toBeInTheDocument();
+  });
+
+  it("the right password goes to /admin", async () => {
     const fetchMock = vi.fn().mockResolvedValue(respond(200, { token: "admin-token", expires_at: new Date(Date.now() + 1_800_000).toISOString() }));
     vi.stubGlobal("fetch", fetchMock);
+    useAdminDoor.setState({ open: true });
     render(<AdminDoor />);
-    expect(screen.queryByTestId("admin-door")).not.toBeInTheDocument();
-    act(() => {
-      for (let i = 0; i < DOOR_CLICKS; i++) logoClicked(100_000 + i * 200);
-    });
-    expect(screen.getByTestId("admin-door")).toBeInTheDocument();
-
     fireEvent.change(screen.getByTestId("admin-password"), { target: { value: "Kiungo1.!" } });
     fireEvent.click(screen.getByTestId("admin-open"));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/admin"));

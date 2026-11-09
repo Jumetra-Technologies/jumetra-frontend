@@ -6,7 +6,7 @@ import { useId, useState, type FormEvent } from "react";
 import { Button } from "@kiungo/ui/button";
 import { AdminError, signIn, type AdminSession } from "@/lib/admin/api";
 
-/** The admin password, checked by the server. Used in the box the logo opens and on /admin itself. */
+/** The admin password, checked by the server. Used in the box two quick clicks on the settings icon open, and on /admin itself. */
 export function PasswordForm({ onSignedIn, notice, autoFocus = true }: { onSignedIn: (session: AdminSession) => void; notice?: string | null; autoFocus?: boolean }) {
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);

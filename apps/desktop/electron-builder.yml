@@ -23,6 +23,20 @@ publish:
 files:
   - out/**
   - package.json
+# Electron fuses, flipped in the installed binary (security audit, Nov 2026): an installed Kiungo is
+# never a general-purpose Node runtime or a debugger target, so nobody can borrow it (and the signed-in
+# session it holds) with ELECTRON_RUN_AS_NODE, NODE_OPTIONS or --inspect. main/index.ts refuses
+# Chromium's --remote-debugging-* switches too. Nothing in the app uses process.fork.
+# Asar integrity checking waits for code signing (DSK-80): without signed binaries it protects nothing,
+# and it must be tried on Windows and macOS installs before it ships.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableCookieEncryption: true
+  onlyLoadAppFromAsar: true
+  grantFileProtocolExtraPrivileges: false
+  enableEmbeddedAsarIntegrityValidation: false
 extraResources:
   - from: resources/sketches
     to: sketches

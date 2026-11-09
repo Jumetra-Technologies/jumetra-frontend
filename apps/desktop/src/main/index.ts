@@ -22,6 +22,8 @@ import { AuthService } from "./auth/service";
 import { ProjectService } from "./projects/service";
 import { SketchFiles } from "./projects/sketch";
 import { BuildService } from "./build/service";
+import { LibraryTrust } from "./build/library-trust";
+import { DEBUG_SWITCHES, isSafeWebUrl, overridable as overridableUrl } from "./security";
 import { BoardWatcher } from "./hardware/boards";
 import { defaultDoctorEnv, diagnosePorts, DRIVER_LINKS } from "./hardware/doctor";
 import { BAUD_RATES, SerialMonitor } from "./hardware/serial";
@@ -41,14 +43,29 @@ import { UpdateService, updateSupport, type Updater } from "./updater/service";
 const APP_SCHEME = "kiungo-app";
 /** The website sends the app back to kiungo://signin after signing in. */
 const LINK_SCHEME = "kiungo";
+
+/** An address from a KIUNGO_* variable; an installed copy takes https only (main/security.ts). */
+const overridable = (name: string, fallback: string) => overridableUrl(process.env[name], fallback, app.isPackaged, (m) => console.warn(`${name} ${m}`));
+
+/** The dev server's address, honoured only by a development copy: an installed one trusts its own pages alone. */
+const DEV_RENDERER_URL = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL || null : null;
+
+// An installed copy never runs with a debugger attached from the command line (a shortcut, a crafted link):
+// it would give whoever started it the interface, and with it the signed-in session. The build's fuses
+// (electron-builder.yml) turn off --inspect and ELECTRON_RUN_AS_NODE; Chromium's own switches are refused here.
+if (app.isPackaged && DEBUG_SWITCHES.some((s) => app.commandLine.hasSwitch(s))) {
+  console.error("Kiungo doesn't start with debugging switches.");
+  app.exit(1);
+}
+
 /** The backend the app signs in with. KIUNGO_API_URL points it at another one (staging, a local backend). */
-const API_BASE = (process.env.KIUNGO_API_URL || "https://kiungo-api.onrender.com").replace(/\/+$/, "");
+const API_BASE = overridable("KIUNGO_API_URL", "https://kiungo-api.onrender.com");
 /**
  * Where the app looks for new versions: <channel>.yml files (beta.yml, latest.yml, and -linux for the
  * AppImage) that the release workflow keeps on the desktop-feed release. KIUNGO_UPDATE_URL points it
  * at another feed, e.g. the backend's once the release pipeline serves one.
  */
-const UPDATE_FEED = (process.env.KIUNGO_UPDATE_URL || "https://github.com/Jumetra-Technologies/jumetra-frontend/releases/download/desktop-feed").replace(/\/+$/, "");
+const UPDATE_FEED = overridable("KIUNGO_UPDATE_URL", "https://github.com/Jumetra-Technologies/jumetra-frontend/releases/download/desktop-feed");
 /** Where a copy that can't update itself gets a new version. */
 const DOWNLOAD_PAGE = "https://jumetra-frontendv0.vercel.app/#desktop";
 const FQBN = { uno: "arduino:avr:uno", nano: "arduino:avr:nano:cpu=atmega328" } as const;
@@ -108,7 +125,8 @@ function authService(): AuthService {
       appVersion: app.getVersion(),
     },
     store: keychainStore(join(app.getPath("userData"), "session.bin")),
-    openBrowser: (url) => (url.startsWith("https://") || url.startsWith("http://127.0.0.1") || url.startsWith("http://localhost") ? shell.openExternal(url) : Promise.resolve()),
+    // The sign-in page the backend names: https, or this computer for a local backend (never "http://localhost.example.com").
+    openBrowser: (url) => (isSafeWebUrl(url) ? shell.openExternal(url) : Promise.resolve()),
     onChange: (state: AuthState) => mainWindow?.webContents.send("auth:changed", state),
   });
   return auth;
@@ -169,12 +187,37 @@ function cli() {
   });
 }
 
+let trust: LibraryTrust | null = null;
+const libraryTrust = () => (trust ??= new LibraryTrust(join(app.getPath("userData"), "trusted-libraries.json")));
+
+/** Before a project builds with libraries this computer hasn't used: the person decides, in a dialog the interface can't answer for them. */
+async function approveLibraries(projectPath: string, libraries: Array<{ name: string; version: string }>): Promise<boolean> {
+  const unknown = await libraryTrust().unknown(libraries.map((l) => ({ ...l, dependency: false })));
+  if (!unknown.length) return true;
+  const options: Electron.MessageBoxOptions = {
+    type: "warning",
+    title: "Build with these libraries?",
+    message: `This project builds with ${unknown.length === 1 ? "a library" : "libraries"} you haven't used in Kiungo before`,
+    detail: `${unknown.map((l) => `• ${l.name} ${l.version}`).join("\n")}\n\nA library's build settings can run programs on this computer. Build only if you trust whoever made this project (${projectPath}).`,
+    buttons: ["Build", "Cancel"],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true,
+  };
+  const { response } = mainWindow ? await dialog.showMessageBox(mainWindow, options) : await dialog.showMessageBox(options);
+  if (response !== 0) return false;
+  await libraryTrust().trust(unknown.map((l) => l.name));
+  return true;
+}
+
 let builds: BuildService | null = null;
 const buildService = () =>
   (builds ??= new BuildService({
     cli,
     buildsDir: join(app.getPath("userData"), "builds"),
     run: runCli,
+    approveLibraries,
+    trustLibraries: (names) => libraryTrust().trust(names),
   }));
 /** Arduino CLI as a long-running child (port discovery, the serial monitor). */
 const spawnCli = (location: CliLocation, args: string[]) =>
@@ -561,7 +604,7 @@ function registerIpc() {
     ipcMain.handle(channel, (event, ...args: unknown[]) => {
       // Only our own interface may call the main process.
       const from = event.senderFrame?.url ?? "";
-      if (!from.startsWith(`${APP_SCHEME}://`) && !(process.env.ELECTRON_RENDERER_URL && from.startsWith(process.env.ELECTRON_RENDERER_URL))) {
+      if (!from.startsWith(`${APP_SCHEME}://`) && !(DEV_RENDERER_URL && from.startsWith(DEV_RENDERER_URL))) {
         throw new Error("Refused: the request didn't come from the Kiungo interface.");
       }
       return (handlers[channel] as (...a: unknown[]) => unknown)(...args);
@@ -608,14 +651,17 @@ function createWindow() {
   });
   // Links open in the user's browser; the window never leaves the app.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("https://")) void shell.openExternal(url);
+    if (/^https:\/\//i.test(url) && URL.canParse(url)) void shell.openExternal(url);
     return { action: "deny" };
   });
-  win.webContents.on("will-navigate", (event, url) => {
-    const dev = process.env.ELECTRON_RENDERER_URL;
-    if (!url.startsWith(`${APP_SCHEME}://`) && !(dev && url.startsWith(dev))) event.preventDefault();
-  });
-  if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL);
+  const stayInApp = (event: Electron.Event, url: string) => {
+    if (!url.startsWith(`${APP_SCHEME}://`) && !(DEV_RENDERER_URL && url.startsWith(DEV_RENDERER_URL))) event.preventDefault();
+  };
+  win.webContents.on("will-navigate", stayInApp);
+  win.webContents.on("will-redirect", stayInApp);
+  // No <webview> ever: it would be a second page outside these rules.
+  win.webContents.on("will-attach-webview", (event) => event.preventDefault());
+  if (DEV_RENDERER_URL) void win.loadURL(DEV_RENDERER_URL);
   else void win.loadURL(`${APP_SCHEME}://app/index.html`);
 }
 

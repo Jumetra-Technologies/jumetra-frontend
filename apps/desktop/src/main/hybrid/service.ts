@@ -15,7 +15,7 @@
  * compiler's line numbers back where they belong.
  */
 
-import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, lstat, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { BuildResult, UploadResult } from "@kiungo/api";
 import { readSketchProfile } from "@kiungo/core/build";
@@ -42,7 +42,8 @@ export function hybridProfile(original: string, fqbn: string, libraryDirs: strin
   for (const p of info.platforms) lines.push(`      - platform: ${p.id}${p.version ? ` (${p.version})` : ""}`);
   lines.push("    libraries:");
   for (const l of info.libraries) if (!drop.has(l.name.toLowerCase())) lines.push(`      - ${l.dependency ? "dependency: " : ""}${l.name} (${l.version})`);
-  for (const dir of libraryDirs) lines.push(`      - dir: ${JSON.stringify(dir)}`);
+  // \u escapes for anything outside ASCII (a user folder called José): the build check takes plain ASCII only.
+  for (const dir of libraryDirs) lines.push(`      - dir: ${JSON.stringify(dir).replace(/[^\x20-\x7e]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}`);
   lines.push(`default_profile: ${PROFILE}`, "");
   return lines.join("\n");
 }
@@ -88,6 +89,8 @@ export class HybridService {
     const sketchDir = join(projectPath, SKETCH_DIR);
     for (const name of await readdir(sketchDir)) {
       if (name === SKETCH_PROFILE_FILE || name.startsWith(".")) continue;
+      // Plain files only: a link would copy in whatever it points at elsewhere on the computer.
+      if (!(await lstat(join(sketchDir, name)).catch(() => null))?.isFile()) continue;
       if (SOURCE.test(name)) await writeFile(join(copy, name), shimmedSource(name, await readFile(join(sketchDir, name), "utf8")));
       else await copyFile(join(sketchDir, name), join(copy, name));
     }
@@ -98,7 +101,7 @@ export class HybridService {
     await writeFile(join(copy, SKETCH_PROFILE_FILE), hybridProfile(original, board.fqbn, libraries, replaced));
     // The shim goes into every C++ file, the runtime and adapters included: they need its pin table.
     // The core's own files skip it (no marker on their include path).
-    const hybrid = await this.builds.compileFolder(copy, board.fqbn, [hybridFlags(join(copy, "kiungo_shim.h"))]);
+    const hybrid = await this.builds.compileFolder(copy, board.fqbn, [hybridFlags(join(copy, "kiungo_shim.h"))], this.opts.resources);
     // Problems in the copy are the sketch's: its file names are the same, its lines are put back by #line.
     const build: BuildResult = { ...hybrid.result, diagnostics: hybrid.result.diagnostics.map((d) => (d.file === "kiungo_shim.h" ? { ...d, file: null } : d)) };
     if (build.ok && ship.flash && build.flash && ship.ram && build.ram) {
@@ -117,7 +120,7 @@ export class HybridService {
     const { build, buildPath } = await this.build(projectPath, board, plan);
     if (!build.ok) return { ok: false, stage: "build", build, log: build.log, durationMs: Math.round(performance.now() - started) };
     onStage("uploading");
-    const result = await this.builds.uploadFolder(join(this.opts.workDir, "sketch"), buildPath, port, board, platform);
+    const result = await this.builds.uploadFolder(join(this.opts.workDir, "sketch"), buildPath, port, board, platform, { libraryRoot: this.opts.resources });
     return { ...result, build, durationMs: Math.round(performance.now() - started) };
   }
 }

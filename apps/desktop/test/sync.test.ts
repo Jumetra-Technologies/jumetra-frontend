@@ -5,7 +5,7 @@
  * If-Match and 409, blobs by hash. And importing Phase One work (DSK-15).
  */
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -225,5 +225,69 @@ describe("importing Phase One work (DSK-15)", () => {
     expect(about).toContain("- Ada, Wiring");
     const after = await listAccount(projects, account.client);
     expect(after.ok && after.items.every((i) => i.copies.length === 1)).toBe(true);
+  });
+});
+
+describe("what the account sends is checked before it touches the disk (security audit)", () => {
+  it("a file path that climbs out of the project is never written, and nothing is changed", async () => {
+    const account = fakeAccount();
+    const { root, folder, meta } = await projectOnDisk();
+    const sync = new SyncService({ account: account.client, device: () => "Lab PC" });
+    expect((await sync.sync(folder, meta, "open")).state).toBe("synced");
+    // A bad or compromised server names a file outside the project folder.
+    account.edit(meta.id, "../../escaped.txt", "pwned");
+    account.edit(meta.id, "sketch/sketch.ino", "void setup() {}\nvoid loop() { /* from the other computer */ }\n");
+    const before = readFileSync(join(folder, "sketch", "sketch.ino"), "utf8");
+    const status = await sync.sync(folder, meta, "open");
+    expect(status).toMatchObject({ state: "error", message: expect.stringMatching(/won't write/) });
+    expect(existsSync(join(folder, "..", "..", "escaped.txt"))).toBe(false);
+    expect(existsSync(join(root, "escaped.txt"))).toBe(false);
+    expect(readFileSync(join(folder, "sketch", "sketch.ino"), "utf8")).toBe(before);
+  });
+
+  it("downloading a project with a path outside it writes nothing outside it", async () => {
+    const account = fakeAccount();
+    const { root, folder, meta } = await projectOnDisk();
+    const sync = new SyncService({ account: account.client, device: () => "Lab PC" });
+    await sync.sync(folder, meta, "open");
+    account.edit(meta.id, "records/../../../escaped.txt", "pwned");
+    const target = join(root, "Downloaded");
+    await expect(sync.download(meta.id, target)).rejects.toThrow(/won't write/);
+    expect(existsSync(join(root, "escaped.txt"))).toBe(false);
+  });
+
+  it("a hash that isn't a SHA-256 is never put in a request", async () => {
+    const account = fakeAccount();
+    const { folder, meta } = await projectOnDisk();
+    const sync = new SyncService({ account: account.client, device: () => "Lab PC" });
+    await sync.sync(folder, meta, "open");
+    account.projects.get(meta.id)!.files["sketch/notes.txt"] = "../../../auth/me";
+    account.projects.get(meta.id)!.revision++;
+    account.blobs.set("../../../auth/me", new Uint8Array());
+    const asked: string[] = [];
+    const request = account.client.request.bind(account.client);
+    account.client.request = (path, init) => (asked.push(path), request(path, init));
+    expect((await sync.sync(folder, meta, "open")).state).toBe("error");
+    expect(asked.some((p) => p.includes(".."))).toBe(false);
+  });
+
+  it("a link in the project is never followed: what it points at isn't uploaded, and nothing is written through it", async () => {
+    const account = fakeAccount();
+    const { root, folder, meta } = await projectOnDisk();
+    const secret = join(root, "id_rsa");
+    writeFileSync(secret, "PRIVATE KEY");
+    symlinkSync(secret, join(folder, "sketch", "keys.txt"));
+    const outside = join(root, "elsewhere");
+    mkdirSync(outside);
+    mkdirSync(join(folder, "records"), { recursive: true });
+    symlinkSync(outside, join(folder, "records", "lab"));
+    const sync = new SyncService({ account: account.client, device: () => "Lab PC" });
+    expect((await sync.sync(folder, meta, "open")).state).toBe("synced");
+    expect([...account.blobs.values()].some((b) => new TextDecoder().decode(b).includes("PRIVATE KEY"))).toBe(false);
+    expect(Object.keys(account.projects.get(meta.id)!.files)).not.toContain("sketch/keys.txt");
+    // The account then sends a file "inside" that linked folder.
+    account.edit(meta.id, "records/lab/run.sh", "evil");
+    expect((await sync.sync(folder, meta, "open")).state).toBe("error");
+    expect(readdirSync(outside)).toEqual([]);
   });
 });

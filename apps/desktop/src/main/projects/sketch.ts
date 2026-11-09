@@ -9,7 +9,7 @@
  * trash.
  */
 
-import { readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { lstat, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { SKETCH_DIR, SKETCH_FILE, SKETCH_PROFILE_FILE } from "@kiungo/core/project";
 import type { SketchFile, SketchResult } from "@kiungo/api";
@@ -53,7 +53,8 @@ export class SketchFiles {
     for (const name of names) {
       if (name === SKETCH_PROFILE_FILE || name.startsWith(".") || name.includes(".kiungo-tmp-")) continue;
       if (!(SKETCH_EXTENSIONS as readonly string[]).includes(extOf(name))) continue;
-      const info = await stat(join(this.dir(project), name)).catch(() => null);
+      // lstat: a link to a file elsewhere on the computer isn't part of the sketch.
+      const info = await lstat(join(this.dir(project), name)).catch(() => null);
       if (!info?.isFile()) continue;
       files.push({ name, main: name === SKETCH_FILE, size: info.size });
     }
@@ -65,7 +66,9 @@ export class SketchFiles {
     if (problem) return { ok: false, message: problem };
     try {
       const path = join(this.dir(project), name);
-      if ((await stat(path)).size > MAX_FILE_BYTES) return { ok: false, message: `${name} is over 1 MB, too large for the editor.` };
+      const info = await lstat(path);
+      if (!info.isFile()) return { ok: false, message: `${name} isn't a file in the sketch: Kiungo doesn't open links to files elsewhere.` };
+      if (info.size > MAX_FILE_BYTES) return { ok: false, message: `${name} is over 1 MB, too large for the editor.` };
       return { ok: true, content: await readFile(path, "utf8") };
     } catch {
       return { ok: false, message: `${name} isn't in the sketch any more.` };

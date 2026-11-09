@@ -10,7 +10,7 @@
  * dialog this process shows, and it can only save a project it has opened.
  */
 
-import { mkdir, readFile, rm, stat } from "node:fs/promises";
+import { lstat, mkdir, readFile, rm, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { LabSession } from "@kiungo/core/lab/types";
 import type { ImportKind } from "@kiungo/core/project";
@@ -315,6 +315,12 @@ export class ProjectService {
   /** Open a project folder. Callers check that the interface may name it. */
   async openFolder(path: string): Promise<OpenResult> {
     const folder = resolve(path);
+    // Kiungo writes into these: one that is a link would send those writes (and sync's reads) somewhere else on the computer.
+    for (const entry of [PROJECT_FILE, CIRCUIT_FILE, WORLD_FILE, SKETCH_DIR, RECORDS_DIR, STATE_DIR]) {
+      if ((await lstat(join(folder, entry)).catch(() => null))?.isSymbolicLink()) {
+        return { ok: false, message: `Kiungo won't open this project: ${entry} in it is a link to somewhere else on the computer. Copy the real files into the project folder, then open it again.` };
+      }
+    }
     let meta: ProjectMeta;
     try {
       meta = parseProjectMeta(await readFile(join(folder, PROJECT_FILE), "utf8"));

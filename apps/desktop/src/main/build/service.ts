@@ -11,9 +11,9 @@
 import { createHash } from "node:crypto";
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import type { BuildResult, LibraryChange, LibraryInfo, LibrarySearchResult } from "@kiungo/api";
-import { parseDiagnostics, readSketchProfile, type ProfileLibrary } from "@kiungo/core/build";
+import { checkSketchProfile, parseDiagnostics, readSketchProfile, type ProfileLibrary } from "@kiungo/core/build";
 import { SKETCH_DIR, SKETCH_FILE, SKETCH_PROFILE_FILE } from "@kiungo/core/project";
 import type { HardwareBoard } from "@kiungo/core/hardware/boards";
 import { uploadProblem, type HostPlatform, type UploadProblem } from "@kiungo/core/hardware/upload";
@@ -27,7 +27,22 @@ export interface BuildServiceOptions {
   buildsDir: string;
   run: (cli: CliLocation, args: string[], timeoutMs?: number) => Promise<RunResult>;
   now?: () => number;
+  /**
+   * Asked before a project builds with libraries this computer hasn't built with
+   * before (a library's settings reach the compiler and linker). False cancels.
+   */
+  approveLibraries?: (projectPath: string, libraries: ProfileLibrary[]) => Promise<boolean>;
+  /** Told the libraries the person added themselves, so they're never asked about again. */
+  trustLibraries?: (names: string[]) => Promise<void>;
 }
+
+/**
+ * Whose sketch folder a build reads: a project's own, or the Hybrid copy Kiungo
+ * writes, which may also name library folders inside `libraryRoot` (Kiungo's own).
+ */
+export type BuildFrom = { projectPath: string } | { libraryRoot: string };
+
+const refused = (message: string): BuildResult => ({ ok: false, diagnostics: [], durationMs: 0, message, log: "" });
 
 const NO_CLI = "Arduino CLI isn't installed with this copy of Kiungo, so it can't build. Reinstall Kiungo, or in development run npm run fetch:arduino-cli in apps/desktop.";
 
@@ -127,16 +142,42 @@ export class BuildService {
   }
 
   private doCompile(projectPath: string, fqbn?: string): Promise<BuildResult> {
-    return this.compileAt(join(projectPath, SKETCH_DIR), this.buildPath(projectPath, fqbn), fqbn);
+    return this.compileAt(join(projectPath, SKETCH_DIR), this.buildPath(projectPath, fqbn), fqbn, [], { projectPath });
+  }
+
+  /**
+   * The sketch's build settings, checked before Arduino CLI reads them: null
+   * when they're safe to build with, else why not (DSK security audit). A
+   * project's own sketch.yaml may only name Kiungo's boards and index
+   * libraries; the Hybrid copy, written by Kiungo, may also name Kiungo's own
+   * library folders.
+   */
+  async vetProfile(sketchDir: string, from: BuildFrom): Promise<string | null> {
+    const yaml = await readFile(join(sketchDir, SKETCH_PROFILE_FILE), "utf8").catch(() => null);
+    if (yaml === null) return "This project has no build settings (sketch/sketch.yaml). Make a new project, or copy sketch.yaml from one.";
+    const copy = "libraryRoot" in from;
+    const check = checkSketchProfile(yaml, { allowDirs: copy });
+    if (!check.ok) return check.message;
+    if (check.dirs.length) {
+      const root = copy ? resolve(from.libraryRoot) : null;
+      for (const dir of check.dirs) {
+        const rel = root ? relative(root, resolve(dir)) : "";
+        if (!root || !isAbsolute(dir) || !rel || rel.startsWith("..") || isAbsolute(rel)) return "Kiungo won't build this: its build settings name a library folder that isn't Kiungo's own.";
+      }
+    }
+    if (!copy && this.options.approveLibraries && check.libraries.length && !(await this.options.approveLibraries(from.projectPath, check.libraries))) {
+      return "Build cancelled: this project's libraries weren't approved. Check where the project came from, then build again.";
+    }
+    return null;
   }
 
   /** Build a sketch folder that isn't a project's own (the Hybrid copy), in a build folder beside it. */
-  async compileFolder(sketchDir: string, fqbn: string, buildProperties: string[] = []): Promise<{ result: BuildResult; buildPath: string }> {
+  async compileFolder(sketchDir: string, fqbn: string, buildProperties: string[], libraryRoot: string): Promise<{ result: BuildResult; buildPath: string }> {
     const buildPath = join(sketchDir, "..", "build");
-    return { result: await this.compileAt(sketchDir, buildPath, fqbn, buildProperties), buildPath };
+    return { result: await this.compileAt(sketchDir, buildPath, fqbn, buildProperties, { libraryRoot }), buildPath };
   }
 
-  private async compileAt(sketchDir: string, buildPath: string, fqbn?: string, buildProperties: string[] = []): Promise<BuildResult> {
+  private async compileAt(sketchDir: string, buildPath: string, fqbn: string | undefined, buildProperties: string[], from: BuildFrom): Promise<BuildResult> {
     const cli = this.options.cli();
     const started = this.now();
     const elapsed = () => Math.round(this.now() - started);
@@ -144,6 +185,8 @@ export class BuildService {
     if (!existsSync(join(sketchDir, SKETCH_PROFILE_FILE))) {
       return { ok: false, diagnostics: [], durationMs: 0, message: "This project has no build settings (sketch/sketch.yaml). Make a new project, or copy sketch.yaml from one.", log: "" };
     }
+    const unsafe = await this.vetProfile(sketchDir, from);
+    if (unsafe) return refused(unsafe);
     await mkdir(buildPath, { recursive: true });
     // Nothing changed since the last good build: use it (Run starts in well under 2 s).
     const fingerprint = await sketchFingerprint(sketchDir, fqbn ?? "");
@@ -194,17 +237,20 @@ export class BuildService {
     const cli = this.options.cli();
     if (!cli) return { ok: false, stage: "build", build, log: "", durationMs: elapsed() };
     onStage?.("uploading");
-    const result = await this.uploadFolder(join(projectPath, SKETCH_DIR), this.buildPath(projectPath, board.fqbn), port, board, platform);
+    const result = await this.uploadFolder(join(projectPath, SKETCH_DIR), this.buildPath(projectPath, board.fqbn), port, board, platform, { projectPath });
     return { ...result, build, durationMs: elapsed() };
   }
 
   /** Upload a built program to the port: the project's own, or the Hybrid copy's. */
-  async uploadFolder(sketchDir: string, buildPath: string, port: string, board: HardwareBoard, platform: HostPlatform): Promise<UploadOutcome> {
+  async uploadFolder(sketchDir: string, buildPath: string, port: string, board: HardwareBoard, platform: HostPlatform, from: BuildFrom): Promise<UploadOutcome> {
     const started = this.now();
     const elapsed = () => Math.round(this.now() - started);
     const empty: BuildResult = { ok: true, diagnostics: [], durationMs: 0, log: "" };
     const cli = this.options.cli();
     if (!cli) return { ok: false, stage: "upload", build: empty, log: NO_CLI, durationMs: 0, problem: uploadProblem("", board.id, platform) };
+    // Checked again: the upload reads sketch.yaml too, and the folder may have changed since the build.
+    const unsafe = await this.vetProfile(sketchDir, from);
+    if (unsafe) return { ok: false, stage: "upload", build: { ...empty, ok: false, message: unsafe }, log: "", durationMs: elapsed(), problem: { id: "unknown", title: unsafe, steps: [] } };
     const raw = await this.options.run(cli, ["upload", "--profile", PROFILE, "--fqbn", board.fqbn, "-p", port, "--input-dir", buildPath, "--format", "json", sketchDir], 180_000);
     // Success: { stdout, stderr }. Failure: { error, output: { stdout, stderr } }.
     const json = parseJson<{ stdout?: string; stderr?: string; error?: string; output?: { stdout?: string; stderr?: string } }>(raw.stdout);
@@ -236,7 +282,8 @@ export class BuildService {
     const q = query.trim().slice(0, 100);
     if (!q) return { ok: true, libraries: [] };
     // Arduino CLI refreshes the index first when it's over an hour old.
-    const raw = await this.options.run(cli, ["lib", "search", q, "--omit-releases-details", "--format", "json"], 120_000);
+    // "--" first: a search for "--config-file=…" is text to look for, never one of Arduino CLI's options.
+    const raw = await this.options.run(cli, ["lib", "search", "--omit-releases-details", "--format", "json", "--", q], 120_000);
     const json = parseJson<SearchJson>(raw.stdout);
     if (!json) return { ok: false, message: setupProblem(`${raw.stderr}${raw.stdout}`) ?? "The library search didn't work. Try again." };
     const libraries: LibraryInfo[] = [];
@@ -267,6 +314,10 @@ export class BuildService {
       const cli = this.options.cli();
       if (!cli) return { ok: false, message: NO_CLI };
       const sketchDir = join(projectPath, SKETCH_DIR);
+      const yaml = await readFile(join(sketchDir, SKETCH_PROFILE_FILE), "utf8").catch(() => null);
+      if (yaml === null) return { ok: false, message: "This project has no build settings (sketch/sketch.yaml). Make a new project, or copy sketch.yaml from one." };
+      const check = checkSketchProfile(yaml);
+      if (!check.ok) return { ok: false, message: check.message };
       if (args[2] === "add") {
         const index = await this.options.run(cli, ["lib", "update-index"], 120_000);
         if (index.code !== 0) return { ok: false, message: setupProblem(`${index.stderr}${index.stdout}`) ?? "The library list couldn't be updated. Try again." };
@@ -277,7 +328,14 @@ export class BuildService {
         const notFound = /not found|no library|not present/i.test(said);
         return { ok: false, message: setupProblem(said) ?? (notFound ? `There's no library called “${args[3].split("@")[0]}” in the Arduino library index.` : said.split("\n")[0] || "That didn't work. Try again.") };
       }
-      return { ok: true, libraries: await this.libraries(projectPath), added: added(parseJson<ProfileLibJson>(raw.stdout)) };
+      const libraries = await this.libraries(projectPath);
+      if (args[2] === "add" && this.options.trustLibraries) {
+        // What this add brought in (the library and what it needs) is the person's own choice.
+        const before = new Set(check.libraries.map((l) => l.name.toLowerCase()));
+        const fresh = libraries.filter((l) => !before.has(l.name.toLowerCase())).map((l) => l.name);
+        if (fresh.length) await this.options.trustLibraries(fresh).catch(() => undefined);
+      }
+      return { ok: true, libraries, added: added(parseJson<ProfileLibJson>(raw.stdout)) };
     });
     this.libraryEdit = job.catch(() => undefined);
     return job;

@@ -15,7 +15,7 @@
  * compiler's line numbers back where they belong.
  */
 
-import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, lstat, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { BuildResult, UploadResult } from "@kiungo/api";
 import { readSketchProfile } from "@kiungo/core/build";
@@ -88,6 +88,8 @@ export class HybridService {
     const sketchDir = join(projectPath, SKETCH_DIR);
     for (const name of await readdir(sketchDir)) {
       if (name === SKETCH_PROFILE_FILE || name.startsWith(".")) continue;
+      // Plain files only: a link would copy in whatever it points at elsewhere on the computer.
+      if (!(await lstat(join(sketchDir, name)).catch(() => null))?.isFile()) continue;
       if (SOURCE.test(name)) await writeFile(join(copy, name), shimmedSource(name, await readFile(join(sketchDir, name), "utf8")));
       else await copyFile(join(sketchDir, name), join(copy, name));
     }
@@ -98,7 +100,7 @@ export class HybridService {
     await writeFile(join(copy, SKETCH_PROFILE_FILE), hybridProfile(original, board.fqbn, libraries, replaced));
     // The shim goes into every C++ file, the runtime and adapters included: they need its pin table.
     // The core's own files skip it (no marker on their include path).
-    const hybrid = await this.builds.compileFolder(copy, board.fqbn, [hybridFlags(join(copy, "kiungo_shim.h"))]);
+    const hybrid = await this.builds.compileFolder(copy, board.fqbn, [hybridFlags(join(copy, "kiungo_shim.h"))], this.opts.resources);
     // Problems in the copy are the sketch's: its file names are the same, its lines are put back by #line.
     const build: BuildResult = { ...hybrid.result, diagnostics: hybrid.result.diagnostics.map((d) => (d.file === "kiungo_shim.h" ? { ...d, file: null } : d)) };
     if (build.ok && ship.flash && build.flash && ship.ram && build.ram) {
@@ -117,7 +119,7 @@ export class HybridService {
     const { build, buildPath } = await this.build(projectPath, board, plan);
     if (!build.ok) return { ok: false, stage: "build", build, log: build.log, durationMs: Math.round(performance.now() - started) };
     onStage("uploading");
-    const result = await this.builds.uploadFolder(join(this.opts.workDir, "sketch"), buildPath, port, board, platform);
+    const result = await this.builds.uploadFolder(join(this.opts.workDir, "sketch"), buildPath, port, board, platform, { libraryRoot: this.opts.resources });
     return { ...result, build, durationMs: Math.round(performance.now() - started) };
   }
 }

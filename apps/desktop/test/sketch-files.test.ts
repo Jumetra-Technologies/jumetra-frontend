@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -71,5 +71,26 @@ describe("the sketch folder (EDT-01)", () => {
     expect(await files.remove(dir, "old.h")).toEqual({ ok: true });
     expect(trashed).toEqual([join(dir, "sketch", "old.h")]);
     expect((await files.remove(dir, "sketch.ino")).ok).toBe(false);
+  });
+});
+
+describe("links in the sketch folder (security audit)", () => {
+  it("a link to a file elsewhere is neither listed nor opened", async () => {
+    const { dir, files } = project();
+    const secret = join(dir, "..", `secret-${Date.now()}.txt`);
+    writeFileSync(secret, "PRIVATE");
+    symlinkSync(secret, join(dir, "sketch", "notes.txt"));
+    expect((await files.list(dir)).map((f) => f.name)).toEqual(["sketch.ino"]);
+    expect(await files.read(dir, "notes.txt")).toMatchObject({ ok: false, message: expect.stringMatching(/links/) });
+  });
+
+  it("saving over a link replaces the link, never the file it points at", async () => {
+    const { dir, files } = project();
+    const target = join(dir, "..", `target-${Date.now()}.h`);
+    writeFileSync(target, "original");
+    symlinkSync(target, join(dir, "sketch", "motor.h"));
+    expect((await files.write(dir, "motor.h", "// mine")).ok).toBe(true);
+    expect(readFileSync(target, "utf8")).toBe("original");
+    expect(readFileSync(join(dir, "sketch", "motor.h"), "utf8")).toBe("// mine");
   });
 });

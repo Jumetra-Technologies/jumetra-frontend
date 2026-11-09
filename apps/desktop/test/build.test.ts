@@ -3,12 +3,12 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { applyEdits, explain, libraryForHeader, quickFix } from "@kiungo/core/build";
+import { applyEdits, checkSketchProfile, explain, libraryForHeader, quickFix } from "@kiungo/core/build";
 import { buildStarter, PROJECT_BOARDS, sketchProfile, STARTERS } from "@kiungo/core/project";
 import { hardwareBoard } from "@kiungo/core/hardware/boards";
 import { BuildService, setupProblem } from "../src/main/build/service";
 import { BoardWatcher } from "../src/main/hardware/boards";
-import { HybridService } from "../src/main/hybrid/service";
+import { HybridService, hybridProfile } from "../src/main/hybrid/service";
 import { hybridResourcesDir } from "../src/main/toolchain/hybrid-build";
 import { hybridBindings, hybridValues, packDht } from "@kiungo/core/hybrid/plan";
 import { encodeSet, LinkReader } from "@kiungo/core/hybrid/protocol";
@@ -146,7 +146,12 @@ describe("libraries (BLD-04)", () => {
         { name: "NewPing", version: "1.9.7", sentence: "Ultrasonic sensors", author: "Tim Eckel", website: "https://bitbucket.org/teckel12/arduino-new-ping" },
       ],
     });
-    expect(calls[0]).toEqual(["lib", "search", "servo", "--omit-releases-details", "--format", "json"]);
+    expect(calls[0]).toEqual(["lib", "search", "--omit-releases-details", "--format", "json", "--", "servo"]);
+  });
+
+  it("search text is never read as one of Arduino CLI's options", async () => {
+    await service(() => ok({ libraries: [] })).search("--config-file=/tmp/evil.yaml");
+    expect(calls[0].slice(-2)).toEqual(["--", "--config-file=/tmp/evil.yaml"]);
   });
 
   it("adding goes through Arduino CLI, which pins the library and what it needs", async () => {
@@ -196,6 +201,97 @@ describe("libraries (BLD-04)", () => {
     });
     await Promise.all([builds.add(project, "Servo"), builds.remove(project, "Servo"), builds.add(project, "Stepper")]);
     expect(most).toBe(1);
+  });
+});
+
+describe("build settings from someone else's project (security audit)", () => {
+  const yaml = () => join(project, "sketch", "sketch.yaml");
+  const EVIL = [
+    "profiles:",
+    "  kiungo:",
+    "    fqbn: evil:avr:uno",
+    "    platforms:",
+    "      - platform: evil:avr (1.0.0)",
+    "        platform_index_url: https://evil.example/package_evil_index.json",
+    "default_profile: kiungo",
+    "",
+  ].join("\n");
+  const hexOk = (args: string[]) => {
+    const at = args.indexOf("--build-path");
+    if (at >= 0) writeFileSync(join(args[at + 1], "sketch.ino.hex"), ":00000001FF\n");
+    return ok({ success: true });
+  };
+
+  it("a board package from elsewhere never reaches Arduino CLI: not to build, upload, or edit libraries", async () => {
+    writeFileSync(yaml(), EVIL);
+    const builds = service(hexOk);
+    expect(await builds.compile(project)).toMatchObject({ ok: false, message: expect.stringMatching(/won't build this project/) });
+    const uno = hardwareBoard("uno")!;
+    expect(await builds.upload(project, "/dev/ttyACM0", uno, "linux")).toMatchObject({ ok: false, stage: "build" });
+    expect(await builds.uploadFolder(join(project, "sketch"), builds.buildPath(project, uno.fqbn), "/dev/ttyACM0", uno, "linux", { projectPath: project })).toMatchObject({ ok: false, stage: "upload" });
+    expect(await builds.add(project, "Servo")).toMatchObject({ ok: false, message: expect.stringMatching(/won't build this project/) });
+    expect(calls).toEqual([]);
+  });
+
+  it("a library folder in the project is refused; Kiungo's own Hybrid folders are allowed in its copy", async () => {
+    writeFileSync(yaml(), `${sketchProfile(PROJECT_BOARDS[0])}`.replace("default_profile", "    libraries:\n      - dir: ../records/lib\ndefault_profile"));
+    expect(await service(hexOk).compile(project)).toMatchObject({ ok: false, message: expect.stringMatching(/library from a folder/) });
+    const kiungoRoot = join(root, "hybrid-resources");
+    const builds = service(hexOk);
+    const copy = join(root, "copy", "sketch");
+    mkdirSync(copy, { recursive: true });
+    writeFileSync(join(copy, "sketch.ino"), "void setup() {}\nvoid loop() {}\n");
+    const withDir = (dir: string) => sketchProfile(PROJECT_BOARDS[0]).replace("default_profile", `    libraries:\n      - dir: ${JSON.stringify(dir)}\ndefault_profile`);
+    writeFileSync(join(copy, "sketch.yaml"), withDir(join(kiungoRoot, "KiungoHybrid")));
+    expect((await builds.compileFolder(copy, "arduino:avr:uno", [], kiungoRoot)).result.ok).toBe(true);
+    writeFileSync(join(copy, "sketch.yaml"), withDir(join(root, "elsewhere")));
+    expect((await builds.compileFolder(copy, "arduino:avr:uno", [], kiungoRoot)).result).toMatchObject({ ok: false, message: expect.stringMatching(/isn't Kiungo's own/) });
+  });
+
+  it("the Hybrid copy's profile, as Kiungo writes it, passes for the Uno and the Nano", () => {
+    const dirs = [join(hybridResourcesDir(), "KiungoHybrid"), join(hybridResourcesDir(), "adapters", "DHT")];
+    const original = sketchProfile(PROJECT_BOARDS[0], [{ name: "DHT sensor library", version: "1.4.7" }, { name: "Adafruit Unified Sensor", version: "1.1.15", dependency: true }]);
+    for (const fqbn of ["arduino:avr:uno", "arduino:avr:nano:cpu=atmega328"]) {
+      expect(checkSketchProfile(hybridProfile(original, fqbn, dirs, ["DHT sensor library"]), { allowDirs: true })).toMatchObject({ ok: true, dirs });
+    }
+  });
+
+  it("libraries this computer hasn't built with are asked about first; no means no build", async () => {
+    const asked: string[][] = [];
+    let answer = false;
+    const builds = new BuildService({
+      cli: () => CLI,
+      buildsDir: join(root, "builds"),
+      run: async (_c, args) => (calls.push(args), hexOk(args)),
+      approveLibraries: async (path, libs) => {
+        expect(path).toBe(project);
+        asked.push(libs.map((l) => l.name));
+        return answer;
+      },
+    });
+    expect(await builds.compile(project)).toMatchObject({ ok: false, message: expect.stringMatching(/Build cancelled/) });
+    expect(asked).toEqual([["Servo"]]);
+    expect(calls).toEqual([]);
+    answer = true;
+    expect((await builds.compile(project)).ok).toBe(true);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("libraries the person adds themselves are trusted from then on", async () => {
+    const trusted: string[][] = [];
+    const builds = new BuildService({
+      cli: () => CLI,
+      buildsDir: join(root, "builds"),
+      run: async (_c, args) => {
+        calls.push(args);
+        if (args[0] === "profile") writeFileSync(yaml(), readFileSync(yaml(), "utf8").replace("      - Servo (1.3.0)\n", "      - Servo (1.3.0)\n      - NewPing (1.9.7)\n"));
+        return ok({});
+      },
+      trustLibraries: async (names) => void trusted.push(names),
+    });
+    expect((await builds.add(project, "NewPing")).ok).toBe(true);
+    // Only what this add brought in: Servo was already there, from wherever the project came from.
+    expect(trusted).toEqual([["NewPing"]]);
   });
 });
 

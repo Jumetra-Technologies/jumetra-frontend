@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, renameSync, symlinkSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -241,5 +241,19 @@ describe("settings", () => {
     // @ts-expect-error - a bad channel call would be refused before this, but the service itself should still be defensive
     const after = await svc.setRoles(["student", "not-a-role"]);
     expect(after.roles).toEqual(["student"]);
+  });
+});
+
+describe("opening a project made elsewhere (security audit)", () => {
+  it("refuses a project whose sketch folder is a link to somewhere else on the computer", async () => {
+    const { root, svc } = service();
+    const p = opened(await svc.create({ name: "Shared", board: "arduino-uno", starter: "blink" }));
+    await svc.close(p.path);
+    const elsewhere = join(root, "elsewhere");
+    renameSync(join(p.path, "sketch"), elsewhere);
+    symlinkSync(elsewhere, join(p.path, "sketch"));
+    const result = await svc.openFolder(p.path);
+    expect(result).toMatchObject({ ok: false, message: expect.stringMatching(/sketch in it is a link/) });
+    expect(svc.isOpen(p.path)).toBe(false);
   });
 });

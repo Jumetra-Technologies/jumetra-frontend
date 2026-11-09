@@ -10,8 +10,8 @@
  */
 
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { lstat, mkdir, readdir, readFile, rm } from "node:fs/promises";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import type { SyncStatus } from "@kiungo/api";
 import {
   conflictCopyPath,
@@ -41,12 +41,50 @@ export interface RemoteTree {
 }
 
 const sha256 = (data: Uint8Array) => createHash("sha256").update(data).digest("hex");
+const isSha = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{64}$/.test(v);
+
+/**
+ * Where a project file goes, or null when it would land outside the project
+ * folder or pass through a link (a folder in the project that points elsewhere).
+ * Paths come from the server and from the project's own folder, so neither is trusted.
+ */
+async function insideProject(folder: string, path: string, kind: "synced" | "conflict-copy" = "synced"): Promise<string | null> {
+  // A conflict copy can sit at the top (kiungo (from …).json), which isn't a synced path; it is still one plain name per folder.
+  const plain = /^[^/\\\u0000-\u001f]+(\/[^/\\\u0000-\u001f]+){0,2}$/.test(path) && !path.split("/").some((p) => p === "." || p === ".." || p.startsWith("."));
+  if (kind === "synced" ? !isSyncedPath(path) : !plain) return null;
+  const root = resolve(folder);
+  const full = resolve(root, ...path.split("/"));
+  const rel = relative(root, full);
+  if (!rel || rel.startsWith("..") || rel.includes(`..${sep}`)) return null;
+  // Every folder on the way, and the file itself if it's there, must be a real folder or file.
+  let at = root;
+  for (const part of rel.split(sep)) {
+    at = join(at, part);
+    const info = await lstat(at).catch(() => null);
+    if (!info) break;
+    if (info.isSymbolicLink()) return null;
+  }
+  return full;
+}
 
 /** Write a project file whole, making its folder if needed. */
-async function put(folder: string, path: string, data: Uint8Array): Promise<void> {
-  const full = join(folder, ...path.split("/"));
+async function put(folder: string, path: string, data: Uint8Array, kind: "synced" | "conflict-copy" = "synced"): Promise<void> {
+  const full = await insideProject(folder, path, kind);
+  if (!full) throw new AccountProblem(502, `Kiungo didn't write ${path}: it isn't a file a project can have.`);
   await mkdir(dirname(full), { recursive: true });
   await writeFileAtomic(full, data);
+}
+
+/** The server's tree for a project, checked: every path one a project can have, every hash a SHA-256. */
+function serverTree(remote: RemoteTree | null): Tree {
+  const tree: Tree = {};
+  for (const f of remote?.files ?? []) {
+    if (!f || typeof f.path !== "string" || !isSyncedPath(f.path) || !isSha(f.sha256)) {
+      throw new AccountProblem(502, "Your account sent back a project file Kiungo won't write. Nothing was changed here.");
+    }
+    tree[f.path] = f.sha256;
+  }
+  return tree;
 }
 
 /** The project's synced files: path -> content. Files over the limit are reported, not sent. */
@@ -55,8 +93,10 @@ export async function readLocalTree(folder: string): Promise<{ files: Map<string
   const tooBig: string[] = [];
   const add = async (path: string) => {
     if (!isSyncedPath(path)) return;
-    const full = join(folder, ...path.split("/"));
-    const info = await stat(full).catch(() => null);
+    // A link is never followed: it could point at anything on the computer, and this sends what it reads.
+    const full = await insideProject(folder, path);
+    if (!full) return;
+    const info = await lstat(full).catch(() => null);
     if (!info?.isFile()) return;
     if (info.size > SYNC_MAX_FILE) {
       tooBig.push(path);
@@ -136,7 +176,7 @@ export class SyncService {
       return { state: "behind", message: "Changed on another computer. Close and reopen the project to bring those changes here.", at, revision: remote.revision };
     }
 
-    const server: Tree = Object.fromEntries((remote?.files ?? []).map((f) => [f.path, f.sha256]));
+    const server = serverTree(remote);
     const base: Tree = state && remote && state.revision <= remote.revision ? state.files : {};
     const merge = remote ? mergeTrees(base, local, server) : { result: local, pull: {}, remove: [], conflicts: [], push: true };
 
@@ -147,13 +187,16 @@ export class SyncService {
     for (const [path, data] of fetched) {
       if (merge.pull[path]) await put(folder, path, data);
     }
-    for (const path of merge.remove) await rm(join(folder, ...path.split("/")), { force: true });
+    for (const path of merge.remove) {
+      const full = await insideProject(folder, path);
+      if (full) await rm(full, { force: true });
+    }
     const copies: string[] = [];
     for (const c of merge.conflicts) {
       if (!c.server) continue;
       const copy = conflictCopyPath(c.path, this.opts.device(), new Date(at));
       const data = fetched.get(c.path)!;
-      await put(folder, copy, data);
+      await put(folder, copy, data, "conflict-copy");
       copies.push(copy);
       // The other side goes back up beside it, so neither computer loses it. (A top-level copy isn't a synced path: it stays here.)
       if (isSyncedPath(copy)) {
@@ -203,6 +246,7 @@ export class SyncService {
   }
 
   private async blob(id: string, hash: string): Promise<Uint8Array> {
+    if (!isSha(hash)) throw new AccountProblem(502, "Your account named a file Kiungo can't fetch.");
     const res = await this.opts.account.request(`${BASE}/${encodeURIComponent(id)}/blobs/${hash}`, { raw: true });
     const data = res.data as Uint8Array;
     if (sha256(data) !== hash) throw new AccountProblem(502, "A file came back damaged. Try again.");
@@ -229,12 +273,10 @@ export class SyncService {
   async download(id: string, folder: string): Promise<RemoteTree> {
     const remote = await this.remote(id);
     if (!remote || remote.deleted) throw new AccountProblem(404, "That project isn't on your account any more.");
-    for (const f of remote.files) {
-      if (!isSyncedPath(f.path)) continue;
-      await put(folder, f.path, await this.blob(id, f.sha256));
-    }
+    const tree = serverTree(remote);
+    for (const [path, hash] of Object.entries(tree)) await put(folder, path, await this.blob(id, hash));
     await mkdir(join(folder, RECORDS_DIR), { recursive: true });
-    await this.writeState(folder, { version: 1, revision: remote.revision, files: Object.fromEntries(remote.files.map((f) => [f.path, f.sha256])) });
+    await this.writeState(folder, { version: 1, revision: remote.revision, files: tree });
     return remote;
   }
 }

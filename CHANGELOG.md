@@ -10,6 +10,14 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.38.2] - 2026-11-09
+
+### Changed
+- **The admin portal opens from the settings icon now, not the Kiungo logo.** Two quick clicks on the gear in the sidebar, within about half a second, open the admin password box. This works with the sidebar open or collapsed, and in the phone menu.
+  - One click still opens Settings straight away. The second click closes it and opens the password box instead.
+  - The logo is just a link home again.
+  - `/admin` still asks for the password, and the server still checks it.
+
 ## [1.38.1] - 2026-11-06
 
 ### Changed
@@ -784,6 +792,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.38.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.1...v1.38.2
 [1.38.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.0...v1.38.1
 [1.38.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.37.0...v1.38.0
 [1.37.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.36.2...v1.37.0

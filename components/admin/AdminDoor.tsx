@@ -9,7 +9,7 @@ import { useAdminDoor } from "@/lib/admin/door";
 
 import { PasswordForm } from "./PasswordForm";
 
-/** The password box eight quick clicks on the Kiungo logo open. */
+/** The password box two quick clicks on the settings icon open (lib/admin/door.ts). */
 export function AdminDoor() {
   const open = useAdminDoor((s) => s.open);
   const hide = useAdminDoor((s) => s.hide);

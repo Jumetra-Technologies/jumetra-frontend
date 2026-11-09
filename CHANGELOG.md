@@ -10,6 +10,29 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.39.0] - 2026-11-09
+
+Kiungo now asks before counting how people use it, and the Cookie Policy says exactly what's counted. Needs jumetra-backend #15 for the account side.
+
+### Added
+- **A consent banner.** The first time someone visits, Kiungo asks: "Can Kiungo count how you use it?" Allow and Don't allow look the same and sit side by side, with a link to the Cookie Policy.
+  - **Nothing is counted until someone chooses Allow.** Before, the website started counting at once.
+  - The banner stays out of the way on the Cookie Policy itself and in the admin portal.
+- **Settings, Privacy:** the same question, changeable any time.
+- **The answer follows the account:**
+  - Signed in, it's saved to the account and the newer answer wins, so it follows people to another browser.
+  - The desktop app (0.13.2) checks the account's answer and sends nothing without a yes.
+  - The server ignores usage from accounts that haven't said yes.
+- **Saying no deletes what was counted** for that person, or for that browser when signed out. Page totals carry no names and stay.
+
+### Changed
+- **The Cookie Policy is rewritten (9 November):**
+  - It now lists the two sign-in cookies Kiungo's server sets (`hhip_access`, `hhip_refresh`). It used to say Kiungo set none.
+  - It explains usage counting: what's counted, what never is, who sees it (Kiungo's team, in the admin portal), how long it's kept, where, and how to say no.
+  - It corrects what clearing site data removes.
+- **The Privacy Policy (9 November)** states that usage counting is by consent and can be withdrawn in Settings.
+- **The website stops sending usage without a yes.** That replaces its earlier rule of skipping only signed-out browsers that send Do Not Track or Global Privacy Control.
+
 ## [1.38.2] - 2026-11-09
 
 ### Changed
@@ -792,6 +815,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.39.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.2...v1.39.0
 [1.38.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.1...v1.38.2
 [1.38.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.0...v1.38.1
 [1.38.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.37.0...v1.38.0

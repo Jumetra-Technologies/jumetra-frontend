@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import { BEAT_MS, IDLE_MS, counted, mayTrack, sendHeartbeat } from "@/lib/activity/heartbeat";
+import { useUsageConsent } from "@/components/consent/UsageConsent";
 import { useAuthStore } from "@/lib/auth-store";
 
 /** Tells the server which page is open and that someone is using it. Renders nothing. */
@@ -14,17 +15,21 @@ export function ActivityTracker() {
   const lastInput = useRef(0);
   const path = useRef(pathname);
   const signed = useRef(signedIn);
+  // Nothing is sent without a yes (lib/consent/usage.ts).
+  const allowed = mayTrack(useUsageConsent());
+  const allowedRef = useRef(allowed);
   const off = process.env.NEXT_PUBLIC_ACTIVITY === "off";
 
   useEffect(() => {
     signed.current = signedIn;
-  }, [signedIn]);
+    allowedRef.current = allowed;
+  }, [signedIn, allowed]);
 
   // A view for each page, once sign-in has settled, so it counts for the right person.
   useEffect(() => {
     const previous = path.current;
     path.current = pathname;
-    if (off || authLoading || !mayTrack(signedIn)) return;
+    if (off || authLoading || !allowed) return;
     // Going into the admin portal ends the visit there, so the admin doesn't show up as someone online.
     if (!counted(pathname)) {
       if (counted(previous) && previous !== pathname) sendHeartbeat("leave", previous, signedIn);
@@ -32,7 +37,7 @@ export function ActivityTracker() {
     }
     lastInput.current = Date.now();
     sendHeartbeat("view", pathname, signedIn);
-  }, [pathname, signedIn, authLoading, off]);
+  }, [pathname, signedIn, authLoading, off, allowed]);
 
   useEffect(() => {
     if (off) return;
@@ -42,7 +47,7 @@ export function ActivityTracker() {
     const events = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart", "scroll"] as const;
     for (const e of events) window.addEventListener(e, touch, { passive: true, capture: true });
 
-    const live = () => counted(path.current) && mayTrack(signed.current);
+    const live = () => counted(path.current) && allowedRef.current;
     const timer = window.setInterval(() => {
       if (document.visibilityState !== "visible" || Date.now() - lastInput.current > IDLE_MS || !live()) return;
       sendHeartbeat("beat", path.current, signed.current);

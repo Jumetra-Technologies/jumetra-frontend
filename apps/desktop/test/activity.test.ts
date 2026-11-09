@@ -2,8 +2,9 @@
 import { describe, expect, it } from "vitest";
 import { ActivityReporter, IDLE_SECONDS, type DesktopPage } from "../src/main/activity/reporter";
 
-function setup(overrides: { token?: string | null } = {}) {
+function setup(overrides: { token?: string | null; usage?: boolean | null } = {}) {
   const sent: Array<{ event: string; page: string; auth: string | null }> = [];
+  let consentChecks = 0;
   const state = { visible: true, minimized: false, idle: 0, page: "/desktop/home" as DesktopPage, online: true };
   const reporter = new ActivityReporter({
     apiBase: "https://api.example/",
@@ -15,6 +16,10 @@ function setup(overrides: { token?: string | null } = {}) {
     intervalMs: 1_000_000,
     fetch: (async (url: string, init: RequestInit) => {
       if (!state.online) throw new TypeError("fetch failed");
+      if (url.endsWith("/auth/me/consents")) {
+        consentChecks++;
+        return new Response(JSON.stringify({ usage: overrides.usage === undefined ? true : overrides.usage }), { status: 200 });
+      }
       expect(url).toBe("https://api.example/telemetry/heartbeat");
       const body = JSON.parse(String(init.body));
       expect(body).toMatchObject({ client: "desktop", app_version: "0.13.0" });
@@ -22,7 +27,7 @@ function setup(overrides: { token?: string | null } = {}) {
       return new Response(null, { status: 204 });
     }) as typeof fetch,
   });
-  return { reporter, sent, state };
+  return { reporter, sent, state, checks: () => consentChecks };
 }
 
 describe("desktop activity reporter", () => {
@@ -63,6 +68,20 @@ describe("desktop activity reporter", () => {
     state.online = true;
     await reporter.tick();
     expect(sent.map((s) => s.event)).toEqual(["view"]);
+  });
+
+  it("sends nothing unless the account said yes, and asks the server only now and then", async () => {
+    for (const usage of [false, null]) {
+      const { reporter, sent } = setup({ usage });
+      await reporter.tick();
+      await reporter.tick();
+      expect(sent).toEqual([]);
+    }
+    const { reporter, checks } = setup();
+    await reporter.tick();
+    await reporter.tick();
+    await reporter.tick();
+    expect(checks()).toBe(1);
   });
 
   it("stopping says goodbye once", async () => {

@@ -84,7 +84,7 @@ describe("Settings, Privacy", () => {
     expect(screen.getByTestId("privacy-status")).toHaveTextContent("You haven't chosen yet, so nothing is counted.");
     fireEvent.click(screen.getByRole("radio", { name: "Allow" }));
     expect(readUsageConsent()?.allowed).toBe(true);
-    expect(screen.getByTestId("privacy-status")).toHaveTextContent("Allowed.");
+    expect(screen.getByTestId("privacy-status")).toHaveTextContent("Allowed in this browser.");
     fireEvent.click(screen.getByRole("radio", { name: "Don't allow" }));
     expect(readUsageConsent()?.allowed).toBe(false);
     expect(screen.getByTestId("privacy-status")).toHaveTextContent("Not allowed. Nothing is counted.");

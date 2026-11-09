@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 
 import { SegmentedControl } from "@kiungo/ui/segmented-control";
+import { useAuthStore } from "@/lib/auth-store";
 
 import { useDecideUsage, useUsageConsent } from "./UsageConsent";
 
@@ -11,6 +12,7 @@ import { useDecideUsage, useUsageConsent } from "./UsageConsent";
 export function PrivacyTile() {
   const answer = useUsageConsent();
   const decide = useDecideUsage();
+  const signedIn = useAuthStore((s) => s.isAuthenticated);
   const value = answer?.allowed === true ? "allow" : answer?.allowed === false ? "decline" : "";
   return (
     <section className="rounded-[12px] border border-border bg-canvas p-5 md:col-span-2" data-testid="privacy-tile">
@@ -37,7 +39,7 @@ export function PrivacyTile() {
         />
       </div>
       <p className="mt-2 text-xs text-muted" data-testid="privacy-status">
-        {answer === undefined ? "" : answer === null ? "You haven't chosen yet, so nothing is counted." : answer.allowed ? "Allowed. Signed in, this applies to your account everywhere, including the desktop app." : "Not allowed. Nothing is counted."}
+        {answer === undefined ? "" : answer === null ? "You haven't chosen yet, so nothing is counted." : answer.allowed ? (signedIn ? "Allowed for your account, everywhere you sign in, including the desktop app." : "Allowed in this browser. Sign in and it applies to your account and the desktop app too.") : "Not allowed. Nothing is counted."}
       </p>
     </section>
   );

@@ -78,6 +78,14 @@ const nameOf = (entry: unknown): string | null => {
   return typeof lib.name === "string" ? `${lib.name}${typeof (lib as { version?: unknown }).version === "string" ? ` ${(lib as { version: string }).version}` : ""}` : null;
 };
 
+/** A library's name in Arduino CLI's profile-edit report. */
+const libraryName = (entry: unknown): string | null => {
+  if (!entry || typeof entry !== "object") return null;
+  const e = entry as { name?: unknown; index_library?: { name?: unknown } };
+  const name = e.index_library?.name ?? e.name;
+  return typeof name === "string" ? name : null;
+};
+
 /** The sketch folder as Kiungo names it and as the file system does (Windows 8.3 names, symlinks). */
 export function sketchSpellings(dir: string): string[] {
   const out = [dir];
@@ -329,13 +337,16 @@ export class BuildService {
         return { ok: false, message: setupProblem(said) ?? (notFound ? `There's no library called “${args[3].split("@")[0]}” in the Arduino library index.` : said.split("\n")[0] || "That didn't work. Try again.") };
       }
       const libraries = await this.libraries(projectPath);
+      const json = parseJson<ProfileLibJson>(raw.stdout);
       if (args[2] === "add" && this.options.trustLibraries) {
-        // What this add brought in (the library and what it needs) is the person's own choice.
+        // Trusted: what Arduino CLI says this add installed (the library and what it needs), never
+        // whatever else the file happens to list afterwards.
         const before = new Set(check.libraries.map((l) => l.name.toLowerCase()));
-        const fresh = libraries.filter((l) => !before.has(l.name.toLowerCase())).map((l) => l.name);
+        const installed = new Set((json?.added_libraries ?? []).map(libraryName).filter((n): n is string => Boolean(n)).map((n) => n.toLowerCase()));
+        const fresh = libraries.filter((l) => installed.has(l.name.toLowerCase()) && !before.has(l.name.toLowerCase())).map((l) => l.name);
         if (fresh.length) await this.options.trustLibraries(fresh).catch(() => undefined);
       }
-      return { ok: true, libraries, added: added(parseJson<ProfileLibJson>(raw.stdout)) };
+      return { ok: true, libraries, added: added(json) };
     });
     this.libraryEdit = job.catch(() => undefined);
     return job;

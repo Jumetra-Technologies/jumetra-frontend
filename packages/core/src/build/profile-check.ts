@@ -35,7 +35,7 @@ const KNOWN_PLATFORMS: ReadonlyMap<string, string | null> = (() => {
 const KNOWN_FQBNS: ReadonlySet<string> = new Set([...PROJECT_BOARDS, ...HARDWARE_BOARDS].map((b) => b.fqbn));
 
 const PROFILE_NAME = /^[A-Za-z0-9_][\w.-]{0,63}$/;
-const VERSION = /^\d{1,4}\.\d{1,4}\.\d{1,4}(?:[-+][0-9A-Za-z.]{1,32})?$/;
+const VERSION = /^\d{1,4}(?:\.\d{1,4}){0,2}(?:[-+][0-9A-Za-z.]{1,32})?$/;
 const PLATFORM = /^([A-Za-z0-9_.-]{1,64}:[A-Za-z0-9_.-]{1,64})(?: \(([^()\s]+)\))?$/;
 /** The Arduino library registry's naming rule: a letter or number, then letters, numbers, spaces, _ . and -. */
 const LIBRARY = /^([A-Za-z0-9][A-Za-z0-9 _.-]{0,62}?) \(([^()\s]+)\)$/;
@@ -81,8 +81,11 @@ function uncomment(line: string): string {
 
 export function checkSketchProfile(yaml: string, options: ProfileCheckOptions = {}): ProfileCheck {
   if (typeof yaml !== "string" || yaml.length > 64 * 1024) return refuse("are too large to be Kiungo's");
-  const text = yaml.replace(/^﻿/, "");
+  const text = yaml.replace(/^\uFEFF/, "");
   if (/\t/.test(text)) return refuse("use tabs, which Kiungo never writes");
+  // YAML also starts a new line at a lone carriage return and at NEL, LS and PS, so a line could hide
+  // inside what reads here as one. Kiungo writes plain ASCII with \n or \r\n line ends, and nothing else.
+  if (/[^\x20-\x7e\n\r]|\r(?!\n)/.test(text)) return refuse("contain characters Kiungo never writes there");
 
   const profiles = new Map<string, Profile>();
   let sawProfiles = false;
@@ -99,6 +102,8 @@ export function checkSketchProfile(yaml: string, options: ProfileCheckOptions = 
     const raw = lines[i];
     if (!raw.trim() || /^\s*#/.test(raw)) continue;
     const line = uncomment(raw);
+    // Kiungo writes whole-line comments only: text after a setting is refused, not cut off.
+    if (line.trimEnd() !== raw.trimEnd()) return refuse(`have a comment after a setting (line ${i + 1})`);
     const indent = line.length - line.trimStart().length;
     const body = line.trim();
     const at = `(line ${i + 1})`;

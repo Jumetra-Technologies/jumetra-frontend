@@ -249,7 +249,8 @@ describe("build settings from someone else's project (security audit)", () => {
   });
 
   it("the Hybrid copy's profile, as Kiungo writes it, passes for the Uno and the Nano", () => {
-    const dirs = [join(hybridResourcesDir(), "KiungoHybrid"), join(hybridResourcesDir(), "adapters", "DHT")];
+    // An install folder under a name with letters outside ASCII still builds.
+    const dirs = [join(hybridResourcesDir(), "KiungoHybrid"), join(hybridResourcesDir(), "adapters", "DHT"), join("/home/José/Kiungo/resources/hybrid", "KiungoHybrid")];
     const original = sketchProfile(PROJECT_BOARDS[0], [{ name: "DHT sensor library", version: "1.4.7" }, { name: "Adafruit Unified Sensor", version: "1.1.15", dependency: true }]);
     for (const fqbn of ["arduino:avr:uno", "arduino:avr:nano:cpu=atmega328"]) {
       expect(checkSketchProfile(hybridProfile(original, fqbn, dirs, ["DHT sensor library"]), { allowDirs: true })).toMatchObject({ ok: true, dirs });
@@ -284,7 +285,11 @@ describe("build settings from someone else's project (security audit)", () => {
       buildsDir: join(root, "builds"),
       run: async (_c, args) => {
         calls.push(args);
-        if (args[0] === "profile") writeFileSync(yaml(), readFileSync(yaml(), "utf8").replace("      - Servo (1.3.0)\n", "      - Servo (1.3.0)\n      - NewPing (1.9.7)\n"));
+        // Arduino CLI's report names what it installed; Other Lib only appears in the rewritten file.
+        if (args[0] === "profile") {
+          writeFileSync(yaml(), readFileSync(yaml(), "utf8").replace("      - Servo (1.3.0)\n", "      - Servo (1.3.0)\n      - NewPing (1.9.7)\n      - Other Lib (1.0.0)\n"));
+          return ok({ added_libraries: [{ index_library: { name: "NewPing", version: "1.9.7" } }] });
+        }
         return ok({});
       },
       trustLibraries: async (names) => void trusted.push(names),

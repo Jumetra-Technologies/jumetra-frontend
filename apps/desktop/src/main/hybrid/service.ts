@@ -42,7 +42,8 @@ export function hybridProfile(original: string, fqbn: string, libraryDirs: strin
   for (const p of info.platforms) lines.push(`      - platform: ${p.id}${p.version ? ` (${p.version})` : ""}`);
   lines.push("    libraries:");
   for (const l of info.libraries) if (!drop.has(l.name.toLowerCase())) lines.push(`      - ${l.dependency ? "dependency: " : ""}${l.name} (${l.version})`);
-  for (const dir of libraryDirs) lines.push(`      - dir: ${JSON.stringify(dir)}`);
+  // \u escapes for anything outside ASCII (a user folder called José): the build check takes plain ASCII only.
+  for (const dir of libraryDirs) lines.push(`      - dir: ${JSON.stringify(dir).replace(/[^\x20-\x7e]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}`);
   lines.push(`default_profile: ${PROFILE}`, "");
   return lines.join("\n");
 }

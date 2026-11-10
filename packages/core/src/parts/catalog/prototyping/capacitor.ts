@@ -122,7 +122,7 @@ export default definePart({
     blocks: [
       { id: "supply", label: "Supply", sub: "5 V to 12 V", kind: "power", col: 0, row: 0, note: "A battery or regulator. Its voltage must stay under 16 V." },
       { id: "pos", label: "Plus leg", kind: "connector", col: 1, row: 0, at: "POS", note: "Connect it to the supply side, right next to the load." },
-      { id: "can", label: "Foil and electrolyte", sub: "470 µF", kind: "passive", col: 2, row: 0, at: "can", note: "Two long foils rolled up with wet paper between them. The charge sits on the foil faces. It fills up when the supply is steady and gives back when the voltage dips." },
+      { id: "can", label: "Foil, electrolyte", sub: "470 µF", kind: "passive", col: 2, row: 0, at: "can", note: "Two long foils rolled up with wet paper between them. The charge sits on the foil faces. It fills up when the supply is steady and gives back when the voltage dips." },
       { id: "neg", label: "Minus leg", kind: "connector", col: 3, row: 0, at: "NEG", note: "Connect it to ground, next to the load." },
       { id: "gnd", label: "GND", kind: "ground", col: 4, row: 0, note: "The way back." },
       { id: "load", label: "Motor or strip", sub: "pulls 0.5 to 1 A", kind: "actuator", col: 2, row: 1, note: "When a motor starts or a strip lights up, it asks for a big current for a few milliseconds." },

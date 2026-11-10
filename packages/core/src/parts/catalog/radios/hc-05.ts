@@ -18,7 +18,7 @@ const edgePads = Array.from({ length: 12 }, (_, i) => 12.2 + i * 1.27).flatMap((
 
 export default definePart({
   id: "hc-05",
-  name: "HC-05 Bluetooth serial module",
+  name: "HC-05 Bluetooth",
   aka: ["HC05", "ZS-040", "Bluetooth serial module", "HC-06 cousin"],
   group: "radios",
   rank: 1,

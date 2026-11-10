@@ -20,7 +20,7 @@ export default definePart({
   group: "controls",
   rank: 5,
   summary: "A knob that clicks as you turn it and tells your board which way. Each click makes two signals, CLK and DT, change in a pattern that is different clockwise and counter-clockwise. Pushing the knob presses a switch. Use it for menus, volume and settings.",
-  size: { w: 26, h: 20, d: SHAFT_TOP },
+  size: { w: 26, h: 20, d: 30.1 },
   solids: [
     ...board(26, 20, MATERIAL.pcbBlack, { radius: 0.4 }),
     // The EC11 encoder: a steel can with its four crimp tabs, the threaded bushing with a nut, and the shaft.
@@ -146,6 +146,5 @@ export default definePart({
   },
   animate: { spin: ["shaft", "flat"], axis: { at: [CX, CY, TOP], dir: "z" } },
   experiment: { title: "Volume knob", idea: "Count clicks on CLK with an interrupt, add or take one by reading DT, and show the number on a display. Push the knob to reset it to zero." },
-  docs: "/docs/hardware-knowledge/rotary-encoder",
   tags: ["rotary encoder", "encoder", "knob", "ky-040", "ec11", "quadrature", "dial", "input", "control"],
 });

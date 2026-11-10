@@ -6,7 +6,7 @@ const FACE = BODY.z + BODY.d;
 const CY = BODY.y + BODY.h / 2;
 const DIGIT_X = [12.3, 18.9, 27.1, 33.7];
 
-const UNLIT = "#6b1313";
+const UNLIT = "#4a1515";
 const LIT = "#ff2a1a";
 
 /** A slim hexagon, `len` long and `t` thick, centered on (cx, cy); `vertical` stands it up. */
@@ -75,7 +75,8 @@ export default definePart({
     header,
     // The display block stands on its own legs, a little above the board.
     { kind: "box", x: BODY.x + 1.5, y: BODY.y + 1.5, w: BODY.w - 3, h: BODY.h - 3, d: BODY.z - PCB_TOP, z: PCB_TOP, top: "#17181b", finish: "plastic" },
-    { kind: "box", id: "display", x: BODY.x, y: BODY.y, w: BODY.w, h: BODY.h, d: BODY.d, z: BODY.z, top: "#dcdad2", side: "#b8b5ab", finish: "plastic", radius: 0.5 },
+    // The display block: white plastic sides, and the dark gray face the red segments shine through.
+    { kind: "box", id: "display", x: BODY.x, y: BODY.y, w: BODY.w, h: BODY.h, d: BODY.d, z: BODY.z, top: "#232427", side: "#dcdad2", finish: "plastic", radius: 0.5 },
     segments,
     colon,
     // The few parts on the front: a decoupling cap, a pull resistor and the reverse-polarity diode.

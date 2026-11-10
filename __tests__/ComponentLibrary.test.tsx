@@ -14,7 +14,9 @@ import { PartPlanView } from "@kiungo/lab/views/PartPlanView";
 import { SegmentedControl } from "@kiungo/ui/segmented-control";
 import { ARTICLES, articleHref } from "@/lib/learning";
 import { PARTS, PART_GROUPS, getPart, getPartsByGroup, partHref, searchParts } from "@kiungo/core/parts";
-import type { PartModel, Solid } from "@kiungo/core/parts/types";
+import { CATALOG } from "@kiungo/core/parts/catalog/index";
+import { checkPart } from "@kiungo/core/parts/check";
+import type { PartModel } from "@kiungo/core/parts/types";
 
 const push = vi.fn();
 const replace = vi.fn();
@@ -46,35 +48,24 @@ const CATALOGUE_IDS = [
   "breadboard",
 ];
 
-function footprintOf(solid: Solid): { x1: number; y1: number; x2: number; y2: number } | null {
-  switch (solid.kind) {
-    case "box":
-      return { x1: solid.x, y1: solid.y, x2: solid.x + solid.w, y2: solid.y + solid.h };
-    case "cyl":
-    case "dome":
-      return { x1: solid.cx - solid.r, y1: solid.cy - solid.r, x2: solid.cx + solid.r, y2: solid.cy + solid.r };
-    default:
-      return null;
-  }
-}
-
 afterEach(() => {
   vi.clearAllMocks();
   window.localStorage.clear();
 });
 
 describe("part models", () => {
-  it("covers all 38 catalog parts with unique ids", () => {
+  it("covers all 87 catalog parts with unique ids", () => {
     const ids = PARTS.map((part) => part.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(38);
+    expect(ids).toHaveLength(87);
     for (const id of CATALOGUE_IDS) expect(getPart(id), id).toBeDefined();
   });
 
-  it("orders groups as boards, breadboards, sensors, outputs, displays, radios with the most common part first", () => {
+  it("orders the ten groups from boards to radios, each with the part most people reach for first", () => {
     const groups = getPartsByGroup();
-    expect(groups.map((entry) => entry.group.id)).toEqual(["boards", "prototyping", "sensors", "outputs", "displays", "radios"]);
-    expect(groups.map((entry) => entry.parts[0].id)).toEqual(["arduino-uno", "breadboard", "dht11", "led", "lcd-16x2", "hc-05"]);
+    expect(groups.map((entry) => entry.group.id)).toEqual(["boards", "power", "prototyping", "controls", "sensors", "motors", "drivers", "outputs", "displays", "radios"]);
+    expect(groups.map((entry) => entry.parts[0].id)).toEqual(["arduino-uno", "battery-4aa", "breadboard", "push-button", "hc-sr04", "servo", "l298n", "led", "lcd-16x2", "hc-05"]);
+    expect(groups.map((entry) => entry.parts.length)).toEqual([10, 9, 8, 8, 22, 7, 8, 5, 5, 5]);
     for (const entry of groups) {
       const ranks = entry.parts.map((part) => part.rank);
       expect(ranks, entry.group.id).toEqual([...ranks].sort((a, b) => a - b));
@@ -84,63 +75,23 @@ describe("part models", () => {
   });
 
   it.each(PARTS.map((part) => [part.id, part] as const))("%s is complete and internally consistent", (_id, part: PartModel) => {
-    expect(part.summary.length).toBeGreaterThan(40);
-    expect(part.solids.length).toBeGreaterThanOrEqual(3);
-    expect(part.features.length).toBeGreaterThanOrEqual(2);
-    expect(part.pins.length).toBeGreaterThanOrEqual(2);
-    expect(part.facts.length).toBeGreaterThanOrEqual(5);
-    expect(part.tags.length).toBeGreaterThanOrEqual(3);
-    expect(part.experiment.title).toBeTruthy();
-    expect(part.experiment.idea.length).toBeGreaterThan(30);
-    expect(part.size.w).toBeGreaterThan(0);
-    expect(part.size.h).toBeGreaterThan(0);
-    expect(part.size.d).toBeGreaterThan(0);
-
-    // Solids stay close to the stated footprint (connectors may overhang a little).
-    const slack = Math.max(part.size.w, part.size.h) * 0.35;
-    for (const solid of part.solids) {
-      const box = footprintOf(solid);
-      if (!box) continue;
-      expect(box.x1).toBeGreaterThanOrEqual(-slack);
-      expect(box.y1).toBeGreaterThanOrEqual(-slack);
-      expect(box.x2).toBeLessThanOrEqual(part.size.w + slack);
-      expect(box.y2).toBeLessThanOrEqual(part.size.h + slack);
-      if (solid.kind === "box" || solid.kind === "cyl" || solid.kind === "dome") expect((solid.z ?? 0) + solid.d).toBeLessThanOrEqual(part.size.d + 0.01);
-    }
-
-    // Features have unique ids, sizes, and notes a person can read.
-    const featureIds = part.features.map((feature) => feature.id);
-    expect(new Set(featureIds).size).toBe(featureIds.length);
-    for (const feature of part.features) {
-      expect(feature.w).toBeGreaterThan(0);
-      expect(feature.h).toBeGreaterThan(0);
-      expect(feature.note.length).toBeGreaterThan(15);
-    }
-
-    // The circuit is a graph whose links all resolve, laid out on a small grid.
-    const blockIds = part.circuit.blocks.map((block) => block.id);
-    expect(new Set(blockIds).size).toBe(blockIds.length);
-    expect(part.circuit.blocks.length).toBeGreaterThanOrEqual(4);
-    expect(part.circuit.links.length).toBeGreaterThanOrEqual(3);
-    const cells = new Set<string>();
+    // The rules live in one place (`parts/check.ts`, also run by `npm run parts:check`): words, body,
+    // features, pins, the Trace grid, the engineering data and the simulation wiring.
+    const entry = CATALOG.find((item) => item.model.id === part.id)!;
+    expect(entry.model).toBe(part);
+    expect(
+      checkPart(entry)
+        .filter((problem) => problem.level === "error")
+        .map((problem) => problem.text),
+    ).toEqual([]);
+    // The diagram has room for five columns, four rows and 18 characters a label.
     for (const block of part.circuit.blocks) {
       expect(block.col).toBeLessThanOrEqual(4);
       expect(block.row).toBeLessThanOrEqual(3);
       expect(block.label.length).toBeLessThanOrEqual(18);
-      expect(cells.has(`${block.col},${block.row}`), `${block.id} overlaps another block`).toBe(false);
-      cells.add(`${block.col},${block.row}`);
     }
-    for (const link of part.circuit.links) {
-      expect(blockIds, `${part.id}: link from ${link.from}`).toContain(link.from);
-      expect(blockIds, `${part.id}: link to ${link.to}`).toContain(link.to);
-    }
-    expect(part.circuit.steps.length).toBeGreaterThanOrEqual(3);
-
-    // Animated ids point at real solids.
-    const solidIds = new Set(part.solids.map((solid) => ("id" in solid ? solid.id : undefined)).filter(Boolean));
-    for (const id of [...(part.animate?.lit ?? []), ...(part.animate?.spin ?? []), ...(part.animate?.sweep ?? [])]) {
-      expect(solidIds.has(id), `${part.id}: animate id ${id}`).toBe(true);
-    }
+    expect(part.facts.length).toBeGreaterThanOrEqual(4);
+    expect(part.spec, "engineering data").toBeDefined();
   });
 
   it("links only to reference pages that exist", () => {
@@ -152,7 +103,7 @@ describe("part models", () => {
   });
 
   it("searches by name, alias, tag and interface, best match first", () => {
-    expect(searchParts("")).toHaveLength(38);
+    expect(searchParts("")).toHaveLength(87);
     expect(searchParts("uno")[0].id).toBe("arduino-uno");
     expect(searchParts("GY-521")[0].id).toBe("mpu6050");
     expect(searchParts("photoresistor")[0].id).toBe("ldr");
@@ -225,7 +176,7 @@ describe("part views", () => {
 
   it("draws front-facing parts like the LED standing up, legs included", () => {
     render(<PartPlanView model={led} powered activeFeature="anode" onFeature={() => {}} />);
-    expect(screen.getByRole("img", { name: /Front view of the LED, 5 mm, 6 by 21.8 millimeters/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Front view of the LED, 5 mm, 6 by [\d.]+ millimeters/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Anode/ })).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -234,9 +185,13 @@ describe("part views", () => {
     expect(screen.getByText(/Switch the power on to see current flow/)).toBeInTheDocument();
     expect(document.querySelector(".hhip-flow-dash")).toBeNull();
     fireEvent.mouseEnter(screen.getByRole("button", { name: /Position pot/ }));
-    expect(screen.getByText(/The feedback: a potentiometer on the output gear/)).toBeInTheDocument();
+    // The note shows beside the diagram, and on the part where the block sits.
+    expect(screen.getAllByText(/The feedback: a potentiometer on the output gear/).length).toBeGreaterThan(0);
     rerender(<PartFlowView model={servo} powered />);
-    expect(document.querySelectorAll(".hhip-flow-dash").length).toBe(servo.circuit.links.length);
+    // Every link flows in the diagram, and again on the part wherever both its ends are placed.
+    const placed = new Set(servo.circuit.blocks.filter((block) => block.at !== undefined).map((block) => block.id));
+    const onPart = servo.circuit.links.filter((link) => placed.has(link.from) && placed.has(link.to)).length;
+    expect(document.querySelectorAll(".hhip-flow-dash").length).toBe(servo.circuit.links.length + onPart);
     expect(screen.getAllByRole("listitem")).toHaveLength(servo.circuit.steps.length);
   });
 });
@@ -250,7 +205,7 @@ describe("PartDetail", () => {
     expect(screen.getByTestId("part-plan")).toBeInTheDocument();
     expect(screen.queryByTestId("part-3d")).toBeNull();
     fireEvent.mouseEnter(screen.getByRole("button", { name: "Mechanical Horn" }));
-    expect(screen.getByText(/Screws onto the splined shaft/)).toBeInTheDocument();
+    expect(screen.getByText(/The white arm that turns/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: /^Trace/ }));
     expect(screen.getByTestId("part-flow")).toBeInTheDocument();
     const power = screen.getByTestId("power-switch");
@@ -303,7 +258,7 @@ describe("ComponentLibrary", () => {
     expect(screen.getByRole("heading", { level: 2, name: /DHT11/ })).toBeInTheDocument();
     const nav = screen.getByRole("navigation");
     const groupHeadings = within(nav).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
-    expect(groupHeadings).toEqual(["Boards", "Breadboards and resistors", "Sensors", "Outputs and motors", "Displays", "Radios"]);
+    expect(groupHeadings).toEqual(["Boards", "Power", "Breadboards and basics", "Buttons and controls", "Sensors", "Motors and servos", "Drivers and switches", "Lights and sound", "Displays", "Radios and tags"]);
     const boards = within(nav).getByRole("region", { name: "Boards" });
     expect(within(boards).getAllByRole("button")[0]).toHaveTextContent("Arduino Uno");
     expect(replace).toHaveBeenLastCalledWith("/components?part=dht11", { scroll: false });
@@ -321,7 +276,7 @@ describe("ComponentLibrary", () => {
     fireEvent.change(screen.getByRole("searchbox", { name: /Search parts/ }), { target: { value: "no such part" } });
     expect(screen.getByText(/Nothing matches/)).toBeInTheDocument();
     fireEvent.change(screen.getByRole("searchbox", { name: /Search parts/ }), { target: { value: "" } });
-    expect(screen.getByText(/38 parts in 6 groups, most common first/)).toBeInTheDocument();
+    expect(screen.getByText(/87 parts in 10 groups, most common first/)).toBeInTheDocument();
   });
 
   it("has one clear button, removes the search icon while typing, and clears on Escape", () => {

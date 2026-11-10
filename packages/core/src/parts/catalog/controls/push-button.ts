@@ -118,6 +118,5 @@ export default definePart({
     trips: [{ pin: "OUT", key: "pressed", when: "above", at: 0.5, activeLow: true }],
   },
   experiment: { title: "Press and count", idea: "Count presses with INPUT_PULLUP and print the total. Press fast and watch bounce add extra counts, then add a 10 ms wait and see them vanish." },
-  docs: "/docs/hardware-knowledge/push-button",
   tags: ["button", "push button", "tactile", "switch", "momentary", "input", "pullup", "control"],
 });

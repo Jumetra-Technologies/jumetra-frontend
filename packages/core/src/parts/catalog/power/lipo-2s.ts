@@ -69,7 +69,7 @@ export default definePart({
   group: "power",
   rank: 4,
   summary: "A blue hobby battery pack for RC cars and drones: 7.4 V, 20 A or more, and light. It has no protection circuit, so a short makes fire and it needs a balance charger.",
-  size: { w: W, h: H, d: D },
+  size: { w: W, h: H, d: 14.9 },
   solids,
   features: [
     { id: "pack", label: "Two pouch cells", kind: "power", x: 0, y: 0, w: W - 1, h: H, note: "Two lithium-polymer pouch cells, one on top of the other, in series, inside one blue shrink wrap. 4.2 V each when full, 3.7 V nominal." },

@@ -40,7 +40,7 @@ export default definePart({
   group: "prototyping",
   rank: 6,
   summary: "A one-way valve for current: it passes it from anode to cathode (the banded end) and blocks it the other way. Put one across a relay coil or motor to soak up the spike when it switches off.",
-  size: { w: 16, h: 2.7, d: 2.7 },
+  size: { w: 16, h: 2.7, d: 2.8 },
   solids: [
     // Two tinned legs, 0.8 mm thick.
     lying(0, BODY_X + 0.3, LEG_R, TIN, { finish: "aluminum", id: "leg-a" }),
@@ -73,7 +73,7 @@ export default definePart({
       { id: "junction", label: "Silicon junction", sub: "~0.8 V forward", kind: "passive", col: 2, row: 0, at: "body", hot: true, note: "A PN junction. It conducts from anode to cathode once about 0.7 V is across it, and blocks the other way. The volts it drops times the current becomes heat." },
       { id: "k", label: "Cathode leg", kind: "connector", col: 3, row: 0, at: "K", note: "Wired to the supply end of the coil. The band is on this leg." },
       { id: "v", label: "+ supply", kind: "power", col: 4, row: 0, note: "The rail the coil hangs from." },
-      { id: "coil", label: "Relay coil or motor", kind: "actuator", col: 2, row: 1, note: "A coil fights any change in its current: when it is cut off, it pushes the voltage at its switch end up, to hundreds of volts if nothing stops it." },
+      { id: "coil", label: "Coil or motor", sub: "relay, motor, pump", kind: "actuator", col: 2, row: 1, note: "A coil fights any change in its current: when it is cut off, it pushes the voltage at its switch end up, to hundreds of volts if nothing stops it." },
     ],
     links: [
       { from: "coil", to: "sw", kind: "power", label: "voltage spike" },

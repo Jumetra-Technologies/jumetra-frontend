@@ -68,7 +68,7 @@ export default definePart({
   group: "power",
   rank: 1,
   summary: "The black box with four AA cells and two flying leads that powers most robot cars. Four 1.5 V cells in a row add up to 6 V. It can feed a motor driver, but not much more than 1 A.",
-  size: { w: W, h: H, d: 15.1 },
+  size: { w: W, h: H, d: 15.2 },
   solids,
   features: [
     { id: "cells", label: "Four AA cells", kind: "power", x: 2.2, y: 0.95, w: 101.6, h: 30.1, note: "Four alkaline AA cells, each 14.5 mm across and 50.5 mm long. They lie in two rows with the + button (the bump) at one end." },

@@ -10,12 +10,12 @@ const LEG_END = 22;
 
 export default definePart({
   id: "dht11",
-  name: "DHT11 humidity and temperature sensor",
+  name: "DHT11 humidity & temperature",
   aka: ["DHT-11", "blue climate sensor", "DHT11 4-pin"],
   group: "sensors",
   rank: 4,
   summary: "The little blue box that tells you how warm and how humid the room is, over one wire. Cheap, slow, and the first sensor most people wire up.",
-  size: { w: W, h: LEG_END, d: D },
+  size: { w: W, h: LEG_END, d: 5.6 },
   solids: [
     moldedBody(0, 0, W, BODY_H, D, BLUE, "body"),
     sensingWindow(2.25, 1, 11, 6, 6, 3, D, { panel: "#2368bd", cell: "#0f2f63" }, { w: 1.3, h: 1.2 }),

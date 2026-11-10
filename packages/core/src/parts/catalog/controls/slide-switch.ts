@@ -16,7 +16,7 @@ export default definePart({
   group: "controls",
   rank: 7,
   summary: "A tiny two-position switch you flip with a fingernail. The middle leg joins one outer leg or the other. Wire the middle leg to a board pin and one side to ground, turn on INPUT_PULLUP, and the pin reads LOW in one position and HIGH in the other.",
-  size: { w: 8.5, h: 3.5, d: 6 },
+  size: { w: 8.5, h: 3.5, d: 6.1 },
   solids: [
     // The black plastic base, and the steel shell over it with its slot.
     { kind: "box", x: 0, y: 0, w: 8.5, h: 3.5, d: 0.9, z: 0, top: MATERIAL.plasticBlack, side: "#111214", radius: 0.2, finish: "plastic" },
@@ -105,6 +105,5 @@ export default definePart({
     trips: [{ pin: "OUT", key: "slid", when: "above", at: 0.5, activeLow: true }],
   },
   experiment: { title: "Mode switch", idea: "Read the switch once at start-up with INPUT_PULLUP. In one position run the robot's line follower; in the other run the obstacle avoider." },
-  docs: "/docs/hardware-knowledge/slide-switch",
   tags: ["slide switch", "switch", "SPDT", "on off", "toggle", "SS12D00", "input", "control"],
 });

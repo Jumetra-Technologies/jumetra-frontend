@@ -55,7 +55,7 @@ export default definePart({
   group: "sensors",
   rank: 5,
   summary: "The white dome from burglar alarms. It sees body heat move across its view and raises one pin for a few seconds. No moving parts, almost no current.",
-  size: { w: 32, h: 24, d: 13.3 },
+  size: { w: 32, h: 24, d: 13.4 },
   solids: [
     board(32, 24, "#1f7a3a", {
       radius: 0.4,

@@ -17,7 +17,7 @@ export default definePart({
   group: "sensors",
   rank: 22,
   summary: "Put it in the power wire between a battery and a load. It measures the load's current and the bus voltage, works out the power and sends the numbers over I2C. A robot can watch its own battery and motors.",
-  size: { w: 25.5, h: 22.9, d: 9.1 },
+  size: { w: 25.5, h: 22.9, d: 9.6 },
   solids: [
     board(25.5, 22.9, "#1b1c22", {
       radius: 0.8,

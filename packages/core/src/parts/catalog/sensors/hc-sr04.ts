@@ -21,7 +21,7 @@ export default definePart({
   name: "HC-SR04 ultrasonic distance",
   aka: ["ultrasonic sensor", "sonar module", "HC SR04"],
   group: "sensors",
-  rank: 2,
+  rank: 1,
   summary: "Two 'eyes' that ping with sound you can't hear and time the echo. Measures 2 cm to 4 m, and makes a robot stop before the wall.",
   size: { w: 45, h: 20, d: 13.6 },
   solids: [

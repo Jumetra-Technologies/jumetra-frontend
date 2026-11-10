@@ -76,10 +76,10 @@ export default definePart({
       { id: "ic", label: "LM2596", sub: "switch + control", kind: "regulator", col: 3, row: 0, at: "chip", hot: true, note: "Switches the input on and off. The longer it is on in each cycle, the higher the output. It loses about 1.3 W at 2 A." },
       { id: "coil", label: "Inductor", sub: "33 µH", kind: "passive", col: 4, row: 0, at: "inductor", note: "Smooths the chopped voltage into steady current." },
       { id: "diode", label: "SS34 diode", sub: "freewheel", kind: "passive", col: 3, row: 1, at: "diode", note: "Keeps the coil's current flowing while the chip is off." },
-      { id: "cout", label: "Output capacitor", sub: "220 µF", kind: "passive", col: 5, row: 0, at: "cap-out", note: "Holds the output steady between pulses." },
-      { id: "trim", label: "Trimmer", sub: "sets Vout", kind: "passive", col: 3, row: 2, at: "trimmer", note: "Sets what fraction of the output the chip compares with its 1.23 V reference. That is the voltage you choose." },
-      { id: "out", label: "OUT+", sub: "set voltage", kind: "power", col: 6, row: 0, at: "OUT_POS", note: "At 2 A the output is the set voltage; the input current is about 0.5 A at 12 V in and 5 V out." },
-      { id: "gnd", label: "GND", kind: "ground", col: 6, row: 1, at: "OUT_NEG", note: "Shared by input and output." },
+      { id: "cout", label: "Output capacitor", sub: "220 µF", kind: "passive", col: 4, row: 1, at: "cap-out", note: "Holds the output steady between pulses." },
+      { id: "trim", label: "Trimmer", sub: "sets Vout", kind: "passive", col: 2, row: 2, at: "trimmer", note: "Sets what fraction of the output the chip compares with its 1.23 V reference. That is the voltage you choose." },
+      { id: "out", label: "OUT+", sub: "set voltage", kind: "power", col: 4, row: 2, at: "OUT_POS", note: "At 2 A the output is the set voltage; the input current is about 0.5 A at 12 V in and 5 V out." },
+      { id: "gnd", label: "GND", kind: "ground", col: 2, row: 1, at: "OUT_NEG", note: "Shared by input and output." },
     ],
     links: [
       { from: "src", to: "in", kind: "power", label: "12 V" },
@@ -91,7 +91,7 @@ export default definePart({
       { from: "cout", to: "out", kind: "power", label: "5 V" },
       { from: "out", to: "trim", kind: "signal", label: "feedback" },
       { from: "trim", to: "ic", kind: "signal", label: "too high / too low" },
-      { from: "out", to: "gnd", kind: "ground" },
+      { from: "gnd", to: "diode", kind: "ground" },
     ],
     steps: [
       "The chip joins the input to the coil for part of each cycle, 150 000 times a second.",

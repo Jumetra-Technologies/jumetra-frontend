@@ -37,7 +37,7 @@ export default definePart({
   group: "sensors",
   rank: 11,
   summary: "A black box with two lenses. One sends a thin beam of infrared light and the other sees where the spot lands, which tells it how far away the object is. It gives a voltage that falls as the distance grows, for 10 cm to 80 cm.",
-  size: { w: 37, h: 13.5, d: BODY_H },
+  size: { w: 37, h: 13.5, d: 13.9 },
   solids: [
     { kind: "extrude", id: "case", path: bodyPath, d: BODY_H, z: 0, top: BLACK, side: "#0d0e10", bevel: 0.4, finish: "plastic" },
     // Two mounting ears with a 3.2 mm hole each. Their inner halves are inside the body.
@@ -109,7 +109,8 @@ export default definePart({
     },
     power: {
       supply: { min: 4.5, max: 5.5, typ: 5 },
-      logic: 5,
+      // Its output never rises above about 3.1 V, so it is safe on a 3.3 V board's analog pin.
+      logic: 3.3,
       tolerant5V: true,
       draw: { idle: 30, active: 30, peak: 40 },
       interface: "Analog voltage on VO; a new value every 38 ms",

@@ -55,7 +55,7 @@ describe("pinouts", () => {
 });
 
 describe("auto-wiring", () => {
-  it("wires every peripheral to an Uno so it is ready, except 3.3 V-only LoRa signals", () => {
+  it("wires every peripheral to an Uno so it is ready, except the 3.3 V-only LoRa and RFID chips", () => {
     // A resistor and the other bare passives have nothing to wire to on their own; the resistor's auto-wiring (in series with an LED) is tested in LabAcceptance.
     // A mini breadboard has no rails to feed, so it stays unwired (tested in Breadboard).
     // Batteries, converters and bare motors don't wire to a board at all: they go to a driver or to each other (tested in LabPower).
@@ -64,7 +64,8 @@ describe("auto-wiring", () => {
       const { part: n, analysis, plan } = autowired("arduino-uno", part.id);
       expect(plan.skipped, part.id).toEqual([]);
       const errors = analysis.nodes[n.id].faults.filter((f) => f.severity === "error");
-      if (part.id === "lora") {
+      if (part.id === "lora" || part.id === "rc522") {
+        // 3.3 V-only chips: the Uno's 5 V signals are more than their inputs take.
         expect(errors.map((f) => f.title)).toContain("5 V signal into a 3.3 V input");
       } else if (plan.hint) {
         // A driver whose motors need more than the board gives (a stepper driver wants 8 V): wired but for its motor supply, and it says to add a battery.

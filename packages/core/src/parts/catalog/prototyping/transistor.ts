@@ -85,7 +85,7 @@ export default definePart({
       { id: "b", label: "Base leg", kind: "connector", col: 2, row: 0, at: "B", note: "The middle leg takes the control current." },
       { id: "die", label: "Silicon", sub: "gain 100 to 300", kind: "ic", col: 3, row: 0, at: "body", hot: true, note: "A layered chip. The base current opens a path from collector to emitter that carries about ten times more. The volts left across it times the current become heat." },
       { id: "e", label: "Emitter leg", kind: "connector", col: 4, row: 0, at: "E", note: "The current from the base and the collector leave together." },
-      { id: "gnd", label: "GND", kind: "ground", col: 5, row: 0, note: "The way back." },
+      { id: "gnd", label: "GND", kind: "ground", col: 4, row: 1, note: "The way back." },
       { id: "v", label: "+ supply", kind: "power", col: 0, row: 1, note: "The load's own supply: 5 V to 40 V." },
       { id: "load", label: "Load", sub: "relay, motor, strip", kind: "actuator", col: 1, row: 1, note: "Up to 600 mA. Put a diode across it if it is a coil." },
       { id: "c", label: "Collector leg", kind: "connector", col: 2, row: 1, at: "C", note: "The load current comes in on the right leg." },

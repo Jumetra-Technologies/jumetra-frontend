@@ -25,7 +25,7 @@ export default definePart({
   group: "sensors",
   rank: 8,
   summary: "A tiny laser rangefinder. It sends out invisible light, times how long it takes to bounce back and tells your board the distance in millimeters over I2C. Reads surfaces that sound-based sensors miss.",
-  size: { w: 25, h: 11, d: 2.6 },
+  size: { w: 25, h: 11, d: 2.7 },
   solids: [
     board(25, 11, "#5a2d8a", { radius: 0.5 }),
     tofChip(7.0, 3.9),

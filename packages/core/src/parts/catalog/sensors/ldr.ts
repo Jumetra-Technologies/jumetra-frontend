@@ -68,12 +68,12 @@ const END2 = X2 + 0.5;
 
 export default definePart({
   id: "ldr",
-  name: "Light-dependent resistor (5 mm)",
+  name: "Light-dependent resistor",
   aka: ["LDR", "photoresistor", "photocell", "CdS cell", "GL5528"],
   group: "sensors",
   rank: 6,
   summary: "A resistor that gives way to light: megohms in the dark, a few thousand ohms in a bright room. One fixed resistor beside it and an analog pin can read the room.",
-  size: { w: 5.1, h: LEG_END, d: Math.round(TOP * 10) / 10 },
+  size: { w: 5.1, h: LEG_END, d: 3.2 },
   solids: [
     // The epoxy disc with its raised rim, on the legs' short stubs.
     { kind: "cyl", id: "face", cx: CX, cy: CY, r: R, d: THICK, z: BASE, top: "#e3c28d", side: "#c9a56c", finish: "clear", segments: 32 },

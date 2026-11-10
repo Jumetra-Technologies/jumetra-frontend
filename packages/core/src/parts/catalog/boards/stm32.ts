@@ -90,7 +90,7 @@ export default definePart({
   group: "boards",
   rank: 7,
   summary: "A tiny ARM Cortex-M3 board at 72 MHz with real hardware timers, three serial ports and some 5 V-tolerant pins, for when an Arduino is too slow and an ESP32 is too much.",
-  size: { w: 53, h: 22.5, d: 10 },
+  size: { w: 53, h: 22.5, d: 10.1 },
   solids: [
     board(53, 22.5, BLUE, { radius: 0.5 }),
     rowA,

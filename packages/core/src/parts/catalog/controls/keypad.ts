@@ -161,6 +161,5 @@ export default definePart({
     reads: [{ key: "key", label: "Key held (0 = none)", min: 0, max: 16, step: 1, start: 0, sweep: [0, 16, 16], digits: 0 }],
   },
   experiment: { title: "Door code", idea: "Use the Keypad library to collect four key presses. If they match a secret code, turn a green LED on for three seconds; if not, a red one." },
-  docs: "/docs/hardware-knowledge/keypad",
   tags: ["keypad", "membrane", "matrix", "4x4", "16 keys", "numeric", "input", "control", "scan"],
 });

@@ -61,12 +61,12 @@ describe("the parts catalog", () => {
     }
   });
 
-  it("places every pin and keeps parts their stated size", () => {
+  it("places every pin, and no part is taller than it says it is", () => {
     for (const { model, pinout } of CATALOG) {
       // A breadboard names a handful of its hundreds of holes; everything else places each pin.
       if (!pinout.passive || !pinout.strips) expect((model.pinSpots ?? []).length, model.id).toBeGreaterThan(0);
-      const bounds = modelBounds(model);
-      expect(Math.abs(bounds.z2 - model.size.d), `${model.id} height`).toBeLessThan(Math.max(1.5, model.size.d * 0.25));
+      // The views are framed from the stated height. (A board drawn on the lab canvas may state more: its old height, kept so saved layouts don't shift.)
+      expect(modelBounds(model).z2, `${model.id} height`).toBeLessThanOrEqual(model.size.d + 0.01);
     }
   });
 

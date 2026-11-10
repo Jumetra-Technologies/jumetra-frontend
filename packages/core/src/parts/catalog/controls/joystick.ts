@@ -27,7 +27,7 @@ export default definePart({
   group: "controls",
   rank: 3,
   summary: "A thumbstick like the one on a game pad. Tilt it left and right and one voltage changes, up and down and a second one does. Push it straight down and it clicks like a button. Use it to steer a robot or a servo arm.",
-  size: { w: 26, h: 36, d: 32 },
+  size: { w: 26, h: 36, d: 32.2 },
   solids: [
     // The black board; the stick sits in the middle and the header is along the bottom edge.
     ...board(26, 34, MATERIAL.pcbBlack, { radius: 0.4 }),
@@ -157,6 +157,5 @@ export default definePart({
   },
   animate: { sweep: ["stick-base", "stick", "cap", "cap-dish"], axis: { at: [CX, CY, BOX_TOP + 1.8], dir: "x" } },
   experiment: { title: "Steer a servo", idea: "Read VRx with analogRead, scale 0 to 1023 into 0 to 180, and write it to a servo. Click the stick to snap the servo back to center." },
-  docs: "/docs/hardware-knowledge/joystick",
   tags: ["joystick", "thumbstick", "analog", "ky-023", "xy", "stick", "input", "control", "game pad"],
 });

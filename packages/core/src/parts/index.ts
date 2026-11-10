@@ -1,9 +1,4 @@
 import { CATALOG } from "./catalog";
-import { BOARDS } from "./models/boards";
-import { DISPLAYS } from "./models/displays";
-import { OUTPUTS } from "./models/outputs";
-import { RADIOS } from "./models/radios";
-import { SENSORS } from "./models/sensors";
 import type { PartGroup, PartModel } from "./types";
 
 export type { PartModel, PartGroup, PartGroupId, PartSpec } from "./types";
@@ -21,12 +16,8 @@ export const PART_GROUPS: PartGroup[] = [
   { id: "radios", title: "Radios and tags", blurb: "Modules that let a project talk without wires: Bluetooth, Wi-Fi, 2.4 GHz, long range, and RFID tags." },
 ];
 
-/** Parts not yet moved to `catalog/`, where each part has its own file. */
-const LEGACY: PartModel[] = [...BOARDS, ...SENSORS, ...OUTPUTS, ...DISPLAYS, ...RADIOS];
-const DEFINED = new Set(CATALOG.map((entry) => entry.model.id));
-
-/** All parts, grouped in display order with the most common first inside each group. */
-export const PARTS: PartModel[] = [...CATALOG.map((entry) => entry.model), ...LEGACY.filter((part) => !DEFINED.has(part.id))].sort(
+/** All parts, grouped in display order with the most common first inside each group. Each is one file under `catalog/`. */
+export const PARTS: PartModel[] = CATALOG.map((entry) => entry.model).sort(
   (a, b) => PART_GROUPS.findIndex((g) => g.id === a.group) - PART_GROUPS.findIndex((g) => g.id === b.group) || a.rank - b.rank,
 );
 

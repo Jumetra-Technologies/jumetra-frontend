@@ -16,7 +16,7 @@ const inside: Solid[] = [
 
 export default definePart({
   id: "rgb-led",
-  name: "RGB LED, 5 mm common cathode",
+  name: "RGB LED, 5 mm",
   aka: ["tri-color LED", "common-cathode LED", "color LED"],
   group: "outputs",
   rank: 2,

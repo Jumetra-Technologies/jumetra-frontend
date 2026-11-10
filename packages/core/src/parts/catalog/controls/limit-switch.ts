@@ -119,6 +119,5 @@ export default definePart({
     trips: [{ pin: "OUT", key: "pressed", when: "above", at: 0.5, activeLow: true }],
   },
   experiment: { title: "Bumper stop", idea: "Fix it to the front of a robot so the lever sticks out. When it reads LOW, stop the motors, back up for half a second and turn." },
-  docs: "/docs/hardware-knowledge/limit-switch",
   tags: ["limit switch", "microswitch", "endstop", "bumper", "lever", "KW12", "SS-5GL", "input", "control"],
 });

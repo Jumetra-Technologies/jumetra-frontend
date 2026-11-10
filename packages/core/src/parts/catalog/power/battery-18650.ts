@@ -67,7 +67,7 @@ export default definePart({
     { id: "strap", label: "Series strap", kind: "connector", x: 71.6, y: 4, w: 2, h: 33, note: "A metal strap through the right wall joins cell A's − end to cell B's + end. The volts add: 7.4 V." },
     { id: "contacts", label: "Springs and plates", kind: "mechanical", x: 2.4, y: 3, w: 5, h: 35, note: "Thin springs and plates hold each cell. They add 20 to 50 milliohm each and shake loose on a moving robot, so strap the cells down." },
     { id: "red-lead", label: "Red lead (+)", kind: "pin", x: -34, y: 0, w: 38, h: 12, note: "Pack +. 8.4 V full, 7.4 V nominal, 5.0 V empty." },
-    { id: "black-lead", label: "Black lead (−)", kind: "pin", x: -34, y: 30, w: 38, h: 12, note: "Pack −. Ground." },
+    { id: "black-lead", label: "Black lead (−)", kind: "pin", x: -34, y: 30, w: 38, h: 12, note: "Pack −: the ground of the build. Join it to the board's GND." },
   ],
   pins: [
     rail("POS", "+", 7.4, "left", { note: "Red lead. 8.4 V full, about 7.4 V nominal and never below 5.0 V (2.5 V a cell)." }),

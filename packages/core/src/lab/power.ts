@@ -215,6 +215,15 @@ export function powerBudget(args: {
       const motors = motorsOn(node.id).map((m) => partOf(m.id)?.spec?.power.motor);
       const watts = motors.reduce((t, m) => t + bridgeLoss(spec.power.bridge!, (m?.runMa ?? 0) / 1000), 0);
       if (watts > 0) found = heatFor(spec, watts, `running ${motors.length === 1 ? "its motor" : `${motors.length} motors`}`);
+    } else if (pinouts.get(node.id)?.controller) {
+      // A board's regulator only works (and warms) when the board is fed through it: a battery on VIN.
+      // On USB it is bypassed. It burns the volts it drops times all the board and its 5 V parts draw.
+      const feed = powerNets.find((n) => n.feeds?.some((f) => f.node === node.id));
+      const out = Math.max(...(spec.power.rails ?? []).map((r) => r.volts), spec.power.logic ?? 5);
+      if (feed && feed.voltage! > out) {
+        const passed = sum(suppliedBy(node.id).flatMap(loadsOf)).typicalMa + (spec.power.draw?.active ?? 50);
+        found = heatFor(spec, ((feed.voltage! - out) * passed) / 1000, `dropping ${feed.voltage} V to ${out} V at ${ma(passed)}`);
+      }
     } else if (!sim || sim.kind === "sensor" || sim.kind === "output") {
       found = typicalHeat(spec);
     }
@@ -222,11 +231,17 @@ export function powerBudget(args: {
     heat[node.id] = found;
     if (found.over) {
       const better = spec.upgrade?.[0];
+      const isBoard = pinouts.get(node.id)?.controller;
+      const advice = isBoard
+        ? " Feed it a lower voltage (7 V to 9 V), or power motors, servos and LED strips from their own converter and not from the board's 5 V pin."
+        : better
+          ? ` ${better.name} does the same job with less loss.`
+          : " Lower the load or give it a heatsink.";
       faults.push({
         id: `heat:${node.id}`,
         severity: "warning",
-        title: `${nameOf(node.id)} overheats`,
-        detail: `It turns about ${found.watts >= 1 ? `${Math.round(found.watts * 10) / 10} W` : `${Math.round(found.watts * 1000)} mW`} into heat ${found.condition}: around ${Math.round(found.tempC)} °C, past its ${spec.thermal.maxC} °C limit.${better ? ` ${better.name} does the same job with less loss.` : " Lower the load or give it a heatsink."}`,
+        title: isBoard ? `${nameOf(node.id)}'s regulator overheats` : `${nameOf(node.id)} overheats`,
+        detail: `It turns about ${found.watts >= 1 ? `${Math.round(found.watts * 10) / 10} W` : `${Math.round(found.watts * 1000)} mW`} into heat ${found.condition}: around ${Math.round(found.tempC)} °C, past its ${spec.thermal.maxC} °C limit.${advice}`,
         nodes: [node.id],
         wires: [],
       });

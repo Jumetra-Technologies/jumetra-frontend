@@ -10,7 +10,7 @@ export default definePart({
   group: "sensors",
   rank: 14,
   summary: "A tiny 3-axis magnetometer that feels the Earth's magnetic field. A program turns its sideways readings into a compass heading. Sold as an HMC5883L, but most boards today carry a QMC5883L.",
-  size: { w: 14.5, h: 13.3, d: 2.6 },
+  size: { w: 14.5, h: 13.3, d: 2.7 },
   solids: [
     board(14.5, 13.3, "#3b2a8c", { radius: 0.5, holes: [{ x: 12.2, y: 2.3, d: 3.0 }] }),
     // The magnetometer: a 3 × 3 × 0.9 mm LGA-16 with its marking and a pin-1 dot.

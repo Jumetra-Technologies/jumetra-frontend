@@ -804,7 +804,8 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
             }
             // The part's own output level against what the board accepts.
             if (["out-digital", "out-analog", "io", "sda", "scl", "tx", "miso"].includes(role)) {
-              const outV = Math.min(pinout.logic, supplyV ?? pinout.logic);
+              // A part with no supply of its own (a bare switch, a keypad) can only pull the pin low: the board's own pull-up sets the high level.
+              const outV = hasVcc ? Math.min(pinout.logic, supplyV ?? pinout.logic) : 0;
               if (outV > 3.6 && board.tolerates5V !== true && !net.shifted) {
                 fault(board.tolerates5V === "some" ? "warning" : "error", `level-out:${pin.id}`, `5 V output into a 3.3 V pin`, `${name} ${pin.label} swings to ${outV} V; ${boardName} pins take 3.3 V. Add a 1 kΩ/2 kΩ divider.`, [boardRef.node], net.wires);
               }
@@ -852,9 +853,9 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
     }
 
     // A part with a supply pin is powered by it; one the board drives (an LED) by its pin; and a bare
-    // switch with neither is live once it has its ground and a board pin to pull.
+    // switch or keypad with neither is live once it has its ground (if it has one) and a board pin to pull.
     const hasDrive = pinout.pins.some((p) => p.role === "drive" || p.role === "pwm");
-    const powered = hasVcc ? poweredByRail : hasDrive ? driven : grounded && links.some((l) => l.role !== "gnd");
+    const powered = hasVcc ? poweredByRail : hasDrive ? driven : (grounded || !hasGnd) && links.some((l) => l.role !== "gnd");
     if (wired.size > 0) {
       if (hasVcc && !poweredByRail && !nodeFaults.some((f) => f.id.startsWith("vcc-gnd"))) {
         const vcc = neededVcc.find((p) => !supplied.has(p.id)) ?? vccPins[0];

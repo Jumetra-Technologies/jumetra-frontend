@@ -30,7 +30,7 @@ export default definePart({
   group: "displays",
   rank: 2,
   summary: "A crisp little screen where every pixel makes its own light. Text, graphs and icons at 128 × 64, over the same two I2C wires.",
-  size: { w: 27, h: 27.3, d: 3.1 },
+  size: { w: 27, h: 27.3, d: 3.2 },
   solids: [
     board(27, 27.3, MATERIAL.pcbBlue, { radius: 0.5, holes }),
     header,

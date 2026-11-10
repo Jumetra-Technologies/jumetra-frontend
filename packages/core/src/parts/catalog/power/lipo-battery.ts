@@ -61,7 +61,7 @@ export default definePart({
     { id: "pcm", label: "Protection board", kind: "chip", x: PCM_X + 1, y: 2, w: 4, h: 30, note: "A tiny board with a protection chip and two MOSFETs. It opens the circuit below about 3.0 V, above 4.25 V and on a short or a big overload (2 to 3 A). It has no temperature sensor." },
     { id: "plug", label: "JST-PH plug", kind: "connector", x: 74.5, y: 14, w: 6, h: 6, note: "A 2-pin, 2.0 mm plug. Check the polarity against your board before you plug in: cheap packs sometimes have red and black swapped." },
     { id: "red-lead", label: "Red lead (+)", kind: "pin", x: 50, y: 10, w: 27, h: 6, note: "The + lead from the protection board." },
-    { id: "black-lead", label: "Black lead (−)", kind: "pin", x: 50, y: 18, w: 27, h: 6, note: "The - lead." },
+    { id: "black-lead", label: "Black lead (−)", kind: "pin", x: 50, y: 18, w: 27, h: 6, note: "The − lead from the protection board. It is the build's ground." },
   ],
   pins: [
     rail("POS", "+", 3.7, "left", { note: "Red lead on the JST-PH plug. 4.2 V full, 3.7 V nominal. The board cuts off at about 3.0 V." }),

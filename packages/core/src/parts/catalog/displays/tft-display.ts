@@ -35,7 +35,7 @@ export default definePart({
   group: "displays",
   rank: 5,
   summary: "A proper color screen, 160 × 128 pixels, with a microSD slot on the back. Gauges, photos, menus, over SPI.",
-  size: { w: 34.5, h: 58, d: 4.4 },
+  size: { w: 34.5, h: 58, d: 4.5 },
   solids: [
     board(34.5, 58, RED, { radius: 0.5, holes }),
     header,

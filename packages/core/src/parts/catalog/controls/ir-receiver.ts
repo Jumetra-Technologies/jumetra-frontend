@@ -103,6 +103,5 @@ export default definePart({
     trips: [{ pin: "OUT", key: "burst", when: "above", at: 0.5, activeLow: true }],
   },
   experiment: { title: "Read the remote", idea: "Print each button's code with the IRremote library, then make a different LED light for each of three keys." },
-  docs: "/docs/hardware-knowledge/ir-receiver",
   tags: ["ir", "infrared", "receiver", "remote", "vs1838b", "38khz", "tsop1838", "ky-022", "input", "control"],
 });

@@ -20,7 +20,7 @@ export default definePart({
   group: "controls",
   rank: 2,
   summary: "A knob that works as a voltage divider. Put 5 V and ground on the outer legs, and the middle leg slides smoothly between them as you turn. Read it with an analog pin to get a dial for speed, brightness or position.",
-  size: { w: 10.5, h: 11.8, d: SHAFT_TOP },
+  size: { w: 10.5, h: 11.8, d: 17.1 },
   solids: [
     // The blue plastic base with the leg block, and the round housing on top.
     { kind: "box", x: -0.5, y: 0, w: 10.5, h: 11.8, d: BASE, z: 0, top: BLUE, side: BLUE_SIDE, radius: 0.5, finish: "plastic" },
@@ -124,6 +124,5 @@ export default definePart({
   },
   animate: { sweep: ["shaft", "shaft-mark"] },
   experiment: { title: "Dimmer knob", idea: "Read the wiper with analogRead, scale 0 to 1023 into 0 to 255, and use it as the brightness of an LED on a PWM pin." },
-  docs: "/docs/hardware-knowledge/potentiometer",
   tags: ["potentiometer", "pot", "knob", "dial", "analog", "variable resistor", "10k", "input", "control"],
 });

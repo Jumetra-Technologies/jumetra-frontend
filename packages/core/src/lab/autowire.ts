@@ -271,6 +271,13 @@ export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], 
       const vin = fits.find((p) => p.id === "VIN");
       if (vin) return vin;
     }
+    // A level shifter's two supplies are the two voltages it translates between: its low side takes the lowest rail that fits, its high side the highest.
+    if (sim?.kind === "shifter" && fits.length) {
+      const ranges = pinout.pins.filter((p) => p.role === "vcc" && p.accepts).map((p) => p.accepts![1]);
+      const low = !!pin.accepts && pin.accepts[1] === Math.min(...ranges) && ranges.length > 1;
+      const byVolts = [...fits].sort((a, b) => a.supplies! - b.supplies!);
+      return low ? byVolts[0] : byVolts[byVolts.length - 1];
+    }
     const preferV = fits.some((p) => p.supplies === bp.logic) ? bp.logic : undefined;
     return (preferV ? fits.find((p) => p.supplies === preferV && p.id !== "VIN") : undefined) ?? fits.find((p) => p.id !== "VIN") ?? fits[0] ?? rails.find((p) => p.supplies === Math.min(...rails.map((r) => r.supplies!)));
   };

@@ -18,7 +18,7 @@ export default definePart({
   group: "sensors",
   rank: 13,
   summary: "An accelerometer, gyroscope and compass with a small processor that fuses them. It tells your board its heading, pitch and roll directly, with no filter code to write and no heading drift.",
-  size: { w: 27, h: 20, d: 2.7 },
+  size: { w: 27, h: 20, d: 2.8 },
   solids: [
     board(27, 20, "#1b1c22", {
       radius: 0.8,
@@ -79,7 +79,7 @@ export default definePart({
     blocks: [
       { id: "vin", label: "Vin", sub: "3.3–5 V", kind: "power", col: 0, row: 0, at: "VIN", note: "Supply from your board. About 12 mA in fusion mode." },
       { id: "reg", label: "Regulator", sub: "3.3 V", kind: "regulator", col: 1, row: 0, at: "reg", note: "Gives the chip 3.3 V and the 3vo pin up to about 50 mA to spare." },
-      { id: "mems", label: "Accel, gyro, compass", sub: "three sensors", kind: "sensor", col: 2, row: 0, at: "chip", note: "Three tiny sensors in the same package: they feel gravity, spin and the Earth's magnetic field." },
+      { id: "mems", label: "Three sensors", sub: "accel, gyro, compass", kind: "sensor", col: 2, row: 0, at: "chip", note: "Three tiny sensors in the same package: they feel gravity, spin and the Earth's magnetic field." },
       { id: "world", label: "Motion", sub: "tilt, turn, shake", kind: "world", col: 3, row: 0, note: "What you do to the board." },
       { id: "fuse", label: "Fusion processor", sub: "100 Hz", kind: "ic", col: 2, row: 1, at: "chip", note: "A small processor on the chip blends the three sensors so each one fixes the others' faults." },
       { id: "xtal", label: "Crystal", sub: "32.768 kHz", kind: "passive", col: 1, row: 1, at: "xtal", note: "The clock for the fusion code." },

@@ -30,12 +30,12 @@ const END = Math.max(RED_TIP.y, YELLOW_TIP.y, DARK_TIP.y);
 
 export default definePart({
   id: "am2302",
-  name: "AM2302 wired humidity and temperature sensor",
+  name: "AM2302 wired humidity & temperature",
   aka: ["wired DHT22", "AM2302 cable sensor", "DHT22 with cable"],
   group: "sensors",
   rank: 17,
   summary: "The DHT22 with its wires already attached and the pull-up resistor inside: the same sensor, ready to tape wherever the air is.",
-  size: { w: W, h: r2(END), d: D },
+  size: { w: W, h: r2(END), d: 7.8 },
   solids: [
     moldedBody(0, 0, W, BODY_H, D, WHITE, "body"),
     { kind: "disc", cx: W / 2, cy: 1.7, r: 1.0, color: "#3a3d42", z: D + 0.01, ring: { color: "#c9c9c4", width: 0.25 } },

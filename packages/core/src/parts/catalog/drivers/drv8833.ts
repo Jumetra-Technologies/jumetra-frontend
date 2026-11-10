@@ -16,7 +16,7 @@ export default definePart({
   group: "drivers",
   rank: 4,
   summary: "A tiny board that runs two small motors from one or two lithium cells. It loses only 0.36 V at 1 A and works from 2.7 V, so it suits a small battery robot. It stops at 10.8 V.",
-  size: { w: 19, h: 17, d: 2.8 },
+  size: { w: 19, h: 17, d: 2.9 },
   solids: [
     board(19, 17, RED, { radius: 0.5 }),
     outputs,

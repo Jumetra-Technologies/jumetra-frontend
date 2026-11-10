@@ -43,7 +43,7 @@ export default definePart({
   group: "drivers",
   rank: 7,
   summary: "Gives your board sixteen more PWM outputs over two wires, laid out as sixteen servo plugs. It sends the signals; the servos' power comes in separately on the screw terminal.",
-  size: { w: 62.5, h: 25.4, d: 11.6 },
+  size: { w: 62.5, h: 25.4, d: 12.1 },
   solids: [
     board(62.5, 25.4, BLUE, {
       radius: 1,

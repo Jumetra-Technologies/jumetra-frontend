@@ -35,11 +35,13 @@ export function checkPart(entry: PartEntry, catalog?: ReadonlySet<string>): Prob
   // Identity and words.
   if (!ID.test(model.id)) error(`id "${model.id}" must be lower-case words joined by hyphens`);
   if (!model.name.trim()) error("name is empty");
-  if (model.summary.length < 40) warn("summary is very short: say what it is and what a builder uses it for");
+  if (model.summary.length <= 40) error("summary is too short: say what it is and what a builder uses it for");
   if (model.summary.length > 260) warn(`summary is ${model.summary.length} characters: keep it under 260`);
-  if (model.tags.length < 3) warn("fewer than 3 tags: search will miss it");
-  if (model.facts.length < 3 || model.facts.length > 8) warn(`${model.facts.length} facts: aim for 4 to 6`);
-  if (!model.experiment.title || !model.experiment.idea) error("experiment needs a title and an idea");
+  if (model.tags.length < 3) error("fewer than 3 tags: search will miss it");
+  if (model.facts.length < 4) error(`${model.facts.length} facts: give 4 to 6`);
+  else if (model.facts.length > 8) warn(`${model.facts.length} facts: aim for 4 to 6`);
+  if (!model.experiment.title || model.experiment.idea.length <= 30) error("experiment needs a title and an idea a builder could start from");
+  if (model.pins.length < 2) error("the pin table needs at least two rows");
 
   // Body.
   const { w, h, d } = model.size;
@@ -47,7 +49,9 @@ export function checkPart(entry: PartEntry, catalog?: ReadonlySet<string>): Prob
   if (!model.solids.length) error("no solids: the part has no body");
   const bounds = modelBounds(model);
   const built = bounds.z2;
-  if (Math.abs(built - d) > Math.max(0.6, d * 0.08)) warn(`size.d is ${d} mm but the solids reach ${built.toFixed(1)} mm above the base`);
+  if (built > d + 0.01) error(`size.d is ${d} mm but the solids reach ${built.toFixed(2)} mm above the base: the views are framed from size.d`);
+  else if (d - built > Math.max(0.6, d * 0.08)) warn(`size.d is ${d} mm but the solids reach ${built.toFixed(1)} mm above the base`);
+  if (model.solids.length < 3) error("fewer than three solids: too plain to recognize");
   const reach = Math.max(w, h);
   if (bounds.x1 < -reach || bounds.y1 < -reach || bounds.x2 > w + reach || bounds.y2 > h + reach) error("a solid sits far outside the footprint: check its coordinates");
   const solidIds = model.solids.flatMap((s) => ("id" in s && s.id ? [s.id] : []));
@@ -61,8 +65,10 @@ export function checkPart(entry: PartEntry, catalog?: ReadonlySet<string>): Prob
   // Features.
   for (const id of duplicates(model.features.map((f) => f.id))) error(`two features share the id "${id}"`);
   const front = model.plan === "front";
+  if (model.features.length < 2) error("fewer than two features: name what a person would point at");
   for (const f of model.features) {
-    if (!f.note.trim()) error(`feature "${f.id}" has no note`);
+    if (f.note.trim().length <= 15) error(`feature "${f.id}" needs a note that says what it does`);
+    if (!(f.w > 0 && f.h > 0)) error(`feature "${f.id}" has no size`);
     const maxY = front ? d + 12 : h + reach * 0.5;
     if (f.x + f.w < -reach * 0.5 || f.x > w + reach * 0.5 || f.y + f.h < -reach * 0.5 || f.y > maxY) error(`feature "${f.id}" is outside the part`);
   }
@@ -93,6 +99,13 @@ export function checkPart(entry: PartEntry, catalog?: ReadonlySet<string>): Prob
   const { blocks, links, steps } = model.circuit;
   for (const id of duplicates(blocks.map((b) => b.id))) error(`two circuit blocks share the id "${id}"`);
   for (const cell of duplicates(blocks.map((b) => `${b.col},${b.row}`))) error(`two circuit blocks sit in the same cell (${cell})`);
+  // The Trace diagram is a grid of five columns by four rows, and a block's label has room for 18 characters.
+  if (blocks.length < 4) error(`${blocks.length} circuit blocks: the Trace view needs at least four to tell a story`);
+  if (links.length < 3) error(`${links.length} circuit links: the Trace view needs at least three`);
+  for (const b of blocks) {
+    if (b.col < 0 || b.col > 4 || b.row < 0 || b.row > 3) error(`circuit block "${b.id}" is at column ${b.col}, row ${b.row}: the grid is columns 0 to 4 and rows 0 to 3`);
+    if (b.label.length > 18) error(`circuit block "${b.id}" has a ${b.label.length}-character label ("${b.label}"): 18 at most, put the rest in \`sub\``);
+  }
   const blockIds = new Set(blocks.map((b) => b.id));
   for (const link of links) {
     if (!blockIds.has(link.from)) error(`a circuit link starts at "${link.from}", which is not a block`);
@@ -106,7 +119,7 @@ export function checkPart(entry: PartEntry, catalog?: ReadonlySet<string>): Prob
     if (typeof b.at === "string" && !featureIds.has(b.at) && !spots.has(b.at)) error(`circuit block "${b.id}" points at "${b.at}", which is neither a feature nor a placed pin`);
   }
   if (anchored < 2) warn("fewer than two circuit blocks say where they are on the part (`at`): the Trace view can't draw the flow over it");
-  if (steps.length < 2) warn("fewer than two steps explain how it works");
+  if (steps.length < 3) error("fewer than three steps explain how it works");
   if (blocks.filter((b) => b.hot).length && !model.spec?.thermal) warn("a circuit block is marked hot but the spec has no thermal data");
 
   // Engineering data.

@@ -51,7 +51,7 @@ export default definePart({
   group: "motors",
   rank: 6,
   summary: "The square stepper in 3D printers and CNC machines. It moves in exact 1.8° steps, 200 to the turn, and holds its place when still. It needs a stepper driver and a 12 V to 24 V supply.",
-  size: { w: 64, h: 42.3, d: 42.3 },
+  size: { w: 64, h: 42.3, d: 42.5 },
   solids: [
     // 5 mm shaft with its flat, 24 mm out of the front face, and the 22 mm locating boss around it.
     { kind: "cyl", id: "shaft", cx: 12, cy: C, r: 2.5, d: FACE, z: C - 2.5, axis: "x", top: "#d3d6db", finish: "metal" },

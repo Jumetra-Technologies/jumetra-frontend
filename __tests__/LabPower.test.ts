@@ -3,6 +3,7 @@ import { getPart } from "@kiungo/core/parts";
 import { analyze } from "@kiungo/core/lab/circuit";
 import { planAutoWire } from "@kiungo/core/lab/autowire";
 import { frameAt } from "@kiungo/core/lab/simulate";
+import { SOURCE_KEY, SOURCE_SET, controlsFor } from "@kiungo/core/lab/controls";
 import type { LabNode, LabWire } from "@kiungo/core/lab/types";
 
 /**
@@ -151,3 +152,136 @@ describe("a part on its own supply", () => {
     expect(titles(analysis.faults)).toContain("Short circuit: power wired straight to ground");
   });
 });
+
+describe("a board on a battery", () => {
+  it("takes its supply through VIN, and the battery carries the board and everything on its 5 V pin", () => {
+    const uno = node("arduino-uno");
+    const battery = node("battery-9v");
+    const servo = node("servo");
+    const wires = [wire(battery, "POS", uno, "VIN"), wire(battery, "NEG", uno, "GND1"), wire(uno, "5V", servo, "VCC"), wire(uno, "GND2", servo, "GND"), wire(uno, "D9", servo, "SIG")];
+    const analysis = analyze([uno, battery, servo], wires);
+    const vin = analysis.nets.find((n) => n.pins.some((p) => p.node === uno.id && p.pin === "VIN"))!;
+    expect(vin.kind).toBe("power");
+    expect(vin.voltage).toBe(9);
+    expect(vin.feeds).toEqual([{ node: uno.id, pin: "VIN" }]);
+    // The 5 V pin is still the board's own 5 V, not the battery's 9 V.
+    expect(analysis.nodes[servo.id].supplyV).toBe(5);
+    const rail = analysis.power.rails.find((r) => r.source.node === battery.id)!;
+    const servoDraw = getPart("servo")!.spec!.power.draw!.active;
+    expect(rail.loads.map((l) => l.node)).toEqual([uno.id]);
+    expect(rail.typicalMa).toBeGreaterThan(servoDraw);
+    expect(rail.hours).toBeGreaterThan(0);
+  });
+
+  it("warms the board's regulator only when a battery feeds it, by the volts it drops", () => {
+    const uno = node("arduino-uno");
+    const battery = node("battery-9v");
+    const servo = node("servo");
+    const load = [wire(uno, "5V", servo, "VCC"), wire(uno, "GND2", servo, "GND"), wire(uno, "D9", servo, "SIG")];
+    const onUsb = analyze([uno, servo], load);
+    expect(onUsb.power.heat[uno.id]).toBeUndefined();
+    const onBattery = analyze([uno, battery, servo], [...load, wire(battery, "POS", uno, "VIN"), wire(battery, "NEG", uno, "GND1")]);
+    const heat = onBattery.power.heat[uno.id]!;
+    // (9 V − 5 V) × (the board's own draw + the servo's).
+    const amps = (getPart("arduino-uno")!.spec!.power.draw!.active + getPart("servo")!.spec!.power.draw!.active) / 1000;
+    expect(heat.watts).toBeCloseTo(4 * amps, 5);
+    expect(heat.tempC).toBeGreaterThan(60);
+  });
+
+  it("says when a battery is too weak or too strong for the board's input", () => {
+    const uno = node("arduino-uno");
+    const aa = node("battery-4aa");
+    const low = analyze([uno, aa], [wire(aa, "POS", uno, "VIN"), wire(aa, "NEG", uno, "GND1")]);
+    expect(titles(low.faults)).toContain("6 V is too little for VIN");
+    const pico = node("raspberry-pi-pico");
+    const nine = node("battery-9v");
+    const high = analyze([pico, nine], [wire(nine, "POS", pico, "VSYS"), wire(nine, "NEG", pico, "GND1")]);
+    expect(high.faults.find((f) => f.title === "9 V is too much for VSYS")?.severity).toBe("error");
+  });
+
+  it("flags a supply pin asked for more than it has", () => {
+    const { analysis } = build("arduino-uno", "servo-mg996r");
+    const budget = analysis.faults.find((f) => f.id.startsWith("budget:"))!;
+    expect(budget.title).toMatch(/5 V is asked for more than it can give/);
+    expect(budget.severity).toBe("warning");
+  });
+});
+
+describe("a converter between a battery and a part", () => {
+  it("is fed by the battery added before it, and gives a live 5 V only while it is fed", () => {
+    const { nodes, wires, of } = build("arduino-uno", "battery-18650", "buck-converter");
+    const converter = of("buck-converter");
+    const battery = of("battery-18650");
+    const servo = node("servo-mg996r");
+    const uno = of("arduino-uno");
+    const more = [...wires, wire(converter, "OUT_POS", servo, "VCC"), wire(converter, "OUT_NEG", servo, "GND"), wire(uno, "D9", servo, "SIG"), wire(uno, "GND1", converter, "OUT_NEG")];
+    const analysis = analyze([...nodes, servo], more);
+    expect(analysis.nodes[converter.id].status).toBe("ready");
+    expect(analysis.nodes[servo.id].status).toBe("ready");
+    expect(analysis.nodes[servo.id].supplyV).toBe(5);
+    expect(titles(analysis.nodes[servo.id].faults)).not.toContain("No common ground with the board");
+    // The battery sees the servo's power through the converter: less current at its higher voltage, plus what the converter wastes.
+    const out = analysis.power.rails.find((r) => r.source.node === converter.id)!;
+    const input = analysis.power.rails.find((r) => r.source.node === battery.id)!;
+    expect(out.volts).toBe(5);
+    expect(input.typicalMa).toBeLessThan(out.typicalMa);
+    expect(input.typicalMa).toBeGreaterThan((out.typicalMa * 5) / 7.4);
+    expect(analysis.power.heat[converter.id]!.watts).toBeGreaterThan(0);
+
+    // Take the battery away and the converter's output is dead: the servo has no power.
+    const unfed = analyze([...nodes, servo], more.filter((w) => w.from.node !== battery.id && w.to.node !== battery.id));
+    expect(unfed.nodes[servo.id].powered).toBe(false);
+  });
+});
+
+describe("parts described in data", () => {
+  it("gives a sensor its controls and readings with no lab code of its own", () => {
+    const { nodes, wires, analysis, of } = build("arduino-uno", "line-sensor");
+    const sensor = of("line-sensor");
+    expect(analysis.nodes[sensor.id].status).toBe("ready");
+    const panel = controlsFor(sensor, nodes, analysis);
+    expect(panel.title).toBe("Surroundings");
+    expect(panel.controls.map((c) => c.key)).toEqual([SOURCE_KEY, "reflect"]);
+    const dark = frameAt(nodes, wires, analysis, 1, true, { [sensor.id]: { [SOURCE_KEY]: SOURCE_SET, reflect: 10 } });
+    expect(dark.nodes[sensor.id].readings[0]).toEqual({ label: "Light reflected", value: "10 %" });
+    const bright = frameAt(nodes, wires, analysis, 1, true, { [sensor.id]: { [SOURCE_KEY]: SOURCE_SET, reflect: 90 } });
+    // Its analog pin is wired by default, and follows the reading upside down: more light, lower voltage.
+    const pin = (frame: typeof dark) => frame.pins[`${of("arduino-uno").id}:${wires.find((w) => w.to.pin === "AO")!.from.pin}`];
+    expect(pin(dark)).toBeGreaterThan(pin(bright));
+  });
+
+  it("lets a bare button work on a 3.3 V board without a level fault", () => {
+    const { analysis, of } = build("esp32", "push-button");
+    expect(analysis.nodes[of("push-button").id].status).toBe("ready");
+    expect(analysis.faults.filter((f) => f.severity === "error")).toEqual([]);
+  });
+
+  it("puts a level shifter's low side on 3.3 V, and a 5 V signal through it reaches a 3.3 V board cleanly", () => {
+    const { wires, of } = build("esp32", "level-shifter");
+    const shifter = of("level-shifter");
+    const supplyOf = (pin: string) => wires.find((w) => w.to.node === shifter.id && w.to.pin === pin)!.from.pin;
+    expect(supplyOf("LV")).toBe("3V3");
+    expect(supplyOf("HV")).toBe("VIN");
+
+    const esp = node("esp32");
+    const sonar = node("hc-sr04");
+    const lv = node("level-shifter");
+    const direct = [wire(esp, "VIN", sonar, "VCC"), wire(esp, "GND1", sonar, "GND"), wire(esp, "D5", sonar, "TRIG"), wire(esp, "D18", sonar, "ECHO")];
+    expect(titles(analyze([esp, sonar], direct).faults)).toContain("5 V output into a 3.3 V pin");
+    const shifted = [...direct.slice(0, 3), wire(sonar, "ECHO", lv, "HV1"), wire(lv, "LV1", esp, "D18"), wire(esp, "VIN", lv, "HV"), wire(esp, "3V3", lv, "LV"), wire(esp, "GND2", lv, "GND")];
+    const fixed = analyze([esp, sonar, lv], shifted);
+    expect(titles(fixed.faults)).not.toContain("5 V output into a 3.3 V pin");
+    expect(fixed.nodes[sonar.id].status).toBe("ready");
+  });
+
+  it("treats a servo driver's outputs as the board's own PWM pins", () => {
+    const { nodes, wires, of } = build("arduino-uno", "pca9685");
+    const servo = node("servo");
+    const uno = of("arduino-uno");
+    const all = [...wires, wire(of("pca9685"), "PWM0", servo, "SIG"), wire(uno, "5V", servo, "VCC"), wire(uno, "GND1", servo, "GND")];
+    const analysis = analyze([...nodes, servo], all);
+    expect(analysis.nodes[servo.id].status).toBe("ready");
+    expect(analysis.nodes[servo.id].links.find((l) => l.pin === "SIG")).toMatchObject({ board: uno.id, boardPin: "PWM0" });
+  });
+});
+

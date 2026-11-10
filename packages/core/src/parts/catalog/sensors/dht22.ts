@@ -10,12 +10,12 @@ const LEG_END = 35.1;
 
 export default definePart({
   id: "dht22",
-  name: "DHT22 humidity and temperature sensor",
+  name: "DHT22 humidity & temperature",
   aka: ["DHT-22", "white climate sensor", "RHT03", "DHT22 4-pin"],
   group: "sensors",
   rank: 16,
   summary: "The DHT11's grown-up sibling: the same one-wire conversation, but ±0.5 °C, the full 0 to 100 % humidity and readings below freezing. Bigger and white.",
-  size: { w: W, h: LEG_END, d: D },
+  size: { w: W, h: LEG_END, d: 7.8 },
   solids: [
     moldedBody(0, 0, W, BODY_H, D, WHITE, "body"),
     // The mounting hole at the top: a dark ring with the bench showing through.

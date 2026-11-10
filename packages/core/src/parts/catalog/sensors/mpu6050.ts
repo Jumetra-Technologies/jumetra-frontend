@@ -13,7 +13,7 @@ export default definePart({
   group: "sensors",
   rank: 7,
   summary: "Six axes of motion on a thumbnail: which way is down, how fast you're turning. The sensor inside phones, drones and self-balancing robots, over two I2C wires.",
-  size: { w: 21, h: 16, d: 2.6 },
+  size: { w: 21, h: 16, d: 2.7 },
   solids: [
     board(21, 16, MODULE_BLUE, {
       radius: 0.5,

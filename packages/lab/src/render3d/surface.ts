@@ -72,7 +72,7 @@ export function layerTexture(model: PartModel, flats: Flat[]): { texture: THREE.
       const path = new Path2D(f.d);
       if (f.fill && f.fill !== "none") {
         g.fillStyle = f.fill;
-        g.fill(path);
+        g.fill(path, "evenodd");
       }
       if (f.color !== "none") {
         g.strokeStyle = f.color ?? "#2f8f73";

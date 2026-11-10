@@ -25,8 +25,8 @@ function kindOf(partId: string): ThumbnailKind {
   const group = getPart(partId)?.group;
   if (group === "boards") return "board";
   if (group === "prototyping") return partId.startsWith("breadboard") ? "breadboard" : "other";
-  if (group === "sensors") return "sensor";
-  if (group === "outputs") return "output";
+  if (group === "sensors" || group === "controls") return "sensor";
+  if (group === "outputs" || group === "motors" || group === "drivers") return "output";
   if (group === "displays") return "display";
   if (group === "radios") return "radio";
   return "other";

@@ -8,65 +8,13 @@
  * what the part expects from the other end of the wire.
  */
 
+import { CATALOG } from "../parts/catalog";
 import { BREADBOARD_SPECS, type BreadboardSpec } from "../parts/models/breadboard";
+import type { LabPin, LabPinRole, PinFn, Pinout } from "../parts/types";
 
-export type PinFn = "power" | "ground" | "digital" | "analog" | "pwm" | "sda" | "scl" | "tx" | "rx" | "mosi" | "miso" | "sck" | "cs" | "led";
-
+export type { LabPin, PinFn, Pinout } from "../parts/types";
 /** What a peripheral pin expects from the far end of its wire. */
-export type PinRole =
-  | "vcc" // needs a supply
-  | "gnd" // needs ground
-  | "drive" // driven by a board output (digital or PWM)
-  | "pwm" // driven by a board PWM output
-  | "out-digital" // the part drives it, a board reads it
-  | "out-analog" // the part outputs a voltage, an analog pin reads it
-  | "io" // single-wire data both ways
-  | "sda"
-  | "scl"
-  | "tx" // the part transmits on it
-  | "rx" // the part receives on it
-  | "mosi"
-  | "miso"
-  | "sck"
-  | "cs"
-  | "load" // the switched side of a relay
-  | "opt"; // optional
-
-export interface LabPin {
-  id: string;
-  label: string;
-  side: "left" | "right";
-  /** Board pins: what the pin can do. */
-  fns?: PinFn[];
-  /** Board power pins: the voltage they supply. */
-  supplies?: number;
-  /** Board pins that can only read (no output driver). */
-  inputOnly?: boolean;
-  /** Peripheral pins: what the far end should be. */
-  role?: PinRole;
-  /** Must be connected for the part to work. */
-  required?: boolean;
-  note?: string;
-}
-
-export interface Pinout {
-  partId: string;
-  controller: boolean;
-  /** Logic level in volts: what a board outputs, or what a peripheral's signals run at. */
-  logic: number;
-  /** Peripheral inputs that survive 5 V, or a board whose inputs do. */
-  tolerates5V: boolean | "some";
-  /** Peripheral supply range in volts. */
-  supply?: [number, number];
-  pins: LabPin[];
-  /**
-   * A passive part that only joins pins (a breadboard): it has no supply, no
-   * signals and nothing to check, and its `strips` are joined inside it.
-   */
-  passive?: boolean;
-  /** Groups of pin ids joined inside the part, as a breadboard's strips are. */
-  strips?: readonly string[][];
-}
+export type PinRole = LabPinRole;
 
 // ----- helpers ---------------------------------------------------------------
 
@@ -476,7 +424,10 @@ const RESISTOR: Pinout = {
   ],
 };
 
-const ALL: Pinout[] = [UNO, ESP32, PICO, MEGA, ESP8266, STM32, PI4, MICROBIT, TEENSY, ...BREADBOARDS, RESISTOR, ...PERIPHERALS];
+/** Parts not yet moved to `parts/catalog`, where a part's pins now live beside its model. */
+const LEGACY: Pinout[] = [UNO, ESP32, PICO, MEGA, ESP8266, STM32, PI4, MICROBIT, TEENSY, ...BREADBOARDS, RESISTOR, ...PERIPHERALS];
+const DEFINED = new Set(CATALOG.map((entry) => entry.model.id));
+const ALL: Pinout[] = [...CATALOG.map((entry) => entry.pinout), ...LEGACY.filter((p) => !DEFINED.has(p.partId))];
 
 const BY_ID = new Map(ALL.map((p) => [p.partId, p]));
 

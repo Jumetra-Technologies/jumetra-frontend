@@ -2,6 +2,7 @@
 
 import { useId, useMemo, useSyncExternalStore } from "react";
 import { flatColor, shade } from "@kiungo/core/parts/build";
+import { pathBounds } from "@kiungo/core/parts/path";
 import type { Feature, PartModel, Solid } from "@kiungo/core/parts/types";
 import { cn } from "@kiungo/ui/cn";
 import { planImage } from "../render3d/renderer";
@@ -56,15 +57,16 @@ const KIND_LABEL: Record<Feature["kind"], string> = {
 };
 
 function zOf(solid: Solid, surface: number): number {
-  if (solid.kind === "box" || solid.kind === "cyl" || solid.kind === "dome") return (solid.z ?? 0) + solid.d;
+  if (solid.kind === "box" || solid.kind === "cyl" || solid.kind === "dome" || solid.kind === "extrude") return (solid.z ?? 0) + solid.d;
   if (solid.kind === "pins") return (solid.z ?? 0) + Math.max(0, solid.len);
+  if (solid.kind === "wire") return Math.max(...solid.points.map((p) => p[2])) + solid.r;
   // Flat markings sit on the board surface unless placed elsewhere.
   return (solid.z ?? surface) + 0.05;
 }
 
 function surfaceOf(model: PartModel): number {
-  const board = model.solids.find((solid) => solid.kind === "box" && solid.id === "pcb");
-  return board && board.kind === "box" ? (board.z ?? 0) + board.d : 0;
+  const board = model.solids.find((solid) => (solid.kind === "box" || solid.kind === "extrude") && solid.id === "pcb");
+  return board && (board.kind === "box" || board.kind === "extrude") ? (board.z ?? 0) + board.d : 0;
 }
 
 function SolidShape({ solid, powered, lit, index, uid = "plan" }: { solid: Solid; powered: boolean; lit: Set<string>; index: number; uid?: string }) {
@@ -77,7 +79,7 @@ function SolidShape({ solid, powered, lit, index, uid = "plan" }: { solid: Solid
       const horizontal = solid.w >= solid.h;
       const label = solid.label;
       return (
-        <g key={index}>
+        <g key={index} transform={solid.turn ? `rotate(${solid.turn} ${solid.x + solid.w / 2} ${solid.y + solid.h / 2})` : undefined}>
           <rect x={solid.x} y={solid.y} width={solid.w} height={solid.h} rx={solid.radius ?? 0.3} fill={fill} stroke={stroke} strokeWidth={0.15} />
           {glowing ? <rect x={solid.x} y={solid.y} width={solid.w} height={solid.h} rx={solid.radius ?? 0.3} fill={solid.glow} className="hhip-plan-glow" /> : null}
           {holes
@@ -169,14 +171,25 @@ function SolidShape({ solid, powered, lit, index, uid = "plan" }: { solid: Solid
         </text>
       );
     case "path":
-      return <path key={index} d={solid.d} fill={solid.fill ?? "none"} stroke={solid.color ?? "#2f8f73"} strokeWidth={solid.width ?? 0.3} strokeLinecap="round" strokeLinejoin="round" />;
+      return <path key={index} d={solid.d} fill={solid.fill ?? "none"} fillRule="evenodd" stroke={solid.color ?? "#2f8f73"} strokeWidth={solid.width ?? 0.3} strokeLinecap="round" strokeLinejoin="round" />;
     case "disc":
       return (
         <g key={index}>
           {solid.ring ? <circle cx={solid.cx} cy={solid.cy} r={solid.r + solid.ring.width} fill={solid.ring.color} /> : null}
-          <circle cx={solid.cx} cy={solid.cy} r={solid.r} fill={solid.color} />
+          <circle cx={solid.cx} cy={solid.cy} r={solid.r} fill={solid.hole ? "var(--canvas)" : solid.color} />
         </g>
       );
+    case "extrude": {
+      const fill = solid.fill ?? flatColor(solid.top);
+      return (
+        <g key={index}>
+          <path d={solid.path} fill={fill} fillRule="evenodd" stroke={shade(fill, 0.7)} strokeWidth={0.15} strokeLinejoin="round" />
+          {glowing ? <path d={solid.path} fill={solid.glow} fillRule="evenodd" className="hhip-plan-glow" /> : null}
+        </g>
+      );
+    }
+    case "wire":
+      return <polyline key={index} points={solid.points.map((p) => `${p[0]},${p[1]}`).join(" ")} fill="none" stroke={solid.color} strokeWidth={solid.r * 2} strokeLinecap="round" strokeLinejoin="round" />;
     default:
       return null;
   }
@@ -231,9 +244,40 @@ function FrontShape({ solid, size, powered, lit, index }: { solid: Solid; size: 
         </g>
       );
     }
+    case "extrude": {
+      const fill = solid.fill ?? flatColor(solid.top);
+      const bounds = pathBounds(solid.path);
+      return <rect key={index} x={bounds.x} y={top(solid.z ?? 0, solid.d)} width={bounds.w} height={solid.d} fill={fill} stroke={shade(fill, 0.7)} strokeWidth={0.12} />;
+    }
+    case "wire":
+      return <polyline key={index} points={solid.points.map((p) => `${p[0]},${size.d - p[2]}`).join(" ")} fill="none" stroke={solid.color} strokeWidth={solid.r * 2} strokeLinecap="round" strokeLinejoin="round" />;
     default:
       return null;
   }
+}
+
+/** The footprint a solid covers as seen from above, for fitting the picture round overhanging parts. */
+function extentOf(solid: Solid): { x1: number; y1: number; x2: number; y2: number } | null {
+  if (solid.kind === "box") return { x1: solid.x, y1: solid.y, x2: solid.x + solid.w, y2: solid.y + solid.h };
+  if (solid.kind === "cyl") {
+    // A lying cylinder covers its length one way and its width the other.
+    const along = solid.d / 2;
+    const across = Math.max(solid.r, solid.r2 ?? solid.r);
+    if (solid.axis === "x") return { x1: solid.cx - along, y1: solid.cy - across, x2: solid.cx + along, y2: solid.cy + across };
+    if (solid.axis === "y") return { x1: solid.cx - across, y1: solid.cy - along, x2: solid.cx + across, y2: solid.cy + along };
+    return { x1: solid.cx - across, y1: solid.cy - across, x2: solid.cx + across, y2: solid.cy + across };
+  }
+  if (solid.kind === "dome") return { x1: solid.cx - solid.r, y1: solid.cy - solid.r, x2: solid.cx + solid.r, y2: solid.cy + solid.r };
+  if (solid.kind === "extrude") {
+    const b = pathBounds(solid.path);
+    return { x1: b.x, y1: b.y, x2: b.x + b.w, y2: b.y + b.h };
+  }
+  if (solid.kind === "wire") {
+    const xs = solid.points.map((p) => p[0]);
+    const ys = solid.points.map((p) => p[1]);
+    return { x1: Math.min(...xs) - solid.r, y1: Math.min(...ys) - solid.r, x2: Math.max(...xs) + solid.r, y2: Math.max(...ys) + solid.r };
+  }
+  return null;
 }
 
 export function PartPlanView({ model, powered, activeFeature, onFeature, className }: { model: PartModel; powered: boolean; activeFeature: string | null; onFeature: (id: string | null) => void; className?: string }) {
@@ -245,12 +289,7 @@ export function PartPlanView({ model, powered, activeFeature, onFeature, classNa
   const PAD = padFor(w, h);
   const font = Math.max(0.8, Math.min(1.8, Math.max(w, h) * 0.035));
   // Connectors and legs may overhang the footprint; keep them in the picture.
-  const extent = (solid: Solid) => {
-    if (solid.kind === "box") return { x1: solid.x, y1: solid.y, x2: solid.x + solid.w, y2: solid.y + solid.h };
-    if (solid.kind === "cyl" || solid.kind === "dome") return { x1: solid.cx - solid.r, y1: solid.cy - solid.r, x2: solid.cx + solid.r, y2: solid.cy + solid.r };
-    return null;
-  };
-  const extents = [...model.solids.map(extent).filter((e): e is NonNullable<typeof e> => e !== null), ...model.features.map((f) => ({ x1: f.x, y1: f.y, x2: f.x + f.w, y2: f.y + f.h }))];
+  const extents = [...model.solids.map(extentOf).filter((e): e is NonNullable<typeof e> => e !== null), ...model.features.map((f) => ({ x1: f.x, y1: f.y, x2: f.x + f.w, y2: f.y + f.h }))];
   const minX = Math.min(0, ...extents.map((e) => e.x1));
   const maxX = Math.max(w, ...extents.map((e) => e.x2));
   const maxY = front ? h : Math.max(h, ...extents.map((e) => e.y2));
@@ -391,12 +430,7 @@ export function PartPlanGraphic({ model, powered, lit: litOverride, rotate = fal
   const pinDrop = front ? Math.max(0, ...model.solids.map((s) => (s.kind === "pins" && s.len < 0 ? -(s.z ?? 0) - s.len : 0))) : 0;
   const w = model.size.w;
   const h = front ? model.size.d + pinDrop : model.size.h;
-  const extent = (solid: Solid) => {
-    if (solid.kind === "box") return { x1: solid.x, y1: solid.y, x2: solid.x + solid.w, y2: solid.y + solid.h };
-    if (solid.kind === "cyl" || solid.kind === "dome") return { x1: solid.cx - solid.r, y1: solid.cy - solid.r, x2: solid.cx + solid.r, y2: solid.cy + solid.r };
-    return null;
-  };
-  const extents = front ? [] : model.solids.map(extent).filter((e): e is NonNullable<typeof e> => e !== null);
+  const extents = front ? [] : model.solids.map(extentOf).filter((e): e is NonNullable<typeof e> => e !== null);
   const minX = Math.min(0, ...extents.map((e) => e.x1));
   const minY = Math.min(0, ...extents.map((e) => e.y1));
   const maxX = Math.max(w, ...extents.map((e) => e.x2));

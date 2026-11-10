@@ -36,7 +36,17 @@ export interface RenderOptions {
    * @kiungo/core/parts/geometry's `project` returns them divided by the scale.
    */
   center?: { x: number; y: number };
+  /**
+   * How strongly the room reflects in the part (the default suits a
+   * three-quarter view). Seen from straight above, every flat face mirrors
+   * the ceiling, so the flat views turn it down to keep colors true.
+   */
+  environment?: number;
 }
+
+/** Reflection strength for three-quarter views, and for views from straight above or in front. */
+const ENVIRONMENT = 0.42;
+const ENVIRONMENT_FLAT = 0.2;
 
 let shared: { renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.OrthographicCamera; key: THREE.DirectionalLight; ground: THREE.Mesh } | null = null;
 let unavailable = false;
@@ -70,7 +80,7 @@ function setup() {
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   pmrem.dispose();
-  scene.environmentIntensity = 0.42;
+  scene.environmentIntensity = ENVIRONMENT;
 
   // A soft key light from the upper left, as a desk lamp, and a little fill.
   const key = new THREE.DirectionalLight(0xfff8f0, 1.9);
@@ -176,7 +186,9 @@ export function renderPart(model: PartModel, target: HTMLCanvasElement, options:
   camera.matrixWorldInverse.copy(viewMatrix(model, options.view));
   camera.matrixWorld.copy(camera.matrixWorldInverse).invert();
 
+  scene.environmentIntensity = options.environment ?? ENVIRONMENT;
   renderer.render(scene, camera);
+  scene.environmentIntensity = ENVIRONMENT;
   scene.remove(part.root);
 
   if (target.width !== pw || target.height !== ph) {
@@ -241,6 +253,7 @@ export function planImage(
     powered: !!options.powered,
     lit,
     center,
+    environment: ENVIRONMENT_FLAT,
   });
   if (!ok) return null;
   const url = planCanvas.toDataURL("image/webp", 0.92);

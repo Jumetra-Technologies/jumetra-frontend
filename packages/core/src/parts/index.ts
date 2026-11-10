@@ -1,3 +1,4 @@
+import { CATALOG } from "./catalog";
 import { BOARDS } from "./models/boards";
 import { PROTOTYPING } from "./models/breadboard";
 import { PASSIVES } from "./models/passives";
@@ -7,19 +8,27 @@ import { RADIOS } from "./models/radios";
 import { SENSORS } from "./models/sensors";
 import type { PartGroup, PartModel } from "./types";
 
-export type { PartModel, PartGroup, PartGroupId } from "./types";
+export type { PartModel, PartGroup, PartGroupId, PartSpec } from "./types";
 
 export const PART_GROUPS: PartGroup[] = [
   { id: "boards", title: "Boards", blurb: "The microcontroller or computer that runs your code. Everything else connects to one of these." },
-  { id: "prototyping", title: "Breadboards and resistors", blurb: "What a build sits on, and the part every LED needs: breadboard strips and power rails that share one 5 V pin, and resistors that keep the current safe." },
-  { id: "sensors", title: "Sensors", blurb: "Parts that turn the world into numbers: temperature, distance, motion, light, gas, tilt, pressure." },
-  { id: "outputs", title: "Outputs and motors", blurb: "Parts that do something you can see or hear: light up, buzz, turn, switch a load." },
-  { id: "displays", title: "Displays", blurb: "Screens for showing readings and messages without a computer attached." },
-  { id: "radios", title: "Radios", blurb: "Modules that let a project talk wirelessly: Bluetooth, Wi-Fi, 2.4 GHz and long range." },
+  { id: "power", title: "Power", blurb: "What a build runs on once the USB lead comes out: batteries, and the converters and chargers that turn their voltage into the one each part needs." },
+  { id: "prototyping", title: "Breadboards and basics", blurb: "What a build sits on and the small parts every circuit needs: breadboards, resistors, capacitors, diodes, transistors and level shifters." },
+  { id: "controls", title: "Buttons and controls", blurb: "How a person tells a build what to do: buttons, knobs, joysticks, keypads, switches and remotes." },
+  { id: "sensors", title: "Sensors", blurb: "Parts that turn the world into numbers: distance, lines on the floor, motion, heading, color, temperature, light, gas, pressure, current." },
+  { id: "motors", title: "Motors and servos", blurb: "Parts that make a build move: gear motors for wheels, servos for arms and steering, steppers for exact positions, pumps." },
+  { id: "drivers", title: "Drivers and switches", blurb: "A board pin gives about 20 mA; a motor takes a hundred times that. These parts stand between the two: H-bridges, stepper and servo drivers, MOSFETs and relays." },
+  { id: "outputs", title: "Lights and sound", blurb: "Parts that show or say something: LEDs, addressable pixels and buzzers." },
+  { id: "displays", title: "Displays", blurb: "Screens and digits for showing readings and messages without a computer attached." },
+  { id: "radios", title: "Radios and tags", blurb: "Modules that let a project talk without wires: Bluetooth, Wi-Fi, 2.4 GHz, long range, and RFID tags." },
 ];
 
+/** Parts not yet moved to `catalog/`, where each part has its own file. */
+const LEGACY: PartModel[] = [...BOARDS, ...PROTOTYPING, ...PASSIVES, ...SENSORS, ...OUTPUTS, ...DISPLAYS, ...RADIOS];
+const DEFINED = new Set(CATALOG.map((entry) => entry.model.id));
+
 /** All parts, grouped in display order with the most common first inside each group. */
-export const PARTS: PartModel[] = [...BOARDS, ...PROTOTYPING, ...PASSIVES, ...SENSORS, ...OUTPUTS, ...DISPLAYS, ...RADIOS].sort(
+export const PARTS: PartModel[] = [...CATALOG.map((entry) => entry.model), ...LEGACY.filter((part) => !DEFINED.has(part.id))].sort(
   (a, b) => PART_GROUPS.findIndex((g) => g.id === a.group) - PART_GROUPS.findIndex((g) => g.id === b.group) || a.rank - b.rank,
 );
 

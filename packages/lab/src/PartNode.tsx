@@ -2,7 +2,7 @@
 
 import { memo, useMemo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { AlertTriangle, Cpu, Grid3x3, Lightbulb, Monitor, Radio, Thermometer, Usb, Zap } from "lucide-react";
+import { AlertTriangle, BatteryMedium, Cog, Cpu, Grid3x3, Lightbulb, Monitor, Radio, SlidersHorizontal, Thermometer, ToggleRight, Usb, Zap } from "lucide-react";
 import { PartModel3D } from "./views/PartModel3D";
 import { PartPlanGraphic } from "./views/PartPlanView";
 import { getPart, hasScreen, withScreenText } from "@kiungo/core/parts";
@@ -47,7 +47,7 @@ const STATUS_DOT: Record<PartStatus, string> = {
   fault: "bg-danger",
 };
 
-const GROUP_ICON = { boards: Cpu, prototyping: Grid3x3, sensors: Thermometer, outputs: Lightbulb, displays: Monitor, radios: Radio } as const;
+const GROUP_ICON = { boards: Cpu, power: BatteryMedium, prototyping: Grid3x3, controls: SlidersHorizontal, sensors: Thermometer, motors: Cog, drivers: ToggleRight, outputs: Lightbulb, displays: Monitor, radios: Radio } as const;
 
 function PinRow({ pin, index, side, nodeId, connected, faulty, live, w, partLabel }: { pin: LabPin; index: number; side: "left" | "right"; nodeId: string; connected: string | null; faulty: boolean; live: boolean; w: number; partLabel: string }) {
   const tone = pinTone(pin);

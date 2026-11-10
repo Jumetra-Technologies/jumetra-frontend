@@ -197,7 +197,7 @@ describe("insights", () => {
     records: projectsSummary(PROJECTS, RECORDS, period, NOW),
     next: { title: "Servo control", minutes: 15, href: "/learn/servo" },
     untried: untriedParts(SESSIONS, CATALOG),
-    groupTitles: { boards: "Boards", prototyping: "Breadboards", sensors: "Sensors", outputs: "Outputs", displays: "Displays", radios: "Radios" },
+    groupTitles: { boards: "Boards", power: "Power", prototyping: "Breadboards", controls: "Controls", sensors: "Sensors", motors: "Motors", drivers: "Drivers", outputs: "Outputs", displays: "Displays", radios: "Radios" },
     events,
     period,
     now: NOW,

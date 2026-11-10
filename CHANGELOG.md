@@ -13,14 +13,7 @@ Versions before 1.2.0 were assigned after the fact to the pull requests already 
 ## [1.39.2] - 2026-11-10
 
 ### Fixed
-- **Sign-in works again.** Since 1.38.1 the website (and desktop 0.13.1) sent everything to the new server on Render, which has none of Kiungo's accounts and no sign-in set up. Accounts, sign-in, projects and everything else are back on Kiungo's main server (`europe-west4-hhipsystemv0.cloudfunctions.net/api`), as before 1.38.1.
-
-### Changed
-- **The new Render server serves only the admin portal** (`ADMIN_API_BASE`): the portal's sign-in and figures, and the usage heartbeats it counts.
-  - It can't recognize sign-ins from the main server, so usage counts for the browser's random id (`kiungo.visitor`) even when someone is signed in. The portal shows how browsers use Kiungo, not named accounts.
-  - The usage answer stays in the browser instead of following the account.
-- **The desktop app (0.13.4) uses the main server again.** It doesn't send usage for now.
-- **The Cookie Policy, Privacy Policy, banner and Settings text** now say this.
+- **Security: the download route could be made to pass through any GitHub repository's files.** `/api/desktop/download` checked the address as text, so `..`, backslashes or encoded dots after the allowed prefix resolved to someone else's release, served from Kiungo's own address. It now parses the address and checks its host, its exact path and every segment, and fetches only an address already in that exact form.
 
 ## [1.39.1] - 2026-11-10
 

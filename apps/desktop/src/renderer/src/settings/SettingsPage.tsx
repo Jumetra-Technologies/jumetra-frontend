@@ -5,7 +5,6 @@ import { Check, Moon, Sun, Monitor } from "lucide-react";
 import { SegmentedControl } from "@kiungo/ui/segmented-control";
 import { AccountSummary, APPEARANCE_OPTIONS, PLATFORM_NAMES, UpdateRow } from "./SettingsDialog";
 import { PageTitle, SettingRow, SettingsHeading, Toggle } from "../shell/widgets";
-import { WORKSPACE_FOCUSES, type WorkspaceFocus } from "../shell/types";
 import type { UpdateControls } from "../update/useUpdate";
 
 const SECTIONS = [
@@ -46,7 +45,6 @@ export function SettingsPage({
 }) {
   const [section, setSection] = useState<Section>("Profile");
   const toggleRole = (role: Role) => onRoles(roles.includes(role) ? roles.filter((r) => r !== role) : [...roles, role]);
-  const [focus, setFocus] = useState<WorkspaceFocus>("Everything");
 
   return (
     <div className="mx-auto max-w-[1180px] p-6" data-testid="settings-page">
@@ -99,17 +97,6 @@ export function SettingsPage({
                     </button>
                   );
                 })}
-              </div>
-              <div className="mt-6 rounded-[12px] bg-muted-bg p-4">
-                <h3 className="text-xs font-semibold text-foreground">Workspace focus</h3>
-                <p className="mt-1 text-[10.5px] text-muted">Focus changes dashboard priorities and shortcuts, not permissions.</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {WORKSPACE_FOCUSES.map((x) => (
-                    <button key={x} type="button" onClick={() => setFocus(x)} className={`rounded-[10px] px-3 py-2 text-[10.5px] ${focus === x ? "bg-primary text-primary-foreground" : "border border-border"}`}>
-                      {x}
-                    </button>
-                  ))}
-                </div>
               </div>
             </>
           ) : null}

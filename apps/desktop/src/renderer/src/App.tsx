@@ -21,7 +21,7 @@ import { ResearchWorkspace } from "./research/ResearchWorkspace";
 import { SettingsPage } from "./settings/SettingsPage";
 import { AppShell } from "./shell/AppShell";
 import { NoProjectOpen } from "./shell/NoProjectOpen";
-import type { View, WorkspaceFocus } from "./shell/types";
+import type { View } from "./shell/types";
 import { useAppearance } from "./theme";
 import { UpdateBanner } from "./update/UpdateBanner";
 import { useUpdate } from "./update/useUpdate";
@@ -43,7 +43,6 @@ export function App() {
   const [syncOn, setSyncOn] = useState(false);
   const [appearance, setAppearance] = useState<Appearance>("system");
   const [roles, setRoles] = useState<Role[]>([]);
-  const [focus, setFocus] = useState<WorkspaceFocus>("Everything");
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [remote, setRemote] = useState<{ projects: RemoteProject[] | null; message: string | null }>({ projects: null, message: null });
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -236,8 +235,6 @@ export function App() {
         view={view}
         onView={setView}
         roles={roles}
-        focus={focus}
-        onFocus={setFocus}
         auth={auth}
         appearance={appearance}
         onAppearance={changeAppearance}
@@ -245,7 +242,7 @@ export function App() {
         onPalette={() => setPaletteOpen(true)}
       >
         {view === "dashboard" ? (
-          <Dashboard auth={auth} roles={roles} focus={focus} recent={recent} onView={setView} onNewProject={() => newProject()} onOpenRecent={openRecent} />
+          <Dashboard auth={auth} roles={roles} recent={recent} onView={setView} onNewProject={() => newProject()} onOpenRecent={openRecent} />
         ) : view === "projects" ? (
           <ProjectsView
             recent={recent}

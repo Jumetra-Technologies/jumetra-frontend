@@ -3,7 +3,7 @@ import type { AuthState, Role } from "@kiungo/api";
 import { cn } from "@kiungo/ui/cn";
 import { KiungoLogo } from "@kiungo/ui/KiungoMark";
 import { AccountMenu } from "../account/AccountMenu";
-import { NAV_ITEMS, WORKSPACE_FOCUSES, type View, type WorkspaceFocus } from "./types";
+import { NAV_ITEMS, type View } from "./types";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   dashboard: LayoutDashboard,
@@ -21,16 +21,12 @@ export function Sidebar({
   view,
   onView,
   roles,
-  focus,
-  onFocus,
   auth,
   onSettings,
 }: {
   view: View;
   onView: (view: View) => void;
   roles: Role[];
-  focus: WorkspaceFocus;
-  onFocus: (focus: WorkspaceFocus) => void;
   auth: AuthState;
   onSettings: () => void;
 }) {
@@ -40,24 +36,6 @@ export function Sidebar({
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-sidebar-border px-3.5">
         <KiungoLogo className="h-6" />
         <span className="rounded-[6px] bg-[color-mix(in_srgb,var(--kiungo-teal)_22%,transparent)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--kiungo-teal-text)]">2.0</span>
-      </div>
-
-      <div className="border-b border-sidebar-border p-3">
-        <label className="mb-1.5 block text-[9px] font-semibold uppercase tracking-[0.12em] text-sidebar-muted" htmlFor="workspace-focus">
-          Current workspace
-        </label>
-        <select
-          id="workspace-focus"
-          value={focus}
-          onChange={(e) => onFocus(e.target.value as WorkspaceFocus)}
-          className="w-full rounded-[10px] border border-sidebar-border bg-[color-mix(in_srgb,var(--sidebar-foreground)_6%,transparent)] px-2.5 py-2 text-xs text-sidebar-foreground outline-none focus-visible:border-primary"
-        >
-          {WORKSPACE_FOCUSES.map((x) => (
-            <option key={x} value={x} className="bg-sidebar text-sidebar-foreground">
-              {x}
-            </option>
-          ))}
-        </select>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Platform">

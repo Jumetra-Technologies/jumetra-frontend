@@ -822,6 +822,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.39.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.2...v1.39.0
 [1.39.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.2...v1.39.0
 [1.38.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.1...v1.38.2
 [1.38.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.0...v1.38.1

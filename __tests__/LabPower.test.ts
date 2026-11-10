@@ -116,11 +116,36 @@ describe("a battery, a driver and a motor", () => {
 
 describe("a stepper on a stepper driver", () => {
   it("takes both channels, one coil each", () => {
-    const { analysis, of, wires } = build("arduino-uno", "a4988", "lipo-2s", "nema17");
+    const { analysis, of, wires } = build("arduino-uno", "a4988", "lipo-3s", "nema17");
     const motor = of("nema17");
     expect(wires.filter((w) => w.to.node === motor.id)).toHaveLength(4);
     expect(analysis.nodes[motor.id].drivenBy).toBe(of("a4988").id);
     expect(titles(analysis.nodes[motor.id].faults)).not.toContain("Only one coil is wired");
+  });
+
+  it("runs clean from a 3S pack: the driver holds the current, so 11.1 V on a 2.55 V motor is how it is used", () => {
+    const { nodes, wires, analysis, of } = build("arduino-uno", "lipo-3s", "a4988", "nema17");
+    expect(analysis.faults.filter((f) => f.severity !== "tip")).toEqual([]);
+    // Two windings held at 1 A, 1.5 Ω each, and the driver's own 0.64 W a winding, over 11.1 V; plus the chip's 12 mA.
+    const pack = analysis.power.rails.find((r) => r.source.node === of("lipo-3s").id)!;
+    expect(pack.typicalMa).toBeCloseTo(((2 * (1.5 + 0.64)) / 11.1) * 1000 + 12, 0);
+    expect(pack.peakMa).toBeCloseTo(pack.typicalMa, 0);
+    expect(analysis.power.heat[of("a4988").id].watts).toBeCloseTo(1.28, 2);
+    const live = frameAt(nodes, wires, analysis, 1, true).nodes[of("nema17").id];
+    expect(live.readings.find((r) => r.label === "Current")!.value).toMatch(/^1\.00 A a winding, held by /);
+    expect(live.readings.find((r) => r.label === "At its terminals")!.value).toBe("About 1.5 V, chopped down from 11.1 V");
+    expect(live.badge).toBe("60 rpm");
+  });
+
+  it("a plain H-bridge on the same supply and motor still warns: nothing holds the current", () => {
+    const { analysis, of } = build("arduino-uno", "lipo-3s", "l298n", "nema17");
+    expect(titles(analysis.nodes[of("nema17").id].faults)).toContain("11.1 V on a 2.55 V motor");
+  });
+
+  it("a 2S pack is too little for the A4988, and the lab names the pin", () => {
+    const { analysis, hints, of } = build("arduino-uno", "lipo-2s", "a4988");
+    expect(hints.a4988).toMatch(/VMOT needs 8–35 V/);
+    expect(titles(analysis.nodes[of("a4988").id].faults)).toContain("VMOT has no power");
   });
 
   it("says so when only one coil is wired", () => {

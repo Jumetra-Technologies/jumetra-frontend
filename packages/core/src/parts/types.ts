@@ -428,7 +428,20 @@ export interface PartSpec {
      * loses on the way: `ohms` × amps (a MOSFET's on-resistance), and never
      * less than `dropV` (a bipolar transistor's saturation).
      */
-    bridge?: { channels: number; maxMa: number; peakMa?: number; dropV?: number; ohms?: number };
+    bridge?: {
+      channels: number;
+      maxMa: number;
+      peakMa?: number;
+      dropV?: number;
+      ohms?: number;
+      /**
+       * A chopper driver (a stepper driver): the current it holds each
+       * winding at, as its trimmer is usually set. It steps the supply down
+       * to do it, so a supply well above the motor's rated voltage is how it
+       * is meant to be used, and it draws less from a higher supply.
+       */
+      limitMa?: number;
+    };
     /** Motors: the numbers that size a driver and a battery. */
     motor?: { ratedV: number; runMa: number; stallMa: number; rpm?: number; torque?: string };
     /** Boards: what each supply pin can give. */
@@ -528,7 +541,15 @@ export type PartSim =
       kind: "driver";
       supply: string;
       ground: string;
+      /**
+       * One entry per channel. `inputs` are IN1 and IN2 of an H-bridge (the
+       * motor turns while they differ), the one gate of a switch, or STEP
+       * and DIR of a stepper driver. `enable` is a bridge's PWM enable (on
+       * while high), or a stepper driver's EN (on while low).
+       */
       channels: Array<{ outputs: [string, string]; inputs: string[]; enable?: string }>;
+      /** A pin that must be high for any channel to run (a standby or sleep pin). */
+      standby?: string;
     }
   | {
       /** Motors and other two-terminal loads a driver or switch runs. */

@@ -157,7 +157,7 @@ export default definePart({
       logic: 5,
       tolerant5V: true,
       draw: { idle: 5, active: 12 },
-      bridge: { channels: 2, maxMa: 2000, ohms: 0.64 },
+      bridge: { channels: 2, maxMa: 2000, ohms: 0.64, limitMa: 1000 },
       interface: "STEP and DIR pulses; MS1 to MS3 set full to 1/16 step",
       note: "VDD is the logic supply, 3 V to 5.5 V. VMOT is the motor supply, 8 V to 35 V. Two coils at 1 A lose about 1.3 W. The chip limits current to Vref ÷ (8 × sense resistor), so the battery volts above the motor's rating are not wasted as heat in the motor.",
     },

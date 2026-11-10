@@ -80,6 +80,7 @@ const SHORT: Record<string, string> = {
   "battery-9v": "9 V battery",
   "battery-18650": "2 × 18650 battery",
   "lipo-2s": "2S LiPo",
+  "lipo-3s": "3S LiPo",
   "lipo-battery": "1S LiPo",
   "buck-converter": "Buck converter",
   "breadboard-power": "Breadboard supply",

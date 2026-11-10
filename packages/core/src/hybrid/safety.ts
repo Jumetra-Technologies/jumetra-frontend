@@ -16,6 +16,7 @@
 
 import type { Analysis, Fault } from "../lab/circuit";
 import { getPinout } from "../lab/pinout";
+import { getPart } from "../parts";
 import type { LabNode, LabWire } from "../lab/types";
 import { boardIsReal, isVirtual } from "./plan";
 
@@ -119,7 +120,7 @@ export function realBoardFaults(nodes: LabNode[], wires: LabWire[], analysis: An
     const vcc = pinout.pins.find((p) => p.role === "vcc");
     const supply = vcc ? boardSupply(node, vcc.id) : undefined;
     if (supply) {
-      drawMa += TYPICAL_MA[node.partId] ?? 10;
+      drawMa += TYPICAL_MA[node.partId] ?? getPart(node.partId)?.spec?.power.draw?.active ?? 10;
       drawn.push(node.label);
     }
     if (MOTORS.has(node.partId) && supply) {

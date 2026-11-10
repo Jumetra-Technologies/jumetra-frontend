@@ -282,6 +282,42 @@ describe("suggestions", () => {
   });
 });
 
+describe("suggestions for batteries, drivers and motors", () => {
+  it("says what a battery, a converter and a bare motor go on, which is not a board pin", () => {
+    const uno = node("arduino-uno");
+    const driver = node("tb6612fng", 0, 0, "Driver");
+    expect(fitFor("micro-gear-motor", [uno])).toEqual({ tone: "warn", text: "Needs a motor driver, not a board pin" });
+    expect(fitFor("micro-gear-motor", [uno, driver])).toEqual({ tone: "ok", text: "Goes on your Driver" });
+    expect(fitFor("battery-18650", [uno, driver])).toEqual({ tone: "ok", text: "Powers your Driver" });
+    expect(fitFor("battery-18650", [])).toEqual({ tone: "ok", text: "7.4 V for a motor driver or a converter" });
+    expect(fitFor("battery-9v", [uno])).toEqual({ tone: "ok", text: "Can run Arduino from its VIN pin" });
+    expect(fitFor("lipo-2s", [uno, node("a4988", 0, 0, "Stepper driver")])).toEqual({ tone: "warn", text: "7.4 V is outside what your Stepper driver takes" });
+    expect(fitFor("buck-converter", [uno])).toEqual({ tone: "warn", text: "Add a battery to feed it" });
+    expect(fitFor("buck-converter", [uno, node("lipo-3s", 0, 0, "Pack")])).toEqual({ tone: "ok", text: "Feeds from your Pack" });
+  });
+
+  it("is honest about the parts the lab draws but does not run", () => {
+    for (const id of ["capacitor", "diode", "transistor"]) expect(fitFor(id, [node("arduino-uno")])).toEqual({ tone: "ok", text: "Goes between two pins. Not simulated yet" });
+    expect(fitFor("breadboard", [node("arduino-uno")])?.text).toMatch(/^Shares the Arduino 5 V/);
+  });
+
+  it("offers the driver a motor needs, then the battery the driver needs", () => {
+    const uno = node("arduino-uno");
+    expect(suggest("", [uno, node("micro-gear-motor", 0, 0, "Left")]).items[0]).toMatchObject({ part: { id: "tb6612fng" }, source: "missing", reason: "Your Left needs a driver between it and the board" });
+    expect(suggest("", [uno, node("nema17")]).items[0].part.id).toBe("a4988");
+    expect(suggest("", [uno, node("water-pump")]).items[0].part.id).toBe("mosfet-module");
+    expect(suggest("", [uno, node("a4988")]).items.slice(0, 2).map((i) => i.part.id)).toEqual(["lipo-3s", "nema17"]);
+    expect(suggest("", [uno, node("tb6612fng")]).items.slice(0, 2).map((i) => i.part.id)).toEqual(["battery-18650", "micro-gear-motor"]);
+    const done = suggest("", [uno, node("tb6612fng"), node("battery-18650"), node("micro-gear-motor")]).items;
+    expect(done.map((i) => i.source)).not.toContain("missing");
+  });
+
+  it("reads a robot brief for the new parts", () => {
+    const items = suggest("", [node("arduino-uno")], { name: "Line follower", description: "A battery robot that follows a black line and shows its speed" }).items.map((i) => i.part.id);
+    expect(items).toEqual(expect.arrayContaining(["line-sensor", "battery-18650", "wheel-encoder"]));
+  });
+});
+
 describe("terminal", () => {
   const api = (overrides: Partial<TerminalApi> = {}): TerminalApi => {
     const session = { id: "s", name: "Test", projectId: null, createdAt: "", updatedAt: "", nodes: [] as LabNode[], wires: [] as LabWire[], log: [], view: "top" as const, runMs: 0 };

@@ -159,6 +159,7 @@ export default definePart({
     kind: "driver",
     supply: "VM",
     ground: "GND",
+    standby: "STBY",
     channels: [
       { outputs: ["AO1", "AO2"], inputs: ["AIN1", "AIN2"], enable: "PWMA" },
       { outputs: ["BO1", "BO2"], inputs: ["BIN1", "BIN2"], enable: "PWMB" },

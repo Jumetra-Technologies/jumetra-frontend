@@ -612,7 +612,9 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
           supplyV = driver?.supplyV ?? null;
           status = !driver || driver.status === "idle" || driver.status === "unpowered" ? "unpowered" : driver.status === "ready" || (driver.status === "fault" && driver.powered) ? "ready" : "partial";
           if (status === "unpowered") fault("error", "driver-off", "Its driver has no power", `${name} is wired to ${nameOf(byId.get(channel.node)!)}, which has no motor supply yet. Give the driver a battery.`, [channel.node]);
-          if (motor && supplyV !== null && supplyV > motor.ratedV * 1.5) fault("warning", "over-volts", `${supplyV} V on a ${motor.ratedV} V motor`, `${name} is rated for ${motor.ratedV} V. On ${supplyV} V it runs hot and wears out fast. Use a lower supply or limit the PWM duty.`, [channel.node]);
+          // A chopper driver holds the winding current itself, so a supply far above the motor's rating is how it is used.
+          const holdsCurrent = !!getPart(byId.get(channel.node)?.partId ?? "")?.spec?.power.bridge?.limitMa;
+          if (motor && supplyV !== null && supplyV > motor.ratedV * 1.5 && !holdsCurrent) fault("warning", "over-volts", `${supplyV} V on a ${motor.ratedV} V motor`, `${name} is rated for ${motor.ratedV} V. On ${supplyV} V it runs hot and wears out fast. Use a lower supply or limit the PWM duty.`, [channel.node]);
           if (sim.second) {
             // A stepper: its other coil goes on another channel of the same driver.
             const other = channelOn(netFor({ node: node.id, pin: sim.second[0] }), netFor({ node: node.id, pin: sim.second[1] }));

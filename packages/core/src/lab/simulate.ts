@@ -12,13 +12,14 @@
  */
 
 import { getPart } from "../parts";
+import { bridgeDrop, windingAmps } from "../parts/power";
 import type { Analysis } from "./circuit";
 import { ledCurrentMa, pinKey } from "./circuit";
 import { formatOhms } from "../parts/models/passives";
 import { breadboardUse, railSummary } from "./breadboard";
 import { inputOf, isSet, isSensorPart, ohmsOf } from "./controls";
 import { getPinout } from "./pinout";
-import { boardSettings, displayLines, planBoard, sampleSensor, type BoardPlan, type Inputs, type SensorSample } from "./sketch";
+import { boardSettings, describedPinLevel, displayLines, planBoard, sampleSensor, type BoardPlan, type Inputs, type SensorSample } from "./sketch";
 import type { LabNode, LabWire } from "./types";
 
 export interface Reading {
@@ -179,19 +180,7 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
     const described = getPart(node.partId)?.sim;
     for (const link of report!.links) {
       // A sensor described in data says which quantity each output pin follows.
-      const analog = described?.kind === "sensor" ? described.analog?.find((a) => a.pin === link.pin) : undefined;
-      const trip = described?.kind === "sensor" ? described.trips?.find((x) => x.pin === link.pin) : undefined;
-      let value: number;
-      if (analog && described?.kind === "sensor") {
-        const q = described.reads.find((r) => r.key === analog.key)!;
-        const reading = sample.values[analog.key] ?? q.start;
-        const share = analog.near ? Math.max(0, 1 - Math.abs(reading - analog.near[0]) / (analog.near[1] || 1)) : Math.min(1, Math.max(0, (reading - q.min) / (q.max - q.min || 1)));
-        value = analog.invert ? 1 - share : share;
-      } else if (trip) {
-        const v = sample.values[trip.key] ?? 0;
-        const tripped = trip.when === "below" ? v < trip.at : v > trip.at;
-        value = tripped !== !!trip.activeLow ? 1 : 0;
-      } else value = link.role === "out-analog" ? sample.level : link.role === "out-digital" ? (node.partId === "soil-moisture" || node.partId === "mq2" ? (sample.level < 0.3 ? 0 : 1) : sample.level) : square(t, 2, 0.08);
+      const value = describedPinLevel(described, link.pin, sample.values) ?? (link.role === "out-analog" ? sample.level : link.role === "out-digital" ? (node.partId === "soil-moisture" || node.partId === "mq2" ? (sample.level < 0.3 ? 0 : 1) : sample.level) : square(t, 2, 0.08));
       pins[`${node.id}:${link.pin}`] = value;
       pins[`${link.board}:${link.boardPin}`] = value;
     }
@@ -480,25 +469,27 @@ function poweredPart(node: LabNode, nodes: LabNode[], analysis: Analysis, t: num
     // With its enable on a PWM pin the speed varies; without, it is all or nothing.
     const hasSpeed = report?.links.some((l) => l.role === "pwm") ?? false;
     const duty = turning ? (hasSpeed ? 0.4 + 0.6 * Math.abs(Math.sin(t / 2.5)) : 1) : 0;
-    const drop = driver ? (() => {
-      const bridge = getPart(driver.partId)?.spec?.power.bridge;
-      const run = (motor?.runMa ?? 0) / 1000;
-      return bridge ? Math.max(bridge.dropV ?? 0, (bridge.ohms ?? 0) * run) : 0;
-    })() : 0;
-    const volts = Math.max(0, (report?.supplyV ?? 0) - drop);
-    const share = motor && motor.ratedV > 0 ? Math.min(1.5, volts / motor.ratedV) : 1;
-    const rpm = Math.round((motor?.rpm ?? 0) * duty * share);
+    const bridge = driver ? getPart(driver.partId)?.spec?.power.bridge : undefined;
+    const winding = motor ? windingAmps(bridge, motor) : 0;
+    const drop = bridge ? bridgeDrop(bridge, winding) : 0;
+    // A chopper driver holds the current, so a winding sees its own volts at that current, not the supply.
+    const held = !!bridge?.limitMa && !!motor && motor.runMa > 0;
+    const volts = held ? winding * (motor.ratedV / (motor.runMa / 1000)) : Math.max(0, (report?.supplyV ?? 0) - drop);
+    const share = held ? 1 : motor && motor.ratedV > 0 ? Math.min(1.5, volts / motor.ratedV) : 1;
+    // A stepper has no speed of its own: the lab steps it at 200 full steps a second, one turn.
+    const base = motor?.rpm ?? (sim.second ? 60 : 0);
+    const rpm = Math.round(base * duty * share);
     return {
       on: duty > 0,
       level: duty,
       angle: (((t * rpm * 6) % 360) + 360) % 360,
       readings: [
-        ...(motor?.rpm ? [{ label: "Speed", value: `${rpm} rpm` }] : [{ label: "State", value: duty > 0 ? "Running" : "Stopped" }]),
-        { label: "At its terminals", value: turning ? `${fmt(volts)} V${drop > 0.05 ? ` (${fmt(drop)} V lost in the driver)` : ""}` : "0 V" },
-        { label: "Current", value: turning ? amps((motor?.runMa ?? 0) * Math.max(0.3, duty)) : "0 mA" },
+        ...(base ? [{ label: "Speed", value: `${rpm} rpm` }] : [{ label: "State", value: duty > 0 ? "Running" : "Stopped" }]),
+        { label: "At its terminals", value: !turning ? "0 V" : held ? `About ${fmt(volts)} V, chopped down from ${report?.supplyV ?? 0} V` : `${fmt(volts)} V${drop > 0.05 ? ` (${fmt(drop)} V lost in the driver)` : ""}` },
+        { label: "Current", value: !turning ? "0 mA" : held ? `${amps(winding * 1000)} a winding, held by ${driver?.label}` : amps((motor?.runMa ?? 0) * Math.max(0.3, duty)) },
         ...(driver ? [{ label: "Driven by", value: driver.label }] : []),
       ],
-      badge: turning ? (motor?.rpm ? `${rpm} rpm` : "Running") : "Stopped",
+      badge: turning ? (base ? `${rpm} rpm` : "Running") : "Stopped",
     };
   }
   if (heatLine.length && go) return { on: true, level: 1, readings: heatLine, badge: "Running" };

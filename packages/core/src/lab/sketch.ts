@@ -17,6 +17,7 @@
  */
 
 import { getPart } from "../parts";
+import type { PartSim } from "../parts/types";
 import { ALERT_SENSORS, defaultOf, inputOf, isSet } from "./controls";
 import type { Reading } from "./simulate";
 import type { LabNode, NodeInputs } from "./types";
@@ -59,6 +60,29 @@ const square = (t: number, period: number, duty = 0.5, phase = 0) => (((t + phas
  * A sensor's reading at time t: the value the person set, or the lab's
  * simulated sweep. Alarm-type lines use the board's setting.
  */
+/**
+ * The level a sensor described in data puts on one of its output pins, 0 to
+ * 1, from what it reads now: an analog pin follows its quantity across its
+ * range, a digital pin is on while its quantity is past a level. Null for a
+ * pin the part's data says nothing about (a bus pin, a supply).
+ */
+export function describedPinLevel(sim: PartSim | undefined, pin: string, values: Record<string, number>): number | null {
+  if (sim?.kind !== "sensor") return null;
+  const analog = sim.analog?.find((a) => a.pin === pin);
+  if (analog) {
+    const q = sim.reads.find((r) => r.key === analog.key);
+    if (!q) return null;
+    const reading = values[analog.key] ?? q.start;
+    const share = analog.near ? Math.max(0, 1 - Math.abs(reading - analog.near[0]) / (analog.near[1] || 1)) : Math.min(1, Math.max(0, (reading - q.min) / (q.max - q.min || 1)));
+    return analog.invert ? 1 - share : share;
+  }
+  const trip = sim.trips?.find((x) => x.pin === pin);
+  if (!trip) return null;
+  const v = values[trip.key] ?? 0;
+  const tripped = trip.when === "below" ? v < trip.at : v > trip.at;
+  return tripped !== !!trip.activeLow ? 1 : 0;
+}
+
 export function sampleSensor(node: LabNode, t: number, inputs: Inputs, settings: BoardSettings): SensorSample {
   const held = isSet(inputs, node.id);
   const get = (key: string, fallback: number) => (held ? inputOf(inputs, node.id, key, fallback) : fallback);

@@ -7,6 +7,7 @@ import type { PartSpec } from "./types";
 
 type Bridge = NonNullable<PartSpec["power"]["bridge"]>;
 type Converter = NonNullable<PartSpec["power"]["converter"]>;
+type Motor = NonNullable<PartSpec["power"]["motor"]>;
 
 /** Room temperature the estimates start from, °C. */
 export const AMBIENT_C = 25;
@@ -20,6 +21,26 @@ export function bridgeDrop(bridge: Bridge, amps: number): number {
 /** Watts a driver channel turns into heat passing `amps`. */
 export function bridgeLoss(bridge: Bridge, amps: number): number {
   return bridgeDrop(bridge, amps) * amps;
+}
+
+/** Amps in one winding of a motor on this driver: what the motor takes (`ma`, its running current unless given), or the driver's limit when it holds the current lower. */
+export function windingAmps(bridge: Bridge | undefined, motor: Motor, ma = motor.runMa): number {
+  return (bridge?.limitMa ? Math.min(ma, bridge.limitMa) : ma) / 1000;
+}
+
+/**
+ * Amps a driver takes from its motor supply to run `windings` windings of a
+ * motor. A plain bridge passes the motor's current straight through. A
+ * chopper (one with `limitMa`) holds the winding current and steps the
+ * supply down to do it, so power in equals power out: the copper loss in
+ * the windings plus its own loss, over the supply voltage. Turning a load
+ * adds a little that this leaves out.
+ */
+export function bridgeInput(bridge: Bridge | undefined, motor: Motor, supplyV: number, windings = 1, ma = motor.runMa): number {
+  const amps = windingAmps(bridge, motor, ma);
+  if (!bridge?.limitMa || supplyV <= 0 || motor.runMa <= 0) return amps * windings;
+  const ohms = motor.ratedV / (motor.runMa / 1000);
+  return Math.min(amps * windings, (windings * (amps * amps * ohms + bridgeLoss(bridge, amps))) / supplyV);
 }
 
 /** The volts a converter gives from `vin`: its set voltage, limited by what the input allows. */

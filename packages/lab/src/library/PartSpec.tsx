@@ -77,6 +77,7 @@ function PowerCard({ spec }: { spec: Spec }) {
           p.converter?.dropout !== undefined && ["Needs", `${volts(p.converter.dropout)} more at its input than it gives`],
           p.bridge && ["Passes", `${current(p.bridge.maxMa)}${p.bridge.channels > 1 ? ` per channel, ${p.bridge.channels} channels` : ""}${p.bridge.peakMa ? `; ${current(p.bridge.peakMa)} for a moment` : ""}`],
           p.bridge && (p.bridge.ohms || p.bridge.dropV) ? ["Loses", `${volts(bridgeDrop(p.bridge, Math.min(1, p.bridge.maxMa / 1000)))} at ${current(Math.min(1000, p.bridge.maxMa))}`] : null,
+          p.bridge?.limitMa !== undefined && ["Holds", `${current(p.bridge.limitMa)} in each winding as usually set, whatever the supply`],
           p.motor && ["Rated", `${volts(p.motor.ratedV)}${p.motor.rpm ? `, ${p.motor.rpm} rpm with no load` : ""}`],
           p.motor && ["Running", current(p.motor.runMa)],
           p.motor && ["Stalled", current(p.motor.stallMa)],

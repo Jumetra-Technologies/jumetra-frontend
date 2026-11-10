@@ -12,9 +12,10 @@
 import type { PeripheralInput } from "../emulator/peripherals";
 import type { CrashKind, PinReading } from "../emulator/protocol";
 import type { Analysis } from "./circuit";
+import { getPart } from "../parts";
 import { getPinout } from "./pinout";
 import { ACTIVE_BUZZER_HZ, wireFlows, type Frame, type NodeLive } from "./simulate";
-import { boardSettings, sampleSensor, type Inputs } from "./sketch";
+import { boardSettings, describedPinLevel, sampleSensor, type Inputs } from "./sketch";
 import type { LabNode, LabWire } from "./types";
 
 /** What the emulated board reported last. */
@@ -152,7 +153,8 @@ export function programFrame(base: Frame, nodes: LabNode[], wires: LabWire[], an
         live[node.id] = { on: energised, level: energised ? 1 : 0, readings: [{ label: "Contact", value: energised ? "COM–NO closed" : "COM–NC closed" }], badge: energised ? "Energised" : "Released" };
         break;
       }
-      case "servo": {
+      case "servo":
+      case "servo-mg996r": {
         const r = at("SIG");
         const pulse = r && r.hz > 30 && r.hz < 400 ? r.pulseUs : null;
         const prev = base.nodes[node.id]?.angle ?? 90;
@@ -184,15 +186,81 @@ export function programFrame(base: Frame, nodes: LabNode[], wires: LabWire[], an
         };
         break;
       }
-      default:
+      default: {
+        const sim = getPart(node.partId)?.sim;
+        // A sensor or control described in data answers the program on its pins (peripheralInputs), and a driver passes on what its inputs say.
+        // They keep their own readings, as do the parts a program never talks to: batteries, converters and level shifters.
+        if (sim && sim.kind !== "motor" && sim.kind !== "output" && sim.kind !== "expander") break;
+        if (sim?.kind === "motor") {
+          const turned = motorUnderProgram(node, nodes, analysis, t, base.nodes[node.id], program.boardId, reading);
+          if (turned) {
+            live[node.id] = turned;
+            break;
+          }
+        }
         if (!getPinout(node.partId).controller && !isProgramSensor(node.partId) && !getPinout(node.partId).passive) {
           // Displays and radios talk over buses the emulator doesn't model yet: say so rather than show the built-in behavior.
           live[node.id] = { on: false, level: 0, readings: [{ label: "Program", value: "Not shown yet: the lab doesn't model this part's bus for your code" }], badge: "—" };
         }
+      }
     }
   }
 
   return { ...base, t, running: base.running, nodes: live, pins, wires: wireFlows(nodes, wires, analysis, pins, base.running) };
+}
+
+/**
+ * A bare motor on a driver, run by the program's pins. An H-bridge channel
+ * turns it while IN1 and IN2 differ, at the duty of its PWM; a switch runs it
+ * at its gate's duty; a stepper driver steps it once for each rising edge on
+ * STEP. Null when the motor isn't on a driver the board controls.
+ */
+function motorUnderProgram(node: LabNode, nodes: LabNode[], analysis: Analysis, t: number, before: NodeLive | undefined, boardId: string, reading: (boardPin: string) => PinReading | undefined): NodeLive | null {
+  const report = analysis.nodes[node.id];
+  const driver = nodes.find((n) => n.id === report?.drivenBy);
+  const sim = driver ? getPart(driver.partId)?.sim : undefined;
+  if (!report || !driver || sim?.kind !== "driver") return null;
+  const channel = sim.channels.find((c) => report.links.some((l) => c.inputs.includes(l.pin)));
+  if (!channel) return null;
+  // The driver's own pins the program's board is wired to: the channel's inputs, its enable, a standby pin.
+  const link = (pin: string) => analysis.nodes[driver.id]?.links.find((l) => l.pin === pin && l.board === boardId);
+  const at = (pin: string) => {
+    const l = link(pin);
+    return l ? reading(l.boardPin) : undefined;
+  };
+  const driven = (r: PinReading | undefined) => (r && (r.level === "high" || r.level === "low") ? r.duty : 0);
+  const motor = getPart(node.partId)?.spec?.power.motor;
+  // A standby pin the board controls must be high; one tied to a supply is.
+  const awake = !sim.standby || !link(sim.standby) || at(sim.standby)?.level === "high";
+  let rpm = 0;
+  let forward = true;
+  let duty = 0;
+  if (channel.inputs[0] === "STEP") {
+    // A stepper driver: 200 full steps a turn, the direction from DIR, and EN low (or left alone) to run.
+    const enabled = !channel.enable || !link(channel.enable) || at(channel.enable)?.level !== "high";
+    const hz = awake && enabled ? (at("STEP")?.hz ?? 0) : 0;
+    rpm = Math.round((hz / 200) * 60);
+    forward = at(channel.inputs[1])?.level !== "low";
+    duty = hz > 0 ? 1 : 0;
+  } else {
+    const [a, b] = [driven(at(channel.inputs[0])), channel.inputs[1] ? driven(at(channel.inputs[1])) : 0];
+    const enable = channel.enable && link(channel.enable) ? driven(at(channel.enable)) : 1;
+    duty = awake ? Math.abs(a - b) * enable : 0;
+    forward = a >= b;
+    rpm = Math.round((motor?.rpm ?? 0) * duty);
+  }
+  const turn = (forward ? 1 : -1) * t * rpm * 6;
+  return {
+    on: duty > 0.02,
+    level: duty,
+    angle: rpm ? ((turn % 360) + 360) % 360 : (before?.angle ?? 0),
+    readings: [
+      ...(motor?.rpm || channel.inputs[0] === "STEP" ? [{ label: "Speed", value: `${rpm} rpm` }] : [{ label: "State", value: duty > 0.02 ? `Running${duty < 0.98 ? `, ${Math.round(duty * 100)} % (PWM)` : ""}` : "Stopped" }]),
+      { label: "Direction", value: duty > 0.02 ? (forward ? "Forward" : "Reverse") : "Stopped" },
+      { label: "Driven by", value: driver.label },
+    ],
+    badge: duty > 0.02 ? (rpm ? `${rpm} rpm` : "Running") : "Stopped",
+  };
 }
 
 const PROGRAM_SENSORS = new Set(["hc-sr04", "dht11", "dht22", "am2302", "pir", "ldr", "soil-moisture", "mq2"]);
@@ -214,7 +282,8 @@ export function peripheralInputs(nodes: LabNode[], analysis: Analysis, inputs: I
       const l = report.links.find((x) => x.pin === pin && x.board === boardId);
       return l ? arduinoPinOf(l.boardPin) : null;
     };
-    const sensorLike = isProgramSensor(node.partId) || ["ds18b20", "mpu6050", "bmp280"].includes(node.partId);
+    const described = getPart(node.partId)?.sim;
+    const sensorLike = isProgramSensor(node.partId) || ["ds18b20", "mpu6050", "bmp280"].includes(node.partId) || described?.kind === "sensor";
     if (!sensorLike) continue;
     // A sensor without power gives the program nothing, as on a bench.
     if (!report.powered) continue;
@@ -262,8 +331,21 @@ export function peripheralInputs(nodes: LabNode[], analysis: Analysis, inputs: I
         if (d !== null) out.push({ kind: "digital", id: `${node.id}:D0`, pin: d, high: ppm <= settings.gasPpm });
         break;
       }
-      default:
-        unsupported.push(node);
+      default: {
+        // A sensor or control described in data answers on its analog and digital pins. One that only talks over a bus can't yet.
+        let answered = false;
+        for (const l of report.links) {
+          const level = l.board === boardId ? describedPinLevel(described, l.pin, v) : null;
+          const pin = arduinoPinOf(l.boardPin);
+          if (level === null || pin === null) continue;
+          if (described?.kind === "sensor" && described.analog?.some((a) => a.pin === l.pin)) {
+            if (pin < 14) continue;
+            out.push({ kind: "analog", id: `${node.id}:${l.pin}`, pin, volts: level * Math.min(logicV, report.supplyV ?? logicV) });
+          } else out.push({ kind: "digital", id: `${node.id}:${l.pin}`, pin, high: level > 0.5 });
+          answered = true;
+        }
+        if (!answered) unsupported.push(node);
+      }
     }
   }
   return { inputs: out, unsupported };

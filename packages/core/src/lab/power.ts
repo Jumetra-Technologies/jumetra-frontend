@@ -10,7 +10,7 @@
  */
 
 import { getPart } from "../parts";
-import { bridgeLoss, converterInput, converterLoss, heatFor, typicalHeat, type Heat } from "../parts/power";
+import { bridgeInput, bridgeLoss, converterInput, converterLoss, heatFor, typicalHeat, windingAmps, type Heat } from "../parts/power";
 import type { Pinout } from "../parts/types";
 import type { Fault, Net, NodeReport } from "./circuit";
 import type { LabNode, NodeInputs } from "./types";
@@ -70,6 +70,13 @@ export function powerBudget(args: {
   /** The power nets a part supplies: a board's rails, a converter's outputs. */
   const suppliedBy = (node: string) => powerNets.filter((n) => n.source!.node === node);
   const motorsOn = (driver: string) => nodes.filter((n) => reports[n.id]?.drivenBy === driver && partOf(n.id)?.sim?.kind === "motor");
+  /** The motors a driver runs, each with how many windings it has on the driver: two for a stepper. */
+  const turnedBy = (driver: string) =>
+    motorsOn(driver).flatMap((m) => {
+      const part = partOf(m.id);
+      const motor = part?.spec?.power.motor;
+      return motor ? [{ motor, windings: part?.sim?.kind === "motor" && part.sim.second ? 2 : 1 }] : [];
+    });
 
   const draw: Record<string, RailLoad> = {};
   const memo = new Map<string, RailLoad[]>();
@@ -113,10 +120,9 @@ export function powerBudget(args: {
       }
       // A driver's motor supply: its own logic, and the motors it runs.
       if (sim?.kind === "driver" && ref.pin === sim.supply) {
-        const motors = motorsOn(ref.node).map((m) => partOf(m.id)?.spec?.power.motor);
-        const run = motors.reduce((t, m) => t + (m?.runMa ?? 0), 0);
-        const stall = motors.reduce((t, m) => t + (m?.stallMa ?? 0), 0);
-        add(ref.node, (spec?.power.draw?.active ?? 0) + run, (spec?.power.draw?.peak ?? spec?.power.draw?.active ?? 0) + stall);
+        const bridge = spec?.power.bridge;
+        const asked = (stalled: boolean) => turnedBy(ref.node).reduce((t, { motor, windings }) => t + bridgeInput(bridge, motor, net.voltage!, windings, stalled ? motor.stallMa : motor.runMa) * 1000, 0);
+        add(ref.node, (spec?.power.draw?.active ?? 0) + asked(false), (spec?.power.draw?.peak ?? spec?.power.draw?.active ?? 0) + asked(true));
         continue;
       }
       // A motor straight on the supply, or switched to it.
@@ -212,8 +218,8 @@ export function powerBudget(args: {
         found = heatFor(spec, converterLoss(spec.power.converter, input.voltage, out.typicalMa / 1000), `giving ${ma(out.typicalMa)} from ${input.voltage} V`);
       }
     } else if (sim?.kind === "driver" && spec.power.bridge) {
-      const motors = motorsOn(node.id).map((m) => partOf(m.id)?.spec?.power.motor);
-      const watts = motors.reduce((t, m) => t + bridgeLoss(spec.power.bridge!, (m?.runMa ?? 0) / 1000), 0);
+      const motors = turnedBy(node.id);
+      const watts = motors.reduce((t, { motor, windings }) => t + windings * bridgeLoss(spec.power.bridge!, windingAmps(spec.power.bridge, motor)), 0);
       if (watts > 0) found = heatFor(spec, watts, `running ${motors.length === 1 ? "its motor" : `${motors.length} motors`}`);
     } else if (pinouts.get(node.id)?.controller) {
       // A board's regulator only works (and warms) when the board is fed through it: a battery on VIN.

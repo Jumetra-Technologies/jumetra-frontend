@@ -61,3 +61,18 @@ export function solderJumper(cx: number, cy: number, dir: "x" | "y" = "y", bridg
   if (bridged) out.push({ kind: "box", x: +(cx - 0.45).toFixed(3), y: +(cy - 0.45).toFixed(3), w: 0.9, h: 0.9, d: 0.2, z: TOP, top: MATERIAL.tin, finish: "tin", radius: 0.3 });
   return out;
 }
+
+/**
+ * A SOT-23 transistor standing along y: a 2.9 × 1.3 mm body, two legs on the left and one on the right, 2.4 mm over the leg tips.
+ * It fits a 2.54 mm column with room to spare, which the kit's `sot23` (2.9 mm over its legs) does not.
+ */
+export function sot23Tall(cx: number, cy: number, label?: string, id?: string, z = TOP): Solid[] {
+  const solids: Solid[] = [
+    { kind: "box", id, x: +(cx - 0.65).toFixed(3), y: +(cy - 1.45).toFixed(3), w: 1.3, h: 2.9, d: 1, z: z + 0.05, top: "#1b1c1f", side: MATERIAL.icSide, radius: 0.1, finish: "epoxy", label: label ? { text: label, size: 0.6, color: "#9aa0a6" } : undefined },
+  ];
+  const legs: Array<[number, number]> = [[-1, -0.95], [-1, 0.95], [1, 0]];
+  for (const [side, t] of legs) {
+    solids.push({ kind: "box", x: +(cx + (side < 0 ? -1.2 : 0.65)).toFixed(3), y: +(cy + t - 0.2).toFixed(3), w: 0.55, h: 0.4, d: 0.2, z, top: MATERIAL.tin, finish: "tin", radius: 0.03 });
+  }
+  return solids;
+}

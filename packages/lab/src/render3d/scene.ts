@@ -122,7 +122,8 @@ export function buildPart(model: PartModel): PartObject {
       const decal = boxTopTexture(solid);
       if (decal) {
         textures.push(decal);
-        const material = new THREE.MeshStandardMaterial({ map: decal, transparent: true, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2 });
+        // Printing never hides what is drawn after it: without depthWrite off, a see-through layer above would blank this label from some angles.
+        const material = new THREE.MeshStandardMaterial({ map: decal, transparent: true, depthWrite: false, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2 });
         materials.push(material);
         const plane = new THREE.Mesh(keep(new THREE.PlaneGeometry(solid.w - r * 0.6, solid.h - r * 0.6), owned), material);
         plane.position.set(0, 0, z + solid.d + 0.005);
@@ -265,12 +266,12 @@ export function buildPart(model: PartModel): PartObject {
       return false;
     });
     if (!flats.length) continue;
-    const { texture, w, h } = layerTexture(model, flats);
+    const { texture, x, y, w, h } = layerTexture(model, flats);
     textures.push(texture);
-    const material = new THREE.MeshStandardMaterial({ map: texture, transparent: true, roughness: 0.6, metalness: 0, polygonOffset: true, polygonOffsetFactor: -4 });
+    const material = new THREE.MeshStandardMaterial({ map: texture, transparent: true, depthWrite: false, roughness: 0.6, metalness: 0, polygonOffset: true, polygonOffsetFactor: -4 });
     materials.push(material);
     const plane = new THREE.Mesh(keep(new THREE.PlaneGeometry(w, h), owned), material);
-    plane.position.set(w / 2, -h / 2, z + 0.004);
+    plane.position.set(x + w / 2, -(y + h / 2), z + 0.004);
     plane.receiveShadow = true;
     root.add(plane);
   }

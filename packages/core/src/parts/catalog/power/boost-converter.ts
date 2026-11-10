@@ -14,7 +14,7 @@ export default definePart({
   name: "MT3608 boost converter module",
   aka: ["MT3608 step-up", "DC-DC step up module", "adjustable boost converter", "2A step up module"],
   group: "power",
-  rank: 9,
+  rank: 10,
   summary: "A thumb-sized board that raises a low voltage to a higher one: one LiPo cell (3.7 V) to 5 V, 9 V or 12 V. Turn the brass screw to set it. It is sold as 2 A, but from a single cell you get about 0.65 A at 5 V.",
   size: { w: W, h: H, d: 12.3 },
   solids: [

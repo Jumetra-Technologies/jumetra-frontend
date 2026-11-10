@@ -57,6 +57,7 @@ import boostConverter from "./power/boost-converter";
 import breadboardPower from "./power/breadboard-power";
 import buckConverter from "./power/buck-converter";
 import lipo2s from "./power/lipo-2s";
+import lipo3s from "./power/lipo-3s";
 import lipoBattery from "./power/lipo-battery";
 import breadboard from "./prototyping/breadboard";
 import breadboardFull from "./prototyping/breadboard-full";
@@ -146,6 +147,7 @@ export const CATALOG: PartEntry[] = [
   breadboardPower,
   buckConverter,
   lipo2s,
+  lipo3s,
   lipoBattery,
   breadboard,
   breadboardFull,

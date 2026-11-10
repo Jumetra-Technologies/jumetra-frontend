@@ -1,4 +1,4 @@
-import { MATERIAL, definePart, ground, lead, name, rail, silk, type Solid } from "../../sdk";
+import { definePart, ground, lead, rail, silk, type Solid } from "../../sdk";
 import { leadEnd } from "./_cells";
 
 // A 9 V block lying on its big face, terminals on the right end (+x), with a snap clip standing just off them.

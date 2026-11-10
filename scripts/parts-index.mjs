@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * Writes packages/core/src/parts/catalog/index.ts from the part files beside it.
+ * Writes packages/core/src/parts/catalog/index.ts from the part files beside it,
+ * and counts.ts: how many parts each group has, for pages that state the
+ * numbers without loading every part.
  *
  *   node scripts/parts-index.mjs            every part with a file under catalog/
  *   node scripts/parts-index.mjs --check    exit 1 if the index is out of date
@@ -49,14 +51,29 @@ ${parts.map(({ id }) => `  ${local(id)},`).join("\n")}
 ];
 `;
 
+const groups = [...new Set(parts.map((part) => part.group))];
+const counts = `/**
+ * How many parts the library has, in all and by group (a part's folder is its group).
+ *
+ * Written by \`npm run parts:index\`: do not edit it by hand. Pages that only
+ * state the numbers import this, so they don't load every part to count them.
+ */
+export const PART_COUNTS = {
+  total: ${parts.length},
+${groups.map((group) => `  ${group}: ${parts.filter((part) => part.group === group).length},`).join("\n")}
+} as const;
+`;
+
 const file = join(catalog, "index.ts");
+const countsFile = join(catalog, "counts.ts");
 if (process.argv.includes("--check")) {
-  if (readFileSync(file, "utf8") !== text) {
-    console.error("packages/core/src/parts/catalog/index.ts is out of date: run `npm run parts:index`.");
+  if (readFileSync(file, "utf8") !== text || readFileSync(countsFile, "utf8") !== counts) {
+    console.error("packages/core/src/parts/catalog/index.ts or counts.ts is out of date: run `npm run parts:index`.");
     process.exit(1);
   }
   console.log(`catalog/index.ts lists all ${parts.length} parts.`);
 } else {
   writeFileSync(file, text);
+  writeFileSync(countsFile, counts);
   console.log(`catalog/index.ts: ${parts.length} parts.`);
 }

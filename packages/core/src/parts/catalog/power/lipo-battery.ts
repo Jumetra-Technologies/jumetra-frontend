@@ -1,5 +1,4 @@
-import { definePart, ground, jst, lead, rail, silk, sot23, chip, type Solid } from "../../sdk";
-import { leadEnd } from "./_cells";
+import { definePart, ground, jst, lead, rail, silk, type Solid } from "../../sdk";
 
 // A 503450 pouch cell (5 x 34 x 50 mm) with its protection board and a short lead to a JST-PH plug.
 const H = 34;
@@ -52,7 +51,7 @@ export default definePart({
   name: "1S LiPo pouch cell with protection board and JST-PH lead",
   aka: ["3.7 V LiPo", "503450", "1S LiPo", "lithium polymer cell", "single cell LiPo"],
   group: "power",
-  rank: 5,
+  rank: 6,
   summary: "A flat 3.7 V lithium pouch cell as thin as 5 mm, with a small protection board and a JST-PH lead. It runs small boards and sensors for hours. Use a 4.2 V lithium charger only.",
   size: { w: 50, h: H, d: 6 },
   solids,

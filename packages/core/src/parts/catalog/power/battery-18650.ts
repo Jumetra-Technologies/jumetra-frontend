@@ -1,4 +1,4 @@
-import { MATERIAL, definePart, ground, lead, rail, silk, type Solid } from "../../sdk";
+import { definePart, ground, lead, rail, silk, type Solid } from "../../sdk";
 import { cellLying, leadEnd, plate, spring, tray } from "./_cells";
 
 // A black 2-slot holder: two 18650 cells side by side, in series. Leads leave the left wall.

@@ -54,10 +54,10 @@ afterEach(() => {
 });
 
 describe("part models", () => {
-  it("covers all 87 catalog parts with unique ids", () => {
+  it("covers all 88 catalog parts with unique ids", () => {
     const ids = PARTS.map((part) => part.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(87);
+    expect(ids).toHaveLength(88);
     for (const id of CATALOGUE_IDS) expect(getPart(id), id).toBeDefined();
   });
 
@@ -65,7 +65,7 @@ describe("part models", () => {
     const groups = getPartsByGroup();
     expect(groups.map((entry) => entry.group.id)).toEqual(["boards", "power", "prototyping", "controls", "sensors", "motors", "drivers", "outputs", "displays", "radios"]);
     expect(groups.map((entry) => entry.parts[0].id)).toEqual(["arduino-uno", "battery-4aa", "breadboard", "push-button", "hc-sr04", "servo", "l298n", "led", "lcd-16x2", "hc-05"]);
-    expect(groups.map((entry) => entry.parts.length)).toEqual([10, 9, 8, 8, 22, 7, 8, 5, 5, 5]);
+    expect(groups.map((entry) => entry.parts.length)).toEqual([10, 10, 8, 8, 22, 7, 8, 5, 5, 5]);
     for (const entry of groups) {
       const ranks = entry.parts.map((part) => part.rank);
       expect(ranks, entry.group.id).toEqual([...ranks].sort((a, b) => a - b));
@@ -103,7 +103,7 @@ describe("part models", () => {
   });
 
   it("searches by name, alias, tag and interface, best match first", () => {
-    expect(searchParts("")).toHaveLength(87);
+    expect(searchParts("")).toHaveLength(88);
     expect(searchParts("uno")[0].id).toBe("arduino-uno");
     expect(searchParts("GY-521")[0].id).toBe("mpu6050");
     expect(searchParts("photoresistor")[0].id).toBe("ldr");
@@ -276,7 +276,7 @@ describe("ComponentLibrary", () => {
     fireEvent.change(screen.getByRole("searchbox", { name: /Search parts/ }), { target: { value: "no such part" } });
     expect(screen.getByText(/Nothing matches/)).toBeInTheDocument();
     fireEvent.change(screen.getByRole("searchbox", { name: /Search parts/ }), { target: { value: "" } });
-    expect(screen.getByText(/87 parts in 10 groups, most common first/)).toBeInTheDocument();
+    expect(screen.getByText(/88 parts in 10 groups, most common first/)).toBeInTheDocument();
   });
 
   it("has one clear button, removes the search icon while typing, and clears on Escape", () => {

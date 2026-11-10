@@ -1,5 +1,4 @@
-import { MATERIAL, definePart, ground, lead, pin, rail, silk, type Solid } from "../../sdk";
-import { leadEnd } from "./_cells";
+import { definePart, ground, lead, pin, rail, silk, type Solid } from "../../sdk";
 
 // A 2S1P hobby pack in blue shrink wrap, 75 x 35 x 14.7 mm. Leads leave the right end.
 const W = 75;

@@ -1,4 +1,4 @@
-import { MATERIAL, PCB_TOP, definePart, gnd, pin, ringPath, silk, vcc, type Solid } from "../../sdk";
+import { MATERIAL, definePart, gnd, pin, ringPath, silk, vcc, type Solid } from "../../sdk";
 import { pad, pixel } from "./_pixels";
 
 const C = 18.4; // center of the ring, and of the 36.8 mm footprint

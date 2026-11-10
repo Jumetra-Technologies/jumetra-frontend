@@ -1,4 +1,4 @@
-import { MATERIAL, barrelJack, board, definePart, gnd, ground, jumperCap, name, pinHeader, rail, silk, smd, smdLed, sot223, usbA, vcc, type Solid } from "../../sdk";
+import { barrelJack, board, definePart, gnd, ground, jumperCap, name, pinHeader, rail, silk, smd, smdLed, sot223, usbA, vcc, type Solid } from "../../sdk";
 import { PAD_PRINT, tantalum } from "./_modules";
 
 // The MB102 breadboard power supply, 53 × 35 mm. The jack and USB socket are on the top edge;
@@ -30,7 +30,7 @@ export default definePart({
   name: "MB102 breadboard power supply",
   aka: ["MB102", "breadboard power module", "5V 3.3V breadboard supply", "breadboard power supply module"],
   group: "power",
-  rank: 7,
+  rank: 8,
   summary: "A board that plugs into the end of a breadboard and puts 5 V or 3.3 V on each side rail from a wall adapter, a 9 V battery or USB. Handy, but from 9 V or 12 V it gets hot above 0.3 A: it burns the extra voltage in two small linear regulators.",
   size: { w: W, h: H, d: 12.6 },
   solids: [

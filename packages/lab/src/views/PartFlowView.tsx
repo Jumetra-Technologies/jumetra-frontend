@@ -114,6 +114,20 @@ export function tracesOnPart(model: PartModel): boolean {
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
+ * Where the name of something outside the part is written, so that a long name always fits in the drawing: over the
+ * arrow at the left and right edges, and pulled in from the corners at the top and bottom.
+ */
+function worldLabelSpot(far: Point, box: { x1: number; y1: number; x2: number; y2: number }, view: { x: number; w: number }, k: number, chars: number) {
+  const left = far.x < box.x1;
+  if (left || far.x > box.x2) {
+    return { x: left ? view.x + 0.5 * k : view.x + view.w - 0.5 * k, y: far.y - 0.9 * k, textAnchor: left ? ("start" as const) : ("end" as const), dominantBaseline: "text-after-edge" as const };
+  }
+  const half = chars * 0.45 * k + 0.5 * k;
+  const x = Math.min(view.x + view.w - half, Math.max(view.x + half, far.x));
+  return { x, y: far.y, textAnchor: "middle" as const, dominantBaseline: far.y < box.y1 ? ("text-after-edge" as const) : ("text-before-edge" as const) };
+}
+
+/**
  * The part itself, dimmed, with the flow drawn over it: a numbered marker
  * where each block really is, a line for each link between two places on the
  * part, and an arrow off the edge for what goes out into the world or comes
@@ -215,24 +229,6 @@ function PartXray({ model, powered, hover, onHover }: { model: PartModel; powere
               return (
                 <g key={block.id} data-hot={block.id} pointerEvents="none">
                   <circle cx={p.x} cy={p.y} r={radius} fill={`url(#${uid}-heat)`} className="hhip-plan-glow" />
-                  {heat ? (
-                    // The temperature rides beside the block's marker, on the side with more room.
-                    (() => {
-                      const label = `≈ ${Math.round(heat.tempC)} °C`;
-                      const size = dot * 1.15;
-                      const tw = label.length * size * 0.62 + size * 0.9;
-                      const right = p.x + dot * 1.5 + tw < view.x + view.w;
-                      const x = right ? p.x + dot * 1.5 : p.x - dot * 1.5 - tw;
-                      return (
-                        <g>
-                          <rect x={x} y={p.y - size * 0.85} width={tw} height={size * 1.7} rx={size * 0.5} fill="#b91c1c" />
-                          <text x={x + tw / 2} y={p.y} textAnchor="middle" dominantBaseline="central" fontSize={size} fontWeight={700} fill="#ffffff" fontFamily="var(--font-jetbrains), monospace">
-                            {label}
-                          </text>
-                        </g>
-                      );
-                    })()
-                  ) : null}
                 </g>
               );
             })
@@ -267,11 +263,7 @@ function PartXray({ model, powered, hover, onHover }: { model: PartModel; powere
             {powered ? <path d={d} fill="none" stroke={tone} strokeWidth={0.5 * k} strokeLinecap="round" strokeDasharray={`${1.4 * k} ${2.4 * k}`} className="hhip-flow-dash" /> : null}
             {far && world ? (
               <text
-                x={far.x}
-                y={far.y}
-                textAnchor={far.x < box.x1 ? "end" : far.x > box.x2 ? "start" : "middle"}
-                dominantBaseline={far.y < box.y1 ? "text-after-edge" : far.y > box.y2 ? "text-before-edge" : "central"}
-                dx={far.x < box.x1 ? -0.5 * k : far.x > box.x2 ? 0.5 * k : 0}
+                {...worldLabelSpot(far, box, view, k, world.label.length)}
                 fontSize={1.5 * k}
                 fontWeight={600}
                 fill="var(--foreground)"
@@ -303,6 +295,28 @@ function PartXray({ model, powered, hover, onHover }: { model: PartModel; powere
           </g>
         );
       })}
+
+      {/* How hot it gets, written last so no line runs over it: beside the block's marker, on the side with more room. */}
+      {powered && heat
+        ? blocks
+            .filter((block) => block.hot && anchors.get(block.id))
+            .map((block) => {
+              const p = anchors.get(block.id)!;
+              const label = `≈ ${Math.round(heat.tempC)} °C`;
+              const size = dot * 1.15;
+              const tw = label.length * size * 0.62 + size * 0.9;
+              const right = p.x + dot * 1.5 + tw < view.x + view.w;
+              const x = right ? p.x + dot * 1.5 : p.x - dot * 1.5 - tw;
+              return (
+                <g key={block.id} data-heat={block.id} pointerEvents="none">
+                  <rect x={x} y={p.y - size * 0.85} width={tw} height={size * 1.7} rx={size * 0.5} fill="#b91c1c" />
+                  <text x={x + tw / 2} y={p.y} textAnchor="middle" dominantBaseline="central" fontSize={size} fontWeight={700} fill="#ffffff" fontFamily="var(--font-jetbrains), monospace">
+                    {label}
+                  </text>
+                </g>
+              );
+            })
+        : null}
     </svg>
   );
 }

@@ -1,4 +1,4 @@
-import { MATERIAL, board, definePart, gnd, name, pin, silk, smd, vcc, type Solid } from "../../sdk";
+import { MATERIAL, board, definePart, gnd, pin, silk, smd, vcc, type Solid } from "../../sdk";
 import { COPPER } from "./_shared";
 
 const TOP = 1;

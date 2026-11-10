@@ -1,4 +1,4 @@
-import { circlePath, definePart, gnd, jst, lead, name, pin, silk, vcc, type Solid } from "../../sdk";
+import { circlePath, definePart, gnd, jst, lead, pin, silk, vcc, type Solid } from "../../sdk";
 
 const BODY_H = 13; // lying on its back, lenses up
 const BODY_Y = 13.5;

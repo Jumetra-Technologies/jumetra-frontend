@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PARTS, PART_GROUPS } from "@kiungo/core/parts";
 import { CATALOG } from "@kiungo/core/parts/catalog/index";
+import { PART_COUNTS } from "@kiungo/core/parts/catalog/counts";
 import { checkCatalog, checkPart } from "@kiungo/core/parts/check";
 import { modelBounds } from "@kiungo/core/parts/bounds";
 import { typicalHeat } from "@kiungo/core/parts/power";
@@ -24,6 +25,11 @@ const files = readdirSync(dir)
   );
 
 describe("the parts catalog", () => {
+  it("the generated counts match the catalog, so pages can state them without loading every part", () => {
+    expect(PART_COUNTS.total).toBe(PARTS.length);
+    for (const group of PART_GROUPS) expect(PART_COUNTS[group.id as keyof typeof PART_COUNTS], group.id).toBe(PARTS.filter((part) => part.group === group.id).length);
+  });
+
   it("lists every part file, and every part is in the folder of its group", () => {
     const listed = new Set(CATALOG.map((entry) => entry.model.id));
     expect(files.map((f) => f.id).filter((id) => !listed.has(id))).toEqual([]);

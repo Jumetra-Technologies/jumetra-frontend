@@ -4,9 +4,6 @@ import { MODULE_TOP, antennaTrace, padRow, pinLabels, regulator1117, shieldCan }
 /** The rows as printed, read from the USB end: the top row is the left column of the board held upright. */
 const TOP_LABELS = ["VIN", "GND", "RST", "EN", "3V3", "GND", "CLK", "SD0", "CMD", "SD1", "SD2", "SD3", "RSV", "RSV", "A0"];
 const BOTTOM_LABELS = ["3V3", "GND", "TX", "RX", "D8", "D7", "D6", "D5", "GND", "3V3", "D4", "D3", "D2", "D1", "D0"];
-/** The lab's pins on those rows; null where the lab has none (reset, flash pins, the spare 3V3 and GND). */
-const TOP = ["VIN", "GND1", null, null, null, null, null, null, null, null, null, null, null, null, "A0"] as const;
-const BOTTOM = ["3V3", "GND2", "TX", "RX", "D8", "D7", "D6", "D5", null, null, "D4", "D3", "D2", "D1", "D0"] as const;
 
 // Rows 27.94 mm (1.1 in) apart, so the board spans the breadboard's center gap.
 const TOP_Y = 1.53;

@@ -1,4 +1,4 @@
-import { MATERIAL, circlePath, definePart, gnd, lead, pin, roundedRect, vcc, type Solid } from "../../sdk";
+import { circlePath, definePart, gnd, lead, pin, roundedRect, vcc, type Solid } from "../../sdk";
 
 const BLACK = "#1d1d20";
 const AX = 16.75; // the output shaft, 10.35 mm in from the case end

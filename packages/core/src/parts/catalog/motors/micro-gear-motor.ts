@@ -2,7 +2,6 @@ import { MATERIAL, definePart, lead, pin, type Solid } from "../../sdk";
 
 const CY = 6; // the motor's long axis, down the middle of its 12 mm width
 const ZC = 5; // and 5 mm above the bench
-const STEEL = "#b9bcc0";
 
 /**
  * The motor can: 12 mm wide and 10 mm high, a round can with two flats. Built

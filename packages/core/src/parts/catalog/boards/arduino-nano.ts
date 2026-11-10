@@ -9,7 +9,7 @@
  * The 5 V regulator is on the back of the board and is not drawn; the Trace
  * view points at where it sits.
  */
-import { MATERIAL, PCB_TOP, SOLDER_STUB, along, board, definePart, ground, io, name, pinHeader, rail, shade, silk, smd, smdLed, soic, tactileButton, type PinInfo, type Solid } from "../../sdk";
+import { MATERIAL, PCB_TOP, SOLDER_STUB, board, definePart, ground, io, name, pinHeader, rail, shade, silk, smd, smdLed, soic, tactileButton, type PinInfo, type Solid } from "../../sdk";
 import { MINI_USB, miniUsbB } from "./_usb-mini";
 
 const W = 43.18;

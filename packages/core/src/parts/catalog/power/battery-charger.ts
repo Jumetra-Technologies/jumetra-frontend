@@ -18,7 +18,7 @@ export default definePart({
   name: "TP4056 lithium charger with protection",
   aka: ["TP4056", "TP4056 USB-C module", "LiPo charger module", "18650 charger board", "TP4056 DW01A"],
   group: "power",
-  rank: 8,
+  rank: 9,
   summary: "A thumbnail-size board that charges one lithium cell from a USB charger, 1 A at most, and cuts the cell off if it is over-discharged or shorted. It sits between a cell and a load. Mind the heat: it is a linear charger, so the board gets hot at 1 A.",
   size: { w: W, h: H, d: 4.2 },
   solids: [

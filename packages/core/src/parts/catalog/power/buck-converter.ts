@@ -1,4 +1,4 @@
-import { MATERIAL, board, capacitor, definePart, gnd, inductor, rail, ground, silk, smd, trimmer, vcc } from "../../sdk";
+import { board, capacitor, definePart, gnd, inductor, rail, ground, silk, smd, trimmer, vcc } from "../../sdk";
 import { MODULE_BLUE, PAD_PRINT, smcDiode, to263 } from "./_modules";
 
 // The blue LM2596 module, 43 × 21 mm. Input pads on the left edge, output pads on the right.
@@ -14,7 +14,7 @@ export default definePart({
   name: "LM2596 buck converter module",
   aka: ["LM2596 step-down", "DC-DC step down module", "adjustable buck converter", "LM2596S module"],
   group: "power",
-  rank: 6,
+  rank: 7,
   summary: "The little blue board that turns a 7 V to 12 V battery into a steady 5 V for a robot. Turn the brass screw until a meter reads what you want. It wastes far less as heat than a linear regulator, so it stays cool at 2 A.",
   size: { w: W, h: H, d: 13.6 },
   solids: [
@@ -90,7 +90,7 @@ export default definePart({
       { from: "coil", to: "cout", kind: "power", label: "smooth" },
       { from: "cout", to: "out", kind: "power", label: "5 V" },
       { from: "out", to: "trim", kind: "signal", label: "feedback" },
-      { from: "trim", to: "ic", kind: "signal", label: "too high / too low" },
+      { from: "trim", to: "ic", kind: "signal", label: "adjusts" },
       { from: "gnd", to: "diode", kind: "ground" },
     ],
     steps: [

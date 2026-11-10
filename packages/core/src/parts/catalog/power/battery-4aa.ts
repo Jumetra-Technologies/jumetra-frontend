@@ -1,4 +1,4 @@
-import { MATERIAL, definePart, ground, lead, name, pin, rail, silk, type Solid } from "../../sdk";
+import { definePart, ground, lead, rail, silk, type Solid } from "../../sdk";
 import { cellLying, leadEnd, plate, spring, tray } from "./_cells";
 
 // A black 2 x 2 holder: two rows, two AA cells end to end in each row, chained in a U.

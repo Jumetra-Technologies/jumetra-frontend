@@ -1,4 +1,4 @@
-import { circlePath, definePart, gnd, pin, vcc, type Solid } from "../../sdk";
+import { definePart, gnd, pin, vcc, type Solid } from "../../sdk";
 
 const GB_W = 37; // the gearbox is 37 mm long, 22.5 mm across and 18.5 mm tall
 const W = 22.5;

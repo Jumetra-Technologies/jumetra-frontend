@@ -5,7 +5,6 @@ const CX = 13;
 const CY = 7.2;
 const CAN_TOP = TOP + 6.5;
 const SHAFT_TOP = 30;
-const STEEL = "#c9ccd1";
 
 const header = pinHeader(7.92, 17.6, 5, { style: "down" });
 

@@ -1,10 +1,9 @@
 {
   "name": "dashboard",
-  "version": "1.39.0",
+  "version": "1.40.0",
   "private": true,
   "workspaces": [
-    "packages/*",
-    "apps/*"
+    "packages/*"
   ],
   "scripts": {
     "predev": "node scripts/copy-monaco.mjs",
@@ -13,14 +12,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p apps/desktop",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run typecheck && npm run lint && npm test",
     "release:patch": "npm version patch --no-git-tag-version",
     "release:minor": "npm version minor --no-git-tag-version",
-    "release:major": "npm version major --no-git-tag-version",
-    "desktop": "npm run dev -w @kiungo/desktop"
+    "release:major": "npm version major --no-git-tag-version"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

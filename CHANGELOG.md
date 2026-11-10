@@ -10,6 +10,16 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.40.0] - 2026-11-10
+
+The desktop app moved to its own repository, [Jumetra-Technologies/kiungo](https://github.com/Jumetra-Technologies/kiungo), as agreed by the team on 9 Nov 2026. This repository is the website and the packages the website uses.
+
+### Changed
+- **The home page's download comes from the new repository.** It reads the version the app's update feed offers, then that release's files, and still offers the releases published here (up to desktop 0.13) until the first one from the new repository.
+
+### Removed
+- `apps/desktop`, `packages/api`, the desktop release workflow and its scripts, the desktop CI jobs and `docs/phase-two`. All of them are in Jumetra-Technologies/kiungo. `__tests__/DesktopLivesInKiungo.test.ts` fails if desktop code comes back here.
+
 ## [1.39.0] - 2026-11-09
 
 Kiungo now asks before counting how people use it, and the Cookie Policy says exactly what's counted. Needs jumetra-backend #15 for the account side.
@@ -815,6 +825,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.40.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.0...v1.40.0
 [1.39.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.2...v1.39.0
 [1.38.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.1...v1.38.2
 [1.38.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.0...v1.38.1

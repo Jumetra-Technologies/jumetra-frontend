@@ -1,6 +1,6 @@
 /**
  * The Hybrid link's PC side: COBS, frames, and the shim generator (INJ-01, INJ-03, INJ-04).
- * The board side is checked against real compiled code in apps/desktop/test/hybrid-shim.test.ts.
+ * The board side is checked against real compiled code in kiungo:apps/desktop/test/hybrid-shim.test.ts.
  */
 
 import { describe, expect, it } from "vitest";

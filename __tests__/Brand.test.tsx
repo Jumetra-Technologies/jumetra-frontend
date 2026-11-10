@@ -53,7 +53,7 @@ describe("rename", () => {
   });
 
   it("leaves HHIP only where it names the old product, the rename, or a backend setting", () => {
-    const hits = execSync("grep -rnw HHIP app components lib packages/ui/src packages/lab/src apps/desktop/src --include=*.ts --include=*.tsx || true", { encoding: "utf8" })
+    const hits = execSync("grep -rnw HHIP app components lib packages/ui/src packages/lab/src --include=*.ts --include=*.tsx || true", { encoding: "utf8" })
       .split("\n")
       .filter(Boolean)
       // lib/roadmap.ts is the project's history, which records the rename (agreed by the team, v1.8.0).

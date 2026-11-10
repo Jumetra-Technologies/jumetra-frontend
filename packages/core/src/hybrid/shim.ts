@@ -2,7 +2,7 @@
  * The shim generator (INJ-01): what a Hybrid build adds to the user's
  * unchanged sketch so virtual parts can answer it.
  *
- * Mechanism, as proved in the Sprint 2 spike (docs/phase-two/sprint-2-spike-results.md):
+ * Mechanism, as proved in the Sprint 2 spike (kiungo:docs/phase-two/sprint-2-spike-results.md):
  * a header forced into every C++ compile with `-include`. It renames the
  * sketch's `Serial` and the pin-reading functions to the Kiungo runtime's,
  * while the core's own files are left alone because only the sketch and

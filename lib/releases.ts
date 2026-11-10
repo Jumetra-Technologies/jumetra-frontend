@@ -1,14 +1,17 @@
 /**
  * The desktop app's newest release, for the home page's download.
  *
- * Three sources, in order:
+ * The app and its releases live in github.com/Jumetra-Technologies/kiungo (from desktop
+ * 0.14.0, Nov 2026); every release up to 0.13 is on this repository. Three
+ * sources, in order:
  * 1. The backend's GET /releases/latest (jumetra-backend docs/releases.md),
  *    which the release pipeline fills once its token is configured.
- * 2. The manifest (kiungo-release.json) of the GitHub release for the desktop
- *    version this site was built with (apps/desktop/package.json), fetched
- *    straight from GitHub's download CDN, which has no rate limit.
- * 3. The newest GitHub release of jumetra-frontend made by the "Release the
- *    desktop app" workflow, from the releases API (60 requests an hour per IP
+ * 2. The version the app's own update feed offers (kiungo's desktop-feed
+ *    latest.yml, else beta.yml), then that release's manifest
+ *    (kiungo-release.json). Both come straight from GitHub's download CDN,
+ *    which has no rate limit.
+ * 3. The newest "Release the desktop app" release on GitHub, kiungo first and
+ *    then this repository, from the releases API (60 requests an hour per IP
  *    unauthenticated, which a shared host can exhaust; GITHUB_TOKEN lifts it),
  *    read from its manifest or, without one, from the installers' names.
  *
@@ -40,14 +43,15 @@ export interface Release {
   releaseUrl?: string;
 }
 
-/** Where the release workflow publishes (the GitHub organization keeps its pre-rebrand name). */
-export const GITHUB_RELEASES_URL = "https://api.github.com/repos/Jumetra-Technologies/jumetra-frontend/releases?per_page=10";
-const GITHUB_RELEASE_PAGE = "https://github.com/Jumetra-Technologies/jumetra-frontend/releases/tag/";
-/** Where this repository's release assets live. */
-const RELEASE_ASSETS = "https://github.com/Jumetra-Technologies/jumetra-frontend/releases/download/";
+/** Where the release workflow publishes: the desktop app's repository (the GitHub organization keeps its pre-rebrand name). */
+export const DESKTOP_REPOSITORY = "https://github.com/Jumetra-Technologies/kiungo";
+/** Where releases up to desktop 0.13 were published, before the app moved. */
+export const LEGACY_REPOSITORY = "https://github.com/Jumetra-Technologies/jumetra-frontend";
+export const githubReleasesUrl = (repository: string) => `${repository.replace("https://github.com/", "https://api.github.com/repos/")}/releases?per_page=10`;
+const releasePage = (repository: string) => `${repository}/releases/tag/`;
+const releaseAssets = (repository: string) => `${repository}/releases/download/`;
 const MANIFEST_ASSET = "kiungo-release.json";
-/** The desktop version this site was built with (next.config.ts reads apps/desktop/package.json). */
-export const DESKTOP_VERSION = process.env.NEXT_PUBLIC_DESKTOP_VERSION ?? "";
+const VERSION = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 const REVALIDATE_SECONDS = 300;
 const TIMEOUT_MS = 6000;
 
@@ -153,23 +157,42 @@ export async function releaseFromGitHub(release: GitHubRelease, fetchImpl: Fetch
 }
 
 /** The release of one desktop version, from its manifest on GitHub's download CDN; null when that version isn't published. */
-export async function manifestRelease(version: string = DESKTOP_VERSION, fetchImpl: Fetch = fetch): Promise<Release | null> {
-  if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version)) return null;
+export async function manifestRelease(version: string, fetchImpl: Fetch = fetch, repository: string = DESKTOP_REPOSITORY): Promise<Release | null> {
+  if (!VERSION.test(version)) return null;
   try {
-    const res = await get(fetchImpl, `${RELEASE_ASSETS}desktop-v${version}/${MANIFEST_ASSET}`, { "User-Agent": "kiungo-website" });
+    const res = await get(fetchImpl, `${releaseAssets(repository)}desktop-v${version}/${MANIFEST_ASSET}`, { "User-Agent": "kiungo-website" });
     if (!res.ok) return null;
-    const parsed = parseRelease(await res.json(), "github", `${GITHUB_RELEASE_PAGE}desktop-v${version}`);
+    const parsed = parseRelease(await res.json(), "github", `${releasePage(repository)}desktop-v${version}`);
     return parsed && parsed.version === version ? parsed : null;
   } catch {
     return null;
   }
 }
 
-/** The newest desktop release on GitHub (pre-releases included), or null. */
-export async function githubRelease(fetchImpl: Fetch = fetch): Promise<Release | null> {
+/**
+ * The version the app's update feed offers (stable first, then beta), from the
+ * download CDN; null when the feed has none. Read with a line match: the feed
+ * is electron-updater's YAML, and only its top-level version is needed.
+ */
+export async function feedVersion(fetchImpl: Fetch = fetch, repository: string = DESKTOP_REPOSITORY): Promise<string | null> {
+  for (const file of ["latest.yml", "beta.yml"]) {
+    try {
+      const res = await get(fetchImpl, `${releaseAssets(repository)}desktop-feed/${file}`, { "User-Agent": "kiungo-website" });
+      if (!res.ok) continue;
+      const version = /^version:\s*['"]?([^'"\s]+)['"]?\s*$/m.exec(await res.text())?.[1];
+      if (version && VERSION.test(version)) return version;
+    } catch {
+      /* the next file, or none */
+    }
+  }
+  return null;
+}
+
+/** The newest desktop release on one repository's GitHub releases (pre-releases included), or null. */
+export async function githubRelease(fetchImpl: Fetch = fetch, repository: string = DESKTOP_REPOSITORY): Promise<Release | null> {
   try {
     const token = process.env.GITHUB_TOKEN;
-    const res = await get(fetchImpl, GITHUB_RELEASES_URL, { Accept: "application/vnd.github+json", "User-Agent": "kiungo-website", ...(token ? { Authorization: `Bearer ${token}` } : {}) });
+    const res = await get(fetchImpl, githubReleasesUrl(repository), { Accept: "application/vnd.github+json", "User-Agent": "kiungo-website", ...(token ? { Authorization: `Bearer ${token}` } : {}) });
     if (!res.ok) return null;
     const releases = (await res.json()) as GitHubRelease[];
     if (!Array.isArray(releases)) return null;
@@ -186,11 +209,14 @@ export async function githubRelease(fetchImpl: Fetch = fetch): Promise<Release |
 
 /**
  * The release to offer: the backend's stable one, else its beta, else the
- * GitHub release of the version this site was built with, else the newest on
- * GitHub. Null when there's none yet.
+ * release the app's update feed offers, else the newest on GitHub (the app's
+ * repository, then the releases from before it moved). Null when there's none yet.
  */
 export async function latestRelease(fetchImpl: Fetch = fetch): Promise<Release | null> {
-  return (await backendRelease("stable", fetchImpl)) ?? (await backendRelease("beta", fetchImpl)) ?? (await manifestRelease(DESKTOP_VERSION, fetchImpl)) ?? (await githubRelease(fetchImpl));
+  const fromBackend = (await backendRelease("stable", fetchImpl)) ?? (await backendRelease("beta", fetchImpl));
+  if (fromBackend) return fromBackend;
+  const offered = await feedVersion(fetchImpl);
+  return (offered ? await manifestRelease(offered, fetchImpl) : null) ?? (await githubRelease(fetchImpl)) ?? (await githubRelease(fetchImpl, LEGACY_REPOSITORY));
 }
 
 export const PLATFORM_NAMES: Record<ReleasePlatform, string> = { windows: "Windows", macos: "macOS", linux: "Linux" };
@@ -253,13 +279,17 @@ export type DownloadMode = "page" | "browser";
 export const DOWNLOAD_ROUTE = "/api/desktop/download";
 
 /**
- * Whether the download route may fetch this URL: only installers of this
- * project's releases, on GitHub or on the backend, plus any origins listed in
+ * Whether the download route may fetch this URL: only installers of the
+ * desktop app's releases (kiungo's, and this repository's from before the
+ * move), on GitHub or on the backend, plus any origins listed in
  * `extra` (KIUNGO_DOWNLOAD_ORIGINS, for a local check against a local file server).
  */
 export function isReleaseFileUrl(url: string, extra: readonly string[] = []): boolean {
   if (typeof url !== "string" || url.length > 2048) return false;
-  if (url.startsWith(RELEASE_ASSETS) && /^[^/?#]+\/[^/?#]+$/.test(url.slice(RELEASE_ASSETS.length))) return true;
+  for (const repository of [DESKTOP_REPOSITORY, LEGACY_REPOSITORY]) {
+    const assets = releaseAssets(repository);
+    if (url.startsWith(assets) && /^[^/?#]+\/[^/?#]+$/.test(url.slice(assets.length))) return true;
+  }
   if (url.startsWith(`${API_BASE}/releases/`)) return true;
   return extra.some((origin) => origin && url.startsWith(origin));
 }

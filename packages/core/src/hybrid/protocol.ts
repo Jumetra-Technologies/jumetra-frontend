@@ -6,7 +6,7 @@
  * own Serial text travels inside TEXT frames, so the PC can tell it from
  * Kiungo's frames.
  *
- * The board's side is apps/desktop/resources/hybrid/KiungoHybrid/src/kiungo_hybrid.cpp.
+ * The board's side is kiungo:apps/desktop/resources/hybrid/KiungoHybrid/src/kiungo_hybrid.cpp.
  */
 
 import { CobsStream, cobsEncode } from "./cobs";

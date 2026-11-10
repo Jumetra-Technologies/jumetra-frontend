@@ -60,12 +60,14 @@ describe("the banner", () => {
     expect(JSON.parse(init.body)).toEqual({ visitor: "visitor-abc-123" });
   });
 
-  it("signed in, the answer goes to the account too", async () => {
+  it("signed in, the answer stays in this browser (accounts are on the main server, which doesn't keep it)", async () => {
     useAuthStore.setState({ user, isAuthenticated: true });
-    const save = vi.spyOn(api, "saveMyConsents").mockResolvedValue({ usage: true, crash_reports: null, decided_at: "x", decided_in: "website" });
+    const save = vi.spyOn(api, "saveMyConsents");
     render(<UsageConsentBanner />);
     fireEvent.click(screen.getByTestId("usage-allow"));
-    await waitFor(() => expect(save).toHaveBeenCalledWith({ usage: true, decided_in: "website" }));
+    expect(readUsageConsent()?.allowed).toBe(true);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(save).not.toHaveBeenCalled();
   });
 
   it("stays out of the way on the Cookie Policy itself and in the admin portal", () => {

@@ -241,11 +241,11 @@ describe("formatting and the heartbeat", () => {
     expect(mayTrack({ allowed: true })).toBe(true);
   });
 
-  it("sends a visitor id only when signed out", () => {
+  it("sends the browser's visitor id, signed in or not (the admin server doesn't hold accounts)", () => {
     const out = JSON.parse(heartbeatBody("view", "/lab", false));
     expect(out).toMatchObject({ client: "web", page: "/lab", event: "view" });
     expect(out.visitor).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
     expect(JSON.parse(heartbeatBody("beat", "/lab", false)).visitor).toBe(out.visitor);
-    expect(JSON.parse(heartbeatBody("beat", "/lab", true)).visitor).toBeUndefined();
+    expect(JSON.parse(heartbeatBody("beat", "/lab", true)).visitor).toBe(out.visitor);
   });
 });

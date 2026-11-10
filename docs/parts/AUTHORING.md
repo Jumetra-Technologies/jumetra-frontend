@@ -213,7 +213,7 @@ What the numbers mean:
 
 - `draw` is what the part itself takes from its supply. A motor driver's `draw` is its logic current; the motor's current is the motor's.
 - `bridge`: the volts a driver or switch loses are `ohms` × amps, and never less than `dropV`. A MOSFET driver has only `ohms` (its on-resistance, both switches added). A bipolar driver has a `dropV` floor as well.
-- `converter.law`: `linear` burns (volts in − volts out) × current as heat. `buck` and `boost` lose power out × (1 ÷ efficiency − 1).
+- `converter.law`: `linear` burns (volts in − volts out) × current as heat. `buck` and `boost` lose power out × (1 ÷ efficiency − 1). `pass` hands its input straight on (a protection board).
 - `thermal.thetaCW` is °C of rise per watt lost, in still air, as mounted on the module. `maxC` is the hottest it may run.
 - `sourcing.lifecycle`: `active`, `nrnd` (not recommended for new designs), `obsolete`, or `generic` (many makers).
 - `upgrade.part` is the other part's id when it is in the library; the library then links to it.
@@ -232,18 +232,26 @@ sim: {
 },
 // A two-state control uses `states`:  { key: "pressed", label: "Button", min: 0, max: 1, step: 1, start: 0, states: ["Released", "Pressed"] }
 
-sim: { kind: "source", plus: "+", minus: "-" },                              // a battery
-sim: { kind: "converter", input: ["IN+", "IN-"], output: ["OUT+", "OUT-"] }, // a regulator
+sim: { kind: "source", plus: "POS", minus: "NEG" },                          // a battery
+sim: { kind: "converter", input: ["VIN", "GNDIN"], output: ["VOUT", "GNDOUT"] },   // a regulator; `also: [{ pin: "3V3", volts: 3.3 }]` adds fixed outputs
 sim: { kind: "driver", supply: "VM", ground: "GND", channels: [{ outputs: ["AO1", "AO2"], inputs: ["AIN1", "AIN2"], enable: "PWMA" }] },
 sim: { kind: "motor", terminals: ["M1", "M2"] },
+sim: { kind: "expander", outputs: ["PWM0", "PWM1"] },                        // a chip that gives a board more output pins
+sim: { kind: "shifter", pairs: [["HV1", "LV1"], ["HV2", "LV2"]] },           // a level shifter
 sim: { kind: "output" },                                                     // runs when powered and driven
 ```
 
 `sweep` is the lab's demo signal until a person sets a value: from, to, and the period in seconds.
 
+Pins that give a supply are written like a board's: a battery's terminals are `rail("POS", "+", 6)` and `ground("NEG", "left", "−")`, and a converter's output is `rail("VOUT", "OUT+", 5)` beside `ground("GNDOUT", "left", "OUT−")`. Pin ids are letters, digits and underscores; put symbols in the label. Join pins that are one piece of copper inside the part with `lab: { strips: [["GNDIN", "GNDOUT"]] }`.
+
+The id of a power LED's solid contains `pwr` (`led-pwr`): the lab lights those whenever the part is powered and the others only while they are driven.
+
 ### `animate`
 
 `lit`: ids of solids that glow when the part is powered. `spin`: ids that turn (a motor shaft, a wheel). `sweep`: ids that swing back and forth (a servo horn).
+
+`axis: { at: [x, y, z], dir: "x" | "y" | "z" }` makes everything listed turn together about one line: a servo's horn about its shaft, a wheel about a lying motor's shaft. Without it each solid turns about its own middle, upright.
 
 ### Parts drawn as themselves in the lab
 

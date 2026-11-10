@@ -421,8 +421,8 @@ export interface PartSpec {
     draw?: { idle: number; active: number; peak?: number };
     /** Batteries: what the pack gives. `ohms` is its internal resistance (volts lost per amp). */
     source?: { volts: number; maxMa: number; capacityMah?: number; ohms?: number; chemistry?: string };
-    /** Regulators and converters. linear burns the difference as heat; buck and boost convert it. */
-    converter?: { law: "buck" | "boost" | "linear"; volts: number; adjustable?: [number, number]; dropout?: number; efficiency?: number; maxMa: number };
+    /** Regulators and converters. linear burns the difference as heat; buck and boost convert it; pass hands its input straight on (a protection or charger board). */
+    converter?: { law: "buck" | "boost" | "linear" | "pass"; volts: number; adjustable?: [number, number]; dropout?: number; efficiency?: number; maxMa: number };
     /**
      * Motor drivers and switches: what a channel passes, and the volts it
      * loses on the way: `ohms` × amps (a MOSFET's on-resistance), and never
@@ -503,7 +503,16 @@ export type PartSim =
       trips?: Array<{ pin: string; key: string; when: "below" | "above"; at: number; activeLow?: boolean }>;
     }
   | { /** Batteries: a supply between two terminals. */ kind: "source"; plus: string; minus: string }
-  | { /** Regulators and converters: a supply on the output pins while the input has one. */ kind: "converter"; input: [string, string]; output: [string, string] }
+  | {
+      /** Regulators and converters: a supply on the output pins while the input has one. */
+      kind: "converter";
+      /** The input's + and − pins. */
+      input: [string, string];
+      /** The output's + and − pins; its voltage is `spec.power.converter.volts`. */
+      output: [string, string];
+      /** Further fixed outputs on the same ground (a board that gives 5 V and 3.3 V). */
+      also?: Array<{ pin: string; volts: number; maxMa?: number }>;
+    }
   | {
       /** Motor drivers: each channel's two outputs follow its inputs while the motor supply is on. */
       kind: "driver";
@@ -512,4 +521,6 @@ export type PartSim =
       channels: Array<{ outputs: [string, string]; inputs: string[]; enable?: string }>;
     }
   | { /** Motors and other two-terminal loads a driver or switch runs. */ kind: "motor"; terminals: [string, string] }
+  | { /** Chips that give a board more outputs over a bus (a 16-channel PWM driver): these pins act as the board's own output pins. */ kind: "expander"; outputs: string[] }
+  | { /** Level shifters: each pair of pins is the same signal at two voltages, so a 5 V board and a 3.3 V part can share it. */ kind: "shifter"; pairs: Array<[string, string]> }
   | { /** Parts that just run when powered and driven: lights, sounders, displays. */ kind: "output" };

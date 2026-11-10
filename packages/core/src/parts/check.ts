@@ -73,7 +73,9 @@ export function checkPart(entry: PartEntry, catalog?: ReadonlySet<string>): Prob
   const spots = new Map((model.pinSpots ?? []).map((s) => [s.id, s]));
   const placed = pinout.pins.filter((p) => spots.has(p.id)).length;
   // A breadboard's hundreds of holes come from its own table, not from pin positions.
-  if (!pinout.strips || pinout.pins.length < 100) {
+  // Terminals given by hand (`spots`) stand in for pins the lab names differently.
+  const byHand = [...spots.keys()].some((id) => !pinout.pins.some((p) => p.id === id));
+  if ((!pinout.strips || pinout.pins.length < 100) && !byHand) {
     if (placed === 0) error("no pin has a position: give `pinAt`");
     else if (placed < pinout.pins.length) warn(`${pinout.pins.length - placed} of ${pinout.pins.length} pins have no position (${pinout.pins.filter((p) => !spots.has(p.id)).map((p) => p.id).slice(0, 6).join(", ")})`);
   }
@@ -153,7 +155,7 @@ export function checkPart(entry: PartEntry, catalog?: ReadonlySet<string>): Prob
     need(sim.minus, "source");
     if (!spec?.power.source) error("sim says it is a source but spec.power.source is missing");
   } else if (sim?.kind === "converter") {
-    [...sim.input, ...sim.output].forEach((id) => need(id, "converter"));
+    [...sim.input, ...sim.output, ...(sim.also ?? []).map((o) => o.pin)].forEach((id) => need(id, "converter"));
     if (!spec?.power.converter) error("sim says it is a converter but spec.power.converter is missing");
   } else if (sim?.kind === "driver") {
     need(sim.supply, "driver");
@@ -163,6 +165,10 @@ export function checkPart(entry: PartEntry, catalog?: ReadonlySet<string>): Prob
   } else if (sim?.kind === "motor") {
     sim.terminals.forEach((id) => need(id, "motor"));
     if (!spec?.power.motor) error("sim says it is a motor but spec.power.motor is missing");
+  } else if (sim?.kind === "expander") {
+    sim.outputs.forEach((id) => need(id, "expander"));
+  } else if (sim?.kind === "shifter") {
+    sim.pairs.flat().forEach((id) => need(id, "shifter"));
   }
 
   return problems;

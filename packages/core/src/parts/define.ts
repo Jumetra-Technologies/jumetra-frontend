@@ -66,6 +66,12 @@ export interface PartDef extends Omit<PartModel, "solids" | "pins" | "pinSpots" 
   pinTable?: PinInfo[];
   /** Where each pin is on the part: pin id → its hole, pad or leg, in mm. See `along` and `grid`. */
   pinAt?: Record<string, { x: number; y: number }>;
+  /**
+   * The part's real terminals, given by hand, for the rare part whose
+   * terminals aren't the pins the lab wires (a motor the lab drives through a
+   * built-in driver). Replaces the positions from `pinAt`.
+   */
+  spots?: PinSpot[];
   lab?: LabDef;
   /** For parts the lab draws as themselves. Its pin positions come from `pinAt`. */
   canvas?: Omit<CanvasSpec, "pins"> & { pins?: CanvasSpec["pins"] };
@@ -78,14 +84,16 @@ export interface PartEntry {
 }
 
 export function definePart(def: PartDef): PartEntry {
-  const { solids: rawSolids, pins: pinDefs, pinTable, pinAt, lab = {}, canvas, ...rest } = def;
+  const { solids: rawSolids, pins: pinDefs, pinTable, pinAt, spots, lab = {}, canvas, ...rest } = def;
   const solids = rawSolids.flatMap((entry) => (!entry ? [] : Array.isArray(entry) ? entry : "solids" in entry ? entry.solids : [entry]));
 
   const spotOf = (pin: PinDef) => pin.at ?? pinAt?.[pin.id];
-  const pinSpots: PinSpot[] = pinDefs.flatMap((pin) => {
-    const at = spotOf(pin);
-    return at ? [{ id: pin.id, label: pin.label ?? pin.id, role: pin.role, x: at.x, y: at.y, note: pin.note }] : [];
-  });
+  const pinSpots: PinSpot[] =
+    spots ??
+    pinDefs.flatMap((pin) => {
+      const at = spotOf(pin);
+      return at ? [{ id: pin.id, label: pin.label ?? pin.id, role: pin.role, x: at.x, y: at.y, note: pin.note }] : [];
+    });
 
   const pins: PinInfo[] = pinTable ?? pinDefs.filter((pin) => !pin.quiet).map((pin) => ({ name: pin.label ?? pin.id, role: pin.role, note: pin.note }));
 

@@ -278,20 +278,51 @@ export type DownloadMode = "page" | "browser";
 
 export const DOWNLOAD_ROUTE = "/api/desktop/download";
 
+/** One path segment of a release file's address: never "." or "..", and nothing that decodes to a separator or a dot. */
+const SAFE_SEGMENT = /^(?!\.{1,2}$)[A-Za-z0-9._~+-]+$|^(?!.*%(?:2e|2f|5c|00))(?!\.{1,2}$)[A-Za-z0-9._~+%-]+$/i;
+const DESKTOP_REPOSITORIES = [DESKTOP_REPOSITORY, LEGACY_REPOSITORY].map((r) => new URL(r).pathname);
+
 /**
  * Whether the download route may fetch this URL: only installers of the
  * desktop app's releases (kiungo's, and this repository's from before the
  * move), on GitHub or on the backend, plus any origins listed in
  * `extra` (KIUNGO_DOWNLOAD_ORIGINS, for a local check against a local file server).
+ *
+ * The address is parsed and its parts checked, never matched as text: a URL
+ * that would resolve somewhere else ("..", "\", "%2e", a user name, a port) is
+ * refused, and so is any URL that isn't already in the form the route will
+ * fetch, so what's checked is exactly what's fetched.
  */
 export function isReleaseFileUrl(url: string, extra: readonly string[] = []): boolean {
-  if (typeof url !== "string" || url.length > 2048) return false;
-  for (const repository of [DESKTOP_REPOSITORY, LEGACY_REPOSITORY]) {
-    const assets = releaseAssets(repository);
-    if (url.startsWith(assets) && /^[^/?#]+\/[^/?#]+$/.test(url.slice(assets.length))) return true;
+  if (typeof url !== "string" || url.length > 2048 || /[\\\s]/.test(url)) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
   }
-  if (url.startsWith(`${API_BASE}/releases/`)) return true;
-  return extra.some((origin) => origin && url.startsWith(origin));
+  if (parsed.href !== url || parsed.username || parsed.password || parsed.hash) return false;
+  const segments = parsed.pathname.split("/").slice(1);
+  if (!segments.every((segment) => SAFE_SEGMENT.test(segment))) return false;
+
+  // GitHub: /<org>/<repo>/releases/download/<tag>/<file>, on one of the desktop app's repositories.
+  if (parsed.protocol === "https:" && parsed.host === "github.com" && !parsed.search) {
+    const repository = `/${segments.slice(0, 2).join("/")}`;
+    return segments.length === 6 && DESKTOP_REPOSITORIES.includes(repository) && segments[2] === "releases" && segments[3] === "download";
+  }
+
+  // The backend's releases, or a listed origin: same origin, and under it.
+  const under = (base: string, path: string) => {
+    try {
+      const b = new URL(base);
+      if (b.origin !== parsed.origin) return false;
+      const prefix = `${b.pathname.replace(/\/+$/, "")}${path}`;
+      return parsed.pathname.startsWith(prefix) && parsed.pathname.length > prefix.length;
+    } catch {
+      return false;
+    }
+  };
+  return under(API_BASE, "/releases/") || extra.some((origin) => origin && under(origin, "/"));
 }
 
 /** The link under a download button: the pass-through for the page's own download, the asset itself otherwise. */

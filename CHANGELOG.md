@@ -17,6 +17,9 @@ The desktop app moved to its own repository, [Jumetra-Technologies/kiungo](https
 ### Changed
 - **The home page's download comes from the new repository.** It reads the version the app's update feed offers, then that release's files, and still offers the releases published here (up to desktop 0.13) until the first one from the new repository.
 
+### Fixed
+- **Security: the download route could be made to pass through any GitHub repository's files.** `/api/desktop/download` checked the address as text, so `..`, backslashes or encoded dots after an allowed prefix resolved to someone else's release, served from Kiungo's own address. It now parses the address and checks its host, its exact path and every segment, and fetches only an address already in that exact form.
+
 ### Removed
 - `apps/desktop`, `packages/api`, the desktop release workflow and its scripts, the desktop CI jobs and `docs/phase-two`. All of them are in Jumetra-Technologies/kiungo. `__tests__/DesktopLivesInKiungo.test.ts` fails if desktop code comes back here.
 

@@ -36,6 +36,8 @@ const NEROKAS_CATEGORY: Partial<Record<PartGroupId, string>> = {
   boards: `https://${NEROKAS_HOST}/Arduino`,
   sensors: `https://${NEROKAS_HOST}/Sensors`,
   outputs: `https://${NEROKAS_HOST}/drones-robotics`,
+  motors: `https://${NEROKAS_HOST}/drones-robotics`,
+  drivers: `https://${NEROKAS_HOST}/drones-robotics`,
   radios: `https://${NEROKAS_HOST}/Wireless_Devices`,
 };
 

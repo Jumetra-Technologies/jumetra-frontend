@@ -18,6 +18,7 @@ import { VIEW_COPY } from "@kiungo/ui/views";
 import { cn } from "@kiungo/ui/cn";
 import { FaultList } from "./FaultList";
 import { InputsPanel } from "./InputsPanel";
+import { PowerPanel } from "./PowerPanel";
 import { useLabContext, useLabHost } from "./lab-context";
 import { STATUS_TEXT, TONE_VAR } from "./PartNode";
 
@@ -171,7 +172,7 @@ function NodeInspector({ id }: { id: string }) {
         <FaultList faults={report?.faults ?? []} empty={status === "idle" ? "Not wired yet. Drag from a pin, or use Auto-wire." : "No problems with this part."} />
       </Section>
 
-      {pinout.strips ? (
+      {pinout.passive && pinout.strips ? (
         <Section title="Strips in use">
           <BreadboardStrips nodeId={node.id} />
         </Section>
@@ -335,6 +336,11 @@ function Overview() {
         <FaultList faults={analysis.faults} />
         {errors ? <p className="mt-2 text-[11.5px] text-muted">Switch to Trace to see where current stops.</p> : null}
       </Section>
+      {analysis.power.rails.some((rail) => rail.loads.length) || Object.keys(analysis.power.heat).length ? (
+        <Section title="Power">
+          <PowerPanel />
+        </Section>
+      ) : null}
       {host.realHardware ? <Section title="Real hardware">{host.realHardware}</Section> : null}
       <Section title="Legend">
         <ul className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px] text-foreground">

@@ -38,15 +38,17 @@ import {
   simulate,
 } from "./lab.js";
 import { suggest } from "@kiungo/core/lab/suggest";
+import { PART_GROUPS } from "@kiungo/core/parts";
 import { SESSION_FILE_EXTENSION, sessionFileName, toSessionFile } from "@kiungo/core/lab/session-file";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 const INSTRUCTIONS = `Kiungo is a robotics and electronics lab. With these tools you build a circuit the way a person does in Kiungo's Engineering Lab, then export it as a .kiungo.json file the user opens in Kiungo to see your build.
 
 Workflow:
 1. create_session.
 2. add_part for the board first (arduino-uno, arduino-mega, esp32, raspberry-pi-pico, ...), then each peripheral. add_part auto-wires power, ground and signals to the board unless autowire=false.
+   A robot that drives needs its own power: add a battery (group "power"), then a motor driver (group "drivers"), then the motors (group "motors"). A bare motor never goes on a board pin. When a result has a "hint", add what it names and run autowire_part on the part again.
 3. Read the "check" in every result. Fix errors (connect_pins, remove_items, autowire_part) until check.ok is true. Tips such as "Assumed: 220 Ω resistor" are fine.
 4. Optionally set_inputs (sensor surroundings, actuator commands, board settings) and simulate to show it working.
 5. export_session and give the user the file.
@@ -84,8 +86,8 @@ export function buildServer(): McpServer {
     "search_parts",
     {
       title: "Search parts",
-      description: "List the parts that can be placed in a Kiungo lab build: boards, sensors, outputs (LEDs, buzzer, servo, DC motor, stepper, relay), displays and radios. Omit query to list all.",
-      inputSchema: { query: z.string().optional(), group: z.enum(["boards", "sensors", "outputs", "displays", "radios"]).optional() },
+      description: "List the parts that can be placed in a Kiungo lab build: boards, power (batteries, converters), prototyping (breadboards, resistor, level shifter), controls (buttons, knobs), sensors, motors (gear motors, servos, steppers), drivers (motor drivers, relay), outputs (LEDs, pixels, buzzer), displays and radios. Omit query to list all.",
+      inputSchema: { query: z.string().optional(), group: z.enum(PART_GROUPS.map((g) => g.id) as [string, ...string[]]).optional() },
       annotations: { readOnlyHint: true },
     },
     ({ query, group }) => run(() => listParts(query, group)),
@@ -169,7 +171,7 @@ export function buildServer(): McpServer {
     "add_part",
     {
       title: "Add part",
-      description: "Place a part. Peripherals are auto-wired to a board (power, ground, signals on free capable pins) unless autowire is false. Returns the new node, the wires added and the circuit check.",
+      description: "Place a part. Peripherals are auto-wired to a board (power, ground, signals on free capable pins) unless autowire is false. A battery goes to the motor driver or converter waiting for one, and a bare motor to a free driver channel. Returns the new node, the wires added, a hint when the part had nothing to wire to yet, and the circuit check.",
       inputSchema: {
         session_id: z.string(),
         part_id: z.string(),
@@ -191,6 +193,8 @@ export function buildServer(): McpServer {
           // Name each end by its own part: autowire can land a pin on a breadboard rail rather than the board.
           wires_added: r.added.map((w) => `${labelIn(s, w.from.node)}.${w.from.pin} → ${labelIn(s, w.to.node)}.${w.to.pin}`),
           not_wired: r.skipped.length ? r.skipped : undefined,
+          // What the build needs first, when the part had nothing to wire to yet (a motor with no driver, a driver with no battery).
+          hint: r.hint,
           check: summarize(s),
         };
       }),
@@ -214,7 +218,7 @@ export function buildServer(): McpServer {
       run(() => {
         const r = autowirePart(store.get(session_id), node, board);
         const s = store.save(r.session);
-        return { wired_to: r.board.label, wires_added: r.added.length, not_wired: r.skipped.length ? r.skipped : undefined, check: summarize(s) };
+        return { wired_to: r.board.label, wires_added: r.added.length, not_wired: r.skipped.length ? r.skipped : undefined, hint: r.hint, check: summarize(s) };
       }),
   );
 

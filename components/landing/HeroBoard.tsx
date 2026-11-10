@@ -4,15 +4,17 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Play, Square } from "lucide-react";
 import { PartModel3D } from "@kiungo/lab/views/PartModel3D";
-import { ARDUINO_UNO } from "@kiungo/core/parts/models/arduino-uno";
+import arduinoUno from "@kiungo/core/parts/catalog/boards/arduino-uno";
 import { cn } from "@/lib/utils";
 
 /** Blink's period: on for half a second, off for half a second. */
 const BLINK_MS = 500;
+/** The one part this page draws, taken from its own file so the page does not load the whole library. */
+const ARDUINO_UNO = arduinoUno.model;
 
 /**
  * The Home page's board: the same Arduino Uno R3 the Component library and
- * the Engineering Lab draw (lib/parts/models/arduino-uno.ts), as a 3D model
+ * the Engineering Lab draw (parts/catalog/boards/arduino-uno.ts), as a 3D model
  * that turns slowly, pauses under the pointer, and can be dragged or turned
  * with the arrow keys. Run Blink flashes its pin-13 "L" LED the way the
  * first sketch anyone uploads does. The ON LED is lit throughout.

@@ -6,7 +6,7 @@ import { nodeLayout } from "@kiungo/core/lab/layout";
 import { getPinout } from "@kiungo/core/lab/pinout";
 import { getPart } from "@kiungo/core/parts";
 import { project, projectAngle, stageLift } from "@kiungo/core/parts/geometry";
-import { ARDUINO_UNO } from "@kiungo/core/parts/models/arduino-uno";
+import arduinoUno from "@kiungo/core/parts/catalog/boards/arduino-uno";
 import { freshLab } from "./helpers/lab";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
@@ -16,9 +16,10 @@ const texts = () => uno.solids.filter((s) => s.kind === "text").map((s) => (s as
 
 describe("The Arduino Uno model", () => {
   it("is the real R3: 68.6 × 53.4 mm, teal, USB-B on the left edge, the 328P socketed bottom right", () => {
-    expect(uno).toBe(ARDUINO_UNO);
+    expect(uno).toBe(arduinoUno.model);
     expect(uno.size).toMatchObject({ w: 68.6, h: 53.4 });
-    const pcb = uno.solids.find((s) => s.kind === "box" && s.id === "pcb") as { top: string };
+    // The board is cut from its real outline, mounting holes included.
+    const pcb = uno.solids.find((s) => (s.kind === "box" || s.kind === "extrude") && s.id === "pcb") as { top: string };
     expect(pcb.top).toBe("#00878f");
     const usb = uno.solids.find((s) => s.kind === "box" && s.id === "usb") as { x: number; y: number; w: number; h: number };
     expect(usb.x).toBeLessThan(0); // overhangs the edge

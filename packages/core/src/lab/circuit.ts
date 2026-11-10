@@ -9,8 +9,10 @@
 
 import { getPart } from "../parts";
 import { breadboardSpec, stripName, type RailId } from "../parts/models/breadboard";
+import { converterOut } from "../parts/power";
 import { getPinout, type LabPin, type PinRole, type Pinout } from "./pinout";
 import { ohmsOf } from "./controls";
+import { powerBudget, type PowerReport } from "./power";
 import type { LabNode, LabWire, NodeInputs, PinRef } from "./types";
 
 export type Severity = "error" | "warning" | "tip";
@@ -35,6 +37,12 @@ export interface Net {
   voltage?: number;
   /** A readable name: "5V rail", "GND", "D13", "SDA". */
   label: string;
+  /** The pin that puts the supply on a power net: a board's rail, a battery's + terminal, a converter's output. */
+  source?: PinRef;
+  /** Board supply pins on a power net that are being fed from it (a VIN pin on a battery). */
+  feeds?: PinRef[];
+  /** The net passes through a level shifter, so its two ends may run at different voltages. */
+  shifted?: boolean;
 }
 
 export type PartStatus = "idle" | "unpowered" | "partial" | "ready" | "fault";
@@ -58,6 +66,8 @@ export interface NodeReport {
   wiredPins: Set<string>;
   /** Resistance in series with the part's drive and ground (an LED's resistor), in ohms. 0 when there is none. */
   seriesOhms?: number;
+  /** For a motor: the driver or switch that runs it. */
+  drivenBy?: string;
 }
 
 export interface BoardToBoard {
@@ -75,6 +85,8 @@ export interface Analysis {
   nodes: Record<string, NodeReport>;
   faults: Fault[];
   boardLinks: BoardToBoard[];
+  /** What each supply gives and what is drawn from it, and how warm the parts that lose power get. */
+  power: PowerReport;
 }
 
 export const pinKey = (ref: PinRef) => `${ref.node}:${ref.pin}`;
@@ -137,13 +149,28 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
     const grounds = pinout.pins.filter((p) => p.fns?.includes("ground"));
     for (let i = 1; i < grounds.length; i++) set.union(`${node.id}:${grounds[0].id}`, `${node.id}:${grounds[i].id}`);
     const bySupply = new Map<number, LabPin[]>();
-    for (const p of pinout.pins) if (p.supplies) bySupply.set(p.supplies, [...(bySupply.get(p.supplies) ?? []), p]);
+    // A pin that can be fed from outside (VIN) is its own net: with a battery on it, it is not the board's 5 V.
+    for (const p of pinout.pins) if (p.supplies && !p.accepts) bySupply.set(p.supplies, [...(bySupply.get(p.supplies) ?? []), p]);
     for (const group of bySupply.values()) for (let i = 1; i < group.length; i++) set.union(`${node.id}:${group[0].id}`, `${node.id}:${group[i].id}`);
   }
 
   // A breadboard's strips: every hole on one clip is one net.
   for (const node of nodes) {
     for (const strip of pinouts.get(node.id)!.strips ?? []) for (let i = 1; i < strip.length; i++) set.union(`${node.id}:${strip[0]}`, `${node.id}:${strip[i]}`);
+  }
+
+  // What each part is to the lab's electrical model, by its `sim`.
+  const simOf = (id: string) => getPart(byId.get(id)?.partId ?? "")?.sim;
+  const specOf = (id: string) => getPart(byId.get(id)?.partId ?? "")?.spec;
+  /** Pins that are the two sides of a level shifter's channel: one signal, two voltages. */
+  const shifterPins = new Set<string>();
+  for (const node of nodes) {
+    const sim = simOf(node.id);
+    if (sim?.kind !== "shifter") continue;
+    for (const [a, b] of sim.pairs) {
+      set.union(`${node.id}:${a}`, `${node.id}:${b}`);
+      shifterPins.add(`${node.id}:${a}`).add(`${node.id}:${b}`);
+    }
   }
 
   const validWires: LabWire[] = [];
@@ -175,22 +202,66 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
   const isBoard = (id: string) => pinouts.get(id)?.controller ?? false;
   const isPassive = (id: string) => pinouts.get(id)?.passive ?? false;
 
-  const nets: Net[] = [];
-  const netOfPin = new Map<string, string>();
-  const netOfWire = new Map<string, string>();
+  let nets: Net[] = [];
+  let netOfPin = new Map<string, string>();
+  let netOfWire = new Map<string, string>();
   const faults: Fault[] = [];
 
+  /**
+   * Supplies that don't come from a board: a battery's + terminal always, a
+   * converter's output while its input has a supply. Pin key → volts.
+   */
+  const live = new Map<string, number>();
+  for (const node of nodes) {
+    const sim = simOf(node.id);
+    const source = specOf(node.id)?.power.source;
+    if (sim?.kind === "source" && source) live.set(`${node.id}:${sim.plus}`, source.volts);
+  }
+  /** Parts whose ground pins make a net ground: batteries and converters. */
+  const givesGround = (id: string) => {
+    const kind = simOf(id)?.kind;
+    return kind === "source" || kind === "converter";
+  };
+
+  /** Sorts every net into power, ground, signal and so on, from the supplies that are live. Faults are only recorded on the last pass. */
+  const classify = (record: boolean) => {
+  nets = [];
+  netOfPin = new Map();
+  netOfWire = new Map();
   let netIndex = 0;
   for (const [root, members] of groups) {
     const netWires = wiresOfRoot.get(root) ?? [];
     const supplies = new Set<number>();
     let grounded = false;
+    let source: PinRef | undefined;
+    const boardRails: Array<{ ref: PinRef; pin: LabPin }> = [];
+    let outside: { ref: PinRef; volts: number } | undefined;
     for (const ref of members) {
       const pin = pinOf(ref);
-      if (!pin || !isBoard(ref.node)) continue;
-      if (pin.supplies) supplies.add(pin.supplies);
-      if (pin.fns?.includes("ground")) grounded = true;
+      if (!pin) continue;
+      if (isBoard(ref.node)) {
+        if (pin.supplies) boardRails.push({ ref, pin });
+        if (pin.fns?.includes("ground")) grounded = true;
+        continue;
+      }
+      const volts = live.get(pinKey(ref));
+      if (volts !== undefined) {
+        supplies.add(volts);
+        if (!outside || volts > outside.volts) outside = { ref, volts };
+      }
+      if (pin.fns?.includes("ground") && givesGround(ref.node)) grounded = true;
     }
+    // A board pin that can be fed from outside (VIN) is an input when a battery or converter is on its wire.
+    const feeds: PinRef[] = [];
+    for (const rail of boardRails) {
+      if (outside && rail.pin.accepts) feeds.push(rail.ref);
+      else {
+        supplies.add(rail.pin.supplies!);
+        if (!outside) source ??= rail.ref;
+      }
+    }
+    if (outside) source = outside.ref;
+    const shifted = members.some((ref) => shifterPins.has(pinKey(ref)));
     let kind: NetKind;
     if (supplies.size && grounded) kind = "short";
     else if (supplies.size > 1) kind = "conflict";
@@ -210,9 +281,25 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
             ? "Short"
             : (first?.label ?? "net").split(" ")[0];
     const id = `net${netIndex++}`;
-    nets.push({ id, pins: members, wires: netWires, kind, voltage, label });
+    nets.push({ id, pins: members, wires: netWires, kind, voltage, label, ...(kind === "power" && source ? { source } : {}), ...(feeds.length ? { feeds } : {}), ...(shifted ? { shifted } : {}) });
     for (const ref of members) netOfPin.set(pinKey(ref), id);
     for (const w of netWires) netOfWire.set(w, id);
+    if (!record) continue;
+
+    // A battery or converter on a board's VIN: inside what the board's regulator takes?
+    if (kind === "power" && outside) {
+      for (const ref of feeds) {
+        const pin = pinOf(ref)!;
+        const [min, max] = pin.accepts!;
+        const boardName = nameOf(byId.get(ref.node)!);
+        const from = nameOf(byId.get(outside.ref.node)!);
+        if (outside.volts > max + 0.25) {
+          faults.push({ id: `vin-over:${ref.node}:${ref.pin}`, severity: "error", title: `${outside.volts} V is too much for ${pin.label}`, detail: `${boardName} ${pin.label} takes ${min}–${max} V; ${from} gives ${outside.volts} V. The board's regulator would overheat or fail. Put a buck converter between them.`, nodes: [ref.node, outside.ref.node], wires: netWires });
+        } else if (outside.volts < min - 0.2) {
+          faults.push({ id: `vin-under:${ref.node}:${ref.pin}`, severity: "warning", title: `${outside.volts} V is too little for ${pin.label}`, detail: `${boardName} ${pin.label} needs ${min} V or more for its regulator to give a steady supply; ${from} gives ${outside.volts} V. The board would reset or run erratically. Use a higher battery or feed the 5 V pin from a 5 V converter.`, nodes: [ref.node, outside.ref.node], wires: netWires });
+        }
+      }
+    }
 
     if (kind === "short" && netWires.length) {
       const boards = [...new Set(members.filter((m) => isBoard(m.node)).map((m) => m.node))];
@@ -220,7 +307,7 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
         id: `short:${boards.join(",")}:${netWires.slice().sort().join(",")}`,
         severity: "error",
         title: "Short circuit: power wired straight to ground",
-        detail: `A ${voltage} V supply and GND are joined. A real board would brown out or burn its regulator. Remove the wire that joins them.`,
+        detail: `A ${voltage} V supply and GND are joined. A real board would brown out or burn its regulator, and a battery would overheat. Remove the wire that joins them.`,
         nodes: [...new Set(members.map((m) => m.node))],
         wires: netWires,
       });
@@ -252,6 +339,39 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
       });
     }
   }
+  };
+
+  // A converter's output is a supply only while its input has one, so settle the nets in passes:
+  // batteries first, then each converter they feed, then whatever those feed.
+  for (let pass = 0; pass < 5; pass++) {
+    classify(false);
+    const byNet = new Map(nets.map((n) => [n.id, n]));
+    const at = (node: string, pin: string) => byNet.get(netOfPin.get(`${node}:${pin}`) ?? "");
+    let changed = false;
+    for (const node of nodes) {
+      const sim = simOf(node.id);
+      const converter = specOf(node.id)?.power.converter;
+      if (sim?.kind !== "converter" || !converter) continue;
+      const input = at(node.id, sim.input[0]);
+      const ground = at(node.id, sim.input[1]);
+      const fed = input?.kind === "power" && input.voltage !== undefined && ground?.kind === "ground";
+      const set_ = Number(inputs?.[node.id]?.vout);
+      const target = Number.isFinite(set_) && set_ > 0 ? set_ : converter.volts;
+      const outputs: Array<[string, number]> = fed ? [[sim.output[0], converterOut(converter, input!.voltage!, target)], ...(sim.also ?? []).map((o): [string, number] => [o.pin, Math.min(o.volts, input!.voltage!)])] : [];
+      for (const pin of [sim.output[0], ...(sim.also ?? []).map((o) => o.pin)]) {
+        const key = `${node.id}:${pin}`;
+        const volts = outputs.find((o) => o[0] === pin)?.[1];
+        const now = volts !== undefined && volts > 0.05 ? Math.round(volts * 100) / 100 : undefined;
+        if (live.get(key) !== now) {
+          changed = true;
+          if (now === undefined) live.delete(key);
+          else live.set(key, now);
+        }
+      }
+    }
+    if (!changed) break;
+  }
+  classify(true);
 
   const netById = new Map(nets.map((n) => [n.id, n]));
   const netFor = (ref: PinRef) => netById.get(netOfPin.get(pinKey(ref)) ?? "");
@@ -311,7 +431,7 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
         }
         const boardA = pinouts.get(a.node)!;
         const boardB = pinouts.get(b.node)!;
-        if (net.kind === "signal" && boardA.logic !== boardB.logic) {
+        if (net.kind === "signal" && boardA.logic !== boardB.logic && !net.shifted) {
           const high = boardA.logic > boardB.logic ? { ref: a, board: boardA, name: na } : { ref: b, board: boardB, name: nb };
           const low = high.ref === a ? { ref: b, board: boardB, name: nb } : { ref: a, board: boardA, name: na };
           if (low.board.tolerates5V !== true) {
@@ -412,14 +532,42 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
 
   /** Where a net passes through a breadboard: "Top + rail", or null. */
   const breadboardStrip = (net: Net): string | null => {
-    const hole = net.pins.find((ref) => !!pinouts.get(ref.node)?.strips);
+    const hole = net.pins.find((ref) => !!breadboardSpec(byId.get(ref.node)?.partId ?? ""));
     if (!hole) return null;
     const h = breadboardSpec(byId.get(hole.node)?.partId ?? "")?.holes.find((x) => x.id === hole.pin);
     return h ? stripName(h.strip) : null;
   };
 
-  // Peripherals.
-  for (const node of nodes) {
+  /** The board an expander (a chip that gives a board more outputs) answers to, once it has been checked. */
+  const expanderBoard = new Map<string, string>();
+  /** An expander output on a net: its pins act as the board's own outputs. */
+  const expanderOn = (net: Net, self: string): PinRef | undefined =>
+    net.pins.find((ref) => {
+      if (ref.node === self) return false;
+      const sim = simOf(ref.node);
+      return sim?.kind === "expander" && sim.outputs.includes(ref.pin);
+    });
+  /** The driver channel whose two outputs sit on these two nets. */
+  const channelOn = (a: Net | undefined, b: Net | undefined) => {
+    if (!a || !b || a.id === b.id) return null;
+    for (const other of nodes) {
+      const sim = simOf(other.id);
+      if (sim?.kind !== "driver") continue;
+      for (const channel of sim.channels) {
+        const o1 = netFor({ node: other.id, pin: channel.outputs[0] });
+        const o2 = netFor({ node: other.id, pin: channel.outputs[1] });
+        if (o1 && o2 && ((o1.id === a.id && o2.id === b.id) || (o1.id === b.id && o2.id === a.id))) return { node: other.id, channel };
+      }
+    }
+    return null;
+  };
+
+  // Peripherals: the parts others depend on first (expanders, then drivers), motors last.
+  const turn = (id: string) => {
+    const kind = simOf(id)?.kind;
+    return kind === "expander" ? 0 : kind === "driver" ? 1 : kind === "motor" ? 3 : 2;
+  };
+  for (const node of [...nodes].sort((a, b) => turn(a.id) - turn(b.id))) {
     const pinout = pinouts.get(node.id)!;
     if (pinout.controller || pinout.passive) continue;
     const name = nameOf(node);
@@ -429,11 +577,96 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
     const fault = (severity: Severity, key: string, title: string, detail: string, extraNodes: string[] = [], netWires: string[] = []) => {
       nodeFaults.push({ id: `${key}:${node.id}`, severity, title, detail, nodes: [node.id, ...extraNodes], wires: netWires });
     };
+    const sim = simOf(node.id);
+
+    // A battery: nothing to power or drive; it is the supply.
+    if (sim?.kind === "source") {
+      reports[node.id] = { status: wired.size === 0 ? "idle" : "ready", powered: true, grounded: true, supplyV: specOf(node.id)?.power.source?.volts ?? null, links: [], faults: [], wiredPins: wired };
+      continue;
+    }
+
+    // A motor: it runs from a driver channel, a switch, or straight off a supply. Never from a board pin.
+    if (sim?.kind === "motor") {
+      const motor = specOf(node.id)?.power.motor;
+      const a = netFor({ node: node.id, pin: sim.terminals[0] });
+      const b = netFor({ node: node.id, pin: sim.terminals[1] });
+      let status: PartStatus = "idle";
+      let powered = false;
+      let supplyV: number | null = null;
+      let drivenBy: string | undefined;
+      let motorLinks: BoardLink[] = [];
+      if (wired.size > 0) {
+        const channel = channelOn(a, b);
+        const plainPin = (ref: PinRef) => isBoard(ref.node) && !pinOf(ref)?.supplies && !pinOf(ref)?.fns?.includes("ground");
+        const coils = [a, b, ...(sim.second ?? []).map((id) => netFor({ node: node.id, pin: id }))];
+        const gpio = coils.flatMap((net) => net?.pins.filter(plainPin) ?? [])[0];
+        // A switch in the wire: a relay's contact or a MOSFET module's output on one terminal, a supply or ground on the other.
+        const contactOn = (net: Net | undefined) => net?.pins.find((ref) => ref.node !== node.id && pinOf(ref)?.role === "load" && simOf(ref.node)?.kind !== "motor");
+        const contact = contactOn(a) ?? contactOn(b);
+        const direct = a && b && ((a.kind === "power" && b.kind === "ground") || (b.kind === "power" && a.kind === "ground")) ? (a.kind === "power" ? a : b) : undefined;
+        if (channel) {
+          const driver = reports[channel.node];
+          drivenBy = channel.node;
+          motorLinks = (driver?.links ?? []).filter((l) => channel.channel.inputs.includes(l.pin) || l.pin === channel.channel.enable);
+          powered = !!driver?.powered;
+          supplyV = driver?.supplyV ?? null;
+          status = !driver || driver.status === "idle" || driver.status === "unpowered" ? "unpowered" : driver.status === "ready" || (driver.status === "fault" && driver.powered) ? "ready" : "partial";
+          if (status === "unpowered") fault("error", "driver-off", "Its driver has no power", `${name} is wired to ${nameOf(byId.get(channel.node)!)}, which has no motor supply yet. Give the driver a battery.`, [channel.node]);
+          // A chopper driver holds the winding current itself, so a supply far above the motor's rating is how it is used.
+          const holdsCurrent = !!getPart(byId.get(channel.node)?.partId ?? "")?.spec?.power.bridge?.limitMa;
+          if (motor && supplyV !== null && supplyV > motor.ratedV * 1.5 && !holdsCurrent) fault("warning", "over-volts", `${supplyV} V on a ${motor.ratedV} V motor`, `${name} is rated for ${motor.ratedV} V. On ${supplyV} V it runs hot and wears out fast. Use a lower supply or limit the PWM duty.`, [channel.node]);
+          if (sim.second) {
+            // A stepper: its other coil goes on another channel of the same driver.
+            const other = channelOn(netFor({ node: node.id, pin: sim.second[0] }), netFor({ node: node.id, pin: sim.second[1] }));
+            if (!other || other.node !== channel.node || other.channel === channel.channel) {
+              if (status === "ready") status = "partial";
+              fault("warning", "second-coil", "Only one coil is wired", `${name} has two coils. Wire the second pair of wires to the other channel of ${nameOf(byId.get(channel.node)!)}, or it only buzzes.`, [channel.node]);
+            } else motorLinks = [...motorLinks, ...(driver?.links ?? []).filter((l) => (other.channel.inputs.includes(l.pin) || l.pin === other.channel.enable) && !motorLinks.includes(l))];
+          }
+        } else if (gpio) {
+          status = "fault";
+          fault(
+            "error",
+            "pin-drive",
+            "A board pin can't run a motor",
+            `${name} takes about ${motor?.runMa ?? 150} mA running and ${motor?.stallMa ?? 1000} mA stalled; ${nameOf(byId.get(gpio.node)!)} ${pinOf(gpio)?.label} gives about 20 mA. Put a motor driver or a MOSFET module between them.`,
+            [gpio.node],
+            coils.flatMap((net) => net?.wires ?? []),
+          );
+        } else if (contact) {
+          const by = reports[contact.node];
+          const rail = [a, b].find((net) => net?.kind === "power") ?? pinouts.get(contact.node)!.pins.filter((p) => p.role === "load").map((p) => netFor({ node: contact.node, pin: p.id })).find((net) => net?.kind === "power");
+          drivenBy = contact.node;
+          motorLinks = (by?.links ?? []).filter((l) => !["vcc", "gnd"].includes(l.role));
+          supplyV = rail?.voltage ?? null;
+          powered = !!rail;
+          status = rail && by && (by.status === "ready" || (by.status === "fault" && by.powered)) ? "ready" : "partial";
+          if (!rail) fault("warning", "no-supply", "No supply through its switch yet", `${name} is wired to ${nameOf(byId.get(contact.node)!)}, but no battery or supply reaches it. Wire the supply's + through the switch and its − back to ${name}.`, [contact.node]);
+        } else if (direct) {
+          powered = true;
+          supplyV = direct.voltage ?? null;
+          status = "ready";
+          fault("tip", "always-on", "Runs whenever the supply is on", `${name} is wired straight across the ${direct.voltage} V supply, so nothing can switch it or set its speed. Put a motor driver or a MOSFET module between them.`);
+        } else {
+          status = "partial";
+          fault("warning", "no-driver", "Not wired to a driver yet", `Wire ${name}'s ${sim.second ? "two coils to the two channels" : "two terminals to one channel"} of a motor driver (its OUT pins)${sim.second ? "" : ", or switch it with a MOSFET module"}.`);
+        }
+      }
+      reports[node.id] = { status, powered, grounded: true, supplyV, links: motorLinks, faults: nodeFaults, wiredPins: wired, drivenBy };
+      faults.push(...nodeFaults);
+      continue;
+    }
 
     let supplyV: number | null = null;
     let poweredByRail = false;
     let grounded = false;
-    const hasVcc = pinout.pins.some((p) => p.role === "vcc");
+    /** The voltage found on each supply pin. A driver has two: its logic's and its motors'. */
+    const supplied = new Map<string, number>();
+    const motorSupply = sim?.kind === "driver" ? sim.supply : undefined;
+    const vccPins = pinout.pins.filter((p) => p.role === "vcc");
+    /** Supply pins that must be fed: all the required ones, or the first when none says so. */
+    const neededVcc = vccPins.some((p) => p.required !== false) ? vccPins.filter((p) => p.required !== false) : vccPins.slice(0, 1);
+    const hasVcc = vccPins.length > 0;
     const hasGnd = pinout.pins.some((p) => p.role === "gnd");
     let driven = false;
     /** The voltage on the part's drive pin when it is on: a rail's, or the board's logic level. */
@@ -444,7 +677,16 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
 
     // Supply first: a part's output level depends on what powers it.
     const ordered = [...pinout.pins].sort((a, b) => (a.role === "vcc" ? 0 : 1) - (b.role === "vcc" ? 0 : 1));
+    let settled = false;
+    /** Once every supply pin has been looked at: is the part powered, and what do its signals swing to? */
+    const settle = () => {
+      settled = true;
+      poweredByRail = hasVcc && neededVcc.every((p) => supplied.has(p.id));
+      const logicPin = vccPins.find((p) => p.id !== motorSupply && supplied.has(p.id)) ?? vccPins.find((p) => supplied.has(p.id));
+      supplyV = logicPin ? supplied.get(logicPin.id)! : null;
+    };
     for (const pin of ordered) {
+      if (pin.role !== "vcc" && !settled) settle();
       const ref = { node: node.id, pin: pin.id };
       const direct = netFor(ref);
       if (!direct) continue;
@@ -463,17 +705,17 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
       switch (pin.role) {
         case "vcc": {
           if (net.kind === "power" && net.voltage !== undefined) {
-            supplyV = net.voltage;
-            poweredByRail = true;
-            const [min, max] = pinout.supply ?? [0, 99];
+            supplied.set(pin.id, net.voltage);
+            // A pin with its own range (a driver's motor supply) is checked against that; the rest against the part's.
+            const [min, max] = pin.accepts ?? pinout.supply ?? [0, 99];
+            const own = !!pin.accepts && vccPins.length > 1;
             if (net.voltage > max + 0.25) {
-              fault("error", `over:${pin.id}`, `${net.voltage} V on a ${max} V part`, `${name} takes ${min}–${max} V but ${pin.label} is on the ${net.voltage} V rail. It would be damaged. Move it to 3.3 V.`, [], net.wires);
+              fault("error", `over:${pin.id}`, own ? `${net.voltage} V on a ${max} V pin` : `${net.voltage} V on a ${max} V part`, `${name}${own ? ` ${pin.label}` : ""} takes ${min}–${max} V but ${own ? "it" : pin.label} is on the ${net.voltage} V rail. It would be damaged. Move it to ${max < 4 ? "3.3 V" : `a supply of ${max} V or less`}.`, [], net.wires);
             } else if (net.voltage < min - 0.2) {
-              fault("warning", `under:${pin.id}`, `Underpowered at ${net.voltage} V`, `${name} needs ${min}–${max} V; on ${net.voltage} V it may not run or will read wrong. Use the 5 V pin.`, [], net.wires);
+              fault("warning", `under:${pin.id}`, `Underpowered at ${net.voltage} V`, `${name}${own ? ` ${pin.label}` : ""} needs ${min}–${max} V; on ${net.voltage} V it may not run or will read wrong. ${min > 5.5 ? `Give it a battery or supply of ${min} V or more.` : "Use the 5 V pin."}`, [], net.wires);
             }
           } else if (net.kind === "signal" && boardRef && board) {
-            supplyV = board.logic;
-            poweredByRail = true;
+            supplied.set(pin.id, board.logic);
             fault("warning", `gpio-power:${pin.id}`, `Powered from a GPIO pin`, `${pin.label} is on ${boardName} ${boardPin?.label}. A GPIO pin gives about 20 mA; wire ${pin.label} to a power pin.`, [boardRef.node], net.wires);
           } else if (net.kind === "ground") {
             fault("error", `vcc-gnd:${pin.id}`, `${pin.label} is wired to ground`, `${name} gets no supply this way. Move ${pin.label} to a ${pinout.supply && pinout.supply[1] < 4 ? "3.3 V" : "5 V"} pin.`, [], net.wires);
@@ -488,6 +730,14 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
         case "drive":
         case "pwm":
         case "cs": {
+          const expander = expanderOn(net, node.id);
+          if (expander) {
+            // An output of an I/O expander: as good as a pin of the board it answers to.
+            driven = true;
+            driveV ??= pinouts.get(expander.node)?.logic ?? null;
+            links.push({ board: expanderBoard.get(expander.node) ?? expander.node, boardPin: expander.pin, pin: pin.id, role: pin.role });
+            break;
+          }
           if (net.kind === "power") {
             driven = true;
             driveV ??= net.voltage ?? null;
@@ -503,7 +753,7 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
               if (pin.role === "pwm" && !boardPin.fns?.includes("pwm")) {
                 fault("warning", `no-pwm:${pin.id}`, `${boardPin.label} has no PWM`, `${name} ${pin.label} needs PWM for ${node.partId === "servo" ? "angles" : "dimming and speed"}; ${boardPin.label} can only switch fully on or off. Use a ~ pin.`, [boardRef.node], net.wires);
               }
-              if (board.logic >= 5 && pinout.tolerates5V === false) {
+              if (board.logic >= 5 && pinout.tolerates5V === false && !net.shifted) {
                 fault("error", `level-in:${pin.id}`, `5 V signal into a 3.3 V input`, `${boardName} drives 5 V into ${name} ${pin.label}, which takes 3.3 V. Add a divider or level shifter.`, [boardRef.node], net.wires);
               }
             }
@@ -551,13 +801,14 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
             if (role === "rx" && !fns.includes("tx")) {
               fault(fns.includes("rx") ? "error" : "tip", `uart:${pin.id}`, fns.includes("rx") ? "RX wired to RX" : "Not a hardware serial pin", fns.includes("rx") ? `${name} RX must come from ${boardName} TX.` : `${boardPin.label} works with SoftwareSerial; the hardware TX pin is faster.`, [boardRef.node], net.wires);
             }
-            if (role === "rx" && board.logic >= 5 && pinout.tolerates5V === false) {
+            if (role === "rx" && board.logic >= 5 && pinout.tolerates5V === false && !net.shifted) {
               fault("warning", `level-rx:${pin.id}`, `5 V TX into a 3.3 V RX`, `${boardName} sends 5 V into ${name} ${pin.label}. Put a 1 kΩ/2 kΩ divider on that wire.`, [boardRef.node], net.wires);
             }
             // The part's own output level against what the board accepts.
             if (["out-digital", "out-analog", "io", "sda", "scl", "tx", "miso"].includes(role)) {
-              const outV = Math.min(pinout.logic, supplyV ?? pinout.logic);
-              if (outV > 3.6 && board.tolerates5V !== true) {
+              // A part with no supply of its own (a bare switch, a keypad) can only pull the pin low: the board's own pull-up sets the high level.
+              const outV = hasVcc ? Math.min(pinout.logic, supplyV ?? pinout.logic) : 0;
+              if (outV > 3.6 && board.tolerates5V !== true && !net.shifted) {
                 fault(board.tolerates5V === "some" ? "warning" : "error", `level-out:${pin.id}`, `5 V output into a 3.3 V pin`, `${name} ${pin.label} swings to ${outV} V; ${boardName} pins take 3.3 V. Add a 1 kΩ/2 kΩ divider.`, [boardRef.node], net.wires);
               }
             }
@@ -576,6 +827,26 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
       }
     }
 
+    if (!settled) settle();
+    // What a driver reports is its motor supply: that is what its motors get.
+    if (motorSupply) supplyV = supplied.get(motorSupply) ?? null;
+
+    // A part on its own supply (a servo on a battery) still needs the board's ground, or its signals mean nothing.
+    const ownGround = pinout.pins.find((p) => p.role === "gnd");
+    const ownGroundNet = ownGround ? netFor({ node: node.id, pin: ownGround.id }) : undefined;
+    if (ownGroundNet?.kind === "ground") {
+      for (const boardId of new Set(links.filter((l) => !["vcc", "gnd"].includes(l.role) && isBoard(l.board)).map((l) => l.board))) {
+        const boardGround = groundNetOf(boardId);
+        if (boardGround && boardGround !== ownGroundNet.id) {
+          fault("warning", `common-ground:${boardId}`, "No common ground with the board", `${name} takes its ground from a different supply than ${nameOf(byId.get(boardId)!)}. Join the two grounds with a wire, or the board's signals mean nothing to it.`, [boardId]);
+        }
+      }
+    }
+    if (sim?.kind === "expander") {
+      const board = links.find((l) => !["vcc", "gnd"].includes(l.role) && isBoard(l.board))?.board;
+      if (board) expanderBoard.set(node.id, board);
+    }
+
     // "Any of" groups: at least one signal pin must be used.
     const optionalSignals = pinout.pins.filter((p) => !p.required && p.role && !["opt", "load", "vcc", "gnd"].includes(p.role));
     const requiredSignals = pinout.pins.filter((p) => p.required && p.role && !["vcc", "gnd"].includes(p.role));
@@ -583,14 +854,19 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
       fault("error", "no-signal", `No signal pin connected`, `Wire one of ${optionalSignals.map((p) => p.label).join(", ")} to a board pin.`);
     }
 
-    const powered = hasVcc ? poweredByRail : driven;
+    // A part with a supply pin is powered by it; one the board drives (an LED) by its pin; and a bare
+    // switch or keypad with neither is live once it has its ground (if it has one) and a board pin to pull.
+    const hasDrive = pinout.pins.some((p) => p.role === "drive" || p.role === "pwm");
+    const powered = hasVcc ? poweredByRail : hasDrive ? driven : (grounded || !hasGnd) && links.some((l) => l.role !== "gnd");
     if (wired.size > 0) {
       if (hasVcc && !poweredByRail && !nodeFaults.some((f) => f.id.startsWith("vcc-gnd"))) {
-        const vcc = pinout.pins.find((p) => p.role === "vcc")!;
-        const want = pinout.supply && pinout.supply[1] < 4 ? "3.3 V" : pinout.supply && pinout.supply[0] > 3.6 ? "5 V" : "3.3 V or 5 V";
+        const vcc = neededVcc.find((p) => !supplied.has(p.id)) ?? vccPins[0];
+        const range = vcc.accepts ?? pinout.supply;
+        const want = !range ? "3.3 V or 5 V" : range[1] < 4 ? "3.3 V" : range[0] > 5.5 ? `a ${range[0]}–${range[1]} V battery or supply` : range[0] > 3.6 ? "5 V" : "3.3 V or 5 V";
         const vccNet = netFor({ node: node.id, pin: vcc.id });
         const strip = vccNet ? breadboardStrip(vccNet) : null;
-        fault("error", "no-power", "No power", strip ? `${name} ${vcc.label} is on the breadboard's ${strip}, which has no supply yet. Wire a board's ${want} pin to it.` : `${name} ${vcc.label} isn't on a supply. Wire it to ${want}.`);
+        const some = supplied.size > 0;
+        fault("error", "no-power", some ? `${vcc.label} has no power` : "No power", strip ? `${name} ${vcc.label} is on the breadboard's ${strip}, which has no supply yet. Wire a board's ${want} pin to it.` : `${name} ${vcc.label} isn't on a supply. Wire it to ${want}.`);
       }
       if (hasGnd && !grounded && !nodeFaults.some((f) => f.id.startsWith("gnd-vcc"))) {
         const g = pinout.pins.find((p) => p.role === "gnd")!;
@@ -630,9 +906,16 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
     else if (powered) status = "partial";
     else status = "unpowered";
 
-    reports[node.id] = { status, powered: powered && (grounded || !hasGnd), grounded, supplyV, links, faults: nodeFaults, wiredPins: wired, seriesOhms };
+    // A level shifter has no supply pin the checks know: it is ready once its ground is.
+    if (sim?.kind === "shifter" && wired.size > 0 && !errors.length) status = grounded ? "ready" : "partial";
+
+    reports[node.id] = { status, powered: sim?.kind === "shifter" ? grounded : powered && (grounded || !hasGnd), grounded, supplyV, links, faults: nodeFaults, wiredPins: wired, seriesOhms };
     faults.push(...nodeFaults);
   }
+
+  // What every supply is asked for against what it can give, and what gets hot.
+  const power = powerBudget({ nodes, nets, netOfPin, reports, pinouts, inputs });
+  faults.push(...power.faults);
 
   // Attach net-level faults to the nodes they touch.
   for (const f of faults) {
@@ -647,5 +930,5 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
 
   const order: Record<Severity, number> = { error: 0, warning: 1, tip: 2 };
   faults.sort((a, b) => order[a.severity] - order[b.severity]);
-  return { nets, netOfPin, netOfWire, nodes: reports, faults, boardLinks };
+  return { nets, netOfPin, netOfWire, nodes: reports, faults, boardLinks, power };
 }

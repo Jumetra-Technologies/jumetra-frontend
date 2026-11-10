@@ -10,6 +10,7 @@
  */
 
 import { getPart, PARTS, searchParts, type PartModel } from "../parts";
+import { breadboardSpec } from "../parts/models/breadboard";
 import { getPinout } from "./pinout";
 import type { LabNode } from "./types";
 
@@ -34,7 +35,23 @@ const INTENTS: Array<{ words: RegExp; parts: string[]; why: string }> = [
   { words: /\b(temp(erature)?|climate|weather|humid(ity)?|greenhouse|thermo)/i, parts: ["dht22", "dht11", "bmp280", "ds18b20"], why: "Reads temperature and humidity" },
   { words: /\b(distance|obstacle|rover|robot|avoid|parking|range|sonar|level)/i, parts: ["hc-sr04"], why: "Measures distance to obstacles" },
   { words: /\b(motion|presence|intruder|security|alarm|burglar|occupancy)/i, parts: ["pir", "buzzer"], why: "Detects people moving" },
-  { words: /\b(motor|wheel|drive|rover|car|robot|vehicle|conveyor)/i, parts: ["dc-motor", "stepper-motor"], why: "Moves your build" },
+  { words: /\b(motor|wheel|drive|rover|car|robot|vehicle|conveyor)/i, parts: ["dc-motor", "micro-gear-motor", "stepper-motor"], why: "Moves your build" },
+  { words: /\b(line[- ]?follow\w*|follow a line|track the line|black line|line sensor)/i, parts: ["line-sensor", "line-array"], why: "Sees the line on the floor" },
+  { words: /\b(battery|batteries|portable|untethered|cordless|runs on its own|mobile)/i, parts: ["battery-18650", "battery-4aa", "lipo-2s", "lipo-3s", "battery-9v"], why: "Runs it away from the USB lead" },
+  { words: /\b(button|press|push|start switch|doorbell)/i, parts: ["push-button"], why: "Lets a person start or stop it" },
+  { words: /\b(knob|dial|volume|adjust|dimmer|tune)/i, parts: ["potentiometer", "rotary-encoder"], why: "Sets a value by hand" },
+  { words: /\b(joystick|gamepad|controller|steer by hand)/i, parts: ["joystick"], why: "Steers it by hand" },
+  { words: /\b(remote control|ir remote|tv remote|infrared remote)/i, parts: ["ir-receiver"], why: "Takes commands from a remote" },
+  { words: /\b(keypad|pin code|passcode|password|combination)/i, parts: ["keypad"], why: "Takes a code typed in" },
+  { words: /\b(rfid|card|tag|badge|access control|attendance)/i, parts: ["rc522"], why: "Reads a card or key fob" },
+  { words: /\b(colou?r sort\w*|sort by colou?r|detect colou?r|colou?r sensor|colou?r of)/i, parts: ["tcs34725"], why: "Tells one color from another" },
+  { words: /\b(compass|heading|north|bearing|navigat\w*)/i, parts: ["bno055", "gy-271"], why: "Knows which way it faces" },
+  { words: /\b(speed|odomet\w*|encoder|rpm|how far|straight line)/i, parts: ["wheel-encoder"], why: "Counts wheel turns" },
+  { words: /\b(neopixel|pixels?|ws2812|rainbow|led strip|led ring)/i, parts: ["neopixel-ring", "neopixel-stick"], why: "Many colors from one pin" },
+  { words: /\b(clock|timer|countdown|score|counter|stopwatch)/i, parts: ["tm1637"], why: "Shows a number from across the room" },
+  { words: /\b(cnc|plotter|3d printer|exact position|linear rail|slider)/i, parts: ["nema17", "a4988"], why: "Moves to an exact position" },
+  { words: /\b(hexapod|walker|humanoid|robot arm|many servos|animatronic)/i, parts: ["pca9685"], why: "Runs up to 16 servos from two pins" },
+  { words: /\b(current|consumption|power use|battery level|energy)/i, parts: ["ina219"], why: "Measures what the build really draws" },
   { words: /\b(arm|gripper|claw|pan|tilt|door|lock|steer)/i, parts: ["servo"], why: "Turns to an exact angle" },
   { words: /\b(plant|soil|garden|irrigat|farm|crop|water)/i, parts: ["soil-moisture", "relay"], why: "Knows when the soil is dry" },
   { words: /\b(gas|smoke|fire|lpg|air quality|kitchen)/i, parts: ["mq2", "buzzer"], why: "Smells smoke and gas" },
@@ -63,6 +80,20 @@ const PAIRS: Record<string, Array<{ part: string; why: string }>> = {
   "mq2": [{ part: "buzzer", why: "Alarm when gas passes the threshold" }],
   "ldr": [{ part: "led", why: "Turn on a light when it gets dark" }],
   "dc-motor": [{ part: "hc-sr04", why: "Stop before hitting something" }],
+  "micro-gear-motor": [{ part: "line-sensor", why: "Follow a line on the floor" }, { part: "hc-sr04", why: "Stop before hitting something" }],
+  "line-sensor": [{ part: "micro-gear-motor", why: "Steer along the line" }],
+  "a4988": [{ part: "nema17", why: "The stepper it is made for" }, { part: "limit-switch", why: "Find the end of travel" }],
+  "nema17": [{ part: "limit-switch", why: "Find the end of travel" }],
+  "pca9685": [{ part: "servo", why: "Up to 16 of them" }],
+  "water-pump": [{ part: "soil-moisture", why: "Water only when the soil is dry" }],
+  "push-button": [{ part: "led", why: "Light it when the button is pressed" }],
+  "potentiometer": [{ part: "servo", why: "Turn the knob, turn the arm" }],
+  "joystick": [{ part: "servo", why: "Point something with it" }],
+  "rc522": [{ part: "servo", why: "Open a latch for the right card" }],
+  "keypad": [{ part: "servo", why: "Open a latch for the right code" }],
+  "lipo-2s": [{ part: "buck-converter", why: "A steady 5 V for the board and servos" }],
+  "lipo-3s": [{ part: "buck-converter", why: "A steady 5 V for the board and servos" }],
+  "battery-18650": [{ part: "buck-converter", why: "A steady 5 V for the board and servos" }],
   "mpu6050": [{ part: "servo", why: "Keep a platform level" }],
   "led": [{ part: "ldr", why: "Make it react to the room's light" }],
   "relay": [{ part: "pir", why: "Trigger it on motion" }],
@@ -71,10 +102,54 @@ const PAIRS: Record<string, Array<{ part: string; why: string }>> = {
   "raspberry-pi-4": [{ part: "arduino-uno", why: "Let an Uno handle real-time pins over serial" }],
 };
 
+/** The driver a bare motor is usually run from, the battery a driver usually needs, and the motor a driver usually turns. */
+const DRIVER_FOR: Record<string, string> = { "nema17": "a4988", "water-pump": "mosfet-module" };
+const BATTERY_FOR: Record<string, string> = { "a4988": "lipo-3s", "mosfet-module": "battery-4aa" };
+const MOTOR_FOR: Record<string, string> = { "a4988": "nema17", "mosfet-module": "water-pump" };
+
 const POPULAR = ["arduino-uno", "esp32", "led", "dht11", "hc-sr04", "servo", "pir", "oled-ssd1306", "relay", "buzzer"];
 
 function boardsOn(nodes: LabNode[]) {
   return nodes.filter((n) => getPinout(n.partId).controller);
+}
+
+const fitsRange = (volts: number, range?: [number, number]) => !!range && volts >= range[0] - 0.2 && volts <= range[1] + 0.25;
+
+/**
+ * A battery, a converter and a bare motor don't go on a board pin, so what
+ * they suit is the driver, converter or battery already in the build.
+ */
+function powerFit(part: PartModel, nodes: LabNode[]): Suggestion["fit"] | null {
+  const sim = part.sim;
+  const others = nodes.map((node) => ({ node, part: getPart(node.partId), pinout: getPinout(node.partId) }));
+  if (sim?.kind === "source") {
+    const volts = part.spec?.power.source?.volts ?? 0;
+    // A driver's motor supply or a converter's input that takes this voltage.
+    const taker = others.find(({ part: other, pinout }) => {
+      const id = other?.sim?.kind === "driver" ? other.sim.supply : other?.sim?.kind === "converter" ? other.sim.input[0] : null;
+      const pin = id ? pinout.pins.find((p) => p.id === id) : undefined;
+      return !!pin && fitsRange(volts, pin.accepts ?? pinout.supply);
+    });
+    if (taker) return { tone: "ok", text: `Powers your ${taker.node.label}` };
+    const waiting = others.find(({ part: other }) => other?.sim?.kind === "driver" || other?.sim?.kind === "converter");
+    if (waiting) return { tone: "warn", text: `${volts} V is outside what your ${waiting.node.label} takes` };
+    for (const { node, pinout } of others) {
+      const input = pinout.controller ? pinout.pins.find((p) => p.accepts && fitsRange(volts, p.accepts)) : undefined;
+      if (input) return { tone: "ok", text: `Can run ${getPart(node.partId)?.name.split(" ")[0] ?? "the board"} from its ${input.label} pin` };
+    }
+    return { tone: "ok", text: `${volts} V for a motor driver or a converter` };
+  }
+  if (sim?.kind === "converter") {
+    const pinout = getPinout(part.id);
+    const range = pinout.pins.find((p) => p.id === sim.input[0])?.accepts ?? pinout.supply;
+    const battery = others.find(({ part: other }) => other?.sim?.kind === "source" && fitsRange(other.spec?.power.source?.volts ?? 0, range));
+    return battery ? { tone: "ok", text: `Feeds from your ${battery.node.label}` } : { tone: "warn", text: "Add a battery to feed it" };
+  }
+  if (sim?.kind === "motor") {
+    const driver = others.find(({ part: other }) => other?.sim?.kind === "driver");
+    return driver ? { tone: "ok", text: `Goes on your ${driver.node.label}` } : { tone: "warn", text: "Needs a motor driver, not a board pin" };
+  }
+  return null;
 }
 
 /** Does this part suit the first board on the canvas? */
@@ -82,6 +157,11 @@ export function fitFor(partId: string, nodes: LabNode[]): Suggestion["fit"] {
   const board = boardsOn(nodes)[0];
   const pinout = getPinout(partId);
   if (partId === "resistor") return { tone: "ok", text: "Goes in series with an LED: 220 Ω at 5 V" };
+  const part = getPart(partId);
+  const power = part ? powerFit(part, nodes) : null;
+  if (power) return power;
+  // A capacitor, a diode and a transistor sit between two other pins; the lab draws them but does not run them yet.
+  if (pinout.passive && !breadboardSpec(partId)) return { tone: "ok", text: "Goes between two pins. Not simulated yet" };
   if (pinout.passive) {
     if (!board) return { tone: "ok", text: "Shares one 5 V pin with every part" };
     const boardName = getPart(board.partId)?.name.split(" ")[0] ?? "the board";
@@ -159,6 +239,15 @@ export function suggest(query: string, nodes: LabNode[], project?: ProjectContex
     add(list, "arduino-uno", "Start with a board: everything else connects to it", "missing");
     add(list, "esp32", "Start with a board: Wi-Fi and Bluetooth built in", "missing");
   }
+
+  // A bare motor runs from a driver, and a driver's motors from a battery.
+  const simOf = (node: LabNode) => getPart(node.partId)?.sim;
+  const motor = nodes.find((n) => simOf(n)?.kind === "motor");
+  const driver = nodes.find((n) => simOf(n)?.kind === "driver");
+  const battery = nodes.find((n) => simOf(n)?.kind === "source");
+  if (motor && !driver) add(list, DRIVER_FOR[motor.partId] ?? "tb6612fng", `Your ${motor.label} needs a driver between it and the board`, "missing");
+  if (driver && !battery) add(list, BATTERY_FOR[driver.partId] ?? "battery-18650", `The motors on your ${driver.label} need their own supply`, "missing");
+  if (driver && !motor) add(list, MOTOR_FOR[driver.partId] ?? "micro-gear-motor", `Something for your ${driver.label} to turn`, "pairs");
 
   // The project's own hardware list comes first: it's what the person said they need.
   for (const item of project?.hardware ?? []) {

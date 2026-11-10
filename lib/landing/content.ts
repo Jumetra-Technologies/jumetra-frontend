@@ -4,18 +4,16 @@
  * Counts come from the code (component library, learning modules, docs) so
  * the page never claims more than the product has.
  */
-import { HARDWARE_ASSETS } from "@/lib/hardware/asset-data";
 import { ARTICLES, MODULES } from "@/lib/learning";
-
-const assets = Object.values(HARDWARE_ASSETS);
-const boards = assets.filter((asset) => ["arduino", "esp32", "pico", "stm32"].includes(asset.metadata.category));
+// The numbers alone: this file is also read in the browser, which should not load every part to count them.
+import { PART_COUNTS } from "@kiungo/core/parts/catalog/counts";
 
 export const COUNTS = {
-  parts: assets.length,
-  boards: boards.length,
+  parts: PART_COUNTS.total,
+  boards: PART_COUNTS.boards,
   modules: MODULES.length,
   articles: ARTICLES.length,
-  sensors: assets.filter((asset) => asset.metadata.category === "sensors").length,
+  sensors: PART_COUNTS.sensors,
 };
 
 /** Search-engine metadata. Title under 60 characters, description under 160. */
@@ -65,7 +63,7 @@ export const LEARN = {
 
 export const LIBRARY = {
   heading: "Browse a real component library.",
-  body: `${COUNTS.parts} parts with pinouts, voltages, interfaces and the mistakes that break them, from four microcontroller boards to the humble jumper wire. The same parts you drop onto the canvas, documented like a datasheet you can actually read.`,
+  body: `${COUNTS.parts} parts with pinouts, voltages, what they draw and the mistakes that break them, from ${COUNTS.boards} boards and the batteries that run them to motor drivers and the humble resistor. The same parts you drop onto the canvas, documented like a datasheet you can actually read.`,
   cta: { label: "Open the component library", href: "/components" },
 };
 

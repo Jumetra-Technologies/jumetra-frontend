@@ -238,7 +238,7 @@ export function led5mm(cx: number, cy: number, color: string, id: string, z = 0,
 
 /** Electrolytic capacitor can. */
 /**
- * Aluminium electrolytic capacitor. "smd": a bare aluminium can on a black
+ * Aluminum electrolytic capacitor. "smd": a bare aluminum can on a black
  * plastic base, its negative side marked by a black arc on top. "radial": a
  * through-hole can in a dark sleeve with a pale stripe down the negative side.
  */

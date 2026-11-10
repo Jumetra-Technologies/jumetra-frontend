@@ -12,7 +12,7 @@
  * and z runs up, out of the board. All lengths are in millimeters.
  */
 
-export type PartGroupId = "boards" | "prototyping" | "sensors" | "outputs" | "displays" | "radios";
+export type PartGroupId = "boards" | "power" | "prototyping" | "controls" | "sensors" | "motors" | "drivers" | "outputs" | "displays" | "radios";
 
 export interface PartGroup {
   id: PartGroupId;
@@ -31,8 +31,10 @@ export type Paint = string;
  *   gold, tin, copper: plated pins and pads.   rubber: tyres, grommets.
  *   glass: display glass.   clear: LED lenses and other clear plastic.
  *   ceramic: SMD capacitors and resistors.   paper: labels and stickers.
+ *   aluminum: bare satin aluminum (motor cans, capacitor tops).   anodized: colored
+ *   aluminum that keeps the solid's own color (black heatsinks).   brass: gears, shafts, standoffs.
  */
-export type Finish = "soldermask" | "epoxy" | "plastic" | "metal" | "gold" | "tin" | "copper" | "rubber" | "glass" | "clear" | "ceramic" | "paper";
+export type Finish = "soldermask" | "epoxy" | "plastic" | "metal" | "gold" | "tin" | "copper" | "rubber" | "glass" | "clear" | "ceramic" | "paper" | "aluminum" | "anodized" | "brass";
 
 export type Solid =
   | {
@@ -58,6 +60,8 @@ export type Solid =
       /** Text printed on the top face. */
       label?: { text: string; size?: number; color?: string };
       finish?: Finish;
+      /** Degrees to turn the box about its own center, seen from above (a chip mounted as a diamond is 45). */
+      turn?: number;
     }
   | {
       kind: "cyl";
@@ -75,6 +79,8 @@ export type Solid =
       finish?: Finish;
       /** The axis it stands along: z (upright, the default), or lying along x or y, centered on (cx, cy) at height z + r. */
       axis?: "x" | "y" | "z";
+      /** Radius at the far end (the top, or the +x / +y end when lying), for cones and tapers. Defaults to `r`. */
+      r2?: number;
     }
   | {
       /** A rounded top, built from stacked discs. LEDs, PIR lenses, caps. */
@@ -142,6 +148,40 @@ export type Solid =
       color: string;
       z?: number;
       ring?: { color: string; width: number };
+      /** A hole drilled through the board: only its ring is drawn, and the board shows through. */
+      hole?: boolean;
+    }
+  | {
+      /**
+       * A flat outline pushed up into a solid: any shape a box or cylinder
+       * can't make (a ring of LEDs, a servo horn, a bracket, a board that
+       * isn't a rectangle).
+       */
+      kind: "extrude";
+      id?: string;
+      /** The outline as a closed SVG path in mm, seen from above. Further closed subpaths inside it cut holes. */
+      path: string;
+      /** Thickness. */
+      d: number;
+      z?: number;
+      top: Paint;
+      side?: Paint;
+      fill?: string;
+      glow?: string;
+      finish?: Finish;
+      /** Rounds the top edge by this much, in mm. */
+      bevel?: number;
+    }
+  | {
+      /** A flexible lead or cable through points in space: battery leads, a servo cable, a ribbon. */
+      kind: "wire";
+      id?: string;
+      /** The points it passes through, as [x, y, z] in mm. */
+      points: Array<[number, number, number]>;
+      /** Radius of the wire. */
+      r: number;
+      color: string;
+      finish?: Finish;
     };
 
 /**
@@ -194,6 +234,14 @@ export interface CircuitBlock {
   col: number;
   row: number;
   note: string;
+  /**
+   * Where the block is on the real part, so the Trace view can point at it:
+   * the id of a feature or of a pin, or a point in mm. Left out for blocks
+   * that aren't on the part (the air, an object, the thing being measured).
+   */
+  at?: string | { x: number; y: number };
+  /** The part of the circuit that gets warm: the Trace view shows its heat. */
+  hot?: boolean;
 }
 
 export type LinkKind = "power" | "ground" | "signal" | "data" | "analog" | "mechanical" | "rf" | "light" | "sound" | "physical";
@@ -241,8 +289,14 @@ export interface PartModel {
   pins: PinInfo[];
   circuit: Circuit;
   facts: Fact[];
-  /** Ids of solids that light up, turn, or sweep back and forth when the part is powered in the 3D view. */
-  animate?: { lit?: string[]; spin?: string[]; sweep?: string[] };
+  /**
+   * Ids of solids that light up, turn, or sweep back and forth when the part
+   * is powered in the 3D view. With `axis`, everything that turns or sweeps
+   * does so together about that one line (a shaft with its horn or wheel):
+   * a point on it in mm, and the way it runs. Without it, each solid turns
+   * about its own middle, upright.
+   */
+  animate?: { lit?: string[]; spin?: string[]; sweep?: string[]; axis?: { at: [number, number, number]; dir: "x" | "y" | "z" } };
   /** A first experiment worth running with it. */
   experiment: { title: string; idea: string };
   /** Reference article in the Documentation Center, when one exists. */
@@ -250,4 +304,260 @@ export interface PartModel {
   tags: string[];
   /** Set for parts the lab draws as themselves on the canvas, with wires on their real pins. */
   canvas?: CanvasSpec;
+  /** The engineering data behind the part: form factor, power, heat, sourcing and where it falls short. */
+  spec?: PartSpec;
+  /** Where each wireable pin is on the part, for the labeled 2D view and the Trace view. */
+  pinSpots?: PinSpot[];
+  /** How the lab simulates it, for parts the lab doesn't have a hand-written model for. */
+  sim?: PartSim;
 }
+
+/* ----- Pins on the part ----------------------------------------------------- */
+
+/** One wireable pin where it really is on the part (mm; in a front view, y runs down from the top). */
+export interface PinSpot {
+  /** The lab's pin id. */
+  id: string;
+  label: string;
+  role: PinRole;
+  x: number;
+  y: number;
+  note?: string;
+}
+
+/* ----- Wiring in the lab ---------------------------------------------------- */
+
+/** What a board pin can do. */
+export type PinFn = "power" | "ground" | "digital" | "analog" | "pwm" | "sda" | "scl" | "tx" | "rx" | "mosi" | "miso" | "sck" | "cs" | "led";
+
+/** What a peripheral pin expects from the far end of its wire. */
+export type LabPinRole =
+  | "vcc" // needs a supply
+  | "gnd" // needs ground
+  | "drive" // driven by a board output (digital or PWM)
+  | "pwm" // driven by a board PWM output
+  | "out-digital" // the part drives it, a board reads it
+  | "out-analog" // the part outputs a voltage, an analog pin reads it
+  | "io" // single-wire data both ways
+  | "sda"
+  | "scl"
+  | "tx" // the part transmits on it
+  | "rx" // the part receives on it
+  | "mosi"
+  | "miso"
+  | "sck"
+  | "cs"
+  | "load" // the switched or driven side: relay contacts, a driver's motor outputs, a motor's terminals
+  | "opt"; // optional
+
+export interface LabPin {
+  id: string;
+  label: string;
+  side: "left" | "right";
+  /** Board pins: what the pin can do. */
+  fns?: PinFn[];
+  /** Supply pins: the voltage they give (a board's 5 V pin, a battery's + terminal). */
+  supplies?: number;
+  /**
+   * A supply pin that can also be fed from outside (a board's VIN): the
+   * voltage range it takes. With a source on its wire it is an input.
+   */
+  accepts?: [number, number];
+  /** Board pins that can only read (no output driver). */
+  inputOnly?: boolean;
+  /** Peripheral pins: what the far end should be. */
+  role?: LabPinRole;
+  /** Must be connected for the part to work. */
+  required?: boolean;
+  note?: string;
+}
+
+export interface Pinout {
+  partId: string;
+  controller: boolean;
+  /** Logic level in volts: what a board outputs, or what a peripheral's signals run at. */
+  logic: number;
+  /** Peripheral inputs that survive 5 V, or a board whose inputs do. */
+  tolerates5V: boolean | "some";
+  /** Peripheral supply range in volts. */
+  supply?: [number, number];
+  pins: LabPin[];
+  /**
+   * A passive part that only joins pins (a breadboard): it has no supply, no
+   * signals and nothing to check, and its `strips` are joined inside it.
+   */
+  passive?: boolean;
+  /** Groups of pin ids joined inside the part, as a breadboard's strips are. */
+  strips?: readonly string[][];
+}
+
+/* ----- Engineering data ----------------------------------------------------- */
+
+/** How a part joins a build. */
+export type Mounting = "breadboard" | "jumpers" | "terminals" | "leads" | "solder" | "socket" | "panel";
+
+export interface PartSpec {
+  /** Form factor: what it weighs, how it mounts and what it plugs into. */
+  form: {
+    /** Grams. */
+    mass?: number;
+    /** breadboard: plugs straight in. jumpers: a header for jumper wires. terminals: screw terminals. leads: flying leads. solder: pads. socket: plugs onto a board or into a socket. panel: bolts through a panel. */
+    mount: Mounting;
+    /** Pin pitch in mm. */
+    pitch?: number;
+    /** Mounting holes: center and diameter in mm. */
+    holes?: Array<{ x: number; y: number; d: number }>;
+    note?: string;
+  };
+  /** Power: what it needs, what it draws and what it can deliver. Volts and milliamps. */
+  power: {
+    /** The supply it takes at its supply pin. */
+    supply?: { min: number; max: number; typ?: number };
+    /** The level its signals run at. */
+    logic?: number;
+    /** Its inputs survive 5 V signals. */
+    tolerant5V?: boolean;
+    /** Current it draws from its supply: doing nothing, working, and at worst (stall, transmit burst, inrush). */
+    draw?: { idle: number; active: number; peak?: number };
+    /** Batteries: what the pack gives. `ohms` is its internal resistance (volts lost per amp). */
+    source?: { volts: number; maxMa: number; capacityMah?: number; ohms?: number; chemistry?: string };
+    /** Regulators and converters. linear burns the difference as heat; buck and boost convert it; pass hands its input straight on (a protection or charger board). */
+    converter?: { law: "buck" | "boost" | "linear" | "pass"; volts: number; adjustable?: [number, number]; dropout?: number; efficiency?: number; maxMa: number };
+    /**
+     * Motor drivers and switches: what a channel passes, and the volts it
+     * loses on the way: `ohms` × amps (a MOSFET's on-resistance), and never
+     * less than `dropV` (a bipolar transistor's saturation).
+     */
+    bridge?: {
+      channels: number;
+      maxMa: number;
+      peakMa?: number;
+      dropV?: number;
+      ohms?: number;
+      /**
+       * A chopper driver (a stepper driver): the current it holds each
+       * winding at, as its trimmer is usually set. It steps the supply down
+       * to do it, so a supply well above the motor's rated voltage is how it
+       * is meant to be used, and it draws less from a higher supply.
+       */
+      limitMa?: number;
+    };
+    /** Motors: the numbers that size a driver and a battery. */
+    motor?: { ratedV: number; runMa: number; stallMa: number; rpm?: number; torque?: string };
+    /** Boards: what each supply pin can give. */
+    rails?: Array<{ pin: string; volts: number; maxMa: number; note?: string }>;
+    /** Boards: what one pin, and all pins together, can source. */
+    gpio?: { maxMa: number; totalMa?: number };
+    /** Bus, address and timing in a few words: "I2C 0x68", "PWM 50 Hz". */
+    interface?: string;
+    note?: string;
+  };
+  /** Heat: how well it sheds it and how hot it may get. Left out for parts that stay cool. */
+  thermal?: {
+    /** °C of rise per watt it loses, in still air. */
+    thetaCW: number;
+    /** The hottest it may run, °C. */
+    maxC: number;
+    /**
+     * Watts it loses in a typical hard-working case, and the case in words
+     * ("charging at 1 A"). Left out, it is worked out from `power`.
+     */
+    typicalW?: number;
+    at?: string;
+    note?: string;
+  };
+  /** Sourcing: what to ask for when buying the real one. */
+  sourcing: {
+    /** Manufacturer part number of the part, or of its main chip. */
+    mpn: string;
+    maker?: string;
+    /** active: in production. nrnd: not recommended for new designs. obsolete: discontinued. generic: made by many, no single maker. */
+    lifecycle: "active" | "nrnd" | "obsolete" | "generic";
+    /** Typical price range in US dollars. */
+    usd?: [number, number];
+    note?: string;
+  };
+  /** Where it falls short, each with a number where there is one. */
+  limits?: string[];
+  /** A better part for new builds, and why. `part` is its id when it is in the library. */
+  upgrade?: Array<{ part?: string; name: string; why: string }>;
+  /** Where the numbers come from. */
+  refs?: string[];
+}
+
+/* ----- Simulation ----------------------------------------------------------- */
+
+/** Something a sensor or control measures: its knob in the lab, and the lab's own demo signal. */
+export interface SenseQuantity {
+  key: string;
+  label: string;
+  unit?: string;
+  min: number;
+  max: number;
+  step: number;
+  /** The value it starts at when a person sets it by hand. */
+  start: number;
+  /** The lab's demo signal until a person sets a value: from, to, and the period in seconds. */
+  sweep?: [number, number, number];
+  /** Decimal places shown. */
+  digits?: number;
+  /** A two-state quantity (a button, a switch): the words for 0 and 1. */
+  states?: [string, string];
+}
+
+/**
+ * How the lab simulates a part, in data. The numbers live in `spec.power`;
+ * this says which pins they apply to.
+ */
+export type PartSim =
+  | {
+      /** Sensors and controls: what they read, and how it shows on their pins. */
+      kind: "sensor";
+      reads: SenseQuantity[];
+      /** The quantity shown on the part's badge. Defaults to the first. */
+      badge?: string;
+      /**
+       * An analog output pin: the voltage follows a quantity across its range.
+       * With `near: [center, width]` it peaks instead while the quantity is at
+       * `center` and falls to nothing `width` away: one sensor of a line array.
+       */
+      analog?: Array<{ pin: string; key: string; invert?: boolean; near?: [number, number] }>;
+      /** A digital output pin: on while a quantity is past a level. */
+      trips?: Array<{ pin: string; key: string; when: "below" | "above"; at: number; activeLow?: boolean }>;
+    }
+  | { /** Batteries: a supply between two terminals. */ kind: "source"; plus: string; minus: string }
+  | {
+      /** Regulators and converters: a supply on the output pins while the input has one. */
+      kind: "converter";
+      /** The input's + and − pins. */
+      input: [string, string];
+      /** The output's + and − pins; its voltage is `spec.power.converter.volts`. */
+      output: [string, string];
+      /** Further fixed outputs on the same ground (a board that gives 5 V and 3.3 V). */
+      also?: Array<{ pin: string; volts: number; maxMa?: number }>;
+    }
+  | {
+      /** Motor drivers: each channel's two outputs follow its inputs while the motor supply is on. */
+      kind: "driver";
+      supply: string;
+      ground: string;
+      /**
+       * One entry per channel. `inputs` are IN1 and IN2 of an H-bridge (the
+       * motor turns while they differ), the one gate of a switch, or STEP
+       * and DIR of a stepper driver. `enable` is a bridge's PWM enable (on
+       * while high), or a stepper driver's EN (on while low).
+       */
+      channels: Array<{ outputs: [string, string]; inputs: string[]; enable?: string }>;
+      /** A pin that must be high for any channel to run (a standby or sleep pin). */
+      standby?: string;
+    }
+  | {
+      /** Motors and other two-terminal loads a driver or switch runs. */
+      kind: "motor";
+      terminals: [string, string];
+      /** A stepper's second coil: it goes on another channel of the same driver. */
+      second?: [string, string];
+    }
+  | { /** Chips that give a board more outputs over a bus (a 16-channel PWM driver): these pins act as the board's own output pins. */ kind: "expander"; outputs: string[] }
+  | { /** Level shifters: each pair of pins is the same signal at two voltages, so a 5 V board and a 3.3 V part can share it. */ kind: "shifter"; pairs: Array<[string, string]> }
+  | { /** Parts that just run when powered and driven: lights, sounders, displays. */ kind: "output" };

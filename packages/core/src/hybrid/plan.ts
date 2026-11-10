@@ -16,6 +16,7 @@ import type { PinReading } from "../emulator/pinstats";
 import { ECHO_US_PER_CM, HC_SR04_RANGE_CM } from "../emulator/peripherals";
 import type { Analysis } from "../lab/circuit";
 import { arduinoPinOf } from "../lab/program";
+import { getPart } from "../parts";
 import type { LabNode } from "../lab/types";
 import { MAX_SENSORS } from "./protocol";
 import { pinTable, type HybridPlan, type VirtualSensor } from "./shim";
@@ -123,9 +124,27 @@ export function hybridBindings(nodes: LabNode[], analysis: Analysis, boardId: st
       case "bmp280":
         unsupported.push({ node, why: `Kiungo can't play a virtual ${node.label} on a real board yet: its bus isn't in the Hybrid shim. Mark it Physical and wire the real one.` });
         break;
-      default:
-        // Outputs are always real in a Hybrid run: the board drives what's on the desk, and the lab mirrors it.
-        physical.push(node);
+      default: {
+        const described = getPart(node.partId)?.sim;
+        if (described?.kind !== "sensor") {
+          // Outputs are always real in a Hybrid run: the board drives what's on the desk, and the lab mirrors it.
+          physical.push(node);
+          break;
+        }
+        // A sensor or control described in data is played on its analog and digital pins, under the ids peripheralInputs gives them.
+        let bound = false;
+        for (const l of report.links) {
+          const pin = l.board === boardId ? arduinoPinOf(l.boardPin) : null;
+          if (pin === null) continue;
+          if (described.analog?.some((a) => a.pin === l.pin)) {
+            if (pin < 14) continue;
+            add(node, `${node.id}:${l.pin}`, { kind: "analog", pin }, node.partId);
+          } else if (described.trips?.some((x) => x.pin === l.pin)) add(node, `${node.id}:${l.pin}`, { kind: "digital", pin }, node.partId);
+          else continue;
+          bound = true;
+        }
+        if (!bound) unsupported.push({ node, why: `Kiungo can't play a virtual ${node.label} on a real board yet: its bus isn't in the Hybrid shim. Mark it Physical and wire the real one.` });
+      }
     }
   }
   return { plan: { board: fqbn, sensors: shimSensors }, sensors, unsupported, physical };

@@ -420,6 +420,10 @@ export function PartsPanel({
   const top = uses.slice(0, 8);
   const groups: PartGroupId[] = [
     "sensors",
+    "motors",
+    "drivers",
+    "power",
+    "controls",
     "outputs",
     "displays",
     "radios",

@@ -4,6 +4,7 @@
  * ground, and each signal on a free pin that can do the job.
  */
 
+import { getPart } from "../parts";
 import { breadboardSpec, type BreadboardSpec, type RailId } from "../parts/models/breadboard";
 import { analyze, type Analysis } from "./circuit";
 import { nodeFootprint } from "./layout";
@@ -21,6 +22,8 @@ export interface WirePlan {
   skipped: string[];
   /** Wires to take out first: the direct pin-to-LED wire a new resistor goes in place of. */
   remove?: string[];
+  /** When nothing could be wired: what the build needs first, in a sentence. */
+  hint?: string;
 }
 
 /** Board pins already carrying a wire. Power and ground can be shared. */
@@ -124,7 +127,7 @@ function planResistor(resistor: LabNode, nodes: LabNode[], wires: LabWire[], pre
 function railHole(want: { kind: "power"; volts: number } | { kind: "ground" }, board: LabNode, part: LabNode, nodes: LabNode[], wires: LabWire[], analysis: Analysis, taken: Set<string>): PinRef | null {
   const boardGround = getPinout(board.partId).pins.find((p) => p.fns?.includes("ground"));
   const groundNet = boardGround ? analysis.netOfPin.get(`${board.id}:${boardGround.id}`) : undefined;
-  for (const bb of nodes.filter((n) => getPinout(n.partId).strips)) {
+  for (const bb of nodes.filter((n) => breadboardSpec(n.partId))) {
     const spec = breadboardSpec(bb.partId);
     if (!spec) continue;
     const used = usedHoles(bb.id, wires);
@@ -145,11 +148,103 @@ function railHole(want: { kind: "power"; volts: number } | { kind: "ground" }, b
   return null;
 }
 
+const fitsRange = (volts: number, range?: [number, number]) => !range || (volts >= range[0] - 0.2 && volts <= range[1] + 0.25);
+const wiresOn = (ref: PinRef, wires: LabWire[]) => wires.filter((w) => (w.from.node === ref.node && w.from.pin === ref.pin) || (w.to.node === ref.node && w.to.pin === ref.pin));
+
+/** Batteries and converters in a build: supplies that aren't a board's. Unused ones first. */
+function looseSupplies(nodes: LabNode[], wires: LabWire[]): Array<{ node: LabNode; plus: string; minus: string; volts: number }> {
+  const found = nodes.flatMap((node) => {
+    const part = getPart(node.partId);
+    const sim = part?.sim;
+    if (sim?.kind === "source" && part?.spec?.power.source) return [{ node, plus: sim.plus, minus: sim.minus, volts: part.spec.power.source.volts }];
+    if (sim?.kind === "converter" && part?.spec?.power.converter) return [{ node, plus: sim.output[0], minus: sim.output[1], volts: part.spec.power.converter.volts }];
+    return [];
+  });
+  const used = (s: { node: LabNode; plus: string }) => wiresOn({ node: s.node.id, pin: s.plus }, wires).length;
+  return found.sort((a, b) => used(a) - used(b));
+}
+
+/**
+ * A battery added to a build goes to whatever is waiting for one: a motor
+ * driver's motor supply, then a converter's input. A supply pin that was
+ * parked on the board (the driver came first) moves to the battery.
+ */
+function planSupply(part: LabNode, [plus, minus]: [string, string], nodes: LabNode[], wires: LabWire[]): WirePlan {
+  const volts = getPart(part.partId)?.spec?.power.source?.volts ?? 0;
+  const isBoard = (id: string) => getPinout(nodes.find((n) => n.id === id)?.partId ?? "").controller;
+  const waiting = nodes.flatMap((node) => {
+    if (node.id === part.id) return [];
+    const sim = getPart(node.partId)?.sim;
+    const pinout = getPinout(node.partId);
+    const ends = sim?.kind === "driver" ? { supply: sim.supply, ground: sim.ground, order: 0 } : sim?.kind === "converter" ? { supply: sim.input[0], ground: sim.input[1], order: 1 } : null;
+    if (!ends) return [];
+    const pin = pinout.pins.find((p) => p.id === ends.supply);
+    if (!pin || !fitsRange(volts, pin.accepts ?? pinout.supply)) return [];
+    const on = wiresOn({ node: node.id, pin: ends.supply }, wires);
+    // Free, or parked on a board's own supply pin.
+    const parked = on.filter((w) => isBoard(w.from.node === node.id ? w.to.node : w.from.node));
+    if (on.length !== parked.length) return [];
+    return [{ node, ...ends, parked: parked.map((w) => w.id) }];
+  });
+  const target = waiting.sort((a, b) => a.order - b.order)[0];
+  if (!target) return { board: null, wires: [], skipped: [], hint: `Nothing is waiting for ${part.label} yet. Add a motor driver or a converter, or drag wires from its + and − yourself.` };
+  return {
+    board: target.node,
+    // The planned wire ends on the new part's pin, like every other plan.
+    wires: [
+      { from: { node: target.node.id, pin: target.supply }, to: { node: part.id, pin: plus } },
+      { from: { node: target.node.id, pin: target.ground }, to: { node: part.id, pin: minus } },
+    ],
+    skipped: [],
+    ...(target.parked.length ? { remove: target.parked } : {}),
+  };
+}
+
+/** A converter's input goes to a battery that fits it; one with nothing on it yet first. */
+function planFeed(part: LabNode, [plus, minus]: [string, string], nodes: LabNode[], wires: LabWire[]): WirePlan {
+  const pinout = getPinout(part.partId);
+  const range = pinout.pins.find((p) => p.id === plus)?.accepts ?? pinout.supply;
+  const battery = looseSupplies(nodes.filter((n) => n.id !== part.id && getPart(n.partId)?.sim?.kind === "source"), wires).find((b) => fitsRange(b.volts, range));
+  if (!battery) return { board: null, wires: [], skipped: [], hint: `Add a battery first: ${part.label} turns a battery's voltage into the one your parts need.` };
+  return {
+    board: battery.node,
+    wires: [
+      { from: { node: battery.node.id, pin: battery.plus }, to: { node: part.id, pin: plus } },
+      { from: { node: battery.node.id, pin: battery.minus }, to: { node: part.id, pin: minus } },
+    ],
+    skipped: [],
+  };
+}
+
+/** A motor goes on a free channel of a motor driver: its two wires on the channel's two outputs. A stepper takes two channels of one driver. */
+function planMotor(part: LabNode, coils: Array<[string, string]>, nodes: LabNode[], wires: LabWire[]): WirePlan {
+  for (const node of nodes) {
+    if (node.id === part.id) continue;
+    const sim = getPart(node.partId)?.sim;
+    if (sim?.kind !== "driver") continue;
+    const free = sim.channels.filter((c) => c.outputs.every((pin) => !wiresOn({ node: node.id, pin }, wires).length));
+    if (free.length < coils.length) continue;
+    return { board: node, wires: coils.flatMap((coil, i) => coil.map((pin, j) => ({ from: { node: node.id, pin: free[i].outputs[j] }, to: { node: part.id, pin } }))), skipped: [] };
+  }
+  const hasDriver = nodes.some((n) => getPart(n.partId)?.sim?.kind === "driver");
+  return {
+    board: null,
+    wires: [],
+    skipped: [],
+    hint: hasDriver ? `Every channel of the motor driver is taken. Add another driver for ${part.label}.` : `Add a motor driver first: ${part.label} runs from a driver's outputs, not from a board pin.`,
+  };
+}
+
 export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], preferBoard?: string): WirePlan {
   const pinout = getPinout(part.partId);
   if (pinout.controller) return { board: null, wires: [], skipped: [] };
-  if (pinout.strips) return planBreadboard(part, nodes, wires, preferBoard);
+  if (breadboardSpec(part.partId)) return planBreadboard(part, nodes, wires, preferBoard);
   if (part.partId === "resistor") return planResistor(part, nodes, wires, preferBoard);
+  const sim = getPart(part.partId)?.sim;
+  if (sim?.kind === "source") return planSupply(part, [sim.plus, sim.minus], nodes, wires);
+  if (sim?.kind === "motor") return planMotor(part, sim.second ? [sim.terminals, sim.second] : [sim.terminals], nodes, wires);
+  if (sim?.kind === "converter") return planFeed(part, sim.input, nodes, wires);
+  if (pinout.passive) return { board: null, wires: [], skipped: [], hint: `${part.label} goes between two other pins: drag a wire from each leg.` };
   const board = pickBoard(nodes.filter((n) => n.id !== part.id), wires, preferBoard);
   if (!board) return { board: null, wires: [], skipped: [] };
   const bp: Pinout = getPinout(board.partId);
@@ -157,6 +252,7 @@ export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], 
   const taken = new Set<string>();
   const planned: PlannedWire[] = [];
   const skipped: string[] = [];
+  let hint: string | undefined;
 
   const facing = part.x >= board.x ? "right" : "left";
   const plain = (p: LabPin) => !p.supplies && !p.fns?.includes("ground");
@@ -165,15 +261,22 @@ export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], 
   // Pins on the side facing the part first, so wires don't wrap round the board.
   const choose = (cands: LabPin[]) => [...cands].sort((a, b) => Number(b.side === facing) - Number(a.side === facing))[0];
 
-  const supplyPin = (): LabPin | undefined => {
-    const [min, max] = pinout.supply ?? [3, 5.5];
+  const supplyPin = (pin: LabPin): LabPin | undefined => {
+    const [min, max] = pin.accepts ?? pinout.supply ?? [3, 5.5];
     // Rails on the side facing the part first, so wires don't wrap round the board.
     const rails = bp.pins.filter((p) => p.supplies).sort((a, b) => Number(b.side === facing) - Number(a.side === facing));
     const fits = rails.filter((p) => p.supplies! >= min - 0.2 && p.supplies! <= max + 0.25);
     // A motor's supply goes on VIN: on the bench that's the barrel jack's battery, not the board's regulator or USB.
-    if (part.partId === "dc-motor") {
+    if (part.partId === "dc-motor" || (sim?.kind === "driver" && pin.id === sim.supply)) {
       const vin = fits.find((p) => p.id === "VIN");
       if (vin) return vin;
+    }
+    // A level shifter's two supplies are the two voltages it translates between: its low side takes the lowest rail that fits, its high side the highest.
+    if (sim?.kind === "shifter" && fits.length) {
+      const ranges = pinout.pins.filter((p) => p.role === "vcc" && p.accepts).map((p) => p.accepts![1]);
+      const low = !!pin.accepts && pin.accepts[1] === Math.min(...ranges) && ranges.length > 1;
+      const byVolts = [...fits].sort((a, b) => a.supplies! - b.supplies!);
+      return low ? byVolts[0] : byVolts[byVolts.length - 1];
     }
     const preferV = fits.some((p) => p.supplies === bp.logic) ? bp.logic : undefined;
     return (preferV ? fits.find((p) => p.supplies === preferV && p.id !== "VIN") : undefined) ?? fits.find((p) => p.id !== "VIN") ?? fits[0] ?? rails.find((p) => p.supplies === Math.min(...rails.map((r) => r.supplies!)));
@@ -186,24 +289,52 @@ export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], 
   };
 
   // With a breadboard fed by this board, supply and ground come from its rails, as on the bench.
-  const analysis = nodes.some((n) => getPinout(n.partId).strips) ? analyze(nodes, wires) : null;
+  const analysis = nodes.some((n) => breadboardSpec(n.partId)) ? analyze(nodes, wires) : null;
   const takenHoles = new Set<string>();
 
   const signalOrder = pinout.pins.filter((p) => p.role && !["opt", "load"].includes(p.role));
   // Of "any of" groups (soil A0/D0, RGB, motor IN/EN) wire the useful ones.
+  // A part described in data: a driver's control pins all matter; of a sensor's alternative outputs, the analog one says most.
+  const control = new Set(sim?.kind === "driver" ? sim.channels.flatMap((c) => [...c.inputs, ...(c.enable ? [c.enable] : [])]) : []);
+  const isSignal = (p: LabPin) => p.role !== "vcc" && p.role !== "gnd";
+  const anyOf = !signalOrder.some((p) => p.required && isSignal(p));
+  const firstChoice = sim?.kind === "sensor" ? (sim.analog?.[0]?.pin ?? sim.trips?.[0]?.pin ?? signalOrder.find(isSignal)?.id) : undefined;
   const wanted = signalOrder.filter((p) => {
     if (p.required) return true;
     if (part.partId === "soil-moisture" || part.partId === "mq2") return p.id === "A0";
     if (part.partId === "rgb-led" || part.partId === "dc-motor") return true;
+    if (!sim || !isSignal(p)) return false;
+    if (control.has(p.id)) return true;
+    // "Any of" groups: nothing is required, so wire the one that says most (a sensor) or all of them (a light's colors).
+    if (anyOf) return sim.kind === "sensor" ? p.id === firstChoice : sim.kind === "output";
     return false;
   });
+
+  // A supply that isn't the board's: a battery's + or a converter's output with a part's supply waiting for it.
+  const loose = looseSupplies(nodes.filter((n) => n.id !== part.id), wires);
 
   for (const pin of wanted) {
     let target: LabPin | undefined;
     switch (pin.role) {
-      case "vcc":
-        target = supplyPin();
+      case "vcc": {
+        // A driver's motor supply goes to a battery when the build has one that fits: motors don't run from a board's regulator.
+        const driver = sim?.kind === "driver" && pin.id === sim.supply ? sim : undefined;
+        const battery = driver ? loose.find((b) => fitsRange(b.volts, pin.accepts ?? pinout.supply)) : undefined;
+        if (driver && battery) {
+          planned.push({ from: { node: battery.node.id, pin: battery.plus }, to: { node: part.id, pin: pin.id } });
+          // Its minus joins the driver's ground, which the board's ground joins too: one common ground.
+          planned.push({ from: { node: battery.node.id, pin: battery.minus }, to: { node: part.id, pin: driver.ground } });
+          continue;
+        }
+        target = supplyPin(pin);
+        // A motor supply the board can't give (a stepper driver wants 8 V or more) waits for a battery; it never goes on a rail that is too low.
+        if (driver && target && !fitsRange(target.supplies ?? 0, pin.accepts ?? pinout.supply)) {
+          const [min, max] = pin.accepts ?? pinout.supply ?? [0, 0];
+          hint = `${part.label} ${pin.label} needs ${min}–${max} V, more than ${board.label} gives. Add a battery: it wires itself to ${pin.label}.`;
+          continue;
+        }
         break;
+      }
       case "gnd":
         target = groundPin();
         break;
@@ -273,7 +404,7 @@ export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], 
     if (plain(target) && !SHARED_BUS.some((f) => target!.fns?.includes(f))) taken.add(target.id);
     planned.push({ from: { node: board.id, pin: target.id }, to: { node: part.id, pin: pin.id } });
   }
-  return { board, wires: planned, skipped };
+  return { board, wires: planned, skipped, ...(hint ? { hint } : {}) };
 }
 
 /** Node footprint on the canvas, for placement (matches the node renderer). */

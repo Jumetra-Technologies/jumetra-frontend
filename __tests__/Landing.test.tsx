@@ -6,7 +6,8 @@ import { HybridSwitch } from "@/components/landing/HybridSwitch";
 import { LandingPage } from "@/components/landing/LandingPage";
 import { NAV_ITEMS } from "@/components/layout/nav-items";
 import { DOC_PAGES } from "@/lib/learning/doc-pages";
-import { HARDWARE_ASSETS } from "@/lib/hardware/asset-data";
+import { shortName } from "@kiungo/core/lab/session";
+import { PARTS } from "@kiungo/core/parts";
 import { COUNTS, FOOTER, HERO, HYBRID, LEARN, LIBRARY, SEO, SIMULATE, structuredData } from "@/lib/landing/content";
 import { ARTICLES, DOC_CATEGORIES, FAQ_ITEMS, MODULES, getArticle, getModule } from "@/lib/learning";
 import { LEGAL_DOCUMENTS, getLegalDocument } from "@/lib/legal/content";
@@ -40,8 +41,8 @@ describe("landing copy", () => {
   });
 
   it("counts parts and modules from the code, not by hand", () => {
-    expect(COUNTS.parts).toBe(Object.keys(HARDWARE_ASSETS).length);
-    expect(COUNTS.boards).toBe(4);
+    expect(COUNTS.parts).toBe(PARTS.length);
+    expect(COUNTS.boards).toBe(PARTS.filter((part) => part.group === "boards").length);
     expect(COUNTS.modules).toBe(MODULES.length);
     expect(COUNTS.articles).toBe(ARTICLES.length);
     expect(LEARN.body).toContain(`${MODULES.length} short modules`);
@@ -173,10 +174,10 @@ describe("LandingPage", () => {
   it("lists every part in the library section", () => {
     render(<LandingPage />);
     const list = screen.getByTestId("parts-list");
-    for (const asset of Object.values(HARDWARE_ASSETS)) {
-      expect(within(list).getByText(asset.metadata.name)).toBeInTheDocument();
-    }
+    expect(within(list).getAllByRole("link")).toHaveLength(PARTS.length);
+    for (const part of PARTS) expect(within(list).getAllByText(shortName(part.id)).length).toBeGreaterThan(0);
     expect(within(list).getByRole("link", { name: "DHT11" })).toHaveAttribute("href", "/docs/hardware-knowledge/dht11");
+    expect(within(list).getByRole("link", { name: "TB6612FNG" })).toHaveAttribute("href", "/components?part=tb6612fng");
   });
 
   it("has a footer with the legal documents and the trademark note", () => {

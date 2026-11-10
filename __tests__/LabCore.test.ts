@@ -34,8 +34,10 @@ describe("pinouts", () => {
   it("gives every board a supply and a ground, every peripheral a role per pin, and every breadboard hole a strip", () => {
     for (const pinout of PINOUTS) {
       if (pinout.passive && !pinout.strips) {
-        // A resistor: two legs, no polarity, nothing joined inside.
-        expect(pinout.pins.map((p) => p.id), pinout.partId).toEqual(["1", "2"]);
+        // A resistor, a capacitor, a diode, a transistor: bare legs, nothing joined inside, nothing to check.
+        expect(pinout.pins.length, pinout.partId).toBeGreaterThanOrEqual(2);
+        expect(pinout.pins.every((p) => p.role === "opt"), pinout.partId).toBe(true);
+        if (pinout.partId === "resistor") expect(pinout.pins.map((p) => p.id)).toEqual(["1", "2"]);
       } else if (pinout.passive) {
         const inStrips = new Set(pinout.strips!.flat());
         expect(pinout.pins.every((p) => inStrips.has(p.id)), pinout.partId).toBe(true);
@@ -43,23 +45,33 @@ describe("pinouts", () => {
         expect(pinout.pins.some((p) => p.supplies), pinout.partId).toBe(true);
         expect(pinout.pins.some((p) => p.fns?.includes("ground")), pinout.partId).toBe(true);
       } else {
-        expect(pinout.pins.every((p) => p.role), pinout.partId).toBe(true);
-        expect(pinout.supply, pinout.partId).toBeDefined();
+        // Every pin says what it is: what it expects at the far end, or (a battery's terminals, a converter's output) what it gives.
+        expect(pinout.pins.every((p) => p.role || p.supplies !== undefined || p.fns?.includes("ground")), pinout.partId).toBe(true);
+        // A supply pin is checked against its own range or the part's.
+        for (const pin of pinout.pins.filter((p) => p.role === "vcc")) expect(pin.accepts ?? pinout.supply, `${pinout.partId} ${pin.id}`).toBeDefined();
       }
     }
   });
 });
 
 describe("auto-wiring", () => {
-  it("wires every peripheral to an Uno so it is ready, except 3.3 V-only LoRa signals", () => {
-    // A resistor has nothing to wire to on its own; its auto-wiring (in series with an LED) is tested in LabAcceptance.
+  it("wires every peripheral to an Uno so it is ready, except the 3.3 V-only LoRa and RFID chips", () => {
+    // A resistor and the other bare passives have nothing to wire to on their own; the resistor's auto-wiring (in series with an LED) is tested in LabAcceptance.
     // A mini breadboard has no rails to feed, so it stays unwired (tested in Breadboard).
-    for (const part of PARTS.filter((p) => !getPinout(p.id).controller && p.id !== "resistor" && p.id !== "breadboard-mini")) {
+    // Batteries, converters and bare motors don't wire to a board at all: they go to a driver or to each other (tested in LabPower).
+    const offBoard = (id: string) => ["source", "converter", "motor"].includes(getPart(id)?.sim?.kind ?? "");
+    for (const part of PARTS.filter((p) => !getPinout(p.id).controller && !(getPinout(p.id).passive && !getPinout(p.id).strips) && p.id !== "breadboard-mini" && !offBoard(p.id))) {
       const { part: n, analysis, plan } = autowired("arduino-uno", part.id);
       expect(plan.skipped, part.id).toEqual([]);
       const errors = analysis.nodes[n.id].faults.filter((f) => f.severity === "error");
-      if (part.id === "lora") {
+      if (part.id === "lora" || part.id === "rc522") {
+        // 3.3 V-only chips: the Uno's 5 V signals are more than their inputs take.
         expect(errors.map((f) => f.title)).toContain("5 V signal into a 3.3 V input");
+      } else if (plan.hint) {
+        // A driver whose motors need more than the board gives (a stepper driver wants 8 V): wired but for its motor supply, and it says to add a battery.
+        expect(getPart(part.id)?.sim?.kind, part.id).toBe("driver");
+        expect(plan.hint, part.id).toMatch(/Add a battery/);
+        expect(errors.map((f) => f.title).every((t) => /has no power/.test(t)), part.id).toBe(true);
       } else {
         expect(analysis.nodes[n.id].status, part.id).toBe("ready");
         expect(errors, part.id).toEqual([]);
@@ -267,6 +279,42 @@ describe("suggestions", () => {
     expect(fitFor("hc-sr04", [esp])).toMatchObject({ tone: "warn", text: expect.stringContaining("divider") });
     expect(fitFor("dht22", [esp])).toMatchObject({ tone: "ok" });
     expect(fitFor("led", [])).toMatchObject({ tone: "warn", text: "Add a board to drive it" });
+  });
+});
+
+describe("suggestions for batteries, drivers and motors", () => {
+  it("says what a battery, a converter and a bare motor go on, which is not a board pin", () => {
+    const uno = node("arduino-uno");
+    const driver = node("tb6612fng", 0, 0, "Driver");
+    expect(fitFor("micro-gear-motor", [uno])).toEqual({ tone: "warn", text: "Needs a motor driver, not a board pin" });
+    expect(fitFor("micro-gear-motor", [uno, driver])).toEqual({ tone: "ok", text: "Goes on your Driver" });
+    expect(fitFor("battery-18650", [uno, driver])).toEqual({ tone: "ok", text: "Powers your Driver" });
+    expect(fitFor("battery-18650", [])).toEqual({ tone: "ok", text: "7.4 V for a motor driver or a converter" });
+    expect(fitFor("battery-9v", [uno])).toEqual({ tone: "ok", text: "Can run Arduino from its VIN pin" });
+    expect(fitFor("lipo-2s", [uno, node("a4988", 0, 0, "Stepper driver")])).toEqual({ tone: "warn", text: "7.4 V is outside what your Stepper driver takes" });
+    expect(fitFor("buck-converter", [uno])).toEqual({ tone: "warn", text: "Add a battery to feed it" });
+    expect(fitFor("buck-converter", [uno, node("lipo-3s", 0, 0, "Pack")])).toEqual({ tone: "ok", text: "Feeds from your Pack" });
+  });
+
+  it("is honest about the parts the lab draws but does not run", () => {
+    for (const id of ["capacitor", "diode", "transistor"]) expect(fitFor(id, [node("arduino-uno")])).toEqual({ tone: "ok", text: "Goes between two pins. Not simulated yet" });
+    expect(fitFor("breadboard", [node("arduino-uno")])?.text).toMatch(/^Shares the Arduino 5 V/);
+  });
+
+  it("offers the driver a motor needs, then the battery the driver needs", () => {
+    const uno = node("arduino-uno");
+    expect(suggest("", [uno, node("micro-gear-motor", 0, 0, "Left")]).items[0]).toMatchObject({ part: { id: "tb6612fng" }, source: "missing", reason: "Your Left needs a driver between it and the board" });
+    expect(suggest("", [uno, node("nema17")]).items[0].part.id).toBe("a4988");
+    expect(suggest("", [uno, node("water-pump")]).items[0].part.id).toBe("mosfet-module");
+    expect(suggest("", [uno, node("a4988")]).items.slice(0, 2).map((i) => i.part.id)).toEqual(["lipo-3s", "nema17"]);
+    expect(suggest("", [uno, node("tb6612fng")]).items.slice(0, 2).map((i) => i.part.id)).toEqual(["battery-18650", "micro-gear-motor"]);
+    const done = suggest("", [uno, node("tb6612fng"), node("battery-18650"), node("micro-gear-motor")]).items;
+    expect(done.map((i) => i.source)).not.toContain("missing");
+  });
+
+  it("reads a robot brief for the new parts", () => {
+    const items = suggest("", [node("arduino-uno")], { name: "Line follower", description: "A battery robot that follows a black line and shows its speed" }).items.map((i) => i.part.id);
+    expect(items).toEqual(expect.arrayContaining(["line-sensor", "battery-18650", "wheel-encoder"]));
   });
 });
 

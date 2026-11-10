@@ -19,7 +19,7 @@ const transport = new StdioClientTransport({
   env: { ...process.env, TSX_TSCONFIG_PATH: join(here, "..", "tsconfig.json") } as Record<string, string>,
   stderr: "ignore",
 });
-const client = new Client({ name: process.env.KIUNGO_CLIENT_NAME ?? "kiungo-cli", version: "0.1.0" });
+const client = new Client({ name: process.env.KIUNGO_CLIENT_NAME ?? "kiungo-cli", version: "0.2.0" });
 await client.connect(transport);
 try {
   if (!tool || tool === "list") {

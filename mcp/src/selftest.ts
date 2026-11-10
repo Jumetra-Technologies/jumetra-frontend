@@ -15,7 +15,7 @@ import { analyze } from "@kiungo/core/lab/circuit";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const data = mkdtempSync(join(tmpdir(), "kiungo-mcp-"));
-const client = new Client({ name: "kiungo-selftest", version: "0.1.0" });
+const client = new Client({ name: "kiungo-selftest", version: "0.2.0" });
 await client.connect(
   new StdioClientTransport({
     command: process.execPath,
@@ -64,6 +64,25 @@ try {
 
   const back = await call<{ part_count: number }>("import_session", { file_text: exp.file_text });
   expect("import_session reads it back", back.part_count === 4);
+
+  // A robot that drives: the driver first, so its motor supply has to move to the battery when one arrives.
+  const r = await call<{ session_id: string }>("create_session", { name: "Selftest rover" });
+  await call("add_part", { session_id: r.session_id, part_id: "arduino-uno", label: "Uno" });
+  const lone = await call<{ hint?: string; wires_added: string[] }>("add_part", { session_id: r.session_id, part_id: "micro-gear-motor", label: "Spare" });
+  expect("a motor with no driver is left unwired, with a hint", lone.wires_added.length === 0 && /driver/i.test(lone.hint ?? ""));
+  await call("remove_items", { session_id: r.session_id, nodes: ["Spare"] });
+  await call("add_part", { session_id: r.session_id, part_id: "tb6612fng", label: "Driver" });
+  const battery = await call<{ wired_to?: string; wires_added: string[] }>("add_part", { session_id: r.session_id, part_id: "battery-18650", label: "Battery" });
+  expect("a battery goes to the driver waiting for one", battery.wired_to === "Driver" && battery.wires_added.some((w) => w.includes("Driver.VM") && w.includes("Battery.POS")));
+  for (const label of ["Left", "Right"]) await call("add_part", { session_id: r.session_id, part_id: "micro-gear-motor", label });
+  const rover = await call<{ ok: boolean; errors: number; parts: Array<{ label: string; supply_v: number | null }> }>("check_circuit", { session_id: r.session_id });
+  expect("the rover has no circuit errors", rover.ok && rover.errors === 0);
+  expect("its motors run from the battery, not the board", ["Left", "Right"].every((label) => rover.parts.find((p) => p.label === label)?.supply_v === 7.4));
+  const built = await call<{ file_text: string }>("export_session", { session_id: r.session_id });
+  const wires = parseSessionFile(built.file_text).session.wires;
+  expect("the driver's motor supply left the board's pin", !wires.some((w) => [w.from.pin, w.to.pin].includes("VM") && [w.from.pin, w.to.pin].includes("VIN")));
+  const groups = await call<Array<{ part_id: string }>>("search_parts", { group: "power" });
+  expect("search_parts lists the power group", groups.some((p) => p.part_id === "battery-18650"));
 } finally {
   await client.close();
   rmSync(data, { recursive: true, force: true });

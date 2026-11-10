@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { flatColor } from "@kiungo/core/parts/build";
 import type { Finish, Solid } from "@kiungo/core/parts/types";
 
-type Bodied = Extract<Solid, { kind: "box" | "cyl" | "dome" | "pins" }>;
+type Bodied = Extract<Solid, { kind: "box" | "cyl" | "dome" | "pins" | "extrude" | "wire" }>;
 
 const METALS = ["#c9ccd1", "#8f949b", "#d7dadf", "#b9bdc3", "#aeb3ba", "#a7acb3", "#9aa0a6"];
 const GOLDS = ["#d9b05c", "#c9a24a", "#e2b85c"];
@@ -38,7 +38,7 @@ export function metalOf(color: string): Finish | null {
 
 /** The base color a solid is painted. */
 export function baseColor(solid: Bodied): string {
-  if (solid.kind === "dome") return solid.color;
+  if (solid.kind === "dome" || solid.kind === "wire") return solid.color;
   if (solid.kind === "pins") return solid.color ?? "#d9b05c";
   return solid.fill ?? flatColor(solid.top);
 }
@@ -49,6 +49,8 @@ export function finishOf(solid: Bodied): Finish {
   const color = baseColor(solid);
   if (solid.kind === "pins") return near(color, METALS) ? "tin" : "gold";
   if (solid.kind === "dome") return solid.clear ? "clear" : "plastic";
+  // A wire is insulated unless it is drawn in a bare metal color.
+  if (solid.kind === "wire") return metalOf(color) ?? "plastic";
   if (solid.id === "pcb") return "soldermask";
   if (solid.id === "usb" || solid.id === "shield") return "metal";
   if (near(color, GOLDS)) return "gold";
@@ -108,6 +110,19 @@ export function materialFor(finish: Finish, color: string, opts: { emissive?: st
       break;
     case "paper":
       Object.assign(m, { roughness: 0.9, metalness: 0 });
+      break;
+    case "aluminum":
+      // Bare satin aluminum: brighter and more even than tinned steel.
+      Object.assign(m, { roughness: 0.52, metalness: 0.7 });
+      m.color = new THREE.Color("#c5c9ce");
+      break;
+    case "anodized":
+      // Dyed aluminum keeps its color (a black heatsink) with a soft metal sheen.
+      Object.assign(m, { roughness: 0.55, metalness: 0.75 });
+      break;
+    case "brass":
+      Object.assign(m, { roughness: 0.36, metalness: 1 });
+      m.color = new THREE.Color("#c2a04e");
       break;
   }
   if (opts.lit && opts.emissive) {

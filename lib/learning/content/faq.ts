@@ -33,7 +33,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "supported-hardware",
     question: "Which boards and sensors are included?",
     answer:
-      "The component library currently covers Arduino, ESP32, Raspberry Pi Pico, and STM32 boards, plus sensors such as the DHT11, DHT22, HC-SR04, and PIR, actuators such as servos, relays, and buzzers, displays, passive parts, and prototyping parts. Browse the [component library](/components) for the full list.",
+      "The component library currently covers Arduino, ESP32, Raspberry Pi Pico, and STM32 boards; batteries and converters; sensors such as the HC-SR04, line sensors, the VL53L0X, the DHT11, and PIR; gear motors, servos, and steppers with the drivers that run them, such as the L298N, TB6612FNG, and A4988; buttons and knobs; LEDs, buzzers, and displays; radios; and breadboards and passive parts. Browse the [component library](/components) for the full list.",
     tags: ["components", "boards", "sensors", "library", "supported", "catalog"],
   },
   {

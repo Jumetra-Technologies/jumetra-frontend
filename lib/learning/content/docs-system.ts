@@ -33,7 +33,7 @@ export const SYSTEM_OVERVIEW_ARTICLES: DocArticle[] = [
       {
         type: "ul",
         items: [
-          "A **component library** describing boards, sensors, and actuators, including pins, voltages, and interfaces.",
+          "A **component library** describing boards, batteries, sensors, motors, and the drivers that run them, including pins, voltages, current draw, and interfaces.",
           "An **engineering laboratory** where components are placed, wired, and run, in virtual, physical, or hybrid mode.",
           "A **project workspace and experiment journal** that keep objectives, hardware, procedures, observations, and results together.",
           "**Documentation and learning material** so a new contributor can understand the platform without direct help.",
@@ -130,7 +130,7 @@ export const SYSTEM_OVERVIEW_ARTICLES: DocArticle[] = [
       { type: "h2", text: "Phase One: Web platform" },
       {
         type: "p",
-        text: "The browser version of Kiungo, with nothing to install. Its foundation is done: the Learning Center and Documentation, a component library of 34 parts, the Engineering Lab with its circuit check, projects and experiment records, and Google sign-in. Work now is on simulation you can trust (controllable inputs and acceptance-tested reference experiments). Next is durable, shared work: saving projects and lab sessions to the signed-in account instead of only the browser.",
+        text: "The browser version of Kiungo, with nothing to install. Its foundation is done: the Learning Center and Documentation, a component library of 88 parts, the Engineering Lab with its circuit check, projects and experiment records, and Google sign-in. Work now is on simulation you can trust (controllable inputs and acceptance-tested reference experiments). Next is durable, shared work: saving projects and lab sessions to the signed-in account instead of only the browser.",
       },
       { type: "h3", text: "Phase One is done when" },
       {

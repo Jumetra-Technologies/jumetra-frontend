@@ -19,7 +19,8 @@ export function dropBelow(model: PartModel): number {
   let below = 0;
   for (const solid of model.solids) {
     if (solid.kind === "pins" && solid.len < 0) below = Math.max(below, -((solid.z ?? 0) + solid.len));
-    else if ((solid.kind === "box" || solid.kind === "cyl") && (solid.z ?? 0) < 0) below = Math.max(below, -(solid.z ?? 0));
+    else if ((solid.kind === "box" || solid.kind === "cyl" || solid.kind === "extrude") && (solid.z ?? 0) < 0) below = Math.max(below, -(solid.z ?? 0));
+    else if (solid.kind === "wire") for (const point of solid.points) below = Math.max(below, -(point[2] - solid.r));
   }
   return below;
 }

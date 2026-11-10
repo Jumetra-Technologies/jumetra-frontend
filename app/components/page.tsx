@@ -9,7 +9,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   if (!part) {
     return {
       title: "Component library",
-      description: `${PARTS.length} boards, sensors, outputs, displays and radios, each with a 3D model, a labeled top view and a current-flow diagram.`,
+      description: `${PARTS.length} boards, batteries, sensors, motors, drivers, displays and radios, each with a 3D model, a labeled pinout, a look inside, and its power and heat data.`,
     };
   }
   return { title: `${part.name} · Component library`, description: part.summary };
@@ -37,8 +37,8 @@ export default async function ComponentsPage({ searchParams }: { searchParams: P
       <div className="mb-8 max-w-3xl">
         <h2 className="text-3xl font-bold tracking-tight">Component library</h2>
         <p className="mt-2 text-base leading-7 text-muted">
-          Every part Kiungo can simulate, drawn to scale. Turn it in 3D, point at its pins in the top view, follow the current inside, then start an
-          experiment with it in the lab.
+          Every part Kiungo can simulate, drawn to scale. Turn it in 3D, read its pins on the labeled drawing, follow the current inside, see what
+          it draws and how warm it runs, then start an experiment with it in the lab.
         </p>
       </div>
       <ComponentLibrary initialPart={params.part} initialQuery={params.q ?? ""} compatibility={compatibility} />

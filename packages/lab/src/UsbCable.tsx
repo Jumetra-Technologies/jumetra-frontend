@@ -3,11 +3,12 @@ import { cn } from "@kiungo/ui/cn";
 import styles from "./usb-cable.module.css";
 
 /** The board end of each board's USB lead. The other end (USB-A) is in the computer, off the canvas. */
-export type UsbConnector = "usb-b" | "micro-usb" | "usb-c";
+export type UsbConnector = "usb-b" | "mini-usb" | "micro-usb" | "usb-c";
 
 const CONNECTOR: Record<string, UsbConnector> = {
   "arduino-uno": "usb-b",
   "arduino-mega": "usb-b",
+  "arduino-nano": "mini-usb",
   esp32: "micro-usb",
   esp8266: "micro-usb",
   "raspberry-pi-pico": "micro-usb",
@@ -21,7 +22,7 @@ export function connectorFor(partId: string): UsbConnector {
   return CONNECTOR[partId] ?? "micro-usb";
 }
 
-export const CONNECTOR_NAME: Record<UsbConnector, string> = { "usb-b": "USB-B", "micro-usb": "Micro-USB", "usb-c": "USB-C" };
+export const CONNECTOR_NAME: Record<UsbConnector, string> = { "usb-b": "USB-B", "mini-usb": "Mini-USB", "micro-usb": "Micro-USB", "usb-c": "USB-C" };
 
 /** off: no lead · plugging: dropping in, then the click · on: seated and powering · unplugging: pulled out. */
 export type PowerState = "off" | "plugging" | "on" | "unplugging";
@@ -64,7 +65,7 @@ export function UsbCable({
       }
     : undefined;
   // The plug's metal tip and the socket on the card, per connector.
-  const tip = connector === "usb-b" ? { w: 16, h: 13 } : connector === "usb-c" ? { w: 14, h: 9 } : { w: 12, h: 7 };
+  const tip = connector === "usb-b" ? { w: 16, h: 13 } : connector === "usb-c" ? { w: 14, h: 9 } : connector === "mini-usb" ? { w: 13, h: 9 } : { w: 12, h: 7 };
   const body = connector === "usb-b" ? { w: 24, h: 30 } : { w: 18, h: 26 };
   const cx = 30;
   const seatY = 166; // where the tip's end sits, inside the socket at the card's edge

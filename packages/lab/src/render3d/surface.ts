@@ -4,6 +4,7 @@
  * a box (a chip's marking, a header's holes).
  */
 import * as THREE from "three";
+import { pathBounds } from "@kiungo/core/parts/path";
 import type { PartModel, Solid } from "@kiungo/core/parts/types";
 
 type Flat = Extract<Solid, { kind: "text" | "path" | "disc" }>;
@@ -47,13 +48,41 @@ export function flatLayers(model: PartModel, surface: number): Map<number, Flat[
   return layers;
 }
 
-/** One printed layer as a transparent texture the size of the part's footprint. */
-export function layerTexture(model: PartModel, flats: Flat[]): { texture: THREE.CanvasTexture; w: number; h: number } {
-  const { w, h } = model.size;
+/** The rectangle a flat solid prints inside, with room for its stroke. */
+function flatBounds(f: Flat): { x1: number; y1: number; x2: number; y2: number } {
+  if (f.kind === "disc") {
+    const r = f.r + (f.ring?.width ?? 0);
+    return { x1: f.cx - r, y1: f.cy - r, x2: f.cx + r, y2: f.cy + r };
+  }
+  if (f.kind === "path") {
+    const b = pathBounds(f.d);
+    const pad = f.color === "none" ? 0 : (f.width ?? 0.3) / 2;
+    return { x1: b.x - pad, y1: b.y - pad, x2: b.x + b.w + pad, y2: b.y + b.h + pad };
+  }
+  // Text: its width is not known until it is drawn, so allow a generous em per character, in every direction it may be turned.
+  const reach = Math.max(f.size, f.text.length * f.size * 0.75);
+  if (f.rotate) return { x1: f.x - reach, y1: f.y - reach, x2: f.x + reach, y2: f.y + reach };
+  const left = f.anchor === "middle" ? reach / 2 : f.anchor === "end" ? reach : 0;
+  return { x1: f.x - left, y1: f.y - f.size * 1.1, x2: f.x - left + reach, y2: f.y + f.size * 0.4 };
+}
+
+/**
+ * One printed layer as a transparent texture, sized to what is printed on
+ * it. Printing is not confined to the part's footprint: a label on a cable,
+ * a trace on a flex tail and a mark left of the origin all draw.
+ */
+export function layerTexture(model: PartModel, flats: Flat[]): { texture: THREE.CanvasTexture; x: number; y: number; w: number; h: number } {
+  const all = flats.map(flatBounds);
+  const pad = 0.25;
+  const x = Math.min(...all.map((b) => b.x1)) - pad;
+  const y = Math.min(...all.map((b) => b.y1)) - pad;
+  const w = Math.max(1, Math.max(...all.map((b) => b.x2)) + pad - x);
+  const h = Math.max(1, Math.max(...all.map((b) => b.y2)) + pad - y);
   const k = density(w, h);
   const c = canvas(Math.ceil(w * k), Math.ceil(h * k));
   const g = c.getContext("2d") as CanvasRenderingContext2D;
   g.scale(k, k);
+  g.translate(-x, -y);
   g.lineCap = "round";
   g.lineJoin = "round";
   for (const f of flats) {
@@ -72,7 +101,7 @@ export function layerTexture(model: PartModel, flats: Flat[]): { texture: THREE.
       const path = new Path2D(f.d);
       if (f.fill && f.fill !== "none") {
         g.fillStyle = f.fill;
-        g.fill(path);
+        g.fill(path, "evenodd");
       }
       if (f.color !== "none") {
         g.strokeStyle = f.color ?? "#2f8f73";
@@ -91,7 +120,7 @@ export function layerTexture(model: PartModel, flats: Flat[]): { texture: THREE.
       g.restore();
     }
   }
-  return { texture: texture(c), w, h };
+  return { texture: texture(c), x, y, w, h };
 }
 
 /** What's on a box's top face: header holes, a chip's marking. Null when there is nothing. */

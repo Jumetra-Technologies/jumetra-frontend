@@ -10,6 +10,57 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.40.0] - 2026-11-10
+
+The Component library, rebuilt: 88 parts where there were 38, every one redrawn from its real dimensions with the engineering data behind it, and a lab that understands batteries, motor drivers and heat. Desktop 0.13.5.
+
+### Added
+- **50 new parts**, chosen from what 41 robot kits, competition builds and shops really use:
+  - **Power** (new group): 4 × AA, 9 V, 2 × 18650, 2S LiPo, 3S LiPo and 1S LiPo batteries; an LM2596 buck converter and an MT3608 boost converter; the MB102 breadboard supply; a TP4056 charger.
+  - **Buttons and controls** (new group): push button, potentiometer, joystick, IR receiver, rotary encoder, 4 × 4 keypad, slide switch, limit switch.
+  - **Drivers and switches** (new group): L298N, TB6612FNG, L293D, DRV8833, A4988, PCA9685 and an IRF520 MOSFET module. The relay moved here.
+  - **Motors and servos** (new group): N20 gear motor with encoder, MG996R servo, NEMA 17 stepper, water pump. The SG90, the TT gear motor and the 28BYJ-48 moved here.
+  - **Sensors:** TCRT5000 line sensor, FC-51 obstacle sensor, QTR-8A line array, Sharp IR ranger, wheel encoder, VL53L0X, TCS34725 color sensor, BNO055, QMC5883L compass, sound sensor, INA219.
+  - **And:** Arduino Nano; capacitor, diode, transistor and level shifter; NeoPixel ring and stick; TM1637 and MAX7219 displays; RC522 RFID reader.
+- **Engineering data on every part**, in a new panel under the views:
+  - **Power:** the supply it takes and what it draws idle, working and at worst.
+  - **Heat:** for parts that waste power, how warm they get doing a typical job, worked out from their own numbers.
+  - **Form factor:** mass, how it mounts, pin pitch, mounting holes.
+  - **Sourcing:** the real part number, its maker, whether it is still made, and a price range.
+  - **Know its limits** and **Better for a new build:** where the part falls short, with numbers, and what to use instead. An L298N turns about 1.8 W into heat at 1 A; a TB6612FNG about 0.1 W.
+- **The lab understands power:**
+  - **Batteries and converters are real supplies.** A converter's output is live only while it is fed. A board's VIN takes a battery, and the lab says when that battery is too weak or too strong for it.
+  - **A motor runs from a driver, not from a board pin.** Wiring one to a pin is an error that says what to put between them. A stepper needs both coils on one driver, and a stepper driver that limits current (the A4988) is expected to run from far more than the motor's rated voltage: the lab budgets what it really draws.
+  - **A power budget in Circuit check:** each supply with what hangs on it against what it can give, how long a battery lasts, and the parts that run warm. The lab warns before a supply is overloaded or a part overheats.
+  - A part on its own battery has to share the board's ground, and the lab says so when it doesn't.
+  - A level shifter in a wire clears the "5 V signal into a 3.3 V input" fault.
+  - **Auto-wire** sends a battery to the driver waiting for one and a motor to a free driver channel, and wires a driver's control pins.
+  - New sensors and controls bring their own knobs and readings to the lab.
+- **Your own code reaches the new parts.** Buttons, switches, knobs, the joystick and the sensors with an analog or digital output answer a program on the emulated board and in a Hybrid run, with no code written per part. A program drives motors through a driver: direction from IN1 and IN2, speed from the PWM duty, steps from STEP, and nothing while standby is low. The MG996R follows its pulse like the SG90.
+- **The lab's part search knows the new kinds.** A motor says it needs a driver and a battery says what it can power, in place of "Works with Arduino". With a motor on the canvas the search offers the driver it needs, then the battery the driver needs, and a project brief that mentions a line, a battery, a button, a compass or a keypad is matched to the part.
+- **AI clients build with the new parts.** The MCP server (now 0.2.0) lists all ten groups, gives each part's power data and limits, sends a battery to the driver waiting for one and a motor to a free channel, and says what to add first when a part has nothing to wire to yet.
+
+### Changed
+- **Every part the library already had was redrawn** from datasheet dimensions. Among the corrections: the SG90's body is 23 mm long (it was drawn at its 32 mm tab length), the TT motor is 70 × 22 × 18 mm, the breadboards are 82.5, 165.1 and 47 mm wide with a real center channel and dovetails, the Ra-02 is 17 × 16 mm, and the 28BYJ-48 takes 2037.9 steps a turn, not 2048.
+- **2D is now a labeled pinout drawing.** Each pin has a colored chip beside the part with a line to its pad; hover a chip to read what the pin does. Mounting holes show their size.
+- **Trace now draws the flow over the part itself**, numbered to match the diagram beside it. The block that makes heat glows, with its temperature.
+- **Ten groups in place of six**, in the order a build comes together: Boards, Power, Breadboards and basics, Buttons and controls, Sensors, Motors and servos, Drivers and switches, Lights and sound, Displays, Radios and tags.
+- **The website and the desktop app share one library screen**, so both have the same views, search and engineering panel.
+- Saved projects open as before: no part or pin was renamed. Two radios are stricter, as the real parts are: an RC522 or a Ra-02 LoRa module on a 5 V board now raises "5 V signal into a 3.3 V input", and a level shifter clears it.
+- The FAQ, the documentation and the page descriptions name the new groups and the real number of parts.
+- **The home page lists the real library.** Its library section counted 20 parts from an older list; it now counts and lists every part in the library, each linking to its page.
+
+### Fixed
+- **A chip's marking or a key's legend could vanish from some 3D angles.**
+- **Printing off a part's footprint wasn't drawn:** a label on a cable, traces on a flex tail.
+
+### For people adding parts
+- **One file per part:** `packages/core/src/parts/catalog/<group>/<id>.ts` holds its body, pins, Trace, engineering data and how the lab runs it. The guide is `docs/parts/AUTHORING.md`.
+- `npm run parts:check` checks a part against the rules, `npm run parts:sheet` draws it for comparing with a photo, and `npm run parts:index` lists it in the library.
+- `npm run parts:index` also writes `catalog/counts.ts`: the number of parts in all and by group, for pages that state the numbers without loading every part.
+- **Known cost:** the part data is about 240 KB of compressed JavaScript where it was about 62 KB. Every page of the website loads it, as before, because the root layout's lab-session sync imports the lab store. Loading it only on the pages that use the lab is a follow-up.
+- How the lab models supplies, motors, the power budget and heat is written up in `docs/engineering-lab-simulation.md` (section 7).
+
 ## [1.39.2] - 2026-11-10
 
 ### Fixed
@@ -827,6 +878,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.40.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.2...v1.40.0
 [1.39.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.1...v1.39.2
 [1.39.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.0...v1.39.1
 [1.39.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.2...v1.39.0

@@ -16,6 +16,8 @@
  * clock, so a frame can be sampled again at any time.
  */
 
+import { getPart } from "../parts";
+import type { PartSim } from "../parts/types";
 import { ALERT_SENSORS, defaultOf, inputOf, isSet } from "./controls";
 import type { Reading } from "./simulate";
 import type { LabNode, NodeInputs } from "./types";
@@ -58,6 +60,29 @@ const square = (t: number, period: number, duty = 0.5, phase = 0) => (((t + phas
  * A sensor's reading at time t: the value the person set, or the lab's
  * simulated sweep. Alarm-type lines use the board's setting.
  */
+/**
+ * The level a sensor described in data puts on one of its output pins, 0 to
+ * 1, from what it reads now: an analog pin follows its quantity across its
+ * range, a digital pin is on while its quantity is past a level. Null for a
+ * pin the part's data says nothing about (a bus pin, a supply).
+ */
+export function describedPinLevel(sim: PartSim | undefined, pin: string, values: Record<string, number>): number | null {
+  if (sim?.kind !== "sensor") return null;
+  const analog = sim.analog?.find((a) => a.pin === pin);
+  if (analog) {
+    const q = sim.reads.find((r) => r.key === analog.key);
+    if (!q) return null;
+    const reading = values[analog.key] ?? q.start;
+    const share = analog.near ? Math.max(0, 1 - Math.abs(reading - analog.near[0]) / (analog.near[1] || 1)) : Math.min(1, Math.max(0, (reading - q.min) / (q.max - q.min || 1)));
+    return analog.invert ? 1 - share : share;
+  }
+  const trip = sim.trips?.find((x) => x.pin === pin);
+  if (!trip) return null;
+  const v = values[trip.key] ?? 0;
+  const tripped = trip.when === "below" ? v < trip.at : v > trip.at;
+  return tripped !== !!trip.activeLow ? 1 : 0;
+}
+
 export function sampleSensor(node: LabNode, t: number, inputs: Inputs, settings: BoardSettings): SensorSample {
   const held = isSet(inputs, node.id);
   const get = (key: string, fallback: number) => (held ? inputOf(inputs, node.id, key, fallback) : fallback);
@@ -106,8 +131,28 @@ export function sampleSensor(node: LabNode, t: number, inputs: Inputs, settings:
       const temperatureC = held ? get("temperatureC", 23.1) : 23.1 + 0.4 * Math.sin(t / 9);
       return sample({ pressureHpa, temperatureC }, [{ label: "Pressure", value: `${fmt(pressureHpa)} hPa` }, { label: "Temperature", value: `${fmt(temperatureC)} °C` }, { label: "Altitude", value: `${fmt(44330 * (1 - (pressureHpa / 1013.25) ** 0.1903), 1)} m` }], { level: 0.5, on: true, badge: `${fmt(pressureHpa, 0)} hPa` });
     }
-    default:
-      return sample({}, [], { level: 0, on: false });
+    default: {
+      // A sensor or control described in data: each quantity is what the person set, or its demo signal.
+      const sim = getPart(node.partId)?.sim;
+      if (sim?.kind !== "sensor" || !sim.reads.length) return sample({}, [], { level: 0, on: false });
+      const values: Record<string, number> = {};
+      const readings: Reading[] = [];
+      for (const q of sim.reads) {
+        let v: number;
+        if (held) v = q.states ? (inputOf(inputs, node.id, q.key, q.start >= 0.5) ? 1 : 0) : get(q.key, q.start);
+        else if (q.sweep) {
+          const [from, to, period] = q.sweep;
+          v = q.states ? (square(t, period) ? to : from) : from + (to - from) * ((1 - Math.cos((2 * Math.PI * t) / Math.max(0.1, period))) / 2);
+        } else v = q.start;
+        values[q.key] = v;
+        readings.push({ label: q.label, value: q.states ? q.states[v >= 0.5 ? 1 : 0] : `${fmt(v, q.digits ?? 1)}${q.unit ? ` ${q.unit}` : ""}` });
+      }
+      const shown = Math.max(0, sim.reads.findIndex((q) => q.key === (sim.badge ?? sim.reads[0].key)));
+      const main = sim.reads[shown];
+      const value = values[main.key];
+      const level = main.states ? (value >= 0.5 ? 1 : 0) : Math.min(1, Math.max(0, (value - main.min) / (main.max - main.min || 1)));
+      return sample(values, readings, { level, on: main.states ? value >= 0.5 : true, badge: readings[shown].value });
+    }
   }
 }
 

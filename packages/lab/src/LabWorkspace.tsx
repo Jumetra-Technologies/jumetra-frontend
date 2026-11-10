@@ -556,7 +556,8 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
       const desc = fresh.map((w) => `${pp.pins.find((p) => p.id === w.to.pin)?.label ?? w.to.pin} → ${far(w.from)}`).join(", ");
       if (plan.remove?.length) s.addWires(fresh, `Put ${node.label} in series: ${desc}`, plan.remove);
       else s.addWires(fresh, `Auto-wired ${node.label} to ${plan.board.label}: ${desc}`);
-      if (plan.skipped.length) showToast(`${plan.board.label} has no free pin for ${plan.skipped.join(", ")}`);
+      if (plan.hint) showToast(plan.hint);
+      else if (plan.skipped.length) showToast(`${plan.board.label} has no free pin for ${plan.skipped.join(", ")}`);
       return fresh.length;
     },
     [store, showToast],

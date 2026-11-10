@@ -252,6 +252,7 @@ export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], 
   const taken = new Set<string>();
   const planned: PlannedWire[] = [];
   const skipped: string[] = [];
+  let hint: string | undefined;
 
   const facing = part.x >= board.x ? "right" : "left";
   const plain = (p: LabPin) => !p.supplies && !p.fns?.includes("ground");
@@ -319,6 +320,12 @@ export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], 
           continue;
         }
         target = supplyPin(pin);
+        // A motor supply the board can't give (a stepper driver wants 8 V or more) waits for a battery; it never goes on a rail that is too low.
+        if (driver && target && !fitsRange(target.supplies ?? 0, pin.accepts ?? pinout.supply)) {
+          const [min, max] = pin.accepts ?? pinout.supply ?? [0, 0];
+          hint = `${part.label} ${pin.label} needs ${min}–${max} V, more than ${board.label} gives. Add a battery: it wires itself to ${pin.label}.`;
+          continue;
+        }
         break;
       }
       case "gnd":
@@ -390,7 +397,7 @@ export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], 
     if (plain(target) && !SHARED_BUS.some((f) => target!.fns?.includes(f))) taken.add(target.id);
     planned.push({ from: { node: board.id, pin: target.id }, to: { node: part.id, pin: pin.id } });
   }
-  return { board, wires: planned, skipped };
+  return { board, wires: planned, skipped, ...(hint ? { hint } : {}) };
 }
 
 /** Node footprint on the canvas, for placement (matches the node renderer). */

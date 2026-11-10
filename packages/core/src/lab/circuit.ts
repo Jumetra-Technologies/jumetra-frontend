@@ -851,7 +851,10 @@ export function analyze(nodes: LabNode[], wires: LabWire[], inputs?: Record<stri
       fault("error", "no-signal", `No signal pin connected`, `Wire one of ${optionalSignals.map((p) => p.label).join(", ")} to a board pin.`);
     }
 
-    const powered = hasVcc ? poweredByRail : driven;
+    // A part with a supply pin is powered by it; one the board drives (an LED) by its pin; and a bare
+    // switch with neither is live once it has its ground and a board pin to pull.
+    const hasDrive = pinout.pins.some((p) => p.role === "drive" || p.role === "pwm");
+    const powered = hasVcc ? poweredByRail : hasDrive ? driven : grounded && links.some((l) => l.role !== "gnd");
     if (wired.size > 0) {
       if (hasVcc && !poweredByRail && !nodeFaults.some((f) => f.id.startsWith("vcc-gnd"))) {
         const vcc = neededVcc.find((p) => !supplied.has(p.id)) ?? vccPins[0];

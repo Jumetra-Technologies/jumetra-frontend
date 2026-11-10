@@ -1,0 +1,125 @@
+import { MATERIAL, board, comparatorSet, definePart, gnd, name, pin, pinHeader, silk, smd, vcc } from "../../sdk";
+import { pinLabels } from "./_breakouts";
+
+const TOP = 1.6;
+const header = pinHeader(3.69, 32.5, 4, { style: "down" });
+
+export default definePart({
+  id: "sound-sensor",
+  name: "KY-038 sound sensor",
+  aka: ["KY-038", "microphone module", "sound detection module", "LM393 sound sensor", "KY-037"],
+  group: "sensors",
+  rank: 15,
+  summary: "A small microphone with a comparator. The digital pin flips when the noise is louder than a level you set with the little screw, so it hears a clap. It says loud or quiet; it does not measure decibels.",
+  size: { w: 15, h: 35, d: 12.3 },
+  solids: [
+    board(15, 35, "#1f4fa8", { radius: 0.5, holes: [{ x: 7.5, y: 19.5, d: 3.0 }] }),
+    // The electret microphone: a 6 mm silver capsule standing at the end of the board and reaching a little past it.
+    { kind: "cyl", id: "mic", cx: 7.5, cy: 2.2, r: 3.0, d: 5.2, z: TOP, top: "#c9ccd1", side: "#9a9fa6", finish: "metal" },
+    { kind: "disc", cx: 7.5, cy: 2.2, r: 2.3, color: "#2b2d31", z: TOP + 5.21 },
+    { kind: "disc", cx: 7.5, cy: 2.2, r: 0.55, color: "#0b0c0e", z: TOP + 5.22 },
+    // LM393, the threshold trimmer and the two indicator LEDs.
+    ...comparatorSet({ chip: [7.5, 24], trimmer: [11, 12.5], power: [3.0, 28.6], signal: [12.0, 28.6] }, { chipDir: "y", trimmerDir: "y" }),
+    smd(2.4, 21.4, "r", "x"),
+    smd(2.4, 23.4, "r", "x"),
+    smd(11.2, 21.4, "c", "x"),
+    smd(11.2, 23.4, "r", "x"),
+    smd(11.2, 25.6, "r", "x"),
+    smd(2.4, 7.4, "r", "x"),
+    smd(2.4, 9.4, "c", "x"),
+    header,
+    silk(3.6, 19.2, "KY-038", 1.0, MATERIAL.silk, { rotate: -90, weight: 700 }),
+    silk(3.0, 27.0, "L1", 0.8, MATERIAL.silk, { anchor: "middle" }),
+    silk(12.0, 27.0, "L2", 0.8, MATERIAL.silk, { anchor: "middle" }),
+    ...pinLabels(["A0", "G", "+", "D0"], 3.69, 31.0),
+  ],
+  features: [
+    { id: "mic", label: "Microphone", kind: "sensor", x: 4.5, y: -0.8, w: 6, h: 6, note: "An electret microphone capsule. Sound moving its thin film makes a tiny voltage." },
+    { id: "trimmer", label: "Sensitivity trimmer", kind: "other", x: 8.6, y: 7.7, w: 4.8, h: 9.5, note: "Turn the screw to set how loud a sound must be before D0 flips. Clockwise is more sensitive." },
+    { id: "lm393", label: "LM393 comparator", kind: "chip", x: 5.5, y: 21, w: 4, h: 6, note: "Compares the microphone with the trimmer's level and flips D0. It is a comparator, not an amplifier." },
+    { id: "led-pwr", label: "Power LED (L1)", kind: "led", x: 2.2, y: 28.2, w: 1.6, h: 0.8, note: "On whenever the board has power." },
+    { id: "led-signal", label: "Output LED (L2)", kind: "led", x: 11.2, y: 28.2, w: 1.6, h: 0.8, note: "On while the sound is louder than the trimmer's level, the same as D0." },
+    { id: "pins", label: "A0, G, +, D0", kind: "pins", x: 2.4, y: 31.2, w: 10.2, h: 2.6, note: "Wire + (VCC), G (ground) and D0. A0 is optional." },
+  ],
+  pins: [
+    pin("AO", "analog", "out-analog", "The microphone's own voltage, not tuned and with no amplifier, so it moves only a little. Read it with an analog pin, fast, and track the peak-to-peak size.", { label: "A0", required: false }),
+    gnd("GND", "Ground.", { label: "G" }),
+    vcc("VCC", "Supply, 3.3 to 5.5 V (some sellers say 4 to 6 V). About 4 to 5 mA.", { label: "+" }),
+    pin("DO", "digital", "out-digital", "Goes high while the sound is louder than the trimmer's level. Some LM393 boards flip this, so test yours.", { label: "D0", required: false }),
+  ],
+  pinAt: { ...name(header, "AO", "GND", "VCC", "DO") },
+  circuit: {
+    blocks: [
+      { id: "vcc", label: "+ (VCC)", sub: "3.3–5.5 V", kind: "power", col: 0, row: 0, at: "VCC", note: "Supply. About 4 to 5 mA." },
+      { id: "sound", label: "Sound", sub: "claps, voices", kind: "world", col: 1, row: 0, note: "Air moving the microphone's film." },
+      { id: "mic", label: "Microphone", sub: "tiny voltage", kind: "sensor", col: 2, row: 0, at: "mic", note: "An electret capsule: sound makes a small voltage swing, only tens of millivolts." },
+      { id: "ao", label: "A0", sub: "raw mic voltage", kind: "pin", col: 3, row: 0, at: "AO", note: "The microphone's node, with no amplifier." },
+      { id: "pot", label: "Trimmer", sub: "threshold", kind: "passive", col: 1, row: 1, at: "trimmer", note: "Sets the level D0 flips at. Clockwise: more sensitive." },
+      { id: "cmp", label: "LM393", sub: "comparator", kind: "ic", col: 2, row: 1, at: "lm393", note: "Compares the microphone with the trimmer's level and gives a plain yes or no." },
+      { id: "led", label: "L2 LED", kind: "actuator", col: 2, row: 2, at: "led-signal", note: "Lights while D0 is active." },
+      { id: "do", label: "D0", sub: "loud or quiet", kind: "pin", col: 3, row: 1, at: "DO", note: "High while the sound is above the threshold." },
+    ],
+    links: [
+      { from: "sound", to: "mic", kind: "sound" },
+      { from: "mic", to: "ao", kind: "analog", label: "raw" },
+      { from: "mic", to: "cmp", kind: "analog" },
+      { from: "pot", to: "cmp", kind: "analog", label: "threshold" },
+      { from: "cmp", to: "do", kind: "signal", label: "loud?" },
+      { from: "cmp", to: "led", kind: "signal" },
+      { from: "vcc", to: "cmp", kind: "power", label: "4–5 mA" },
+    ],
+    steps: [
+      "Sound moves the microphone's film and makes a tiny voltage. A0 gives you that voltage as it is.",
+      "The LM393 compares that voltage with the level the trimmer sets.",
+      "While the sound is above the level, D0 goes high and the L2 LED lights. Below it, D0 goes low.",
+      "It tells you loud or quiet, nothing more. To hear how loud, read A0 fast and take the biggest swing over about 50 ms.",
+    ],
+  },
+  facts: [
+    { label: "Reads", value: "Loud or quiet" },
+    { label: "Outputs", value: "D0 digital, A0 analog" },
+    { label: "Threshold", value: "Trimmer screw" },
+    { label: "Supply", value: "3.3–5.5 V, 5 mA" },
+    { label: "Chip", value: "LM393 comparator" },
+    { label: "Size", value: "35 × 15 mm" },
+  ],
+  spec: {
+    form: {
+      mass: 3,
+      mount: "jumpers",
+      pitch: 2.54,
+      holes: [{ x: 7.5, y: 19.5, d: 3.0 }],
+      note: "A flat 1 × 4 header and one M3 hole. Point the microphone at the sound and keep it away from a loudspeaker or a motor's hum.",
+    },
+    power: {
+      supply: { min: 3.3, max: 5.5, typ: 5 },
+      logic: 5,
+      tolerant5V: true,
+      draw: { idle: 4, active: 5 },
+      interface: "A0 to an analog pin, D0 to a digital pin: no bus",
+      note: "The 4 to 5 mA figure is for the generic LM393 sound module.",
+    },
+    sourcing: { mpn: "KY-038", maker: "Generic (Joy-IT reference)", lifecycle: "generic", usd: [0.5, 2], note: "The KY-037 is almost the same board with a bigger, more sensitive microphone." },
+    limits: [
+      "A0 is not a sound level in dB. The LM393 is a comparator, not an amplifier, so the swing on A0 is only tens of millivolts on top of a DC level that differs from board to board.",
+      "Some boards rest near 0 on A0 and some near mid-scale. D0 flips polarity between boards, too: test yours with a clap.",
+      "The threshold is set by hand with a trimmer, so no two boards trip at the same loudness.",
+      "It can't tell one sound from another. Speech and music are out of reach.",
+      "To see a clap on A0 you need to sample fast, about every millisecond, and track the peak-to-peak size.",
+    ],
+    upgrade: [
+      { name: "MAX4466 microphone amplifier breakout", why: "A real amplifier with 25× to 125× gain, biased at half the supply, so an analog pin sees a clean waveform and its peak-to-peak size is the loudness." },
+      { name: "INMP441 or SPH0645 I2S microphone", why: "A digital MEMS microphone with 24-bit I2S samples of real sound, for true loudness (dBFS) and spectrum work." },
+    ],
+    refs: ["https://components101.com/node/812", "https://easyelecmodule.com/ky-038-sound-sensor-module/", "https://45-in-1-sensor-kit.readthedocs.io/en/latest/38.microphone_sound_sensor_module.html"],
+  },
+  sim: {
+    kind: "sensor",
+    reads: [{ key: "soundLevel", label: "Sound level", unit: "%", min: 0, max: 100, step: 1, start: 10, sweep: [5, 90, 6], digits: 0 }],
+    analog: [{ pin: "AO", key: "soundLevel" }],
+    trips: [{ pin: "DO", key: "soundLevel", when: "above", at: 55 }],
+  },
+  animate: { lit: ["led-pwr", "led-signal"] },
+  experiment: { title: "Clap switch", idea: "Turn the trimmer until the L2 LED stays off in a quiet room. Then count claps on D0 and toggle an LED on every second clap." },
+  tags: ["ky-038", "sound", "microphone", "clap", "noise", "lm393", "analog", "sensor"],
+});

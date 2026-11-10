@@ -182,5 +182,13 @@ export function checkCatalog(models: readonly PartModel[]): Problem[] {
   const byGroup = new Map<string, number[]>();
   for (const m of models) byGroup.set(m.group, [...(byGroup.get(m.group) ?? []), m.rank]);
   for (const [group, ranks] of byGroup) for (const rank of duplicates(ranks.map(String))) problems.push({ level: "error", text: `two parts in "${group}" share rank ${rank}` });
+  // A better part named by id must be in the library, or the link from "Better for a new build" goes nowhere.
+  const ids = new Set(models.map((m) => m.id));
+  for (const m of models) {
+    for (const upgrade of m.spec?.upgrade ?? []) {
+      if (upgrade.part && !ids.has(upgrade.part)) problems.push({ level: "error", text: `${m.id}: its upgrade names the part "${upgrade.part}", which is not in the library` });
+      if (upgrade.part === m.id) problems.push({ level: "error", text: `${m.id}: its upgrade names itself` });
+    }
+  }
   return problems;
 }

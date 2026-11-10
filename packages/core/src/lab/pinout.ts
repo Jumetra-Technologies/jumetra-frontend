@@ -9,7 +9,6 @@
  */
 
 import { CATALOG } from "../parts/catalog";
-import { BREADBOARD_SPECS, type BreadboardSpec } from "../parts/models/breadboard";
 import type { LabPin, LabPinRole, PinFn, Pinout } from "../parts/types";
 
 export type { LabPin, PinFn, Pinout } from "../parts/types";
@@ -379,53 +378,8 @@ const PERIPHERALS: Pinout[] = [
 
 // ----- prototyping -------------------------------------------------------------
 
-function terminalNote(id: string): string {
-  const col = id.slice(1);
-  const [first, last] = "abcde".includes(id[0]) ? ["a", "e"] : ["f", "j"];
-  return `Joined to ${first}${col}–${last}${col}: one five-hole strip`;
-}
-
-/** Every hole is a pin; the strips say which holes share a clip. */
-function breadboardPinout(spec: BreadboardSpec): Pinout {
-  const middle = spec.size.h / 2;
-  return {
-    partId: spec.partId,
-    controller: false,
-    passive: true,
-    logic: 5,
-    tolerates5V: true,
-    pins: spec.holes.map((h): LabPin => {
-      const rail = h.rail ? spec.rails[h.rail] : undefined;
-      return {
-        id: h.id,
-        label: h.label,
-        side: h.y < middle ? L : R,
-        fns: rail ? [rail.sign === "+" ? "power" : "ground"] : undefined,
-        role: rail ? undefined : "opt",
-        note: rail ? `${rail.label} rail: all ${spec.railHoles} holes are joined` : terminalNote(h.id),
-      };
-    }),
-    strips: spec.strips,
-  };
-}
-
-const BREADBOARDS: Pinout[] = Object.values(BREADBOARD_SPECS).map(breadboardPinout);
-
-/** A resistor: two legs, no polarity. It joins nothing inside; the analysis follows current through it. */
-const RESISTOR: Pinout = {
-  partId: "resistor",
-  controller: false,
-  passive: true,
-  logic: 5,
-  tolerates5V: true,
-  pins: [
-    { id: "1", label: "Leg 1", side: L, role: "opt", note: "Either way round" },
-    { id: "2", label: "Leg 2", side: R, role: "opt", note: "Either way round" },
-  ],
-};
-
 /** Parts not yet moved to `parts/catalog`, where a part's pins now live beside its model. */
-const LEGACY: Pinout[] = [UNO, ESP32, PICO, MEGA, ESP8266, STM32, PI4, MICROBIT, TEENSY, ...BREADBOARDS, RESISTOR, ...PERIPHERALS];
+const LEGACY: Pinout[] = [UNO, ESP32, PICO, MEGA, ESP8266, STM32, PI4, MICROBIT, TEENSY, ...PERIPHERALS];
 const DEFINED = new Set(CATALOG.map((entry) => entry.model.id));
 const ALL: Pinout[] = [...CATALOG.map((entry) => entry.pinout), ...LEGACY.filter((p) => !DEFINED.has(p.partId))];
 

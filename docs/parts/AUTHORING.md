@@ -70,7 +70,7 @@ List solids and kit pieces in any order; nothing needs spreading. Each solid is 
 | kind | what it is | key fields |
 |---|---|---|
 | `box` | a block | `x y w h` (top-left, size), `d` (height), `z` (base), `top` (color), `radius`, `turn` (degrees about its center), `label` (text on its top), `holes` (header holes), `glow` |
-| `cyl` | a cylinder | `cx cy r d z top`; `axis: "x"\|"y"` lays it down (centered on cx, cy; `d` is then its length); `r2` tapers the far end |
+| `cyl` | a cylinder | `cx cy r d z top`; `axis: "x"\|"y"` lays it down (centered on cx, cy; `d` is then its length; it rests on `z`, so its axis is at `z` plus its larger radius); `r2` tapers the far end |
 | `dome` | a rounded cap | `cx cy r d z color`, `clear` |
 | `pins` | a row of square pins | `x y` (top-left of the row), `count pitch dir len z rows size` |
 | `extrude` | any outline pushed up | `path` (closed SVG path in mm; inner subpaths cut holes), `d z top bevel` |

@@ -1,7 +1,5 @@
 import { CATALOG } from "./catalog";
 import { BOARDS } from "./models/boards";
-import { PROTOTYPING } from "./models/breadboard";
-import { PASSIVES } from "./models/passives";
 import { DISPLAYS } from "./models/displays";
 import { OUTPUTS } from "./models/outputs";
 import { RADIOS } from "./models/radios";
@@ -24,7 +22,7 @@ export const PART_GROUPS: PartGroup[] = [
 ];
 
 /** Parts not yet moved to `catalog/`, where each part has its own file. */
-const LEGACY: PartModel[] = [...BOARDS, ...PROTOTYPING, ...PASSIVES, ...SENSORS, ...OUTPUTS, ...DISPLAYS, ...RADIOS];
+const LEGACY: PartModel[] = [...BOARDS, ...SENSORS, ...OUTPUTS, ...DISPLAYS, ...RADIOS];
 const DEFINED = new Set(CATALOG.map((entry) => entry.model.id));
 
 /** All parts, grouped in display order with the most common first inside each group. */

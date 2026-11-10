@@ -4,12 +4,11 @@ import { Button } from "@kiungo/ui/button";
 import { openedAgo } from "../ipc";
 import { CircuitThumbnail } from "../home/CircuitThumbnail";
 import { FocusPanel, Metric } from "../shell/widgets";
-import { rolesForFocus, type View, type WorkspaceFocus } from "../shell/types";
+import type { View } from "../shell/types";
 
 export function Dashboard({
   auth,
   roles,
-  focus,
   recent,
   onView,
   onNewProject,
@@ -17,13 +16,12 @@ export function Dashboard({
 }: {
   auth: AuthState | null;
   roles: Role[];
-  focus: WorkspaceFocus;
   recent: RecentProject[] | null;
   onView: (view: View) => void;
   onNewProject: () => void;
   onOpenRecent: (project: RecentProject) => void;
 }) {
-  const visibleRoles = rolesForFocus(roles, focus);
+  const visibleRoles = roles;
   const name = auth?.status === "signed-in" ? auth.user.name.split(" ")[0] : null;
   const projects = (recent ?? []).filter((p) => !p.missing).slice(0, 3);
   const attention = (recent ?? []).filter((p) => !p.missing).length;
@@ -32,7 +30,6 @@ export function Dashboard({
     <div className="mx-auto max-w-[1280px] p-6">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="mb-1 text-xs font-medium text-primary">{focus}</p>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">{name ? `Good to see you, ${name}` : "Good to see you"}</h1>
           <p className="mt-1 text-sm text-muted">{attention ? `Your engineering environment is ready. ${attention} project${attention === 1 ? "" : "s"} on this computer.` : "Start a project to see it here."}</p>
         </div>
@@ -47,10 +44,9 @@ export function Dashboard({
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Metric label="Projects on this computer" value={String((recent ?? []).filter((p) => !p.missing).length)} detail="Open any time from Projects" />
         <Metric label="Roles active" value={String(roles.length)} detail={roles.length ? "Shaping your nav and dashboard" : "Add one in Settings"} tone="info" />
-        <Metric label="Current focus" value={focus === "Everything" ? "All" : focus.replace(" Focus", "")} detail="Change it from the sidebar" tone="accent" />
         <Metric label="Simulation" value="Ready" detail="3D, 2D, and trace views" tone="warn" />
       </div>
 

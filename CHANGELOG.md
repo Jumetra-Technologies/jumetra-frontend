@@ -10,6 +10,13 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.39.1] - 2026-11-10
+
+Desktop 0.13.3.
+
+### Removed
+- **The Current workspace dropdown in the desktop sidebar** (Everything, Research Focus, Engineering Focus and so on). The sidebar now starts with Dashboard, Projects and the rest. The footer label, the dashboard's Current focus tile and the Workspace focus buttons in Settings went with it. Roles still decide which modules show.
+
 ## [1.39.0] - 2026-11-09
 
 Kiungo now asks before counting how people use it, and the Cookie Policy says exactly what's counted. Needs jumetra-backend #15 for the account side.

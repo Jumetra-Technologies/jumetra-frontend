@@ -25,22 +25,3 @@ export const NAV_ITEMS: NavItem[] = [
   { view: "marketplace", label: "Marketplace", icon: "store" },
   { view: "assistant", label: "AI Assistant", icon: "spark" },
 ];
-
-/** A dashboard-only lens: narrows which role panels show, without changing what roles someone holds. */
-export const WORKSPACE_FOCUSES = ["Everything", "Research Focus", "Engineering Focus", "Teaching Focus", "Student Focus"] as const;
-export type WorkspaceFocus = (typeof WORKSPACE_FOCUSES)[number];
-
-export function rolesForFocus(roles: Role[], focus: WorkspaceFocus): Role[] {
-  switch (focus) {
-    case "Research Focus":
-      return roles.filter((r) => r === "researcher" || r === "university");
-    case "Engineering Focus":
-      return roles.filter((r) => r === "embedded-engineer" || r === "electrical-engineer" || r === "hobbyist");
-    case "Teaching Focus":
-      return roles.filter((r) => r === "stem-trainer" || r === "university");
-    case "Student Focus":
-      return roles.filter((r) => r === "student");
-    default:
-      return roles;
-  }
-}

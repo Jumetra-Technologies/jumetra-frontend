@@ -12,7 +12,7 @@ beforeEach(() => {
 
 describe("the sidebar", () => {
   it("always shows the modules that aren't role-gated", () => {
-    render(<Sidebar view="dashboard" onView={vi.fn()} roles={[]} focus="Everything" onFocus={vi.fn()} auth={signedOut} onSettings={vi.fn()} />);
+    render(<Sidebar view="dashboard" onView={vi.fn()} roles={[]} auth={signedOut} onSettings={vi.fn()} />);
     expect(screen.getByTestId("nav-dashboard")).toBeInTheDocument();
     expect(screen.getByTestId("nav-projects")).toBeInTheDocument();
     expect(screen.queryByTestId("nav-firmware")).not.toBeInTheDocument();
@@ -20,14 +20,14 @@ describe("the sidebar", () => {
   });
 
   it("shows a role-gated module once that role is held", () => {
-    render(<Sidebar view="dashboard" onView={vi.fn()} roles={["researcher"]} focus="Everything" onFocus={vi.fn()} auth={signedOut} onSettings={vi.fn()} />);
+    render(<Sidebar view="dashboard" onView={vi.fn()} roles={["researcher"]} auth={signedOut} onSettings={vi.fn()} />);
     expect(screen.getByTestId("nav-research")).toBeInTheDocument();
     expect(screen.queryByTestId("nav-firmware")).not.toBeInTheDocument();
   });
 
   it("reports which module was picked", () => {
     const onView = vi.fn();
-    render(<Sidebar view="dashboard" onView={onView} roles={[]} focus="Everything" onFocus={vi.fn()} auth={signedOut} onSettings={vi.fn()} />);
+    render(<Sidebar view="dashboard" onView={onView} roles={[]} auth={signedOut} onSettings={vi.fn()} />);
     fireEvent.click(screen.getByTestId("nav-projects"));
     expect(onView).toHaveBeenCalledWith("projects");
   });

@@ -1,6 +1,6 @@
 {
   "name": "kiungo-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "MCP server that lets AI models build circuits and robots in the Kiungo Engineering Lab and export them as .kiungo.json files.",
   "type": "module",

@@ -245,6 +245,10 @@ sim: { kind: "output" },                                                     // 
 
 `sweep` is the lab's demo signal until a person sets a value: from, to, and the period in seconds.
 
+A sensor's `analog` and `trips` pins are also what answers a person's own program: on the emulated board, and on a real board in a Hybrid run. A sensor with neither (one that only talks over I2C) shows its readings in the lab but is listed as one a program can't read yet.
+
+A driver's channel says how it is driven. `inputs` are IN1 and IN2 of an H-bridge (the motor turns while they differ), the single gate of a switch, or `["STEP", "DIR"]` of a stepper driver. `enable` is a bridge's PWM enable, on while high, or a stepper driver's EN, on while low. `standby: "STBY"` names a pin that must be high for any channel to run. A stepper driver that holds the winding current also sets `spec.power.bridge.limitMa`: the lab then expects a supply well above the motor's rated voltage and budgets what the driver really draws from it.
+
 Which kind a part is follows from how it is wired, not from its shelf in the library. A hobby servo has its driver inside: it takes a supply, a ground and one PWM wire, so it is `kind: "output"` with `vcc`, `gnd` and `pwm` pins. A bare DC motor or a pump is `kind: "motor"`: two `load` terminals that go on a driver's outputs.
 
 Pins that give a supply are written like a board's: a battery's terminals are `rail("POS", "+", 6)` and `ground("NEG", "left", "−")`, and a converter's output is `rail("VOUT", "OUT+", 5)` beside `ground("GNDOUT", "left", "OUT−")`. Pin ids are letters, digits and underscores; put symbols in the label. Join pins that are one piece of copper inside the part with `lab: { strips: [["GNDIN", "GNDOUT"]] }`.

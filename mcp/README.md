@@ -2,7 +2,7 @@
 
 Lets AI models (Claude, ChatGPT, Gemini, Grok, or any MCP client) build circuits and robots in Kiungo's Engineering Lab, check and simulate them, and hand back a `.kiungo.json` file you open in Kiungo.
 
-It runs the Lab's own code (`lib/lab`, `packages/core/src/parts`), so a build the AI makes is checked by the same circuit analysis, autowire and simulator the browser uses.
+It runs the Lab's own code (`packages/core/src/lab`, `packages/core/src/parts`), so a build the AI makes is checked by the same circuit analysis, autowire and simulator the browser uses.
 
 ## Run it
 
@@ -46,9 +46,9 @@ Platform menus change often; check each vendor's current MCP documentation.
 
 | Tool | Does |
 | --- | --- |
-| `search_parts`, `get_part`, `suggest_parts` | Find the 34 parts the Lab models and their pins |
+| `search_parts`, `get_part`, `suggest_parts` | Find the parts the Lab models (every part in the Component library), their pins, what they draw and where they fall short |
 | `create_session`, `list_sessions`, `get_session`, `delete_session` | Manage builds |
-| `add_part` | Place a part; peripherals auto-wire to a board |
+| `add_part` | Place a part; peripherals auto-wire to a board, a battery to the driver or converter waiting for one, a motor to a free driver channel. A `hint` says what to add first when a part had nothing to wire to |
 | `connect_pins`, `autowire_part`, `remove_items`, `update_part` | Edit wiring and layout |
 | `check_circuit` | The Lab's circuit check: errors, warnings, tips, each part's status |
 | `get_controls`, `set_inputs` | Sensor surroundings, actuator commands, board sketch settings |
@@ -66,7 +66,7 @@ Engineering Lab → session menu → **Open from file…**, or drop the `.kiungo
 ## Limits
 
 - The Lab runs a built-in default sketch, not custom firmware; the tools say so to the model.
-- There is no resistor, battery or motor-driver part, so some real-world advice (a voltage divider, a separate motor supply) appears as warnings or tips rather than parts.
+- Batteries, converters, motor drivers and level shifters are parts, and the circuit check budgets each supply and warns about heat. Capacitors, diodes and transistors can be placed and wired but are not simulated.
 - This server has no authentication. Run it locally, or put it behind auth before exposing it publicly.
 
 ## Try it from a shell

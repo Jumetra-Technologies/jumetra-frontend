@@ -116,10 +116,16 @@ export function partDetail(id: string) {
     tolerates_5v: p.tolerates5V,
     supply_range_v: p.supply,
     description: part?.summary,
+    // The numbers that size a build: what it draws, what a battery or driver gives, where it falls short and what is better.
+    power: part?.spec?.power,
+    limits: part?.spec?.limits,
+    better_for_new_builds: part?.spec?.upgrade?.map((u) => ({ part_id: u.part, name: u.name, why: u.why })),
     pins: p.pins.map((pin) => ({
       pin: pin.id,
       label: pin.label,
       ...(p.controller ? { can: pin.fns, supplies_v: pin.supplies, input_only: pin.inputOnly || undefined } : { needs: pin.role, required: pin.required || undefined }),
+      // A pin with its own supply range (a driver's motor supply, a board's VIN).
+      accepts_v: pin.accepts,
       note: pin.note,
     })),
   };
@@ -178,6 +184,12 @@ function applyWires(s: LabSession, list: Array<{ from: PinRef; to: PinRef }>): {
   return { session: { ...s, wires }, added };
 }
 
+/** Carry out an auto-wire plan: take out the wires it replaces (a supply moved to a new battery, a pin-to-LED wire a resistor goes into), then add its own. */
+function applyPlan(s: LabSession, plan: { wires: Array<{ from: PinRef; to: PinRef }>; remove?: string[] }) {
+  const gone = new Set(plan.remove ?? []);
+  return applyWires(gone.size ? { ...s, wires: s.wires.filter((w) => !gone.has(w.id)) } : s, plan.wires);
+}
+
 export function addPart(s: LabSession, partId: string, opts: { label?: string; near?: string; x?: number; y?: number; autowire?: boolean; board?: string } = {}) {
   if (!hasPinout(partId)) {
     const hint = searchParts(partId).filter((p) => hasPinout(p.id)).slice(0, 5).map((p) => p.id);
@@ -191,16 +203,18 @@ export function addPart(s: LabSession, partId: string, opts: { label?: string; n
   let added: LabWire[] = [];
   let skipped: string[] = [];
   let board: LabNode | null = null;
+  let hint: string | undefined;
   if (opts.autowire !== false && !getPinout(partId).controller) {
     const plan = planAutoWire(node, next.nodes, next.wires, opts.board ? resolveNode(s, opts.board).id : undefined);
     board = plan.board;
     skipped = plan.skipped;
-    const r = applyWires(next, plan.wires);
+    hint = plan.hint;
+    const r = applyPlan(next, plan);
     next = r.session;
     added = r.added;
     if (added.length && board) next = log(next, "wire", `Auto-wired ${node.label} to ${board.label} (${added.length} wires)`, [node.id, board.id]);
   }
-  return { session: next, node, board, added, skipped };
+  return { session: next, node, board, added, skipped, hint };
 }
 
 export function connectPins(s: LabSession, from: { node: string; pin: string }, to: { node: string; pin: string }) {
@@ -216,10 +230,11 @@ export function autowirePart(s: LabSession, nodeRef: string, boardRef?: string) 
   const node = resolveNode(s, nodeRef);
   if (getPinout(node.partId).controller) throw new LabError(`${node.label} is a board; autowire a part to it instead.`);
   const plan = planAutoWire(node, s.nodes, s.wires, boardRef ? resolveNode(s, boardRef).id : undefined);
-  if (!plan.board) throw new LabError("There is no board in this session to wire to. Add one first.");
-  const r = applyWires(s, plan.wires);
+  // A battery, a converter and a bare motor wire to other parts than a board; when nothing is ready for them the plan says what to add.
+  if (!plan.board) throw new LabError(plan.hint ?? "There is no board in this session to wire to. Add one first.");
+  const r = applyPlan(s, plan);
   const session = r.added.length ? log(r.session, "wire", `Auto-wired ${node.label} to ${plan.board.label} (${r.added.length} wires)`, [node.id, plan.board.id]) : r.session;
-  return { session, board: plan.board, added: r.added, skipped: plan.skipped };
+  return { session, board: plan.board, added: r.added, skipped: plan.skipped, hint: plan.hint };
 }
 
 export function removeItems(s: LabSession, nodeRefs: string[] = [], wireIds: string[] = []) {

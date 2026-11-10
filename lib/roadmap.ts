@@ -72,6 +72,7 @@ export const PHASES: Phase[] = [
           "Five reference experiments with acceptance tests (QA cycles 1 and 2)",
           "Live displays, audible buzzers, USB power on Run",
           "Skeleton loading and a canvas-first lab",
+          "Component library of 88 parts with power, heat and sourcing data; batteries, motor drivers and a power budget in the lab (v1.40)",
         ],
       },
       {

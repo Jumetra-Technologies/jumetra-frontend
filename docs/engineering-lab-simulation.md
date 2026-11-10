@@ -48,7 +48,7 @@ There is no firmware execution in the lab; the Firmware page is separate. The "s
 
 ### Display glass
 
-Display models carry `screen:N` text solids (`packages/core/src/parts/models/displays.ts`). In the library they show sample text; in the lab `withScreenText()` (`packages/core/src/parts/index.ts`) writes the frame's lines into them, in the 3D and top views, and blanks the `screen-demo` decoration. The lab never shows the library's sample text.
+Display models carry `screen:N` text solids (each display's own file under `packages/core/src/parts/catalog/displays/`). In the library they show sample text; in the lab `withScreenText()` (`packages/core/src/parts/index.ts`) writes the frame's lines into them, in the 3D and top views, and blanks the `screen-demo` decoration. The lab never shows the library's sample text.
 
 ## 2. The five experiments: what was wrong and what changed
 
@@ -149,7 +149,33 @@ The server stores sessions below the signed-in user's document. These routes ans
 
 Sessions are bounded JSON documents (parts, wires, inputs, a log capped at 400 entries). The store merges server and browser copies on sign-in, saves changed sessions with a short debounce, and keeps the browser copy as an offline cache.
 
-## 7. Known limits and remaining work
+## 7. Power, batteries and heat (v1.40.0)
+
+Each part's file under `packages/core/src/parts/catalog` carries its engineering data (`spec`) and how the lab runs it (`sim`). The lab reads both; nothing below is written per part in the lab's code.
+
+- **Supplies.** A board's supply pins, a battery's + terminal (`sim.kind: "source"`) and a converter's output (`"converter"`) are supplies. A converter's output is live only while its input is, so `analyze()` settles the nets in passes (`settle()` in `packages/core/src/lab/circuit.ts`). Two converters in a row work.
+- **A board on a battery.** A pin with its own range (`accepts`, for example the Uno's VIN at 7 V to 12 V) is an input when a supply is wired to it. Too little is the fault `vin-under`, too much `vin-over`.
+- **Ranges per pin.** A part with two supplies (a driver's logic and its motors) has each pin checked against its own `accepts` range, falling back to the part's `supply`.
+- **Motors.** A bare motor (`"motor"`) runs from a driver channel, a relay or MOSFET module, or straight across a supply. On a board pin it is an error that says to put a driver between them. A stepper (`second`) needs both coils on one driver. In a run its speed follows the supply less what the driver loses (`bridge.dropV`, or `bridge.ohms` times the current).
+- **Stepper drivers.** A driver that holds the winding current (`bridge.limitMa`, the A4988) is meant to run from far more than the motor's rated voltage, so the over-voltage warning does not apply to it. What it takes from its supply is the copper loss in the two windings plus its own loss, over the supply voltage: a NEMA 17 held at 1 A a winding takes about 0.4 A from an 11.1 V pack.
+- **Shared ground.** A part powered from one supply and signaled from a board on another must share a ground, or the lab warns.
+- **Level shifter.** A wire that passes through a shifter (`"shifter"`) no longer raises "5 V signal into a 3.3 V input".
+- **Budget** (`packages/core/src/lab/power.ts`). Every supply is totaled: each part's working draw and its worst case (a stalled motor, a radio burst). What a converter or a battery-fed board is asked for is passed back to whatever feeds it, through the converter's efficiency. Over the supply's rating is a warning; fine on average but over at worst is a tip. A battery shows the hours it lasts, and in a run its reading sags by its internal resistance.
+- **Heat.** A driver's loss comes from its motors' running current, a converter's from what it passes, and a board regulator's from the volts it drops, only while the board is fed through VIN. Loss times the part's °C per watt, on top of 25 °C, is its temperature; past its limit the lab warns and names the better part from the same data.
+- **Auto-wire** (`packages/core/src/lab/autowire.ts`). A battery goes to the driver or converter waiting for one, moving a supply pin that was parked on the board. A converter goes to a battery that fits it, a motor to a free driver channel, and a driver's control pins to board pins. When nothing fits, the plan carries a `hint` that says what to add.
+- **Where it shows.** The Power section of Circuit check (`packages/lab/src/PowerPanel.tsx`), the readings on a selected part, and the same faults through the MCP server's `check_circuit`.
+- **Your own code** (`packages/core/src/lab/program.ts`, `packages/core/src/hybrid/plan.ts`). A sensor or control described in data answers a program on its analog and digital pins, on the emulated board and in a Hybrid run. A motor on a driver turns as the program drives the driver's pins: IN1 and IN2 with the PWM duty for an H-bridge, the gate of a MOSFET module, one step for each pulse on STEP for a stepper driver, and only while a standby pin the board controls is high.
+
+Tests: `__tests__/LabPower.test.ts`.
+
+## 8. Known limits and remaining work
+
+- The TT gear motor (`dc-motor`) still stands for a motor with its driver in the lab (pins VM, GND, IN1, IN2, EN), because the robot world, the starter projects and saved builds use it that way. The N20 motor, the pump and the steppers are wired the real way.
+- Capacitors, diodes and transistors can be placed and wired but carry no current in the model.
+- A supply's voltage is fixed for the wiring checks. Sag shows on a battery's reading in a run, but an overloaded supply does not brown the build out; the budget warns instead.
+- The Arduino Nano runs the built-in sketch rules like the other boards, but a project cannot target it for its own code yet.
+- A program can't yet read the sensors that only talk over I2C (VL53L0X, TCS34725, BNO055, QMC5883L, INA219), the IR receiver's codes, the keypad's matrix or a rotary encoder's two phases as a real library would, and NeoPixels, the TM1637, the MAX7219 and the PCA9685 are not shown under a program: their protocols are not emulated. The lab says so on the part.
+- The robot world still drives the TT gear motor only: a robot built from N20 motors and a driver runs in the lab but not round a course.
 
 - Inputs are not mirrored to the backend workspace; they live in the browser session like the rest of the build.
 - The sketch rules are fixed. Writing your own firmware for a lab build (the Firmware page's projects) is not connected to the lab's simulation; that needs a backend-run or browser-run interpreter and is out of scope here.

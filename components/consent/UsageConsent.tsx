@@ -20,8 +20,9 @@ export function useUsageConsent(): UsageConsent | null | undefined {
 
 /** Answer the question, keeping the account in step when signed in. */
 export function useDecideUsage(): (allowed: boolean) => Promise<void> {
-  const signedIn = useAuthStore((s) => s.isAuthenticated);
-  return (allowed) => decideUsage(allowed, { signedIn, save: api.saveMyConsents });
+  // The answer stays in this browser: accounts live on Kiungo's main server, which doesn't keep it,
+  // and usage is counted by the browser's id on the admin portal's server (lib/activity/heartbeat.ts).
+  return (allowed) => decideUsage(allowed, { signedIn: false, save: api.saveMyConsents });
 }
 
 /** Keeps this browser's answer and the account's the same once someone is signed in: the newer one wins. */
@@ -73,7 +74,7 @@ export function UsageConsentBanner() {
         Can Kiungo count how you use it?
       </h2>
       <p className="mt-1 text-[13.5px] leading-5 text-[var(--notice-muted)]">
-        With your OK, Kiungo records which pages you open and how long you spend on the website and in the desktop app, so our team can see what helps. It never records what you type or build. You can change your mind any time in Settings.{" "}
+        With your OK, Kiungo records which pages you open and how long you spend here, without your name, so our team can see what helps. It never records what you type or build. You can change your mind any time in Settings.{" "}
         <Link href="/legal/cookies" className="font-medium text-white underline underline-offset-2 hover:no-underline">
           Cookie Policy
         </Link>

@@ -1,4 +1,4 @@
-import { API_BASE } from "@/lib/api-client";
+import { ADMIN_API_BASE } from "@/lib/api-client";
 
 /**
  * The admin portal's calls. The password is checked by the server, which
@@ -116,7 +116,7 @@ function save(session: AdminSession | null) {
 
 async function call(path: string, init: RequestInit = {}, fetchImpl: typeof fetch = fetch): Promise<Response> {
   try {
-    return await fetchImpl(`${API_BASE}${path}`, { ...init, credentials: "omit", cache: "no-store" });
+    return await fetchImpl(`${ADMIN_API_BASE}${path}`, { ...init, credentials: "omit", cache: "no-store" });
   } catch {
     throw new AdminError("offline", "Kiungo's servers can't be reached. Check the connection and try again.");
   }

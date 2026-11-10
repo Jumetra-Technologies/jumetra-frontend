@@ -180,7 +180,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
           ["Temporary lab sessions and simulations", "You, while using the Engineering Lab", "To run and explore designs", "Temporary session state; not saved to your account"],
           ["Theme, sidebar state, learning progress", "You", "To remember your preferences", "Your browser's local storage only"],
           ["Technical logs (requests, errors)", "Your browser's requests to Kiungo", "To keep Kiungo running and find faults", "Kiungo's servers, for a limited time"],
-          ["Usage, only if you allow it: which page is open, and how long Kiungo is in use each day", "The website while its tab is visible and you're using it, and the desktop app while its window is in use, after you choose Allow in the banner or in Settings, Privacy", "So Kiungo's team can see how much Kiungo is used, which pages matter most and who is online, and plan from that. Your consent is the basis; you can withdraw it any time", "Kiungo's servers, as daily totals for 400 days. Signed out, it is tied to a random id your browser makes, never your name. Saying no deletes what was counted for you. Details in the [Cookie Policy](/legal/cookies)"],
+          ["Usage, only if you allow it: which page is open, and how long Kiungo is in use each day", "The website while its tab is visible and you're using it, after you choose Allow in the banner or in Settings, Privacy", "So Kiungo's team can see how much Kiungo is used, which pages matter most and who is online, and plan from that. Your consent is the basis; you can withdraw it any time", "Kiungo's servers, as daily totals for 400 days, tied to a random id your browser makes, never your name. Saying no deletes what was counted for your browser. Details in the [Cookie Policy](/legal/cookies)"],
         ],
         caption: "Everything Kiungo collects",
       },
@@ -231,14 +231,14 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
     blocks: [
       {
         type: "p",
-        text: "This policy covers three things: the two cookies that keep you signed in, what Kiungo keeps in your browser, and the usage Kiungo counts for its team: which pages you open and how long you spend on the website and in the desktop app. That last part happens only if you allow it.",
+        text: "This policy covers three things: the two cookies that keep you signed in, what Kiungo keeps in your browser, and the usage Kiungo counts for its team: which pages you open and how long you spend on the website. That last part happens only if you allow it.",
       },
       { type: "h2", text: "In short" },
       {
         type: "ul",
         items: [
           "Kiungo sets two cookies, only to keep you signed in.",
-          "Kiungo counts which pages you open and how long you use it only after you choose **Allow**. Until you choose, nothing is counted.",
+          "Kiungo counts which pages you open and how long you use the website only after you choose **Allow**, and never by name. Until you choose, nothing is counted.",
           "You can change your answer any time in **Settings, Privacy**. Saying no deletes what was counted for you.",
           "No advertising, no third-party analytics, and nothing is sold or shared.",
         ],
@@ -266,10 +266,10 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         type: "ul",
         items: [
-          "**Which page you open** on the website, by its address with ids taken out (so `/projects/:id`, never the name of your project), and on the desktop app whether you're on its home screen or in a project.",
-          "**How long you spend:** on the website while its tab is showing and you've moved, typed or scrolled in the last five minutes, and in the desktop app while its window is showing and the computer is in use. Kiungo keeps the total for each day, and whether it was the website or the desktop app.",
+          "**Which page you open** on the website, by its address with ids taken out (so `/projects/:id`, never the name of your project).",
+          "**How long you spend** on the website while its tab is showing and you've moved, typed or scrolled in the last five minutes. Kiungo keeps the total for each day.",
           "**Whether you're online now:** the page you're on and since when, while Kiungo is open. It's shown to the team as online for two minutes after your last activity.",
-          "**Signed in,** these are tied to your account, so the team sees your name and email next to your time and the last time you were seen. **Signed out,** they're tied to a random id your browser makes (`kiungo.visitor`), which Kiungo's server scrambles before keeping it, so nobody can tell who you are.",
+          "**Not your name:** these are tied to a random id your browser makes (`kiungo.visitor`), which Kiungo's server scrambles before keeping it, so the team sees how a browser uses Kiungo, not who you are. This is the same whether or not you're signed in.",
         ],
       },
       { type: "h3", text: "What is never counted" },
@@ -296,8 +296,8 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         items: [
           "The first time you visit, Kiungo asks. **Allow** and **Don't allow** are side by side and work the same way. Until you choose, nothing is counted.",
           "Change your answer any time in **Settings, Privacy** (the gear at the bottom of the sidebar).",
-          "Saying **Don't allow**, now or later, stops the counting. It also deletes the time and online status counted for you, or for your browser if you're signed out. The page totals don't name anyone, so they stay.",
-          "Signed in, your answer is kept on your account. It applies wherever you sign in, including the desktop app, and Kiungo's server ignores usage from any account that hasn't said yes.",
+          "Saying **Don't allow**, now or later, stops the counting. It also deletes the time and online status counted for your browser. The page totals don't name anyone, so they stay.",
+          "Your answer is kept in this browser, so each browser you use asks once. The desktop app doesn't send usage at the moment.",
           "If you're under 18, ask a parent, guardian or teacher before you choose **Allow**.",
         ],
       },

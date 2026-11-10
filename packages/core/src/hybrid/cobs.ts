@@ -3,7 +3,7 @@
  * COBS-encoded and end with a 0x00, so a receiver can resynchronize after any
  * corruption by waiting for the next zero (INJ-04).
  *
- * The board's decoder is in apps/desktop/resources/hybrid/KiungoHybrid/src/kiungo_hybrid.cpp
+ * The board's decoder is in kiungo:apps/desktop/resources/hybrid/KiungoHybrid/src/kiungo_hybrid.cpp
  * and must stay byte-compatible with this one.
  */
 

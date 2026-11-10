@@ -1,14 +1,10 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppPreview } from "@/components/landing/AppPreview";
 import { DesktopRelease } from "@/components/landing/DesktopRelease";
 import { DownloadBlock } from "@/components/landing/DownloadBlock";
 import { DESKTOP, structuredData } from "@/lib/landing/content";
-import { classifyInstaller, detectPlatform, fileLabel, fileName, githubRelease, latestRelease, manifestRelease, primaryFile, releaseFromGitHub, type Release } from "@/lib/releases";
-import { buildManifest, classify, latestChangelogSection } from "../.github/scripts/desktop-release-manifest.mjs";
+import { classifyInstaller, detectPlatform, feedVersion, fileLabel, fileName, githubRelease, latestRelease, manifestRelease, primaryFile, releaseFromGitHub, type Release } from "@/lib/releases";
 
 const files: Release["files"] = [
   { platform: "windows", arch: "x64", kind: "nsis", url: "https://github.com/Jumetra-Technologies/jumetra-frontend/releases/download/desktop-v0.11.0/Kiungo-0.11.0-win-x64.exe", sha512: "a".repeat(88), size: 98 * 1024 * 1024 },
@@ -68,43 +64,63 @@ describe("where the release comes from", () => {
     const fromBackend = await latestRelease(fetchImpl);
     expect(fromBackend).toMatchObject({ version: "0.12.0", source: "backend" });
 
+    // Before Kiungo's first release: no feed there, no releases there, so the newest from before the move.
+    const asked: string[] = [];
     const fallback = vi.fn(async (url: string) => {
+      asked.push(url);
       if (url.includes("/releases/latest")) return json({ detail: "none" }, 404);
-      if (url.startsWith("https://api.github.com/")) return json([{ ...gh, draft: true }, gh]);
+      if (url.includes("/desktop-feed/")) return json({ detail: "none" }, 404);
+      if (url === "https://api.github.com/repos/Jumetra-Technologies/kiungo/releases?per_page=10") return json([]);
+      if (url === "https://api.github.com/repos/Jumetra-Technologies/jumetra-frontend/releases?per_page=10") return json([{ ...gh, draft: true }, gh]);
       if (url.endsWith("kiungo-release.json")) return json({ channel: "beta", version: "0.11.0", notes: "n", published_at: gh.published_at, files });
       throw new Error(`unexpected ${url}`);
     }) as unknown as typeof fetch;
     const fromGitHub = await latestRelease(fallback);
     expect(fromGitHub).toMatchObject({ version: "0.11.0", source: "github", releaseUrl: gh.html_url });
     expect(fromGitHub?.files).toHaveLength(5);
+    expect(asked.indexOf("https://api.github.com/repos/Jumetra-Technologies/kiungo/releases?per_page=10")).toBeLessThan(asked.indexOf("https://api.github.com/repos/Jumetra-Technologies/jumetra-frontend/releases?per_page=10"));
+
+    // Once Kiungo has a release, it's that one.
+    const moved = vi.fn(async (url: string) => {
+      if (url.includes("/releases/latest") || url.includes("/desktop-feed/")) return json({ detail: "none" }, 404);
+      if (url === "https://api.github.com/repos/Jumetra-Technologies/kiungo/releases?per_page=10") return json([{ ...gh, tag_name: "desktop-v0.14.0", html_url: "https://github.com/Jumetra-Technologies/kiungo/releases/tag/desktop-v0.14.0", assets: gh.assets.slice(0, 2) }]);
+      throw new Error(`unexpected ${url}`);
+    }) as unknown as typeof fetch;
+    expect(await latestRelease(moved)).toMatchObject({ version: "0.14.0", releaseUrl: "https://github.com/Jumetra-Technologies/kiungo/releases/tag/desktop-v0.14.0" });
   });
 
-  it("the manifest of the version this site was built with comes straight from the download CDN, before the API", async () => {
-    const manifest = { channel: "beta", version: "0.11.0", notes: "n", published_at: gh.published_at, files };
+  it("the version the app's update feed offers, and its manifest, come straight from the download CDN, before the API", async () => {
+    const manifest = { channel: "beta", version: "0.14.0", notes: "n", published_at: gh.published_at, files };
+    const FEED = "https://github.com/Jumetra-Technologies/kiungo/releases/download/desktop-feed/";
     const fetchImpl = vi.fn(async (url: string) => {
-      if (url === "https://github.com/Jumetra-Technologies/jumetra-frontend/releases/download/desktop-v0.11.0/kiungo-release.json") return json(manifest);
+      if (url === "https://github.com/Jumetra-Technologies/kiungo/releases/download/desktop-v0.14.0/kiungo-release.json") return json(manifest);
       if (url.endsWith("/kiungo-release.json")) return json({ detail: "none" }, 404);
       throw new Error(`unexpected ${url}`);
     }) as unknown as typeof fetch;
-    expect(await manifestRelease("0.11.0", fetchImpl)).toMatchObject({ version: "0.11.0", source: "github", releaseUrl: "https://github.com/Jumetra-Technologies/jumetra-frontend/releases/tag/desktop-v0.11.0" });
-    expect(await manifestRelease("0.12.0", fetchImpl)).toBeNull();
+    expect(await manifestRelease("0.14.0", fetchImpl)).toMatchObject({ version: "0.14.0", source: "github", releaseUrl: "https://github.com/Jumetra-Technologies/kiungo/releases/tag/desktop-v0.14.0" });
+    expect(await manifestRelease("0.15.0", fetchImpl)).toBeNull();
     expect(await manifestRelease("../evil", fetchImpl)).toBeNull();
     expect(await manifestRelease("", fetchImpl)).toBeNull();
 
-    // With the backend empty, latestRelease takes the built-with version's manifest and never calls the API.
-    vi.stubEnv("NEXT_PUBLIC_DESKTOP_VERSION", "0.11.0");
+    // Stable first; a beta-only feed offers its beta. Anything that isn't a version is ignored.
+    const feed = (files: Record<string, string>) => vi.fn(async (url: string) => (url.startsWith(FEED) && files[url.slice(FEED.length)] ? new Response(files[url.slice(FEED.length)]) : json({ detail: "none" }, 404))) as unknown as typeof fetch;
+    expect(await feedVersion(feed({ "latest.yml": "version: 0.14.1\nfiles: []\n", "beta.yml": "version: 0.15.0-beta.1\n" }))).toBe("0.14.1");
+    expect(await feedVersion(feed({ "beta.yml": "version: '0.14.0'\npath: x\n" }))).toBe("0.14.0");
+    expect(await feedVersion(feed({ "beta.yml": "version: ../evil\n" }))).toBeNull();
+    expect(await feedVersion(feed({}))).toBeNull();
+
+    // With the backend empty, latestRelease takes the feed's version and its manifest, and never calls the API.
     const calls: string[] = [];
     const ordered = vi.fn(async (url: string) => {
       calls.push(url);
       if (url.includes("/releases/latest")) return json({ detail: "none" }, 404);
+      if (url === `${FEED}latest.yml`) return json({ detail: "none" }, 404);
+      if (url === `${FEED}beta.yml`) return new Response("version: 0.14.0\n");
       if (url.endsWith("/kiungo-release.json")) return json(manifest);
       throw new Error(`unexpected ${url}`);
     }) as unknown as typeof fetch;
-    vi.resetModules();
-    const { latestRelease: fresh } = await import("@/lib/releases");
-    expect(await fresh(ordered)).toMatchObject({ version: "0.11.0", source: "github" });
+    expect(await latestRelease(ordered)).toMatchObject({ version: "0.14.0", source: "github" });
     expect(calls.some((u) => u.startsWith("https://api.github.com/"))).toBe(false);
-    vi.unstubAllEnvs();
   });
 
   it("without a manifest, the installers' names say what they are", async () => {
@@ -129,31 +145,6 @@ describe("where the release comes from", () => {
     expect(data.softwareVersion).toBe("0.11.0");
     expect(data.downloadUrl).toBe(files[0].url);
     expect(structuredData("https://kiungo.example", null)).not.toHaveProperty("downloadUrl");
-  });
-});
-
-describe("the release manifest the workflow writes", () => {
-  it("classifies installers by name and takes the newest CHANGELOG section", () => {
-    expect(classify("Kiungo-0.11.0-win-x64.exe")).toEqual({ platform: "windows", arch: "x64", kind: "nsis" });
-    expect(classify("Kiungo-0.11.0-mac-arm64.dmg")).toEqual({ platform: "macos", arch: "arm64", kind: "dmg" });
-    expect(classify("Kiungo-0.11.0-linux-amd64.deb")).toEqual({ platform: "linux", arch: "x64", kind: "deb" });
-    expect(classify("latest-mac.yml")).toBeNull();
-    expect(latestChangelogSection("# Changelog\n\nintro\n\n## [1.31.0] - 2026-11-02\n\nNew.\n\n## [1.30.0] - 2026-11-02\n\nOld.\n")).toBe("## [1.31.0] - 2026-11-02\n\nNew.");
-  });
-
-  it("writes every installer with its hash, size and GitHub download address", () => {
-    const dist = mkdtempSync(join(tmpdir(), "kiungo-dist-"));
-    writeFileSync(join(dist, "Kiungo-0.11.0-win-x64.exe"), "exe");
-    writeFileSync(join(dist, "Kiungo-0.11.0-linux-x86_64.AppImage"), "app");
-    writeFileSync(join(dist, "latest.yml"), "not an installer");
-    const { manifest, notes } = buildManifest({ dist, repository: "Jumetra-Technologies/jumetra-frontend", tag: "desktop-v0.11.0", channel: "beta", version: "0.11.0", changelog: "## [1.31.0] - 2026-11-02\n\nNew things.\n", now: new Date("2026-11-02T12:00:00Z") });
-    expect(manifest).toMatchObject({ channel: "beta", version: "0.11.0", published_at: "2026-11-02T12:00:00.000Z" });
-    expect(manifest.files).toHaveLength(2);
-    expect(manifest.files[1]).toMatchObject({ platform: "windows", arch: "x64", kind: "nsis", size: 3, url: "https://github.com/Jumetra-Technologies/jumetra-frontend/releases/download/desktop-v0.11.0/Kiungo-0.11.0-win-x64.exe" });
-    expect(manifest.files[1].sha512).toMatch(/^[A-Za-z0-9+/]+=*$/);
-    expect(manifest.notes).toContain("New things.");
-    expect(manifest.notes).toContain("aren't signed yet");
-    expect(notes).toContain("| Kiungo-0.11.0-win-x64.exe |");
   });
 });
 

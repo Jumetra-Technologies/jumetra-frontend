@@ -95,7 +95,7 @@ export interface DesktopMoment {
 
 /**
  * The desktop app's release, at the end of the home page (sprint 11). The
- * screenshots are the app as it is: `apps/desktop`, taken at 1280 × 820.
+ * screenshots are the app as it is (its repository is named kiungo), taken at 1280 × 820.
  */
 export const DESKTOP = {
   heading: "Then take it\nto your desk.",

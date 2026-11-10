@@ -23,16 +23,17 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## Repository layout
 
-The website is the Next.js app at the root. Phase Two adds npm workspaces beside it, so the website and the Kiungo 2 desktop app share one engine:
+The website is the Next.js app at the root, with npm workspaces beside it for the engine it shares with the desktop app:
 
 | Folder | Package | What it holds |
 | --- | --- | --- |
 | `packages/core` | `@kiungo/core` | Parts, the lab model, firmware files, board definitions and the board emulator. No React. |
+| `packages/lab` | `@kiungo/lab` | The Engineering Lab interface: canvas, parts panel, Inspector. |
 | `packages/ui` | `@kiungo/ui` | Kiungo 2 design tokens and brand assets. |
-| `packages/api` | `@kiungo/api` | The typed contract between the desktop app's main process and its interface. |
-| `apps/desktop` | `@kiungo/desktop` | The Electron app. See `apps/desktop/README.md`. |
 
 `npm install` at the root installs everything. The website imports the engine as `@kiungo/core/...`.
+
+**The desktop app lives in [Jumetra-Technologies/kiungo](https://github.com/Jumetra-Technologies/kiungo)** (since Nov 2026, desktop 0.14.0), with its checks and its releases. Desktop code goes there, not here: `__tests__/DesktopLivesInKiungo.test.ts` fails if it comes back. The shared packages have a copy in both repositories for now, so a change the desktop app also needs has to be made in both.
 
 ## Checks before a pull request
 

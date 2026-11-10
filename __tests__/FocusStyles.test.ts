@@ -19,7 +19,7 @@ const ALLOWED: Array<[RegExp, string]> = [
 
 describe("keyboard focus stays visible", () => {
   it("everything that removes the outline draws its own focus style", () => {
-    const lines = execSync(String.raw`grep -rnE "outline-none|outline-hidden" components app packages/ui/src packages/lab/src apps/desktop/src --include=*.tsx || true`, { encoding: "utf8" })
+    const lines = execSync(String.raw`grep -rnE "outline-none|outline-hidden" components app packages/ui/src packages/lab/src --include=*.tsx || true`, { encoding: "utf8" })
       .split("\n")
       .filter(Boolean)
       .filter((line) => !OWN_FOCUS.test(line))

@@ -503,8 +503,12 @@ export type PartSim =
       reads: SenseQuantity[];
       /** The quantity shown on the part's badge. Defaults to the first. */
       badge?: string;
-      /** An analog output pin: the voltage follows a quantity across its range. */
-      analog?: Array<{ pin: string; key: string; invert?: boolean }>;
+      /**
+       * An analog output pin: the voltage follows a quantity across its range.
+       * With `near: [center, width]` it peaks instead while the quantity is at
+       * `center` and falls to nothing `width` away: one sensor of a line array.
+       */
+      analog?: Array<{ pin: string; key: string; invert?: boolean; near?: [number, number] }>;
       /** A digital output pin: on while a quantity is past a level. */
       trips?: Array<{ pin: string; key: string; when: "below" | "above"; at: number; activeLow?: boolean }>;
     }
@@ -526,7 +530,13 @@ export type PartSim =
       ground: string;
       channels: Array<{ outputs: [string, string]; inputs: string[]; enable?: string }>;
     }
-  | { /** Motors and other two-terminal loads a driver or switch runs. */ kind: "motor"; terminals: [string, string] }
+  | {
+      /** Motors and other two-terminal loads a driver or switch runs. */
+      kind: "motor";
+      terminals: [string, string];
+      /** A stepper's second coil: it goes on another channel of the same driver. */
+      second?: [string, string];
+    }
   | { /** Chips that give a board more outputs over a bus (a 16-channel PWM driver): these pins act as the board's own output pins. */ kind: "expander"; outputs: string[] }
   | { /** Level shifters: each pair of pins is the same signal at two voltages, so a 5 V board and a 3.3 V part can share it. */ kind: "shifter"; pairs: Array<[string, string]> }
   | { /** Parts that just run when powered and driven: lights, sounders, displays. */ kind: "output" };

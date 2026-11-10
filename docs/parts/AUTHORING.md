@@ -162,6 +162,8 @@ pins: [
 
 Pass `{ required: false }` for a pin that may be left unwired. Pass `{ label: "Trig" }` when the printed name differs from the id.
 
+A part with two supplies (a motor driver's logic and its motors, a level shifter's two sides): `spec.power.supply` is the range of its logic supply, and the other supply pin carries its own range: `vcc("VM", "Motor supply, 4.5 V to 13.5 V.", { accepts: [4.5, 13.5] })`. The lab checks each pin against its own range and wants every required one fed.
+
 `pinAt` gives each pin's position: the hole, pad, leg or screw a wire lands on. Use `name(piece, …)` for kit pieces, `along(ids, x, y, dir)` for a row and `grid(rows, x, y)` for a block. The check fails if no pin is placed and warns for each pin left out.
 
 ### `circuit`: the Trace view
@@ -227,7 +229,7 @@ For parts the lab has no hand-written model for. The numbers stay in `spec.power
 sim: {
   kind: "sensor",
   reads: [{ key: "distanceCm", label: "Distance", unit: "cm", min: 3, max: 200, step: 1, start: 40, sweep: [20, 120, 12], digits: 0 }],
-  analog: [{ pin: "AO", key: "distanceCm", invert: true }],                 // a voltage that follows the value
+  analog: [{ pin: "AO", key: "distanceCm", invert: true }],                 // a voltage that follows the value; `near: [center, width]` makes it peak at one value instead (one sensor of a line array)
   trips: [{ pin: "DO", key: "distanceCm", when: "below", at: 30, activeLow: true }],   // a digital output
 },
 // A two-state control uses `states`:  { key: "pressed", label: "Button", min: 0, max: 1, step: 1, start: 0, states: ["Released", "Pressed"] }
@@ -235,13 +237,15 @@ sim: {
 sim: { kind: "source", plus: "POS", minus: "NEG" },                          // a battery
 sim: { kind: "converter", input: ["VIN", "GNDIN"], output: ["VOUT", "GNDOUT"] },   // a regulator; `also: [{ pin: "3V3", volts: 3.3 }]` adds fixed outputs
 sim: { kind: "driver", supply: "VM", ground: "GND", channels: [{ outputs: ["AO1", "AO2"], inputs: ["AIN1", "AIN2"], enable: "PWMA" }] },
-sim: { kind: "motor", terminals: ["M1", "M2"] },
+sim: { kind: "motor", terminals: ["M1", "M2"] },                             // a stepper adds its other coil: `second: ["B1", "B2"]`
 sim: { kind: "expander", outputs: ["PWM0", "PWM1"] },                        // a chip that gives a board more output pins
 sim: { kind: "shifter", pairs: [["HV1", "LV1"], ["HV2", "LV2"]] },           // a level shifter
 sim: { kind: "output" },                                                     // runs when powered and driven
 ```
 
 `sweep` is the lab's demo signal until a person sets a value: from, to, and the period in seconds.
+
+Which kind a part is follows from how it is wired, not from its shelf in the library. A hobby servo has its driver inside: it takes a supply, a ground and one PWM wire, so it is `kind: "output"` with `vcc`, `gnd` and `pwm` pins. A bare DC motor or a pump is `kind: "motor"`: two `load` terminals that go on a driver's outputs.
 
 Pins that give a supply are written like a board's: a battery's terminals are `rail("POS", "+", 6)` and `ground("NEG", "left", "−")`, and a converter's output is `rail("VOUT", "OUT+", 5)` beside `ground("GNDOUT", "left", "OUT−")`. Pin ids are letters, digits and underscores; put symbols in the label. Join pins that are one piece of copper inside the part with `lab: { strips: [["GNDIN", "GNDOUT"]] }`.
 

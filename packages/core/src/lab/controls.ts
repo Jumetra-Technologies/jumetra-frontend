@@ -12,6 +12,7 @@
  *   are shown.
  */
 
+import { getPart } from "../parts";
 import type { Analysis } from "./circuit";
 import { getPinout } from "./pinout";
 import type { LabNode, NodeInputs } from "./types";
@@ -112,8 +113,36 @@ const FOLLOWERS = new Set(["led", "buzzer", "relay"]);
 /** Alert sensors: the ones whose reading the sketch compares to a setting. */
 export const ALERT_SENSORS = new Set(["hc-sr04", "pir", "mq2", "soil-moisture", "ldr"]);
 
+const described = new Map<string, Control[] | null>();
+
+/**
+ * Controls for a sensor or a hand control the library describes in data
+ * (`sim.reads` in its part file): the same "simulated or set by you" switch,
+ * then a knob per quantity it reads. Null for any other part.
+ */
+function simControls(partId: string): Control[] | null {
+  if (described.has(partId)) return described.get(partId)!;
+  const sim = getPart(partId)?.sim;
+  const controls =
+    sim?.kind === "sensor"
+      ? [
+          source(sim.reads.some((q) => q.sweep) ? "Simulated" : "Resting value"),
+          ...sim.reads.map((q): Control => (q.states ? { key: q.key, kind: "toggle", label: q.label, on: q.states[1], off: q.states[0], default: q.start >= 0.5 } : num(q.key, q.label, q.min, q.max, q.step, q.start, q.unit))),
+        ]
+      : null;
+  described.set(partId, controls);
+  return controls;
+}
+
+/** The output-voltage setting of an adjustable converter (the trimmer on a buck module). */
+function settingControls(partId: string): Control[] | null {
+  const converter = getPart(partId)?.spec?.power.converter;
+  if (!converter?.adjustable) return null;
+  return [num("vout", "Output voltage", converter.adjustable[0], converter.adjustable[1], 0.1, converter.volts, "V", "Turn the trimmer until the output reads what your parts need, before you connect them.")];
+}
+
 export function isSensorPart(partId: string): boolean {
-  return partId in SENSOR_CONTROLS;
+  return partId in SENSOR_CONTROLS || simControls(partId) !== null;
 }
 
 /** Part ids of the peripherals wired to a board, by the analysis. */
@@ -144,6 +173,10 @@ export function controlsFor(node: LabNode, nodes: LabNode[], analysis: Analysis)
   }
   if (PASSIVE_CONTROLS[node.partId]) return { title: "Value", controls: PASSIVE_CONTROLS[node.partId] };
   if (SENSOR_CONTROLS[node.partId]) return { title: "Surroundings", controls: SENSOR_CONTROLS[node.partId] };
+  const fromSim = simControls(node.partId);
+  if (fromSim) return { title: getPart(node.partId)?.group === "controls" ? "Your hand" : "Surroundings", controls: fromSim };
+  const setting = settingControls(node.partId);
+  if (setting) return { title: "Setting", controls: setting };
   if (FOLLOWERS.has(node.partId)) {
     const board = boardOf(node.id, analysis);
     const driver = board ? drivingSensor(node.partId, partsOnBoard(board, nodes, analysis)) : null;
@@ -197,7 +230,7 @@ export function coerceInput(control: Control, value: unknown): number | string |
 /** Find a control by part and key, boards included (for coercion in the store and tests). */
 export function findControl(partId: string, key: string): Control | undefined {
   const pinout = getPinout(partId);
-  const list = pinout.controller ? BOARD_CONTROLS : (SENSOR_CONTROLS[partId] ?? ACTUATOR_CONTROLS[partId] ?? PASSIVE_CONTROLS[partId] ?? []);
+  const list = pinout.controller ? BOARD_CONTROLS : (SENSOR_CONTROLS[partId] ?? ACTUATOR_CONTROLS[partId] ?? PASSIVE_CONTROLS[partId] ?? simControls(partId) ?? settingControls(partId) ?? []);
   return list.find((c) => c.key === key);
 }
 

@@ -164,6 +164,7 @@ export function checkPart(entry: PartEntry, catalog?: ReadonlySet<string>): Prob
     if (!spec?.power.bridge) error("sim says it is a driver but spec.power.bridge is missing");
   } else if (sim?.kind === "motor") {
     sim.terminals.forEach((id) => need(id, "motor"));
+    sim.second?.forEach((id) => need(id, "motor"));
     if (!spec?.power.motor) error("sim says it is a motor but spec.power.motor is missing");
   } else if (sim?.kind === "expander") {
     sim.outputs.forEach((id) => need(id, "expander"));

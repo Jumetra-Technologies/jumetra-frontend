@@ -16,6 +16,7 @@
  * clock, so a frame can be sampled again at any time.
  */
 
+import { getPart } from "../parts";
 import { ALERT_SENSORS, defaultOf, inputOf, isSet } from "./controls";
 import type { Reading } from "./simulate";
 import type { LabNode, NodeInputs } from "./types";
@@ -106,8 +107,28 @@ export function sampleSensor(node: LabNode, t: number, inputs: Inputs, settings:
       const temperatureC = held ? get("temperatureC", 23.1) : 23.1 + 0.4 * Math.sin(t / 9);
       return sample({ pressureHpa, temperatureC }, [{ label: "Pressure", value: `${fmt(pressureHpa)} hPa` }, { label: "Temperature", value: `${fmt(temperatureC)} °C` }, { label: "Altitude", value: `${fmt(44330 * (1 - (pressureHpa / 1013.25) ** 0.1903), 1)} m` }], { level: 0.5, on: true, badge: `${fmt(pressureHpa, 0)} hPa` });
     }
-    default:
-      return sample({}, [], { level: 0, on: false });
+    default: {
+      // A sensor or control described in data: each quantity is what the person set, or its demo signal.
+      const sim = getPart(node.partId)?.sim;
+      if (sim?.kind !== "sensor" || !sim.reads.length) return sample({}, [], { level: 0, on: false });
+      const values: Record<string, number> = {};
+      const readings: Reading[] = [];
+      for (const q of sim.reads) {
+        let v: number;
+        if (held) v = q.states ? (inputOf(inputs, node.id, q.key, q.start >= 0.5) ? 1 : 0) : get(q.key, q.start);
+        else if (q.sweep) {
+          const [from, to, period] = q.sweep;
+          v = q.states ? (square(t, period) ? to : from) : from + (to - from) * ((1 - Math.cos((2 * Math.PI * t) / Math.max(0.1, period))) / 2);
+        } else v = q.start;
+        values[q.key] = v;
+        readings.push({ label: q.label, value: q.states ? q.states[v >= 0.5 ? 1 : 0] : `${fmt(v, q.digits ?? 1)}${q.unit ? ` ${q.unit}` : ""}` });
+      }
+      const shown = Math.max(0, sim.reads.findIndex((q) => q.key === (sim.badge ?? sim.reads[0].key)));
+      const main = sim.reads[shown];
+      const value = values[main.key];
+      const level = main.states ? (value >= 0.5 ? 1 : 0) : Math.min(1, Math.max(0, (value - main.min) / (main.max - main.min || 1)));
+      return sample(values, readings, { level, on: main.states ? value >= 0.5 : true, badge: readings[shown].value });
+    }
   }
 }
 

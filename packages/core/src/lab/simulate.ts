@@ -11,6 +11,7 @@
  * Signals panel draws its traces and how the tests check a frame.
  */
 
+import { getPart } from "../parts";
 import type { Analysis } from "./circuit";
 import { ledCurrentMa, pinKey } from "./circuit";
 import { formatOhms } from "../parts/models/passives";
@@ -175,8 +176,22 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
     sensorSamples.set(node.id, sample);
     if (board) samplesByBoard.set(board, [...(samplesByBoard.get(board) ?? []), sample]);
     live[node.id] = { on: sample.on, level: sample.level, readings: sample.readings, badge: sample.held ? `${sample.badge} (set)` : sample.badge };
+    const described = getPart(node.partId)?.sim;
     for (const link of report!.links) {
-      const value = link.role === "out-analog" ? sample.level : link.role === "out-digital" ? (node.partId === "soil-moisture" || node.partId === "mq2" ? (sample.level < 0.3 ? 0 : 1) : sample.level) : square(t, 2, 0.08);
+      // A sensor described in data says which quantity each output pin follows.
+      const analog = described?.kind === "sensor" ? described.analog?.find((a) => a.pin === link.pin) : undefined;
+      const trip = described?.kind === "sensor" ? described.trips?.find((x) => x.pin === link.pin) : undefined;
+      let value: number;
+      if (analog && described?.kind === "sensor") {
+        const q = described.reads.find((r) => r.key === analog.key)!;
+        const reading = sample.values[analog.key] ?? q.start;
+        const share = analog.near ? Math.max(0, 1 - Math.abs(reading - analog.near[0]) / (analog.near[1] || 1)) : Math.min(1, Math.max(0, (reading - q.min) / (q.max - q.min || 1)));
+        value = analog.invert ? 1 - share : share;
+      } else if (trip) {
+        const v = sample.values[trip.key] ?? 0;
+        const tripped = trip.when === "below" ? v < trip.at : v > trip.at;
+        value = tripped !== !!trip.activeLow ? 1 : 0;
+      } else value = link.role === "out-analog" ? sample.level : link.role === "out-digital" ? (node.partId === "soil-moisture" || node.partId === "mq2" ? (sample.level < 0.3 ? 0 : 1) : sample.level) : square(t, 2, 0.08);
       pins[`${node.id}:${link.pin}`] = value;
       pins[`${link.board}:${link.boardPin}`] = value;
     }
@@ -385,7 +400,8 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
           setLinks(() => (go ? square(t, 0.5, 0.3) : 0));
           live[node.id] = { on: go, level: go ? (up ? 1 : square(t, 0.3)) : 0, readings: go ? [{ label: "Status", value: status }] : [], badge: go ? (up ? "Linked" : "Pairing") : "Idle" };
         } else {
-          live[node.id] = { on: go, level: go ? 1 : 0, readings: [], badge: go ? "Running" : undefined };
+          live[node.id] = poweredPart(node, nodes, analysis, t, running, go) ?? { on: go, level: go ? 1 : 0, readings: [], badge: go ? "Running" : undefined };
+          if (live[node.id].on) setLinks((role) => (role === "pwm" ? 0.7 : role === "drive" || role === "cs" ? 1 : 0.5));
         }
       }
     }
@@ -393,6 +409,100 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
 
   const wireLive = wireFlows(nodes, wires, analysis, pins, running);
   return { t, running, nodes: live, pins, wires: wireLive };
+}
+
+const amps = (ma: number) => (ma >= 1000 ? `${fmt(ma / 1000, 2)} A` : `${fmt(ma, 0)} mA`);
+const hours = (h: number) => (h >= 48 ? `${fmt(h / 24, 0)} days` : h >= 1 ? `${fmt(h)} h` : `${fmt(h * 60, 0)} min`);
+
+/**
+ * The live state of the parts the power model knows: batteries, converters,
+ * drivers and the motors they run. Null for anything else.
+ */
+function poweredPart(node: LabNode, nodes: LabNode[], analysis: Analysis, t: number, running: boolean, go: boolean): NodeLive | null {
+  const part = getPart(node.partId);
+  const sim = part?.sim;
+  const spec = part?.spec;
+  const report = analysis.nodes[node.id];
+  const power = analysis.power;
+  const heat = power.heat[node.id];
+  const heatLine = heat ? [{ label: "Heat", value: `${heat.watts >= 1 ? `${fmt(heat.watts)} W` : `${fmt(heat.watts * 1000, 0)} mW`}, about ${fmt(heat.tempC, 0)} °C` }] : [];
+  if (sim?.kind === "source") {
+    const rail = power.rails.find((r) => r.source.node === node.id);
+    const source = spec?.power.source;
+    const load = rail?.typicalMa ?? 0;
+    const sag = source?.ohms ? (load / 1000) * source.ohms : 0;
+    const volts = (source?.volts ?? 0) - sag;
+    return {
+      on: load > 0,
+      level: rail?.capacityMa ? Math.min(1, load / rail.capacityMa) : load > 0 ? 0.5 : 0,
+      readings: [
+        { label: "Voltage", value: `${fmt(volts, 2)} V${sag > 0.05 ? ` (sagging ${fmt(sag, 2)} V)` : ""}` },
+        { label: "Load", value: rail ? `${amps(load)}${rail.capacityMa ? ` of ${amps(rail.capacityMa)}` : ""}` : "Nothing connected" },
+        ...(rail?.hours ? [{ label: "Lasts about", value: hours(rail.hours) }] : []),
+      ],
+      badge: `${fmt(volts)} V`,
+    };
+  }
+  if (sim?.kind === "converter") {
+    const rails = power.rails.filter((r) => r.source.node === node.id);
+    const input = analysis.nets.find((n) => n.id === analysis.netOfPin.get(`${node.id}:${sim.input[0]}`));
+    const live = !!report?.powered && rails.length > 0;
+    const out = rails.find((r) => r.source.pin === sim.output[0]) ?? rails[0];
+    return {
+      on: live,
+      level: out?.capacityMa ? Math.min(1, out.typicalMa / out.capacityMa) : live ? 0.5 : 0,
+      readings: [
+        { label: "Input", value: input?.kind === "power" ? `${input.voltage} V` : "No supply" },
+        ...rails.map((r) => ({ label: rails.length > 1 ? `Output ${r.source.pin}` : "Output", value: `${fmt(r.volts, 2)} V, ${amps(r.typicalMa)}${r.capacityMa ? ` of ${amps(r.capacityMa)}` : ""}` })),
+        ...heatLine,
+      ],
+      badge: out ? `${fmt(out.volts)} V` : report?.powered ? "On" : "No input",
+    };
+  }
+  if (sim?.kind === "driver") {
+    const motors = nodes.filter((n) => analysis.nodes[n.id]?.drivenBy === node.id);
+    return {
+      on: go,
+      level: go ? 1 : 0,
+      readings: [
+        { label: "Motor supply", value: report?.supplyV ? `${report.supplyV} V` : "None" },
+        { label: "Driving", value: motors.length ? motors.map((m) => m.label).join(", ") : "Nothing on its outputs" },
+        ...heatLine,
+      ],
+      badge: go ? (motors.length ? "Driving" : "Ready") : undefined,
+    };
+  }
+  if (sim?.kind === "motor") {
+    const motor = spec?.power.motor;
+    const driver = report?.drivenBy ? nodes.find((n) => n.id === report.drivenBy) : undefined;
+    const driverReady = driver ? runnable(analysis.nodes[driver.id]) : report?.status === "ready";
+    const turning = running && report?.status === "ready" && driverReady;
+    // With its enable on a PWM pin the speed varies; without, it is all or nothing.
+    const hasSpeed = report?.links.some((l) => l.role === "pwm") ?? false;
+    const duty = turning ? (hasSpeed ? 0.4 + 0.6 * Math.abs(Math.sin(t / 2.5)) : 1) : 0;
+    const drop = driver ? (() => {
+      const bridge = getPart(driver.partId)?.spec?.power.bridge;
+      const run = (motor?.runMa ?? 0) / 1000;
+      return bridge ? Math.max(bridge.dropV ?? 0, (bridge.ohms ?? 0) * run) : 0;
+    })() : 0;
+    const volts = Math.max(0, (report?.supplyV ?? 0) - drop);
+    const share = motor && motor.ratedV > 0 ? Math.min(1.5, volts / motor.ratedV) : 1;
+    const rpm = Math.round((motor?.rpm ?? 0) * duty * share);
+    return {
+      on: duty > 0,
+      level: duty,
+      angle: (((t * rpm * 6) % 360) + 360) % 360,
+      readings: [
+        ...(motor?.rpm ? [{ label: "Speed", value: `${rpm} rpm` }] : [{ label: "State", value: duty > 0 ? "Running" : "Stopped" }]),
+        { label: "At its terminals", value: turning ? `${fmt(volts)} V${drop > 0.05 ? ` (${fmt(drop)} V lost in the driver)` : ""}` : "0 V" },
+        { label: "Current", value: turning ? amps((motor?.runMa ?? 0) * Math.max(0.3, duty)) : "0 mA" },
+        ...(driver ? [{ label: "Driven by", value: driver.label }] : []),
+      ],
+      badge: turning ? (motor?.rpm ? `${rpm} rpm` : "Running") : "Stopped",
+    };
+  }
+  if (heatLine.length && go) return { on: true, level: 1, readings: heatLine, badge: "Running" };
+  return null;
 }
 
 /** How much current or data each wire carries, from the pin levels of a frame. */

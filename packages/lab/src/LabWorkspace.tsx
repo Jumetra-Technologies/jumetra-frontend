@@ -539,7 +539,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
       if (!current || !node) return 0;
       const plan = planAutoWire(node, current.nodes, current.wires);
       if (!plan.board) {
-        showToast("Add a board first: parts wire to a board's pins.");
+        showToast(plan.hint ?? "Add a board first: parts wire to a board's pins.");
         return 0;
       }
       // Skip pins that are already wired.

@@ -171,7 +171,7 @@ function NodeInspector({ id }: { id: string }) {
         <FaultList faults={report?.faults ?? []} empty={status === "idle" ? "Not wired yet. Drag from a pin, or use Auto-wire." : "No problems with this part."} />
       </Section>
 
-      {pinout.strips ? (
+      {pinout.passive && pinout.strips ? (
         <Section title="Strips in use">
           <BreadboardStrips nodeId={node.id} />
         </Section>

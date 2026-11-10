@@ -7,6 +7,7 @@ import { DownloadBlock } from "@/components/landing/DownloadBlock";
 import { DownloadProvider } from "@/components/landing/DownloadProvider";
 import { downloadPercent, downloadToBlob, DownloadProblem, problemFor, type DownloadOptions, type Downloaded } from "@/lib/downloads";
 import { DESKTOP } from "@/lib/landing/content";
+import { API_BASE } from "@/lib/api-client";
 import { downloadHref, isReleaseFileUrl, type Release } from "@/lib/releases";
 
 const EXE = "https://github.com/Jumetra-Technologies/jumetra-frontend/releases/download/desktop-v0.11.0/Kiungo-0.11.0-win-x64.exe";
@@ -179,6 +180,29 @@ describe("the download route", () => {
     expect(isReleaseFileUrl("https://github.com/Jumetra-Technologies/jumetra-frontend/releases/download/desktop-v0.11.0/a/b.exe")).toBe(false);
     expect(isReleaseFileUrl("https://evil.example/Kiungo-0.11.0-win-x64.exe")).toBe(false);
     expect(isReleaseFileUrl("http://127.0.0.1:8766/Kiungo.exe", ["http://127.0.0.1:8766/"])).toBe(true);
+    // Text that resolves to another repository (backslashes, dot segments, encoded dots) never passes.
+    const ASSETS = "https://github.com/Jumetra-Technologies/jumetra-frontend/releases/download/";
+    for (const evil of [
+      `${ASSETS}..\\..\\..\\..\\someone\\repo\\releases\\download\\v1/evil.exe`,
+      `${ASSETS}../../../../someone/repo/releases/download/v1/evil.exe`,
+      `${ASSETS}%2e%2e/%2e%2e`,
+      `${ASSETS}desktop-v0.13.1/%2E%2E%2Fevil.exe`,
+      `${ASSETS}desktop-v0.13.1/./x.exe`,
+      `${ASSETS}desktop-v0.13.1/x.exe?redirect=https://evil.example`,
+      `${ASSETS}desktop-v0.13.1/x.exe#frag`,
+      "https://evil@github.com/Jumetra-Technologies/jumetra-frontend/releases/download/desktop-v0.13.1/x.exe",
+      "https://github.com:8443/Jumetra-Technologies/jumetra-frontend/releases/download/desktop-v0.13.1/x.exe",
+      "http://github.com/Jumetra-Technologies/jumetra-frontend/releases/download/desktop-v0.13.1/x.exe",
+      "https://github.com/Jumetra-Technologies/jumetra-backend/releases/download/desktop-v0.13.1/x.exe",
+      `${API_BASE}/releases/../auth/me`,
+      `${API_BASE}/releases/`,
+      `${API_BASE.replace(/:\d+$/, "")}.evil.example/releases/x.exe`,
+      "http://127.0.0.1:8766/../x.exe",
+    ]) {
+      expect(isReleaseFileUrl(evil, ["http://127.0.0.1:8766/"]), evil).toBe(false);
+    }
+    expect(isReleaseFileUrl(`${API_BASE}/releases/0.13.1/Kiungo-0.13.1-win-x64.exe`)).toBe(true);
+    expect(isReleaseFileUrl(`${ASSETS}desktop-v0.13.1/Kiungo%200.13.1.exe`)).toBe(true);
     expect(downloadHref(files[0], "page")).toBe(`/api/desktop/download?url=${encodeURIComponent(EXE)}`);
     expect(downloadHref(files[0], "browser")).toBe(EXE);
 

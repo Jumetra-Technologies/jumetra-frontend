@@ -10,6 +10,11 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.39.2] - 2026-11-10
+
+### Fixed
+- **Security: the download route could be made to pass through any GitHub repository's files.** `/api/desktop/download` checked the address as text, so `..`, backslashes or encoded dots after the allowed prefix resolved to someone else's release, served from Kiungo's own address. It now parses the address and checks its host, its exact path and every segment, and fetches only an address already in that exact form.
+
 ## [1.39.1] - 2026-11-10
 
 Desktop 0.13.3.
@@ -822,6 +827,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.39.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.1...v1.39.2
 [1.39.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.0...v1.39.1
 [1.39.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.2...v1.39.0
 [1.38.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.1...v1.38.2

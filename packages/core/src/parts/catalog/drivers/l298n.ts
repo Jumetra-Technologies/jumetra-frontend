@@ -161,7 +161,7 @@ export default definePart({
       logic: 5,
       tolerant5V: true,
       draw: { idle: 24, active: 36 },
-      bridge: { channels: 2, maxMa: 2000, peakMa: 3000, dropV: 1.2, ohms: 1.85 },
+      bridge: { channels: 2, maxMa: 2000, peakMa: 3000, dropV: 1.2, ohms: 1.8 },
       interface: "Two direction pins and one PWM enable per motor",
       note: "The motor gets the battery voltage minus the drop: 1.8 V at 1 A, about 3.7 V at 2 A.",
     },

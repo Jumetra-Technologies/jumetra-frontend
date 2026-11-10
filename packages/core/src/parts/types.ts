@@ -445,6 +445,12 @@ export interface PartSpec {
     thetaCW: number;
     /** The hottest it may run, °C. */
     maxC: number;
+    /**
+     * Watts it loses in a typical hard-working case, and the case in words
+     * ("charging at 1 A"). Left out, it is worked out from `power`.
+     */
+    typicalW?: number;
+    at?: string;
     note?: string;
   };
   /** Sourcing: what to ask for when buying the real one. */

@@ -214,7 +214,7 @@ What the numbers mean:
 - `draw` is what the part itself takes from its supply. A motor driver's `draw` is its logic current; the motor's current is the motor's.
 - `bridge`: the volts a driver or switch loses are `ohms` × amps, and never less than `dropV`. A MOSFET driver has only `ohms` (its on-resistance, both switches added). A bipolar driver has a `dropV` floor as well.
 - `converter.law`: `linear` burns (volts in − volts out) × current as heat. `buck` and `boost` lose power out × (1 ÷ efficiency − 1). `pass` hands its input straight on (a protection board).
-- `thermal.thetaCW` is °C of rise per watt lost, in still air, as mounted on the module. `maxC` is the hottest it may run.
+- `thermal.thetaCW` is °C of rise per watt lost, in still air, as mounted on the module. `maxC` is the hottest it may run. The library works out a typical loss from `power` (a driver at 1 A, a regulator dropping 4 V at 300 mA, a motor stalled); when the datasheet gives a better case, state it: `typicalW: 1.4, at: "charging at 1 A"`.
 - `sourcing.lifecycle`: `active`, `nrnd` (not recommended for new designs), `obsolete`, or `generic` (many makers).
 - `upgrade.part` is the other part's id when it is in the library; the library then links to it.
 

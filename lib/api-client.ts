@@ -60,12 +60,20 @@ export function isAuthError(error: unknown): error is ApiError {
 /** What a signed-in person agreed to share; null means not asked. */
 export type AccountConsents = { usage: boolean | null; crash_reports: boolean | null; decided_at: string | null; decided_in: string | null };
 
-export const PRODUCTION_API_URL = "https://kiungo-api.onrender.com";
-export const PRODUCTION_WS_URL = "wss://kiungo-api.onrender.com";
+export const PRODUCTION_API_URL = "https://europe-west4-hhipsystemv0.cloudfunctions.net/api";
+export const PRODUCTION_WS_URL = "wss://api-aoxa3kagvq-ez.a.run.app";
 
 const DEFAULT_API_BASE =
   process.env.NODE_ENV === "production" ? PRODUCTION_API_URL : "http://127.0.0.1:8000";
 export const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_BASE).replace(/\/+$/, "");
+
+/**
+ * The admin portal's server: only the admin portal (sign-in and figures) and
+ * the usage heartbeats it counts go here. Accounts, sign-in, projects and
+ * everything else stay on API_BASE. Locally, both are the same server.
+ */
+export const PRODUCTION_ADMIN_API_URL = "https://kiungo-api.onrender.com";
+export const ADMIN_API_BASE = (process.env.NEXT_PUBLIC_ADMIN_API_URL ?? (process.env.NODE_ENV === "production" ? PRODUCTION_ADMIN_API_URL : API_BASE)).replace(/\/+$/, "");
 const ENGINEERING_WORKSPACE_REQUEST_TIMEOUT_MS = 15_000;
 
 type UserProjectPayload = {

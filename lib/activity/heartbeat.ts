@@ -1,4 +1,4 @@
-import { API_BASE } from "@/lib/api-client";
+import { ADMIN_API_BASE } from "@/lib/api-client";
 
 /**
  * How the website tells Kiungo's server someone is using it, for the admin
@@ -9,9 +9,9 @@ import { API_BASE } from "@/lib/api-client";
  * jumetra-backend docs/admin-portal.md.
  *
  * Nothing is sent until the person allows it (the banner, or Settings,
- * Privacy: lib/consent/usage.ts). Then, signed in, it counts for the account
- * (the sign-in cookies go with it); signed out, for a random id this browser
- * made, which the server hashes.
+ * Privacy: lib/consent/usage.ts). It goes to the admin portal's server
+ * (ADMIN_API_BASE), which doesn't hold Kiungo's accounts, so usage counts for
+ * a random id this browser made, which the server hashes, signed in or not.
  */
 
 export const BEAT_MS = 30_000;
@@ -44,9 +44,9 @@ export function mayTrack(consent: { allowed: boolean } | null | undefined): bool
   return consent?.allowed === true;
 }
 
-export function heartbeatBody(event: HeartbeatEvent, path: string, signedIn: boolean): string {
+export function heartbeatBody(event: HeartbeatEvent, path: string, _signedIn: boolean): string {
   const body: Record<string, string> = { client: "web", page: path, event };
-  const visitor = signedIn ? null : visitorId();
+  const visitor = visitorId();
   if (visitor) body.visitor = visitor;
   return JSON.stringify(body);
 }
@@ -58,7 +58,7 @@ const URL_PATH = "/telemetry/heartbeat";
  * closing. All of it is text/plain, so the browser sends it without asking
  * first, and failures are ignored: nobody should notice it.
  */
-export function sendHeartbeat(event: HeartbeatEvent, path: string, signedIn: boolean, base = API_BASE): void {
+export function sendHeartbeat(event: HeartbeatEvent, path: string, signedIn: boolean, base = ADMIN_API_BASE): void {
   const url = `${base}${URL_PATH}`;
   const body = heartbeatBody(event, path, signedIn);
   try {

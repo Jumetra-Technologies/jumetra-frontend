@@ -1,4 +1,4 @@
-import { API_BASE } from "@/lib/api-client";
+import { ADMIN_API_BASE } from "@/lib/api-client";
 
 /**
  * Whether this person allowed Kiungo to count which pages they open and how
@@ -83,7 +83,7 @@ export async function decideUsage(allowed: boolean, account: Account, now = new 
 }
 
 /** Tell the server to delete what was counted for this browser's visitor id, if it ever had one. */
-export function forgetThisBrowser(base = API_BASE): void {
+export function forgetThisBrowser(base = ADMIN_API_BASE): void {
   let visitor: string | null = null;
   try {
     visitor = window.localStorage.getItem("kiungo.visitor");

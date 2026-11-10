@@ -10,6 +10,18 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.39.2] - 2026-11-10
+
+### Fixed
+- **Sign-in works again.** Since 1.38.1 the website (and desktop 0.13.1) sent everything to the new server on Render, which has none of Kiungo's accounts and no sign-in set up. Accounts, sign-in, projects and everything else are back on Kiungo's main server (`europe-west4-hhipsystemv0.cloudfunctions.net/api`), as before 1.38.1.
+
+### Changed
+- **The new Render server serves only the admin portal** (`ADMIN_API_BASE`): the portal's sign-in and figures, and the usage heartbeats it counts.
+  - It can't recognize sign-ins from the main server, so usage counts for the browser's random id (`kiungo.visitor`) even when someone is signed in. The portal shows how browsers use Kiungo, not named accounts.
+  - The usage answer stays in the browser instead of following the account.
+- **The desktop app (0.13.4) uses the main server again.** It doesn't send usage for now.
+- **The Cookie Policy, Privacy Policy, banner and Settings text** now say this.
+
 ## [1.39.1] - 2026-11-10
 
 Desktop 0.13.3.
@@ -822,6 +834,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.39.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.1...v1.39.2
 [1.39.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.0...v1.39.1
 [1.39.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.2...v1.39.0
 [1.38.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.38.1...v1.38.2

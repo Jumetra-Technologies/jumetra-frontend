@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { LogIn, Settings } from "lucide-react";
+import { ChevronsUpDown, LogIn } from "lucide-react";
 import type { AuthState } from "@kiungo/api";
-import { Button } from "@kiungo/ui/button";
 import { Menu, type MenuEntry } from "@kiungo/ui/menu";
 import { invoke } from "../ipc";
 
@@ -17,19 +16,18 @@ export function Avatar({ name, photo, className = "size-8" }: { name: string; ph
   return <span className={`${className} flex items-center justify-center rounded-full bg-accent text-[12px] font-semibold text-primary`}>{initials(name)}</span>;
 }
 
-/** Who's signed in, with Settings and Sign out or Switch account (DSK-03). Signing out never touches projects on disk. */
-export function AccountMenu({ state, onSettings }: { state: AuthState; onSettings: () => void }) {
+/**
+ * Who's signed in, at the foot of the sidebar, with Sign out or Switch account (DSK-03).
+ * Settings has its own row just above, so it isn't repeated here. Signing out never touches projects on disk.
+ */
+export function AccountMenu({ state }: { state: AuthState }) {
+  const row = "flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-xs text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground";
   if (state.status !== "signed-in") {
     return (
-      <div className="flex items-center gap-1.5">
-        <Button variant="ghost" onClick={() => void invoke("auth:sign-in")} data-testid="account-sign-in">
-          <LogIn className="size-4" aria-hidden />
-          Sign in
-        </Button>
-        <button type="button" onClick={onSettings} aria-label="Settings" title="Settings" className="flex size-9 items-center justify-center rounded-full text-muted hover:bg-muted-bg hover:text-foreground" data-testid="open-settings">
-          <Settings className="size-4" aria-hidden />
-        </button>
-      </div>
+      <button type="button" onClick={() => void invoke("auth:sign-in")} className={row} data-testid="account-sign-in">
+        <LogIn className="size-4" aria-hidden />
+        Sign in
+      </button>
     );
   }
   const { user, deviceName, offline, secureStorage } = state;
@@ -38,8 +36,6 @@ export function AccountMenu({ state, onSettings }: { state: AuthState; onSetting
     ...(offline ? [{ id: "offline", label: "Offline: checked when you're back online", disabled: true }] : []),
     ...(!secureStorage ? [{ id: "keychain", label: "No keychain: you'll sign in each time", disabled: true }] : []),
     { type: "separator", id: "s1" },
-    { id: "settings", label: "Settings…", icon: <Settings />, onSelect: onSettings },
-    { type: "separator", id: "s2" },
     {
       id: "switch",
       label: "Switch account",
@@ -49,8 +45,10 @@ export function AccountMenu({ state, onSettings }: { state: AuthState; onSetting
     { id: "out", label: "Sign out", hint: `Of Kiungo on ${deviceName}`, onSelect: () => void invoke("auth:sign-out") },
   ];
   return (
-    <Menu label={`Account: ${user.name}`} align="end" items={items} buttonClassName="flex size-9 items-center justify-center rounded-full hover:ring-2 hover:ring-border" title={user.email}>
-      <Avatar name={user.name} photo={user.photoUrl} />
+    <Menu label={`Account: ${user.name}`} items={items} buttonClassName={`${row} !py-2`} title={user.email}>
+      <Avatar name={user.name} photo={user.photoUrl} className="size-6" />
+      <span className="min-w-0 flex-1 truncate font-medium text-sidebar-foreground">{user.name}</span>
+      <ChevronsUpDown className="size-3.5 shrink-0" aria-hidden />
     </Menu>
   );
 }

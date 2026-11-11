@@ -5,16 +5,16 @@ import { cn } from "@kiungo/ui/cn";
 import type { UpdateControls } from "./useUpdate";
 
 /**
- * Kiungo's own update, as a Kiungo-blue card in the bottom-left corner (the
- * pop-up notice style, .hhip-notice in @kiungo/ui's theme.css). It appears the
- * moment a new version is found and follows the download; once the version
- * is ready, the card itself is the button: one click saves every project,
- * installs, and reopens Kiungo on the new version. Later puts that version's
- * card away until the next start (it installs anyway when Kiungo quits).
+ * The answer to a check the person asked for (Settings → Check for updates),
+ * as a Kiungo-blue card in the bottom-left corner (the pop-up notice style,
+ * .hhip-notice in @kiungo/ui's theme.css): checking, up to date, what went
+ * wrong, or the update itself as it downloads. Once the version is ready, the
+ * card is the button: one click saves every project, installs, and reopens
+ * Kiungo on the new version. Later puts that version's card away (it installs
+ * anyway when Kiungo quits).
  *
- * A check the person asked for also reports here (checking, up to date, or
- * what went wrong); checks nobody asked for stay quiet unless they find
- * something.
+ * Updates found by the background check go to the notifications in the top
+ * bar instead, with their Update now button, so they're never shown twice.
  */
 export function UpdateBanner({ update }: { update: UpdateControls }) {
   const { info, asked, refused, later, install, dismiss, putOff } = update;
@@ -46,7 +46,7 @@ export function UpdateBanner({ update }: { update: UpdateControls }) {
   );
 
   // The update is coming: say so, and how far it is.
-  if (state.status === "downloading") {
+  if (state.status === "downloading" && asked) {
     return frame(
       "downloading",
       <div className={card}>
@@ -65,7 +65,7 @@ export function UpdateBanner({ update }: { update: UpdateControls }) {
   }
 
   // Ready: the card is the button.
-  if (state.status === "ready" && later !== state.version) {
+  if (state.status === "ready" && (asked || restarting) && later !== state.version) {
     const detail = restarting ? "Saving your projects, then installing. Kiungo opens again by itself." : (refused ?? "Click to restart and update. Your projects are saved first; it takes a few seconds.");
     return frame(
       "ready",
@@ -97,7 +97,7 @@ export function UpdateBanner({ update }: { update: UpdateControls }) {
   }
 
   let body: { icon: ReactNode; title: string; detail?: string; actions?: ReactNode } | null = null;
-  if (state.status === "error" && (!state.quiet || asked)) {
+  if (state.status === "error" && asked) {
     body = { icon: <CircleAlert className="size-4 text-[var(--warning)]" aria-hidden />, title: "Update didn't work", detail: state.message, actions: close };
   } else if (asked) {
     if (state.status === "checking" || state.status === "idle") body = { icon: <Loader2 className="size-4 animate-spin text-[var(--notice-muted)]" aria-hidden />, title: "Checking for updates…" };

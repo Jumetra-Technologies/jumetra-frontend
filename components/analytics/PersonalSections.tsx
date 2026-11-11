@@ -813,17 +813,26 @@ export function ProjectsPanel({
   signedIn: boolean;
   onSignIn: () => void;
 }) {
-  if (!signedIn || !summary) {
+  // Signed out, the projects made in this tab are charted. With none, the ways to some are offered:
+  // make one (no account needed), or sign in for the account's.
+  if (!summary) {
     return (
       <ChartFrame
         title="Projects and records"
-        summary="Projects and experiment records are kept in your account."
+        summary={
+          signedIn
+            ? "Projects and experiment records are kept in your account."
+            : "Your projects by category, and which experiment records still need a step."
+        }
       >
         <Empty
           text={
             signedIn
               ? "Loading your projects."
-              : "Sign in to see your projects by category and which experiment records still need a step."
+              : "No projects yet. Make one and it is counted here; sign in to add the ones saved to your account."
+          }
+          action={
+            signedIn ? undefined : { label: "Create a project", href: "/workspace?new=1" }
           }
           button={
             signedIn ? undefined : { label: "Sign in", onClick: onSignIn }
@@ -942,7 +951,7 @@ export function Empty({
       {action ? (
         <Link
           href={action.href}
-          className="mt-2 inline-block font-medium text-[var(--analytics-teal)] hover:underline"
+          className="mr-4 mt-2 inline-block font-medium text-[var(--analytics-teal)] hover:underline"
         >
           {action.label}
         </Link>

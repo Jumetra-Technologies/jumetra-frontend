@@ -74,19 +74,20 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
     slug: "user-agreement",
     title: "User Agreement",
     summary: "What you get with an account, what we ask of you, and what happens to your work.",
-    revised: "2026-10-06",
+    revised: "2026-11-11",
     blocks: [
       { type: "h2", text: "Accounts" },
       {
         type: "p",
-        text: "Sign in with a supported provider to use account features such as projects and experiment records. Kiungo receives the profile details needed to identify your account; your provider password is never shared with Kiungo.",
+        text: "You don't need an account to use Kiungo: projects, the Engineering Lab and experiment records all work without one. Sign in with a supported provider to save your work, and for the few things done only for an account, such as adding teammates to a project. Kiungo receives the profile details needed to identify your account; your provider password is never shared with Kiungo.",
       },
       { type: "h2", text: "Where your work lives" },
       {
         type: "ul",
         items: [
-          "Projects and experiment records are saved to your signed-in account. Reports are generated as files when you export them.",
-          "Engineering Lab sessions are temporary and are not currently saved to your account. Some lab and device features communicate with Kiungo services while in use.",
+          "Signed in, your projects, experiment records and Engineering Lab sessions are saved to your account. Lab sessions are also kept in your browser, so the lab opens without waiting.",
+          "Without signing in, they are kept only in the page you have open, and are gone when you close or reload it. Signing in before then saves them to your account.",
+          "Reports are generated as files when you export them. Some lab and device features communicate with Kiungo services while in use.",
           "Your sign-in session, learning progress and theme choice are saved in your browser.",
         ],
       },
@@ -163,7 +164,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
     slug: "privacy",
     title: "Privacy Policy",
     summary: "What Kiungo collects, why, where it is kept, and your choices.",
-    revised: "2026-11-09",
+    revised: "2026-11-11",
     blocks: [
       {
         type: "p",
@@ -175,9 +176,9 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         head: ["Data", "Where it comes from", "Why", "Where it is kept"],
         rows: [
           ["Name, email address, profile picture", "Your sign-in provider", "To identify you inside Kiungo", "Kiungo's servers and sign-in session in your browser"],
-          ["Projects, experiment records", "You", "So you can plan and document your work", "Your signed-in account"],
+          ["Projects, experiment records", "You", "So you can plan and document your work", "Your signed-in account. Without signing in: only the page you have open, until you close or reload it; nothing is sent to Kiungo"],
           ["Reports", "You, when exporting", "To keep or share a copy of your work", "A file downloaded to your device"],
-          ["Temporary lab sessions and simulations", "You, while using the Engineering Lab", "To run and explore designs", "Temporary session state; not saved to your account"],
+          ["Engineering Lab sessions (parts, wires, settings and log)", "You, while using the Engineering Lab", "To run and explore designs, and to come back to them", "Your signed-in account, and your browser's local storage for that account. Without signing in: only the page you have open, until you close or reload it; nothing is sent to Kiungo"],
           ["Theme, sidebar state, learning progress", "You", "To remember your preferences", "Your browser's local storage only"],
           ["Technical logs (requests, errors)", "Your browser's requests to Kiungo", "To keep Kiungo running and find faults", "Kiungo's servers, for a limited time"],
           ["Usage, only if you allow it: which page is open, and how long Kiungo is in use each day", "The website while its tab is visible and you're using it, after you choose Allow in the banner or in Settings, Privacy", "So Kiungo's team can see how much Kiungo is used, which pages matter most and who is online, and plan from that. Your consent is the basis; you can withdraw it any time", "Kiungo's servers, as daily totals for 400 days, tied to a random id your browser makes, never your name. Saying no deletes what was counted for your browser. Details in the [Cookie Policy](/legal/cookies)"],

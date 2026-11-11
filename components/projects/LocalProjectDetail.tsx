@@ -1,65 +1,82 @@
 "use client";
 
 import { ErrorNotice } from "@/components/ui/error-notice";
-import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, FilePlus2, FlaskConical, Trash2 } from "lucide-react";
+import { SignInNotice, SignInPrompt } from "@/components/auth/SignInNotice";
 import { labHref } from "@/components/projects/LabSessionCard";
 import { ProjectDetailSkeleton } from "@/components/projects/ProjectsSkeleton";
 import { labHardware, ProjectLabActivity, useProjectSessions } from "@/components/projects/ProjectLabActivity";
-import { useLab } from "@kiungo/lab/store";
 import { api } from "@/lib/api-client";
+import { useAuthStore } from "@/lib/auth-store";
+import { deleteProject as removeProject, isUnsavedProject, listRecords, movedProjectId, saveRecord, saveUnsaved, updateProject, useProjects } from "@/lib/projects/workspace";
 import { ExperimentRecordDialog } from "@/components/experiments/ExperimentRecordDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@kiungo/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
-import {
-  getServerRoboticsDataSnapshot,
-  readRoboticsData,
-  subscribeToRoboticsData,
-  type ExperimentRecord,
-  type ProjectCategory,
-  type RoboticsProject,
-} from "@/lib/robotics-data";
+import type { ExperimentRecord, ProjectCategory, RoboticsProject } from "@/lib/robotics-data";
 import { describeError } from "@/lib/errors";
 
-export function LocalProjectDetail({ projectId }: { projectId: string }) {
+/**
+ * One of a person's own projects. An unsaved one (made signed out) lives in
+ * this tab and works in full; one saved to an account is read from the server,
+ * which needs that account signed in.
+ */
+export function LocalProjectDetail({ projectId: openedId }: { projectId: string }) {
   const router = useRouter();
-  const data = useSyncExternalStore(
-    subscribeToRoboticsData,
-    readRoboticsData,
-    getServerRoboticsDataSnapshot,
-  );
-  const [serverProject, setServerProject] = useState<RoboticsProject | null>(null);
+  const workspace = useProjects();
+  const signedIn = useAuthStore((state) => state.isAuthenticated);
+  const account = useAuthStore((state) => state.user?.id ?? null);
+  // Signing in saves an unsaved project to the account under a new id. The page follows it where it
+  // stands, so the project stays on screen and nothing being typed is lost.
+  const projectId = (workspace ? movedProjectId(openedId) : undefined) ?? openedId;
+  const unsaved = isUnsavedProject(projectId);
+  // The account's copy, kept with the account it was read for: this page stays open through signing out and in.
+  const [loaded, setLoaded] = useState<{ account: string | null; project: RoboticsProject } | null>(null);
   const [hardwareText, setHardwareText] = useState("");
   const [draft, setDraft] = useState<RoboticsProject | null>(null);
   const [editing, setEditing] = useState(false);
   const [creatingRecord, setCreatingRecord] = useState(false);
-  const [records, setRecords] = useState<Awaited<ReturnType<typeof api.getMyProjectExperiments>>>([]);
+  const [records, setRecords] = useState<ExperimentRecord[]>([]);
   const [error, setError] = useState("");
   const lab = useProjectSessions(projectId);
 
+  // The address follows too, so a reload or a shared link opens the saved project.
   useEffect(() => {
-    if (!data || !projectId.startsWith("user-project-")) return;
+    if (projectId === openedId) return;
+    window.history.replaceState(window.history.state, "", `/workspace/projects/${encodeURIComponent(projectId)}`);
+  }, [projectId, openedId]);
+
+  useEffect(() => {
+    if (unsaved || !signedIn) return;
     let active = true;
     void api.getMyProject(projectId).then((saved) => {
-      if (active) setServerProject(saved);
+      if (active) {
+        setLoaded({ account, project: saved });
+        setError("");
+      }
     }).catch((loadError: unknown) => {
       if (active) setError(describeError(loadError, "This project couldn't be loaded."));
     });
     return () => {
       active = false;
     };
-  }, [data, projectId]);
+  }, [unsaved, signedIn, account, projectId]);
 
-  const project = serverProject;
+  const listed = workspace?.projects.find((item) => item.id === projectId) ?? null;
+  const serverProject = loaded && loaded.account === account && loaded.project.id === projectId ? loaded.project : null;
+  const project = unsaved ? listed : signedIn ? (serverProject ?? listed) : null;
+  const projectIdLoaded = project?.id;
+  // An unsaved project's records are in this tab; the list changes as they are added.
+  const unsavedRecords = workspace?.unsavedRecords;
 
   useEffect(() => {
-    if (!project) return;
+    if (!projectIdLoaded) return;
     let active = true;
-    void api.getMyProjectExperiments(project.id).then((savedRecords) => {
+    void listRecords(projectIdLoaded).then((savedRecords) => {
       if (active) setRecords(savedRecords);
     }).catch((loadError: unknown) => {
       if (active) setError(describeError(loadError, "Experiment records couldn't be loaded."));
@@ -67,19 +84,38 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
     return () => {
       active = false;
     };
-  }, [project]);
+  }, [projectIdLoaded, unsavedRecords]);
 
-  if (!data || !lab.ready) {
+  if (!workspace || !lab.ready) {
     return <ProjectDetailSkeleton />;
   }
-  if (!project && projectId.startsWith("user-project-") && !error) {
+  if (!unsaved && !signedIn) {
+    return (
+      <SignInPrompt title="Sign in to open this project" footer={<Link href="/workspace" className="text-primary hover:underline">Back to projects</Link>}>
+        This project is saved to an account. Sign in to that account to open it. You can still start a new project without signing in.
+      </SignInPrompt>
+    );
+  }
+  if (!project && !unsaved && !error) {
     return <ProjectDetailSkeleton />;
   }
   if (!project) {
     return (
       <Card>
-        <p className="font-medium">Project not found in your account</p>
-        <p className="mt-1 text-sm text-muted">Check that you are signed in to the account that owns this project.</p>
+        {unsaved ? (
+          <>
+            <p className="font-medium">This project wasn&apos;t saved</p>
+            <p className="mt-1 text-sm text-muted">
+              A project made without signing in lasts until its page is closed or reloaded.{" "}
+              {signedIn ? "The projects you make now are saved to your account." : "Sign in before you start the next one to keep it."}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="font-medium">Project not found in your account</p>
+            <p className="mt-1 text-sm text-muted">Check that you are signed in to the account that owns this project.</p>
+          </>
+        )}
         <Link href="/workspace" className="mt-4 inline-flex text-sm text-primary hover:underline">Back to projects</Link>
       </Card>
     );
@@ -102,11 +138,9 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
       setError("This project is no longer available.");
       return;
     }
-    const saved = existing
-      ? await api.updateMyProjectExperiment(currentProject.id, existing.id, recordDraft)
-      : await api.createMyProjectExperiment(currentProject.id, recordDraft);
+    const saved = await saveRecord({ ...recordDraft, projectId: currentProject.id }, existing);
     setRecords((current) => {
-      const next = current.filter((item) => item.id !== saved.id);
+      const next = current.filter((item) => item.id !== saved.id && item.id !== existing?.id);
       return [saved, ...next];
     });
     setError("");
@@ -118,6 +152,8 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
     const formData = new FormData(event.currentTarget);
     const updated: RoboticsProject = {
       ...draft,
+      // The project may have been saved to the account, under a new id, since the form was opened.
+      id: project.id,
       name: String(formData.get("name") ?? "").trim(),
       category: String(formData.get("category") ?? project.category) as ProjectCategory,
       description: String(formData.get("description") ?? "").trim(),
@@ -127,10 +163,8 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
       updatedAt: new Date().toISOString(),
     };
     try {
-      const savedProject = project.id.startsWith("user-project-")
-        ? await api.updateMyProject(project.id, updated)
-        : updated;
-      setServerProject(savedProject);
+      // To the account when the project is saved there; an unsaved one changes in this tab.
+      setLoaded({ account, project: await updateProject(updated) });
       setEditing(false);
       setError("");
     } catch (saveError) {
@@ -141,13 +175,12 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
   async function deleteProject() {
     if (!project || !window.confirm(`Delete ${project.name} and its experiment records?`)) return;
     try {
-      if (project.id.startsWith("user-project-")) await api.deleteMyProject(project.id);
+      // Its lab sessions stay, unlinked.
+      await removeProject(project.id);
     } catch (deleteError) {
       setError(describeError(deleteError, "The project wasn't deleted. Try again."));
       return;
     }
-    // Its lab sessions stay, unlinked.
-    for (const session of lab.sessions) useLab.getState().linkProject(session.id, null);
     router.push("/workspace");
   }
 
@@ -162,7 +195,7 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
             <h2 className="text-2xl font-bold">{project.name}</h2>
             <Badge variant="info">{project.category}</Badge>
           </div>
-          <p className="mt-1 text-sm text-muted">Saved to your account · Updated {new Date(project.updatedAt).toLocaleDateString()}</p>
+          <p className="mt-1 text-sm text-muted">{unsaved ? "Not saved" : "Saved to your account"} · Updated {new Date(project.updatedAt).toLocaleDateString()}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href={lab.sessions[0] ? labHref(lab.sessions[0].id) : `/laboratory/workspace?project=${encodeURIComponent(project.id)}`} className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90" data-testid="project-open-lab">
@@ -174,6 +207,17 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
           </Button>
         </div>
       </div>
+      {unsaved && !signedIn ? (
+        <SignInNotice testId="project-sign-in">This project isn&apos;t saved. It works in full, and it is gone when you close or reload this page.</SignInNotice>
+      ) : null}
+      {unsaved && signedIn ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-border bg-[var(--accent)] px-4 py-3 text-sm" data-testid="project-unsaved">
+          <p className="min-w-0 flex-1">This project isn&apos;t saved to your account yet. It stays in this tab until it is.</p>
+          <Button size="sm" onClick={() => void saveUnsaved()} disabled={workspace.saving}>
+            {workspace.saving ? "Saving…" : "Save to my account"}
+          </Button>
+        </div>
+      ) : null}
       {error && !editing ? <ErrorNotice message={error} /> : null}
 
       {editing ? (
@@ -229,7 +273,7 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
         </Card>
       </div>
 
-      <ProjectLabActivity project={project} projects={data.projects} />
+      <ProjectLabActivity project={project} projects={workspace.projects} />
 
       <section aria-labelledby="project-records-heading">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -258,7 +302,7 @@ export function LocalProjectDetail({ projectId }: { projectId: string }) {
         <ExperimentRecordDialog
           open
           projectId={project.id}
-          projects={data.projects}
+          projects={workspace.projects}
           onSave={saveExperimentRecord}
           onClose={() => setCreatingRecord(false)}
         />

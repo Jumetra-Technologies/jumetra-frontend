@@ -4,7 +4,9 @@ import { ProjectHub } from "@/components/projects/ProjectHub";
 import { api } from "@/lib/api-client";
 import { closeAccountDialog, useAccountDialog } from "@/lib/account-dialogs";
 import { useAuthStore } from "@/lib/auth-store";
-import { EMPTY_ROBOTICS_DATA, writeRoboticsData, type RoboticsProject } from "@/lib/robotics-data";
+import { isUnsavedProject, resetProjectsWorkspace } from "@/lib/projects/workspace";
+import { readRoboticsData, type RoboticsProject } from "@/lib/robotics-data";
+import { useLab } from "@kiungo/lab/store";
 import { freshLab } from "./helpers/lab";
 
 vi.mock("next/navigation", () => ({
@@ -32,7 +34,7 @@ function signIn() {
 
 beforeEach(() => {
   freshLab("u1");
-  writeRoboticsData(EMPTY_ROBOTICS_DATA);
+  resetProjectsWorkspace();
   vi.spyOn(api, "getMyProjects").mockResolvedValue([]);
 });
 
@@ -93,16 +95,76 @@ describe("robotics projects, saved to the account", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("asks a signed-out visitor to sign in instead of creating anything", async () => {
+});
+
+describe("robotics projects without an account", () => {
+  it("shows the page to a signed-out visitor, says nothing is saved, and offers to sign in", async () => {
+    render(<ProjectHub serverProjects={[]} />);
+    const notice = await screen.findByTestId("projects-sign-in");
+    expect(notice).toHaveTextContent("Everything here works, but nothing is saved");
+    fireEvent.click(within(notice).getByRole("button", { name: "Sign in to save" }));
+    const { result } = renderHook(() => useAccountDialog());
+    expect(result.current).toEqual({ kind: "auth", mode: "login" });
+    act(() => closeAccountDialog());
+    expect(api.getMyProjects).not.toHaveBeenCalled();
+  });
+
+  it("creates a project signed out: it works, is marked not saved, and nothing is sent to the server", async () => {
     const create = vi.spyOn(api, "createMyProject");
+    const dialog = await openCreate();
+    expect(within(dialog).getByTestId("create-unsaved-note")).toHaveTextContent("won't be saved");
+    fireEvent.change(within(dialog).getByLabelText("Project name"), { target: { value: "Rover" } });
+    fireEvent.change(within(dialog).getByLabelText("Hardware"), { target: { value: "Arduino Uno, L298N" } });
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Create project" }));
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const card = (await screen.findByRole("heading", { name: "Rover" })).closest("a")!;
+    expect(within(card).getByText("Not saved")).toBeInTheDocument();
+    expect(within(card).getByText("2 hardware items")).toBeInTheDocument();
+    const [project] = readRoboticsData().projects;
+    expect(isUnsavedProject(project.id)).toBe(true);
+    expect(card).toHaveAttribute("href", `/workspace/projects/${project.id}`);
+    // Nothing went into the browser's storage either: unsaved means this tab's memory.
+    expect(window.localStorage.length).toBe(0);
+  });
+
+  it("asks for a sign-in only where one is needed: adding teammates, who are other accounts", async () => {
+    const search = vi.spyOn(api, "searchUsers");
+    const dialog = await openCreate();
+    expect(within(dialog).queryByLabelText("Add teammates")).not.toBeInTheDocument();
+    fireEvent.click(within(within(dialog).getByTestId("teammates-sign-in")).getByRole("button", { name: "Sign in" }));
+    const { result } = renderHook(() => useAccountDialog());
+    expect(result.current).toEqual({ kind: "auth", mode: "login" });
+    act(() => closeAccountDialog());
+    expect(search).not.toHaveBeenCalled();
+  });
+
+  it("starts a lab session without signing in", async () => {
+    render(<ProjectHub serverProjects={[]} />);
+    fireEvent.click(await screen.findByTestId("new-lab-session"));
+    expect(useLab.getState().sessions).toHaveLength(1);
+    const { result } = renderHook(() => useAccountDialog());
+    expect(result.current).toBeNull();
+  });
+
+  it("signing in saves the unsaved project to the account, and the card stops saying not saved", async () => {
     const dialog = await openCreate();
     fireEvent.change(within(dialog).getByLabelText("Project name"), { target: { value: "Rover" } });
     await act(async () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Create project" }));
     });
-    expect(create).not.toHaveBeenCalled();
-    const { result } = renderHook(() => useAccountDialog());
-    expect(result.current).toEqual({ kind: "auth", mode: "login" });
-    act(() => closeAccountDialog());
+    expect(within((await screen.findByRole("heading", { name: "Rover" })).closest("a")!).getByText("Not saved")).toBeInTheDocument();
+
+    const create = vi.spyOn(api, "createMyProject").mockImplementation(async (input) => saved({ ...input, id: "user-project-3" }));
+    vi.spyOn(api, "getMyProjects").mockImplementation(async () => [saved({ name: "Rover", id: "user-project-3" })]);
+    await act(async () => {
+      signIn();
+    });
+    await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({ name: "Rover" })));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Rover" }).closest("a")).toHaveAttribute("href", "/workspace/projects/user-project-3"));
+    expect(screen.queryByTestId("projects-sign-in")).not.toBeInTheDocument();
+    expect(within(screen.getByRole("heading", { name: "Rover" }).closest("a")!).queryByText("Not saved")).not.toBeInTheDocument();
   });
 });

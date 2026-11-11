@@ -24,6 +24,8 @@ export interface LabHost {
   realHardware?: ReactNode;
   /** What the Inspector's Mode setting does in this app, under the setting. Omitted: the website's wording. */
   modeNote?: (node: LabNode) => string;
+  /** What becomes of the activity log, beside its filters. Omitted: it is saved with the project automatically. */
+  activityNote?: string;
 }
 
 export const LabHostContext = createContext<LabHost>({});

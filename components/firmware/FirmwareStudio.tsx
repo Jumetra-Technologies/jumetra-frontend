@@ -103,6 +103,8 @@ export function FirmwareStudio() {
   const [connection, setConnection] = useState<Connection>({ state: "connecting" });
   const [projectsReady, setProjectsReady] = useState(Boolean(cached));
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  /** Known to be signed out (not just still checking): the page says up front what an account is for here. */
+  const signedOut = useAuthStore((s) => !s.isAuthenticated && !s.isLoading);
   const retryAfterSignIn = useRef<(() => void) | null>(null);
   const boot = useRef(0);
 
@@ -473,6 +475,15 @@ export function FirmwareStudio() {
             </Button>
             {error && <ErrorNotice message={error} size="sm" />}
             {signIn && <SignInPrompt need={signIn} />}
+            {signedOut && !signIn ? (
+              <p className="text-[11px] leading-4 text-muted" data-testid="firmware-sign-in-note">
+                Projects are kept and compiled on Kiungo online, which needs an account:{" "}
+                <button type="button" onClick={() => openAuth("login")} className="font-medium text-primary hover:underline">
+                  sign in
+                </button>{" "}
+                to start one. Flashing a .hex file to your board over USB works without it.
+              </p>
+            ) : null}
           </div>
           <p className="px-3 pt-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Your projects</p>
           <div className="max-h-40 overflow-auto px-1.5 pb-2 pt-1" data-testid="project-list">

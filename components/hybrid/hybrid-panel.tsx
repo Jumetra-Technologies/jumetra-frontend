@@ -7,7 +7,9 @@ import { AnimatedCircuitCanvas } from "@/components/laboratory/animated-circuit-
 import { Button } from "@kiungo/ui/button";
 import { Card } from "@/components/ui/card";
 import { RobotTyping } from "@/components/ui/robot-typing";
-import { api } from "@/lib/api-client";
+import { openAuth } from "@/lib/account-dialogs";
+import { api, isAuthError } from "@/lib/api-client";
+import { useAuthStore } from "@/lib/auth-store";
 import type { ComponentSearchHit, ControllerSpec, HybridExperiment } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +42,9 @@ interface AvailabilityItem {
   adapter?: string | null;
   mode?: string;
 }
+
+/** Kiungo online runs hybrid experiments for an account; everything before that works without one. */
+const NEEDS_ACCOUNT = "Hybrid experiments run on Kiungo online, for your account. Sign in to create and run one.";
 
 const FRIENDLY_ERROR = {
   create: "The experiment couldn't be created. Check your connection and try again.",
@@ -87,6 +92,8 @@ export function HybridPanel({
   const [state, setState] = useState<Record<string, unknown> | null>(null);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  /** Known to be signed out (not just still checking): the page says up front what an account is for here. */
+  const signedOut = useAuthStore((state) => !state.isAuthenticated && !state.isLoading);
   const [busy, setBusy] = useState<"" | "create" | "start" | "step" | "stop">("");
 
   // Nothing to show at all, or a catalog to plan with but no service to run it.
@@ -110,8 +117,8 @@ export function HybridPanel({
     setError("");
     try {
       await fn();
-    } catch {
-      setError(FRIENDLY_ERROR[kind]);
+    } catch (err) {
+      setError(isAuthError(err) ? NEEDS_ACCOUNT : FRIENDLY_ERROR[kind]);
     } finally {
       setBusy("");
     }
@@ -280,12 +287,26 @@ export function HybridPanel({
                 <FlaskConical className="size-4" aria-hidden /> {busy === "create" ? "Creating…" : "Create Hybrid Experiment"}
               </Button>
               {waiting ? <p className="mt-2 text-xs text-muted">Creating an experiment needs the hardware service, which isn&apos;t reachable right now.</p> : null}
+              {signedOut ? (
+                <p className="mt-2 text-xs leading-5 text-muted" data-testid="hybrid-sign-in">
+                  Choose your board and parts freely. Creating the experiment runs it on Kiungo online, which needs an account:{" "}
+                  <button type="button" onClick={() => openAuth("login")} className="font-medium text-primary hover:underline">
+                    sign in
+                  </button>{" "}
+                  when you&apos;re ready to run it.
+                </p>
+              ) : null}
             </div>
           </form>
           {error ? (
             <p role="alert" className="mt-4 flex items-start gap-2 rounded-[10px] bg-danger/10 px-3 py-2 text-sm text-danger">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-              {error}
+              <span className="min-w-0 flex-1">{error}</span>
+              {error === NEEDS_ACCOUNT ? (
+                <button type="button" onClick={() => openAuth("login")} className="shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium hover:bg-danger/10">
+                  Sign in
+                </button>
+              ) : null}
             </p>
           ) : null}
         </Card>

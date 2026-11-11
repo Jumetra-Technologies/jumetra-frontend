@@ -8,6 +8,7 @@ import { AppShell } from "@/components/layout/sidebar";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ElasticScrollbars } from "@/components/ui/ElasticScrollbars";
 import { LabAccountSync } from "@/components/lab/LabAccountSync";
+import { ProjectsAccountSync } from "@/components/projects/ProjectsAccountSync";
 import { LearningAccountSync } from "@/components/learning/LearningAccountSync";
 import "./globals.css";
 
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthBootstrap />
           <ElasticScrollbars />
           <LabAccountSync />
+          <ProjectsAccountSync />
           <LearningAccountSync />
           <ActivityTracker />
           <UsageConsentBanner />

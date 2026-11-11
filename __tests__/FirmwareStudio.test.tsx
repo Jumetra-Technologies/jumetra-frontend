@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { push, api } = vi.hoisted(() => ({
@@ -34,6 +34,9 @@ vi.mock("@/components/firmware/CodeEditor", () => ({
 }));
 
 import { FirmwareStudio } from "@/components/firmware/FirmwareStudio";
+import { closeAccountDialog, useAccountDialog } from "@/lib/account-dialogs";
+import { ApiError } from "@/lib/api-client";
+import { useAuthStore } from "@/lib/auth-store";
 import { boardName, labBuildFor, STARTERS } from "@/lib/firmware/boards";
 import { BUILT_IN_TEMPLATES } from "@/lib/firmware/studio-data";
 import { useLab } from "@kiungo/lab/store";
@@ -210,5 +213,37 @@ describe("Firmware page: running it", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Serial monitor" }));
     fireEvent.click(screen.getByRole("radio", { name: "My board (USB)" }));
     expect(screen.getByTestId("usb-unsupported")).toHaveTextContent("Chrome");
+  });
+});
+
+describe("Firmware page: without an account", () => {
+  afterEach(() => useAuthStore.setState({ isAuthenticated: false, isLoading: true, user: null, accessToken: null }));
+
+  it("opens in full and says up front which part needs an account: projects, which Kiungo online keeps and compiles", async () => {
+    useAuthStore.setState({ isAuthenticated: false, isLoading: false, user: null, accessToken: null });
+    api.createFirmwareProject.mockRejectedValue(new ApiError("/firmware/projects", 401));
+    render(<FirmwareStudio />);
+    // The board and starter pickers and flashing a .hex over USB are all there.
+    expect(screen.getByLabelText("Board")).toBeEnabled();
+    expect(screen.getByTestId("flash-hex")).toBeInTheDocument();
+    const note = screen.getByTestId("firmware-sign-in-note");
+    expect(note).toHaveTextContent("which needs an account");
+    expect(note).toHaveTextContent("Flashing a .hex file to your board over USB works without it.");
+
+    // Starting a project anyway asks to sign in, in words, and the note makes way for it.
+    fireEvent.click(screen.getByTestId("new-project"));
+    const prompt = await screen.findByTestId("sign-in-prompt");
+    expect(prompt).toHaveTextContent("Sign in to create a firmware project.");
+    expect(screen.queryByTestId("firmware-sign-in-note")).not.toBeInTheDocument();
+    fireEvent.click(within(prompt).getByRole("button", { name: "Log in" }));
+    const { result } = renderHook(() => useAccountDialog());
+    expect(result.current).toEqual({ kind: "auth", mode: "login" });
+    act(() => closeAccountDialog());
+  });
+
+  it("signed in, there is no note about accounts", () => {
+    useAuthStore.setState({ isAuthenticated: true, isLoading: false, user: { id: "u1", email: "ada@school.ac.ke", display_name: "Ada" } as never, accessToken: "t" });
+    render(<FirmwareStudio />);
+    expect(screen.queryByTestId("firmware-sign-in-note")).not.toBeInTheDocument();
   });
 });

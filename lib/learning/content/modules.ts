@@ -50,8 +50,8 @@ export const LEARNING_MODULES: LearningModule[] = [
       {
         type: "callout",
         tone: "note",
-        title: "Your work is saved to your account",
-        text: "Projects and experiment records require sign-in and are saved to your account. Export a Markdown report from [Experiment Records](/experiments) when you need a portable copy.",
+        title: "Sign in to keep your work",
+        text: "You can make projects and record experiments without an account, but they aren't saved: they are gone when you close or reload the page. Sign in and they are saved to your account, including what you made before signing in. Export a Markdown report from [Experiment Records](/experiments) when you need a portable copy.",
       },
       {
         type: "p",

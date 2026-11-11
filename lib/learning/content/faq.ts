@@ -12,15 +12,15 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "where-saved",
     question: "Where are my projects and experiment records saved?",
     answer:
-      "Projects and experiment records are saved to your signed-in account. Sign in before creating or viewing them. Export a Markdown report from [Experiment Records](/experiments) to download a copy.",
+      "Signed in, your projects, experiment records and lab sessions are saved to your account, so they are there on any device. Without signing in everything still works, but nothing is saved: your work lasts until you close or reload the page, and signing in before then saves it to your account. Export a Markdown report from [Experiment Records](/experiments) to download a copy.",
     tags: ["storage", "projects", "experiments", "backup", "local storage", "data"],
   },
   {
     id: "sign-in",
     question: "Do I need to sign in?",
     answer:
-      "Yes. Sign in is required before you can create or access account-owned projects and experiment records.",
-    tags: ["sign in", "login", "google", "auth", "account"],
+      "No. Projects, the Engineering Lab, experiment records and the rest of Kiungo work without an account. Your work just isn't saved: it is gone when you close or reload the page. Sign in to save it and to open it on another device. A few things are done only for an account: adding teammates to a project, hybrid experiments, firmware projects, and connecting a real board through Kiungo online.",
+    tags: ["sign in", "login", "google", "auth", "account", "guest", "without an account", "save"],
   },
   {
     id: "without-backend",

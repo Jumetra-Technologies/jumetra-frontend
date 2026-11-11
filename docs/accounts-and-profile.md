@@ -49,8 +49,10 @@ Signed out:
 ```
 ┌ Profile ─────────────────────────────┐
 │ Not signed in                        │
-│ Projects are saved in this browser.  │
-│ Sign in to keep them with you.       │
+│ Everything in Kiungo works without   │
+│ an account. Sign in to save your     │
+│ projects and lab sessions, and to    │
+│ open them on another device.         │
 │ [ Log in ]  [ Sign up ]              │  ← Log in = primary (teal)
 └──────────────────────────────────────┘
 ```
@@ -209,7 +211,50 @@ The user's self-described role is stored separately from the backend authorizati
 
 Firebase Authentication must list every domain that serves the app (`jumetra-frontend.vercel.app`, `localhost`) under Authorized domains, or the popup fails with `auth/unauthorized-domain`. Both buttons show provider-specific errors in plain words.
 
-## 5. Versioning
+## 5. Using Kiungo without an account (v1.41.0)
+
+No page asks for a sign-in before it can be used. An account is for **saving** work and for the few things the server only does for an account. The backend sets the line: every request that changes something needs a signed-in user (`security/auth_middleware.py`), and so does everything under `/auth/me`; other reads are open.
+
+### What a signed-out visitor gets
+
+| Page | Signed out |
+|---|---|
+| Projects (`/workspace`, `/workspace/projects/[id]`) | Create, edit and delete projects, record experiments, start lab sessions. Marked **Not saved**. |
+| Engineering Lab (`/laboratory/workspace`) | The whole lab. The toolbar's save status is a "Not saved · Sign in to save" button. |
+| Experiment Records (`/experiments`) | Record, edit, delete and export records for the projects made in this tab. |
+| Advanced Analytics (`/analytics`) | Charts this tab's lab sessions, projects and records, and learning progress. |
+| Component library, Learning Center, Documentation | Everything (learning progress is kept in the browser). |
+
+### What still needs a sign-in, and how each says so
+
+| Feature | Why | What the visitor sees |
+|---|---|---|
+| Saving projects, records and lab sessions; opening them on another device | They are kept on the account | A band on each page: what isn't saved, and **Sign in to save** (`SignInNotice`) |
+| Opening a project saved to an account (`user-project-…`) | It is read from `/auth/me/projects` | "Sign in to open this project" (`SignInPrompt`) |
+| Adding teammates to a project | Teammates are other accounts (`/auth/users/search`) | A note in the create form with a Sign in link; the rest of the form works |
+| Real boards in the lab, and the lab's mirror to Kiungo online | The server keeps them for an account | A line in the Real hardware panel with a Sign in link; no status pill |
+| Hybrid experiments (`/hybrid`) | Created and run on the server | A note by the Create button; planning (board, parts, modes) works |
+| Firmware projects, compiling and uploading (`/firmware`) | Kept and compiled on the server | A note by New project; flashing a `.hex` over USB works without one |
+| Legacy lab pages (`/laboratory`, `/laboratory/hybrid`) | Their actions are server writes | The error ends "Sign in and try again." with a Sign in button (`ErrorNotice`) |
+| Profile, sign-in methods, admin portal, signing in the desktop app | They are the account | Their own sign-in screens |
+
+### Unsaved work
+
+Signed out, projects, experiment records and lab sessions live in **this tab's memory**: nothing is written to the browser's storage and nothing is sent to the server. Closing or reloading the page discards them, and the browser asks first when there is something to lose (`hasUnsavedWork` in `components/projects/ProjectsAccountSync.tsx`).
+
+- `lib/projects/workspace.ts` is the one place pages get projects and records from (`useProjects`, `createProject`, `updateProject`, `deleteProject`, `listRecords`, `saveRecord`, `deleteRecord`). Signed in they go to the account; signed out they go to the in-memory store in `lib/robotics-data.ts`. An unsaved project's id starts with `local-project-`; an account's with `user-project-`.
+- **Signing in saves what was made signed out.** `ProjectsAccountSync` (mounted once in `app/layout.tsx`) calls `setProjectsAccount`, which runs `saveUnsaved()`: each unsaved project is created on the account, its records and lab sessions are re-pointed at the saved project, then its records are created. `LabAccountSync` carries the lab sessions (see `docs/engineering-lab-simulation.md` section 6). A project's own page follows it to its new id where it stands, so nothing being typed is lost.
+- **When saving fails** (no connection, say), what couldn't be saved stays unsaved and marked so; the Projects page says so with Try again, the project's page offers "Save to my account", and the browser still asks before leaving.
+- **Signing out** shows nothing of the account that left: the store is emptied, and anything a page fetched is kept with the account it was fetched for.
+
+### Adding a feature
+
+- If it only reads, or works in the browser, don't gate it.
+- If it needs the server to change something, let the page open and gate the **action**: say up front what the account is for (a short note with a Sign in link that calls `openAuth("login")`), and show `describeError()` through `ErrorNotice` if the server still refuses.
+- Never wrap a page in a sign-in screen. `SignInPrompt` is only for things that exist solely on an account.
+- User-facing text calls the server "Kiungo online" (`__tests__/Errors.test.tsx` checks the wording).
+
+## 6. Versioning
 
 The app follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 

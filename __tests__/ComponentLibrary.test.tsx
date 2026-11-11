@@ -146,7 +146,8 @@ describe("part views", () => {
     expect(scene.querySelector('[aria-label="Arduino Uno, top view"]')).not.toBeNull();
   });
 
-  it("renders every part in all three views without throwing", () => {
+  // 88 parts × three views: about 5 s on a CI runner, so the default 5 s limit made it fail at random.
+  it("renders every part in all three views without throwing", { timeout: 30_000 }, () => {
     for (const part of PARTS) {
       const { unmount } = render(
         <>

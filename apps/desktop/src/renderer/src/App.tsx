@@ -25,6 +25,7 @@ import type { View } from "./shell/types";
 import { useAppearance } from "./theme";
 import { UpdateBanner } from "./update/UpdateBanner";
 import { useUpdate } from "./update/useUpdate";
+import { useNotifications } from "./notifications/useNotifications";
 
 export function App() {
   const auth = useAuth();
@@ -225,9 +226,21 @@ export function App() {
   useEffect(() => {
     if (needsSignIn && openPath) void closeOpen();
   }, [needsSignIn, openPath, closeOpen]);
+  const openToolchain = useCallback(() => void closeOpen().then(() => setFoundationsOpen(true)), [closeOpen]);
+  const { notices, dismiss } = useNotifications({ update, auth, onToolchain: openToolchain });
   if (auth === null) return <div className="h-full bg-background" />;
-  if (needsSignIn) return <SignInScreen state={auth as Extract<typeof auth, { status: "signed-out" | "waiting" }>} />;
-  if (foundationsOpen) return <Foundations onHome={() => setFoundationsOpen(false)} />;
+  if (needsSignIn)
+    return (
+      <WindowFrame>
+        <SignInScreen state={auth as Extract<typeof auth, { status: "signed-out" | "waiting" }>} />
+      </WindowFrame>
+    );
+  if (foundationsOpen)
+    return (
+      <WindowFrame>
+        <Foundations onHome={() => setFoundationsOpen(false)} />
+      </WindowFrame>
+    );
 
   return (
     <>
@@ -236,10 +249,10 @@ export function App() {
         onView={setView}
         roles={roles}
         auth={auth}
-        appearance={appearance}
-        onAppearance={changeAppearance}
         onSettings={() => setView("settings")}
-        onPalette={() => setPaletteOpen(true)}
+        notices={notices}
+        onDismiss={dismiss}
+        version={appInfo?.appVersion ?? null}
       >
         {view === "dashboard" ? (
           <Dashboard auth={auth} roles={roles} recent={recent} onView={setView} onNewProject={() => newProject()} onOpenRecent={openRecent} />
@@ -317,5 +330,15 @@ export function App() {
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
       <UpdateBanner update={update} />
     </>
+  );
+}
+
+/** Full-window screens outside the shell still need a strip to drag the window by, under its buttons. */
+function WindowFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-full flex-col bg-background">
+      <div className="drag-region h-12 shrink-0" aria-hidden />
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+    </div>
   );
 }

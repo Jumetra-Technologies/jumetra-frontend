@@ -7,9 +7,16 @@ name: Release the desktop app
 # also posted to the backend's POST /releases, which the app's update check and
 # the home page read first.
 #
-# Run it from the Actions tab (Run workflow) on the branch to release, or push
-# a tag desktop-v<version>. The tag is desktop-v<apps/desktop version>; the
-# build fails if that tag already has a release, because releases don't change.
+# It runs by itself on every push to main (a merged pull request): when
+# apps/desktop's version has no release yet, that version is built and
+# published, and every installed copy's "Check for updates" finds it. A push
+# that didn't raise the version publishes nothing (CI's desktop-version check
+# stops a pull request that changes the app without raising it).
+#
+# It can also be run from the Actions tab (Run workflow) on the branch to
+# release, or by pushing a tag desktop-v<version>. The tag is
+# desktop-v<apps/desktop version>; a run by hand or by tag fails if that tag
+# already has a release, because releases don't change.
 # The one exception is the republish input, for a publish that went wrong before
 # anyone installed the version: the same version is built again and every file
 # on its release, and the feed, replaced.
@@ -25,6 +32,7 @@ name: Release the desktop app
 
 on:
   push:
+    branches: [main]
     tags: ["desktop-v*"]
   workflow_dispatch:
     inputs:
@@ -49,8 +57,34 @@ env:
   NEXT_TELEMETRY_DISABLED: "1"
 
 jobs:
+  # On a push to main, only a version with no release yet is published.
+  decide:
+    name: Is there a new version to publish?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      publish: ${{ steps.check.outputs.publish }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./apps/desktop/package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "${{ github.event_name }}" == push && "${{ github.ref }}" == refs/heads/main ]] && gh release view "desktop-v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Desktop $version is already published: nothing to release."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build · ${{ matrix.label }}
+    needs: decide
+    if: needs.decide.outputs.publish == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:

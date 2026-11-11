@@ -438,7 +438,7 @@ export function DashboardShell({
           ) : (
             <>
               <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">{children}</div>
-              {FOOTER_ROUTES.includes(activePath) ? <SiteFooter className="mt-8" /> : null}
+              {FOOTER_ROUTES.includes(activePath) ? <SiteFooter className="mt-8" from="canvas" /> : null}
             </>
           )}
         </main>

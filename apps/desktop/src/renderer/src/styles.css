@@ -36,3 +36,145 @@ dialog.k-dialog[open] {
     animation: none;
   }
 }
+
+/* ── The window frame ─────────────────────────────────────────────────────────
+   Kiungo draws its own title bar: the sidebar's top row and the top bar are the
+   window's handle. Anything you click inside them opts out of dragging. */
+.drag-region {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+.no-drag,
+.drag-region button,
+.drag-region a,
+.drag-region input,
+[role="menu"],
+[role="dialog"],
+dialog {
+  -webkit-app-region: no-drag;
+}
+/* Windows and Linux draw the window buttons over the top bar's right end. */
+.k-titlebar {
+  padding-right: max(16px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 10px));
+}
+/* macOS: room for the traffic lights before the name. */
+[data-platform="mac"] .k-sidebar-top {
+  padding-left: 84px;
+}
+
+/* ── Notifications: the liquid-glass bell ────────────────────────────────────
+   A lens of frosted glass: light pooled at the top edge, a teal tint caught
+   underneath, and a soft refracted shadow. */
+.k-glass-bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  color: var(--foreground);
+  background:
+    radial-gradient(120% 95% at 30% 12%, rgb(255 255 255 / 0.96) 0%, rgb(255 255 255 / 0.6) 42%, rgb(255 255 255 / 0.28) 100%),
+    linear-gradient(160deg, color-mix(in srgb, var(--kiungo-teal) 22%, transparent), color-mix(in srgb, #3b82f6 12%, transparent));
+  border: 1px solid rgb(255 255 255 / 0.8);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.95),
+    inset 0 -3px 6px color-mix(in srgb, var(--kiungo-teal) 16%, transparent),
+    0 0 0 0.5px rgb(15 23 42 / 0.1),
+    0 1px 2px rgb(15 23 42 / 0.08),
+    0 6px 16px -6px color-mix(in srgb, var(--kiungo-teal) 45%, transparent);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  transition:
+    transform 140ms ease,
+    box-shadow 200ms ease;
+}
+/* The specular highlight across the top of the lens. */
+.k-glass-bell::before {
+  content: "";
+  position: absolute;
+  inset: 2px 5px 50% 5px;
+  border-radius: 999px 999px 60% 60%;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.85), rgb(255 255 255 / 0));
+  pointer-events: none;
+}
+.k-glass-bell:hover {
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.95),
+    inset 0 -3px 8px color-mix(in srgb, var(--kiungo-teal) 24%, transparent),
+    0 0 0 0.5px rgb(15 23 42 / 0.12),
+    0 2px 4px rgb(15 23 42 / 0.1),
+    0 10px 22px -6px color-mix(in srgb, var(--kiungo-teal) 55%, transparent);
+}
+.k-glass-bell:active {
+  transform: scale(0.95);
+}
+.k-glass-bell:focus-visible {
+  outline: 2px solid var(--kiungo-teal);
+  outline-offset: 2px;
+}
+[data-theme="dark"] .k-glass-bell,
+[data-theme="dark-contrast"] .k-glass-bell {
+  background:
+    radial-gradient(120% 95% at 30% 12%, rgb(255 255 255 / 0.22) 0%, rgb(255 255 255 / 0.08) 45%, rgb(255 255 255 / 0.03) 100%),
+    linear-gradient(160deg, color-mix(in srgb, var(--kiungo-teal) 30%, transparent), color-mix(in srgb, #3b82f6 14%, transparent));
+  border-color: rgb(255 255 255 / 0.16);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.3),
+    inset 0 -3px 6px color-mix(in srgb, var(--kiungo-teal) 22%, transparent),
+    0 1px 2px rgb(0 0 0 / 0.5),
+    0 8px 18px -6px color-mix(in srgb, var(--kiungo-teal) 40%, transparent);
+}
+[data-theme="dark"] .k-glass-bell::before,
+[data-theme="dark-contrast"] .k-glass-bell::before {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.28), rgb(255 255 255 / 0));
+}
+/* How many: a small red pill, ringed in the bar's color so it sits on the glass. */
+.k-glass-badge {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  z-index: 2;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff5f5f, #e0353a);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  box-shadow:
+    0 0 0 2px var(--header),
+    0 2px 6px rgb(224 53 58 / 0.45);
+}
+/* The list: a solid card, so every word reads cleanly over the page. */
+.k-notice-panel {
+  -webkit-app-region: no-drag;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 18px 48px -12px rgb(13 40 90 / 0.28),
+    0 4px 12px rgb(13 40 90 / 0.08);
+  animation: k-notice-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-origin: top right;
+}
+[data-theme="dark"] .k-notice-panel,
+[data-theme="dark-contrast"] .k-notice-panel {
+  box-shadow: 0 18px 48px -12px rgb(0 0 0 / 0.7);
+}
+@keyframes k-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-glass-bell,
+  .k-notice-panel {
+    transition: none;
+    animation: none;
+  }
+}

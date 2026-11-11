@@ -6,27 +6,74 @@ All notable changes to the Kiungo frontend. The format follows [Keep a Changelog
 - **Minor** (`1.2.0 → 1.3.0`): new features that keep saved data and URLs working.
 - **Major** (`1.2.0 → 2.0.0`): breaking changes, such as a new saved-data format, removed routes, or a backend contract older clients can't use.
 
-Every pull request that changes the app bumps the version (`npm run release:patch | release:minor | release:major`) and adds an entry here. `__tests__/Version.test.ts` fails if the version in `package.json` has no entry. Tag the merge commit `vX.Y.Z` on `main`.
+Every pull request that changes the app bumps the version (`npm run release:patch | release:minor | release:major`) and adds an entry here. A pull request that changes the desktop app (`apps/desktop`, or the `packages/` it bundles) also raises `apps/desktop/package.json`'s version: merging it publishes that version to every installed copy. `__tests__/Version.test.ts` fails if the version in `package.json` has no entry. Tag the merge commit `vX.Y.Z` on `main`.
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
-## [1.41.0] - 2026-11-11
-
-Every page works without signing in. An account is for saving work, and for the few things only done for an account.
+## [1.43.0] - 2026-11-11
 
 ### Changed
-- **Projects, a project's page and the Engineering Lab open to everyone.** Signed out, projects, experiment records and lab sessions can be made and used in full. They are marked **Not saved** and kept in the open tab only; the browser asks before the tab is closed or reloaded with unsaved work.
-- **Signing in saves what was made signed out** to the account: projects, their experiment records, and lab sessions with parts or a project. A project's page follows it to its saved id in place, keeping an edit in progress.
-- **Experiment Records and Advanced Analytics** work signed out with the projects made in the tab.
-- **Where an account is needed, the page says so up front** with a Sign in button: adding teammates, opening a project saved to an account, real boards in the lab, hybrid experiments, and firmware projects. Any "Sign in and try again." error now has a Sign in button.
-- FAQ, Getting started, User Agreement, Privacy Policy, the Settings profile tile and the developer docs describe the new behaviour.
+- **The Home page board is now a Blink scene with one big emerald-teal play/stop button.** The "Run Blink" switch and its description underneath are gone.
+- **Still:** the real Arduino Uno R3 model holds a fixed three-quarter view from the front left, with the USB and power jacks toward you and the headers behind.
+- **Play:**
+  - The USB lead slides in from the left and plugs into the USB-B socket. The ON LED lights.
+  - A 220 Ω resistor (red, red, brown, gold) pops in and stands in pin 13.
+  - A red LED pops in with its short leg in GND and its long leg twisted onto the resistor.
+  - Each connection flashes teal as it seats.
+  - The sketch uploads (TX, RX and L flicker), then the LED and the board's L LED blink together, on and off every half second.
+  - The camera moves in on the build and sways slowly while it blinks.
+- **Stop:** the parts leave and the camera returns to the still view.
+- **Reduced motion:** the parts appear in place without flying in, and the camera holds still.
+- **Without WebGL:** the board's top view shows instead, without the button.
+- **Screen readers:** the scene's description follows each step.
 
-### Fixed
-- The lab's **Link to project** list was always empty for account projects; it now lists them.
-- The Experiment Records project filter no longer clips its text.
+## [1.42.0] - 2026-11-11
+
+A cleaner desktop frame, notifications that tell you what's actually happening (with the button to act on it), a dashboard that knows the time of day, and desktop updates that publish themselves when a pull request is merged. The frame and notifications shipped in desktop 0.13.6 (#107); the greeting is desktop 0.13.7.
+
+### Added
+- **A greeting that knows the time and the calendar**, at the top of the dashboard, with your first name when you're signed in:
+  - **Good morning** from 5:00, **Good afternoon** from 12:00, **Good evening** from 18:00, and **Lock in late night** from 23:00 until 5:00.
+  - **On a public holiday, the holiday's greeting all day:** "Merry Christmas, Brad", "Happy New Year", "Happy Easter".
+  - **Kenya's public holidays** are added on a computer set to Kenyan time: Labour Day, Madaraka Day, Utamaduni Day, Mashujaa Day, Jamhuri Day and Boxing Day.
+  - Today's date sits above it. The greeting changes on the minute while Kiungo is open.
+- **Notifications that mean something**, behind the bell in the top bar. They come from what's really true on your computer:
+  - **An update ready to install**, with **Update now** (saves your projects, restarts on the new version) and **What's new**.
+  - **An update downloading**, with its progress.
+  - **An update check that failed**, with **Try again**.
+  - **Firmware can't be compiled yet**, when the Arduino toolchain is missing, with **Set it up**.
+  - **You're offline**, when signed in without a connection.
+  - **Updated to Kiungo X**, once, after an update, with **What's new**.
+- **The bell shows how many** notifications there are (3, not just a dot), on a new liquid-glass button. Each notification can be dismissed; with none, it says you're all caught up.
+
+### Changed
+- **One title bar, not two.** The separate Windows/Linux title bar is gone. The sidebar and top bar run to the top edge of the window, the window buttons sit in the top bar and follow light and dark, and you drag the window by the top bar or the sidebar's name. On macOS the traffic lights sit at the top of the sidebar.
+- **One name.** The sidebar shows "Kiungo" once, as plain text: no logo, no 2.0 badge, and no "Platform" label.
+- **A quieter top bar:** only the notification bell. The breadcrumb ("Kiungo / Dashboard"), the search box (Ctrl+K still opens commands and search, as the footer says), the "Systems nominal" label and the light/dark toggle are gone. Light and dark live in **Settings → Appearance**.
+- **One way to Settings.** The sidebar's foot has the Settings row and, below it, Sign in or your account. The second settings button next to Sign in, and Settings in the account menu, are gone.
+- **The update card in the corner** now only answers a check you start in Settings. Updates found in the background go to the notifications, so they're never shown twice.
+- The footer shows the version number instead of "Kiungo 2.0".
 
 ### Removed
-- The sign-in gate around Projects (`app/workspace/layout.tsx`) and `SignInRequired`.
+- The three sample notifications ("Firmware build passed for Line Follower" and others), which were placeholders, not real events.
+
+- **Desktop updates publish themselves.** Merging a pull request that raises the desktop version now builds that version and puts it in the update feed, so every installed copy's **Check for updates** finds it. Before, someone had to run **Release the desktop app** by hand, and merged changes sat unreleased.
+- **A pull request that changes the desktop app must raise its version.** A new CI check, **Desktop · version raised for the update**, fails otherwise. Changes to tests and docs don't count.
+
+### Fixed
+- **A test that failed at random:** the one that draws every part in all three views now has a time limit that fits 88 parts.
+
+## [1.41.0] - 2026-11-11
+
+### Changed
+- **A new site footer in the logo's emerald teal.**
+  - The page melts into a pale mint, which deepens through the logo teal (#077a7d) to near-black teal at the very bottom.
+  - A two-layer film grain sits on top. It's static.
+- **The fade starts from the exact color above the footer** (the page, a section or the app canvas), so there's no seam.
+- **Text starts at the logo teal**, where white text is 5.3:1.
+- **Dark themes use deeper teals for the fade**, so no pale band glows against black.
+- **The grain is hidden in Windows high-contrast mode.**
+- **The footer's dividing lines are white again.** The page's border color had been overriding them.
 
 ## [1.40.0] - 2026-11-10
 
@@ -896,6 +943,8 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.43.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.42.0...v1.43.0
+[1.42.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.41.0...v1.42.0
 [1.41.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.40.0...v1.41.0
 [1.40.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.2...v1.40.0
 [1.39.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.1...v1.39.2

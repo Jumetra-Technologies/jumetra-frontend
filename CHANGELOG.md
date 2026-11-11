@@ -6,13 +6,13 @@ All notable changes to the Kiungo frontend. The format follows [Keep a Changelog
 - **Minor** (`1.2.0 → 1.3.0`): new features that keep saved data and URLs working.
 - **Major** (`1.2.0 → 2.0.0`): breaking changes, such as a new saved-data format, removed routes, or a backend contract older clients can't use.
 
-Every pull request that changes the app bumps the version (`npm run release:patch | release:minor | release:major`) and adds an entry here. `__tests__/Version.test.ts` fails if the version in `package.json` has no entry. Tag the merge commit `vX.Y.Z` on `main`.
+Every pull request that changes the app bumps the version (`npm run release:patch | release:minor | release:major`) and adds an entry here. A pull request that changes the desktop app (`apps/desktop`, or the `packages/` it bundles) also raises `apps/desktop/package.json`'s version: merging it publishes that version to every installed copy. `__tests__/Version.test.ts` fails if the version in `package.json` has no entry. Tag the merge commit `vX.Y.Z` on `main`.
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
 ## [1.42.0] - 2026-11-11
 
-A cleaner desktop frame, notifications that tell you what's actually happening (with the button to act on it), and a dashboard that knows the time of day. Desktop 0.13.6.
+A cleaner desktop frame, notifications that tell you what's actually happening (with the button to act on it), a dashboard that knows the time of day, and desktop updates that publish themselves when a pull request is merged. The frame and notifications shipped in desktop 0.13.6 (#107); the greeting is desktop 0.13.7.
 
 ### Added
 - **A greeting that knows the time and the calendar**, at the top of the dashboard, with your first name when you're signed in:
@@ -39,6 +39,9 @@ A cleaner desktop frame, notifications that tell you what's actually happening (
 
 ### Removed
 - The three sample notifications ("Firmware build passed for Line Follower" and others), which were placeholders, not real events.
+
+- **Desktop updates publish themselves.** Merging a pull request that raises the desktop version now builds that version and puts it in the update feed, so every installed copy's **Check for updates** finds it. Before, someone had to run **Release the desktop app** by hand, and merged changes sat unreleased.
+- **A pull request that changes the desktop app must raise its version.** A new CI check, **Desktop · version raised for the update**, fails otherwise. Changes to tests and docs don't count.
 
 ### Fixed
 - **A test that failed at random:** the one that draws every part in all three views now has a time limit that fits 88 parts.

@@ -5,6 +5,8 @@ name: CI
 #   desktop: types, tests, a real Arduino CLI compile and an unsigned
 #            installer on Windows, Ubuntu and macOS (issue #54).
 #   mcp:     the MCP server's typecheck and self-test.
+#   desktop-version: a pull request that changes the desktop app raises its
+#            version, because merging publishes it to every installed copy.
 # A red check means the change isn't ready to merge.
 on:
   pull_request:
@@ -21,6 +23,21 @@ env:
   ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
 
 jobs:
+  desktop-version:
+    name: Desktop · version raised for the update
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: A change to the desktop app comes with a new version
+        run: node .github/scripts/desktop-version-check.mjs "origin/${{ github.base_ref }}"
+
   website:
     name: Website · typecheck, lint, test, build
     runs-on: ubuntu-latest

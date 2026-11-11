@@ -5,6 +5,7 @@ import { openedAgo } from "../ipc";
 import { CircuitThumbnail } from "../home/CircuitThumbnail";
 import { FocusPanel, Metric } from "../shell/widgets";
 import type { View } from "../shell/types";
+import { dateLine, greetingFor, useNow } from "./greeting";
 
 export function Dashboard({
   auth,
@@ -25,12 +26,18 @@ export function Dashboard({
   const name = auth?.status === "signed-in" ? auth.user.name.split(" ")[0] : null;
   const projects = (recent ?? []).filter((p) => !p.missing).slice(0, 3);
   const attention = (recent ?? []).filter((p) => !p.missing).length;
+  const now = useNow();
 
   return (
     <div className="mx-auto max-w-[1280px] p-6">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{name ? `Good to see you, ${name}` : "Good to see you"}</h1>
+          <p className="mb-1 text-xs font-medium text-muted" data-testid="dashboard-date">
+            {dateLine(now)}
+          </p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground" data-testid="dashboard-greeting">
+            {greetingFor(now, name)}
+          </h1>
           <p className="mt-1 text-sm text-muted">{attention ? `Your engineering environment is ready. ${attention} project${attention === 1 ? "" : "s"} on this computer.` : "Start a project to see it here."}</p>
         </div>
         <div className="flex gap-2">

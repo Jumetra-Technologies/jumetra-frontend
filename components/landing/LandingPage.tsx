@@ -105,7 +105,7 @@ function LandingBody({ release }: { release: Release | null }) {
             <p className="mt-7 max-w-[50ch] text-sm leading-6 text-muted">{HERO.facts}</p>
           </div>
           <div className="mx-auto w-full max-w-[460px] lg:mx-0 lg:justify-self-end">
-            <HeroBoard hint={HERO.boardHint} />
+            <HeroBoard />
           </div>
         </div>
       </header>

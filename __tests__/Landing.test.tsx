@@ -203,38 +203,11 @@ describe("LandingPage", () => {
 });
 
 describe("HeroBoard", () => {
-  beforeEach(() => {
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
-  });
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("runs Blink from its switch, with a link to the module (more in HeroBoard.test.tsx)", () => {
-    render(<HeroBoard hint="Drag to turn the board." />);
-    const sw = screen.getByRole("switch", { name: "Run Blink on pin 13" });
-    expect(sw).toHaveAttribute("aria-checked", "false");
-    expect(screen.getByText("Drag to turn the board.")).toBeInTheDocument();
-    fireEvent.click(sw);
-    expect(sw).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("link", { name: /Learn it in 20 minutes/ })).toHaveAttribute("href", "/learn/blink-an-led-with-arduino");
-  });
-
-  it("turns the real Uno with the arrow keys and when dragged", () => {
-    render(<HeroBoard hint="" />);
-    const scene = screen.getByTestId("part-3d");
-    const spin = () => parseFloat(scene.style.getPropertyValue("--spin"));
-    fireEvent.keyDown(scene, { key: "ArrowRight" });
-    const before = spin();
-    fireEvent.keyDown(scene, { key: "ArrowRight" });
-    expect(spin()).toBeCloseTo(before + 15);
-    const pointer = (target: Element, type: string, init: MouseEventInit) => target.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0, ...init }));
-    pointer(scene, "pointerdown", { clientX: 100, clientY: 100 });
-    expect(scene).toHaveAttribute("data-dragging");
-    pointer(scene, "pointermove", { clientX: 140, clientY: 120 });
-    pointer(scene, "pointerup", {});
-    expect(scene).not.toHaveAttribute("data-dragging");
-    expect(spin()).toBeGreaterThan(before + 15);
+  it("shows the real Uno still, without the old Blink switch or its description (more in HeroBoard.test.tsx)", () => {
+    render(<HeroBoard />);
+    expect(screen.getByTestId("hero-board")).toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: /Run Blink/ })).toBeNull();
+    expect(screen.queryByText(/drawn to scale/)).toBeNull();
   });
 });
 

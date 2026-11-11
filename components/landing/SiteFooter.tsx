@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { KiungoLogo } from "@kiungo/ui/KiungoMark";
 import { FOOTER } from "@/lib/landing/content";
@@ -17,15 +18,22 @@ function FooterLink({ href, label }: { href: string; label: string }) {
   );
 }
 
+/** The page color directly above the footer, which its gradient starts from. */
+export type FooterFrom = "background" | "surface" | "canvas";
+
 /**
- * The site footer, in the brand's teal deepening to navy (the logo's two
- * colors) so it closes the page with weight. Shown on Home, the Learning
- * Center and Documentation.
+ * The site footer: the page above melts into light blue, deepening to dark
+ * blue at the bottom, under a static grain (.kiungo-footer in the theme).
+ * Shown on Home, the Learning Center and Documentation.
  */
-export function SiteFooter({ className }: { className?: string }) {
+export function SiteFooter({ className, from = "background" }: { className?: string; from?: FooterFrom }) {
   return (
-    <footer className={cn("kiungo-footer", className)} data-testid="site-footer">
-      <div className="mx-auto w-full max-w-[1120px] px-5 py-14 sm:px-8 lg:px-10">
+    <footer
+      className={cn("kiungo-footer", className)}
+      style={{ "--footer-from": `var(--${from})` } as CSSProperties}
+      data-testid="site-footer"
+    >
+      <div className="mx-auto w-full max-w-[1120px] px-5 pb-14 pt-6 sm:px-8 lg:px-10">
         {/*
           The brand and what Kiungo is, as one band across the top. It uses the
           same four-column grid as the links, so the text starts on the Learn

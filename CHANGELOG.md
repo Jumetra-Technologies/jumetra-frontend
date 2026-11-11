@@ -10,6 +10,16 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.41.0] - 2026-11-11
+
+### Changed
+- **A new site footer.** The page now melts into light blue, which deepens to dark blue at the very bottom, under a fixed film grain.
+  - The fade starts from the exact color above the footer (the page, a section or the app canvas), so there's no seam.
+  - Text starts where the blue is dark enough for white.
+  - Dark themes use deeper blues for the fade, so no pale band glows against black.
+  - The grain is hidden in Windows high-contrast mode.
+- **The footer's dividing lines are white again.** The page's border color had been overriding them.
+
 ## [1.40.0] - 2026-11-10
 
 The Component library, rebuilt: 88 parts where there were 38, every one redrawn from its real dimensions with the engineering data behind it, and a lab that understands batteries, motor drivers and heat. Desktop 0.13.5.
@@ -878,6 +888,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.41.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.40.0...v1.41.0
 [1.40.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.2...v1.40.0
 [1.39.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.1...v1.39.2
 [1.39.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.0...v1.39.1

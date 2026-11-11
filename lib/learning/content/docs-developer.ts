@@ -47,7 +47,7 @@ export const DEVELOPER_ARTICLES: DocArticle[] = [
       { type: "h2", text: "Where data is kept" },
       {
         type: "p",
-        text: "Projects and experiment records are stored in the signed-in user's Firestore project path and accessed through authenticated endpoints in `lib/api-client.ts`. Browser storage is used for the sign-in session and preferences, not as a project-data store. Lab sessions are currently temporary.",
+        text: "Projects and experiment records are stored in the signed-in user's Firestore project path and accessed through authenticated endpoints in `lib/api-client.ts`. Lab sessions are stored the same way, with a copy per account in browser storage so the lab opens at once. Signed out, all three are kept in memory for the open page only (`lib/projects/workspace.ts` and the lab store), and signing in saves them to the account. Browser storage otherwise holds the sign-in session and preferences.",
       },
       { type: "h2", text: "Scrollbars" },
       {

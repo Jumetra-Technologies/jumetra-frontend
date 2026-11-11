@@ -9,6 +9,7 @@ import { useLab } from "@kiungo/lab/store";
 import { SegmentedControl } from "@kiungo/ui/segmented-control";
 import { useLearningProgress } from "@/components/learning/useLearningProgress";
 import { openAuth } from "@/lib/account-dialogs";
+import { isUnsavedProject, useProjects } from "@/lib/projects/workspace";
 import { loadCommunityStats, type CommunityState } from "@/lib/analytics/community";
 import {
   RANGES,
@@ -111,7 +112,13 @@ export function AdvancedAnalytics({ now: fixedNow }: { now?: Date } = {}) {
 
   const signedIn = useAuthStore((s) => s.isAuthenticated);
   const userId = useAuthStore((s) => (s.isAuthenticated ? (s.user?.id ?? null) : null));
-  const account: AccountData = !userId ? NO_ACCOUNT : loaded?.user === userId ? loaded.data : LOADING_ACCOUNT;
+  // Signed out, the projects are the unsaved ones made in this tab.
+  const workspace = useProjects();
+  const unsaved = useMemo<AccountData>(() => {
+    const projects = (workspace?.projects ?? []).filter((project) => isUnsavedProject(project.id));
+    return projects.length ? { status: "ready", projects, experiments: workspace?.unsavedRecords ?? [] } : NO_ACCOUNT;
+  }, [workspace]);
+  const account: AccountData = !userId ? unsaved : loaded?.user === userId ? loaded.data : LOADING_ACCOUNT;
   const authLoading = useAuthStore((s) => s.isLoading);
   const sessions = useLab((s) => s.sessions);
   const labReady = useLab((s) => s.hydrated);
@@ -226,7 +233,7 @@ export function AdvancedAnalytics({ now: fixedNow }: { now?: Date } = {}) {
 
       {!signedIn && !authLoading ? (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-border bg-[var(--accent)] px-4 py-3 text-sm text-foreground" data-testid="analytics-signin">
-          <p className="min-w-0">Your lab sessions and learning progress below come from this browser. Sign in to add your projects and experiment records.</p>
+          <p className="min-w-0">The figures below are for this browser: the lab sessions and projects you haven&apos;t saved, and your learning progress. Sign in to save your work and add what&apos;s on your account.</p>
           <button type="button" onClick={() => openAuth("login")} className="rounded-[8px] bg-[var(--analytics-teal)] px-3 py-1.5 text-[13px] font-medium text-[var(--primary-foreground)] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2">
             Sign in
           </button>

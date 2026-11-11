@@ -1,12 +1,16 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { EngineeringLab } from "@/components/lab/EngineeringLab";
 import { ProjectHub } from "@/components/projects/ProjectHub";
 import { LocalProjectDetail } from "@/components/projects/LocalProjectDetail";
 import { MenuList } from "@kiungo/ui/menu";
 import { useLab } from "@kiungo/lab/store";
-import { EMPTY_ROBOTICS_DATA, writeRoboticsData } from "@/lib/robotics-data";
-import { api } from "@/lib/api-client";
+import { writeRoboticsData } from "@/lib/robotics-data";
+import { ApiError, api } from "@/lib/api-client";
+import { closeAccountDialog, useAccountDialog } from "@/lib/account-dialogs";
+import { useAuthStore } from "@/lib/auth-store";
+import { createProject, resetProjectsWorkspace, saveRecord } from "@/lib/projects/workspace";
+import { setLabOwner } from "@kiungo/lab/store";
 import { freshLab } from "./helpers/lab";
 
 const push = vi.fn();
@@ -33,10 +37,16 @@ beforeAll(() => {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({ matches: true, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn() }));
 });
 
+/** Signed in as the account the lab's sessions belong to in these tests. */
+function signIn() {
+  useAuthStore.setState({ isAuthenticated: true, isLoading: false, user: { id: "acct-test", email: "ada@school.ac.ke", display_name: "Ada" } as never, accessToken: "t" });
+}
+
 beforeEach(() => {
   window.localStorage.clear();
   freshLab();
-  writeRoboticsData(EMPTY_ROBOTICS_DATA);
+  resetProjectsWorkspace();
+  useAuthStore.setState({ isAuthenticated: false, isLoading: false, user: null, accessToken: null });
   // The backend isn't running in tests: the lab works offline.
   vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
   push.mockReset();
@@ -79,7 +89,64 @@ describe("Engineering Lab", () => {
     expect(session.wires).toHaveLength(2);
     expect(session.log.map((e) => e.text)).toEqual(expect.arrayContaining(["Added Arduino Uno", "Added LED", expect.stringMatching(/^Auto-wired LED to Arduino Uno: Anode \(\+\) → D13 SCK, Cathode \(−\) → GND/)]));
     expect(await screen.findByText(/LED is wired and powered on Arduino Uno D13 SCK/)).toBeInTheDocument();
-    expect(screen.getByTestId("runtime-status")).toHaveAttribute("aria-label", "Offline mode");
+  });
+
+  it("works signed out: nothing is saved, the toolbar says so and offers to sign in, and the server is left alone", async () => {
+    setLabOwner(null);
+    const fetched = vi.mocked(fetch);
+    render(<EngineeringLab />);
+    expect(await screen.findByTestId("lab-empty")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("quick-arduino-uno"));
+    await waitFor(() => expect(useLab.getState().sessions[0].nodes).toHaveLength(1));
+
+    const status = screen.getByTestId("save-status");
+    expect(status).toHaveAttribute("aria-label", "Not saved. Sign in to save");
+    fireEvent.click(status);
+    const { result } = renderHook(() => useAccountDialog());
+    expect(result.current).toEqual({ kind: "auth", mode: "login" });
+    act(() => closeAccountDialog());
+
+    // The activity log doesn't claim to be saved either.
+    fireEvent.click(screen.getByRole("tab", { name: /Activity/ }));
+    expect(screen.getByTestId("activity-note")).toHaveTextContent("Not saved: sign in to keep this log");
+
+    // The mirror to Kiungo online is an account's: signed out it isn't tried, and no status is shown for it.
+    await new Promise((r) => setTimeout(r, 1300));
+    expect(screen.queryByTestId("runtime-status")).not.toBeInTheDocument();
+    expect(fetched).not.toHaveBeenCalled();
+    expect(window.localStorage.length).toBe(0);
+  });
+
+  it("signed in, says whether Kiungo online can be reached", async () => {
+    signIn();
+    vi.spyOn(api, "getMyProjects").mockResolvedValue([]);
+    // As the account sync leaves it once the account's sessions have arrived.
+    useLab.setState({ cloudSaveState: "saved" });
+    render(<EngineeringLab />);
+    expect(await screen.findByTestId("lab-empty")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("runtime-status")).toHaveAttribute("aria-label", "Offline mode"));
+    expect(screen.getByTestId("save-status").tagName).toBe("SPAN");
+    fireEvent.click(screen.getByRole("tab", { name: /Activity/ }));
+    expect(screen.getByTestId("activity-note")).toHaveTextContent("Saved to the project automatically");
+  });
+
+  it("never leaves the lab without a session: signing out takes the account's sessions away and a new one opens", async () => {
+    signIn();
+    vi.spyOn(api, "getMyProjects").mockResolvedValue([]);
+    useLab.getState().hydrate();
+    useLab.getState().createSession({ name: "Mine" });
+    useLab.getState().addNode("arduino-uno");
+    useLab.setState({ cloudSaveState: "saved" });
+    render(<EngineeringLab />);
+    await waitFor(() => expect(screen.getByTestId("save-status").tagName).toBe("SPAN"));
+
+    act(() => {
+      useAuthStore.setState({ isAuthenticated: false, user: null, accessToken: null });
+      setLabOwner(null);
+    });
+    await waitFor(() => expect(useLab.getState().sessions.map((s) => s.name)).toEqual(["Untitled lab"]));
+    expect(await screen.findByTestId("lab-empty")).toBeInTheDocument();
+    expect(screen.getByTestId("save-status")).toHaveAttribute("aria-label", "Not saved. Sign in to save");
   });
 
   it("runs the sketch and records what happened", async () => {
@@ -361,6 +428,8 @@ describe("Projects and the lab", () => {
     // Projects live on the account: the detail page loads them from the server.
     const now = new Date().toISOString();
     const saved = { id: "user-project-gh", name: "Smart greenhouse", description: "Watch soil moisture", objectives: "Water when dry", contributors: "", category: "iot" as const, hardware: ["soil sensor"], createdAt: now, updatedAt: now };
+    signIn();
+    vi.spyOn(api, "getMyProjects").mockResolvedValue([saved]);
     vi.spyOn(api, "getMyProject").mockResolvedValue(saved);
     vi.spyOn(api, "getMyProjectExperiments").mockResolvedValue([]);
     useLab.getState().hydrate();
@@ -373,6 +442,119 @@ describe("Projects and the lab", () => {
     expect(screen.getByTestId("project-open-lab")).toHaveAttribute("href", `/laboratory/workspace?session=${s.id}`);
     expect(screen.getByTestId("new-project-session")).toHaveAttribute("href", "/laboratory/workspace?project=user-project-gh");
     expect(within(screen.getByTestId("lab-hardware")).getByText("ESP32")).toBeInTheDocument();
+    expect(screen.getByText(/^Saved to your account · Updated/)).toBeInTheDocument();
+  });
+
+  it("opens an unsaved project signed out: its records, its lab sessions and editing all work, and it says it isn't saved", async () => {
+    setLabOwner(null);
+    const getProject = vi.spyOn(api, "getMyProject");
+    const unsaved = await createProject({ name: "Line rover", description: "Follows a line", objectives: "Finish the course", contributors: "", category: "robotics", hardware: ["Arduino Uno"], teammates: [] });
+    await saveRecord({ projectId: unsaved.id, title: "First lap", objective: "Stay on the line", hardware: [], procedure: "One lap", observations: "", results: "", notes: "" });
+    useLab.getState().hydrate();
+    const s = useLab.getState().createSession({ name: "Rover bench", projectId: unsaved.id });
+    useLab.getState().addNode("arduino-uno");
+
+    render(<LocalProjectDetail projectId={unsaved.id} />);
+    expect(await screen.findByRole("heading", { name: "Line rover" })).toBeInTheDocument();
+    expect(screen.getByTestId("project-sign-in")).toHaveTextContent("This project isn't saved");
+    expect(screen.getByText(/^Not saved · Updated/)).toBeInTheDocument();
+    expect(await screen.findByText("First lap")).toBeInTheDocument();
+    expect(screen.getByTestId("project-open-lab")).toHaveAttribute("href", `/laboratory/workspace?session=${s.id}`);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit project" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Line rover 2" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    });
+    expect(await screen.findByRole("heading", { name: "Line rover 2" })).toBeInTheDocument();
+    expect(getProject).not.toHaveBeenCalled();
+  });
+
+  it("signing in on an unsaved project's page saves it where it stands: the page stays, the address follows, and an edit in progress is kept", async () => {
+    setLabOwner(null);
+    const unsaved = await createProject({ name: "Line rover", description: "Follows a line", objectives: "Finish the course", contributors: "", category: "robotics", hardware: ["Arduino Uno"], teammates: [] });
+    useLab.getState().hydrate();
+    const s = useLab.getState().createSession({ name: "Rover bench", projectId: unsaved.id });
+    render(<LocalProjectDetail projectId={unsaved.id} />);
+    expect(await screen.findByTestId("project-sign-in")).toBeInTheDocument();
+
+    // Halfway through renaming it, the visitor signs in to save.
+    fireEvent.click(screen.getByRole("button", { name: "Edit project" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Line rover 2" } });
+    const onAccount = { ...unsaved, id: "user-project-9" };
+    const create = vi.spyOn(api, "createMyProject").mockResolvedValue(onAccount);
+    vi.spyOn(api, "getMyProjects").mockResolvedValue([onAccount]);
+    vi.spyOn(api, "getMyProject").mockResolvedValue(onAccount);
+    vi.spyOn(api, "getMyProjectExperiments").mockResolvedValue([]);
+    const update = vi.spyOn(api, "updateMyProject").mockImplementation(async (id, project) => ({ ...onAccount, ...project, id }));
+    await act(async () => {
+      signIn();
+    });
+
+    expect(await screen.findByText(/^Saved to your account · Updated/)).toBeInTheDocument();
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("project-sign-in")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("project-unsaved")).not.toBeInTheDocument();
+    expect(window.location.pathname).toBe("/workspace/projects/user-project-9");
+    // Its lab session came with it.
+    expect(screen.getByTestId("project-open-lab")).toHaveAttribute("href", `/laboratory/workspace?session=${s.id}`);
+    expect(useLab.getState().sessions[0].projectId).toBe("user-project-9");
+
+    // The form is still open with what was typed, and saving it now goes to the account.
+    expect(screen.getByLabelText("Name")).toHaveValue("Line rover 2");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    });
+    expect(update).toHaveBeenCalledWith("user-project-9", expect.objectContaining({ id: "user-project-9", name: "Line rover 2" }));
+    expect(await screen.findByRole("heading", { name: "Line rover 2" })).toBeInTheDocument();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("asks for the account when a project saved to one is opened signed out, and says a new one needs no sign-in", async () => {
+    setLabOwner(null);
+    const getProject = vi.spyOn(api, "getMyProject");
+    render(<LocalProjectDetail projectId="user-project-gh" />);
+    const prompt = await screen.findByTestId("sign-in-prompt");
+    expect(within(prompt).getByRole("heading", { name: "Sign in to open this project" })).toBeInTheDocument();
+    expect(prompt).toHaveTextContent("You can still start a new project without signing in.");
+    fireEvent.click(within(prompt).getByRole("button", { name: "Sign in" }));
+    const { result } = renderHook(() => useAccountDialog());
+    expect(result.current).toEqual({ kind: "auth", mode: "login" });
+    act(() => closeAccountDialog());
+    expect(getProject).not.toHaveBeenCalled();
+  });
+
+  it("says plainly when an unsaved project is gone after a reload", async () => {
+    setLabOwner(null);
+    render(<LocalProjectDetail projectId="local-project-gone" />);
+    expect(await screen.findByText("This project wasn't saved")).toBeInTheDocument();
+    expect(screen.getByText(/Sign in before you start the next one to keep it\./)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to projects" })).toHaveAttribute("href", "/workspace");
+  });
+
+  it("shows one account's project to nobody else: signing out closes it, and the next person to sign in doesn't get it", async () => {
+    signIn();
+    const now = new Date().toISOString();
+    const mine = { id: "user-project-gh", name: "Smart greenhouse", description: "", objectives: "Water when dry", contributors: "", category: "iot" as const, hardware: [], teammates: [], createdAt: now, updatedAt: now };
+    vi.spyOn(api, "getMyProjects").mockResolvedValueOnce([mine]).mockResolvedValue([]);
+    const getProject = vi.spyOn(api, "getMyProject").mockResolvedValueOnce(mine).mockRejectedValue(new ApiError("/auth/me/projects/user-project-gh", 404));
+    vi.spyOn(api, "getMyProjectExperiments").mockResolvedValue([]);
+    render(<LocalProjectDetail projectId="user-project-gh" />);
+    expect(await screen.findByRole("heading", { name: "Smart greenhouse" })).toBeInTheDocument();
+
+    await act(async () => {
+      useAuthStore.setState({ isAuthenticated: false, user: null, accessToken: null });
+    });
+    expect(screen.getByTestId("sign-in-prompt")).toBeInTheDocument();
+    expect(screen.queryByText("Smart greenhouse")).not.toBeInTheDocument();
+
+    await act(async () => {
+      useAuthStore.setState({ isAuthenticated: true, isLoading: false, user: { id: "acct-other", email: "ben@school.ac.ke", display_name: "Ben" } as never, accessToken: "t2" });
+    });
+    await waitFor(() => expect(getProject).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("Project not found in your account")).toBeInTheDocument();
+    expect(screen.queryByText("Smart greenhouse")).not.toBeInTheDocument();
+    expect(screen.queryByText("Water when dry")).not.toBeInTheDocument();
   });
 });
 

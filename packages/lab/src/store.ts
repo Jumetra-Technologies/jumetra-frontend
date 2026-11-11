@@ -6,7 +6,8 @@
  * Where sessions are kept is up to the host (`setLabPersistence`). On the
  * website each signed-in account's sessions are cached separately in this
  * browser and synchronized to its server records; signed out, they live in
- * memory only, and the old shared, account-less key is cleared. The desktop
+ * memory only (and are carried into the account on sign-in), and the old
+ * shared, account-less key is cleared. The desktop
  * app keeps the open project's circuit in its project folder.
  */
 
@@ -534,16 +535,29 @@ export function setLabPersistence(next: LabPersistence): void {
  * Switch to another account's sessions (sign-in, sign-out, switching
  * account). Pending changes are saved to the account they belong to first,
  * and nothing from one account is shown to another.
+ *
+ * `carry` is for signing in from signed out: what was built without an
+ * account, which lives in memory only, comes along and becomes the
+ * account's, so "sign in to save" saves it. A session with no parts and no
+ * project is left behind: it is the blank one the lab opens with.
  */
-export function setLabOwner(accountId: string | null): void {
+export function setLabOwner(accountId: string | null, options: { carry?: boolean } = {}): void {
   if (accountId === owner) return;
   flushLab();
+  const carried = options.carry && owner === null && accountId ? labData.sessions.filter((s) => s.nodes.length > 0 || s.projectId) : [];
+  const carriedActive = carried.some((s) => s.id === labData.activeId) ? labData.activeId : null;
   owner = accountId;
   labData = { version: 1, sessions: [], activeId: null };
   if (accountId) labData = readBrowserLabData();
+  let stored = true;
+  if (carried.length) {
+    const ids = new Set(carried.map((s) => s.id));
+    // Kept in this browser for the account straight away, so a page that loads the lab later reads them back.
+    stored = writeBrowserLabData({ version: 1, sessions: [...carried, ...labData.sessions.filter((s) => !ids.has(s.id))], activeId: carriedActive ?? labData.activeId });
+  }
   if (useLab.getState().hydrated) {
     const data = labData;
-    useLab.setState({ sessions: data.sessions, activeId: data.activeId && data.sessions.some((s) => s.id === data.activeId) ? data.activeId : (data.sessions[0]?.id ?? null), past: [], future: [], saveError: false, cloudSaveState: "idle" });
+    useLab.setState({ sessions: data.sessions, activeId: data.activeId && data.sessions.some((s) => s.id === data.activeId) ? data.activeId : (data.sessions[0]?.id ?? null), past: [], future: [], saveError: !stored, cloudSaveState: "idle" });
   }
 }
 

@@ -9,7 +9,7 @@ import type { LogKind } from "@kiungo/core/lab/types";
 import { cn } from "@kiungo/ui/cn";
 import { FaultList } from "./FaultList";
 import { PartsPanel } from "./PartsPanel";
-import { useLabContext } from "./lab-context";
+import { useLabContext, useLabHost } from "./lab-context";
 
 export type DockTab = "terminal" | "activity" | "serial" | "signals" | "problems" | "parts";
 
@@ -121,6 +121,7 @@ function Terminal({ api }: { api: Omit<TerminalApi, "clear"> }) {
 
 function ActivityLog() {
   const { session, select, focusNode } = useLabContext();
+  const host = useLabHost();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const kinds = FILTERS.find((f) => f.id === filter)!.kinds;
   const entries = [...session.log].reverse().filter((e) => !kinds.length || kinds.includes(e.kind));
@@ -132,7 +133,7 @@ function ActivityLog() {
             {f.label}
           </button>
         ))}
-        <span className="ml-auto text-[11px] text-muted">Saved to the project automatically</span>
+        <span className="ml-auto text-[11px] text-muted" data-testid="activity-note">{host.activityNote ?? "Saved to the project automatically"}</span>
       </div>
       <ol className="hhip-scroll min-h-0 flex-1 overflow-y-auto px-3 py-2">
         {entries.map((e) => {

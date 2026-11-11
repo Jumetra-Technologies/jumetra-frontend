@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorNotice } from "@/components/ui/error-notice";
+import { closeAccountDialog, useAccountDialog } from "@/lib/account-dialogs";
 import { ErrorScreen } from "@/components/ui/error-screen";
 import { ApiError, api } from "@/lib/api-client";
 import { readDiagnostics, resetDiagnosticsCache } from "@/lib/diagnostics/store";
@@ -79,6 +80,20 @@ describe("How it looks", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Your file wasn't saved.");
     screen.getByRole("button", { name: /Try again/ }).click();
     expect(retry).toHaveBeenCalled();
+  });
+
+  it("a notice that says to sign in comes with the button that does it, and no other notice has one", () => {
+    // The few things the server only does for an account answer 401; the pages work signed out otherwise.
+    const { unmount } = render(<ErrorNotice message={describeError(new ApiError("/laboratory", 401), "Your lab wasn't created")} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Your lab wasn't created. Sign in and try again.");
+    screen.getByTestId("error-sign-in").click();
+    const { result } = renderHook(() => useAccountDialog());
+    expect(result.current).toEqual({ kind: "auth", mode: "login" });
+    act(() => closeAccountDialog());
+    unmount();
+
+    render(<ErrorNotice message={describeError(new ApiError("/laboratory", 500), "Your lab wasn't created")} />);
+    expect(screen.queryByTestId("error-sign-in")).not.toBeInTheDocument();
   });
 
   it("a whole page that broke: plain words, a way out, a reference, and the details logged", async () => {

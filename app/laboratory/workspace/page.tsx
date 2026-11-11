@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { SignInRequired } from "@/components/auth/SignInRequired";
 import { EngineeringLab } from "@/components/lab/EngineeringLab";
 import { PART_COUNTS } from "@kiungo/core/parts/catalog/counts";
 
@@ -11,9 +10,6 @@ export const metadata: Metadata = {
 export default async function LaboratoryWorkspacePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-  return (
-    <SignInRequired>
-      <EngineeringLab sessionId={one(params.session)} newForProject={one(params.project)} />
-    </SignInRequired>
-  );
+  // Open to everyone. Signed out, the lab keeps the work in memory and offers to sign in to save it.
+  return <EngineeringLab sessionId={one(params.session)} newForProject={one(params.project)} />;
 }

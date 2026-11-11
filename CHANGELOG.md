@@ -10,6 +10,24 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.41.0] - 2026-11-11
+
+Every page works without signing in. An account is for saving work, and for the few things only done for an account.
+
+### Changed
+- **Projects, a project's page and the Engineering Lab open to everyone.** Signed out, projects, experiment records and lab sessions can be made and used in full. They are marked **Not saved** and kept in the open tab only; the browser asks before the tab is closed or reloaded with unsaved work.
+- **Signing in saves what was made signed out** to the account: projects, their experiment records, and lab sessions with parts or a project. A project's page follows it to its saved id in place, keeping an edit in progress.
+- **Experiment Records and Advanced Analytics** work signed out with the projects made in the tab.
+- **Where an account is needed, the page says so up front** with a Sign in button: adding teammates, opening a project saved to an account, real boards in the lab, hybrid experiments, and firmware projects. Any "Sign in and try again." error now has a Sign in button.
+- FAQ, Getting started, User Agreement, Privacy Policy, the Settings profile tile and the developer docs describe the new behaviour.
+
+### Fixed
+- The lab's **Link to project** list was always empty for account projects; it now lists them.
+- The Experiment Records project filter no longer clips its text.
+
+### Removed
+- The sign-in gate around Projects (`app/workspace/layout.tsx`) and `SignInRequired`.
+
 ## [1.40.0] - 2026-11-10
 
 The Component library, rebuilt: 88 parts where there were 38, every one redrawn from its real dimensions with the engineering data behind it, and a lab that understands batteries, motor drivers and heat. Desktop 0.13.5.
@@ -878,6 +896,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.41.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.40.0...v1.41.0
 [1.40.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.2...v1.40.0
 [1.39.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.1...v1.39.2
 [1.39.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.0...v1.39.1

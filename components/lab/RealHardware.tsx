@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { LoaderCircle, Plug, Usb } from "lucide-react";
 import { Button } from "@kiungo/ui/button";
+import { openAuth } from "@/lib/account-dialogs";
 import { api } from "@/lib/api-client";
 import { getPart } from "@kiungo/core/parts";
 import { useLab } from "@kiungo/lab/store";
@@ -25,13 +26,26 @@ const BOARD_PART: Record<string, string> = {
 /**
  * Real boards on USB, through the Kiungo runtime: scan, then put a board on the
  * canvas as a physical part. Its wiring is checked like any other; the
- * runtime binds it to the port.
+ * runtime binds it to the port. The runtime works for an account, so signed
+ * out this is the one part of the lab that asks to sign in.
  */
-export function RealHardware() {
+export function RealHardware({ signedIn = true }: { signedIn?: boolean }) {
   const { runtime, addPart } = useLabContext();
   const [devices, setDevices] = useState<DiscoveredHardwareDevice[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (!signedIn) {
+    return (
+      <p className="text-[12.5px] leading-5 text-muted" data-testid="real-hardware-sign-in">
+        Real boards on USB join the canvas through your account.{" "}
+        <button type="button" onClick={() => openAuth("login")} className="font-medium text-primary hover:underline">
+          Sign in
+        </button>{" "}
+        to scan for one. Everything else in the lab works without an account.
+      </p>
+    );
+  }
 
   if (runtime !== "online" && runtime !== "syncing") {
     return (

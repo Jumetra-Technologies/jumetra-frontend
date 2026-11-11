@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { AlertTriangle, ArrowUpRight, Cable, Clock3, Cpu, FlaskConical, Link2, MoreHorizontal, Trash2 } from "lucide-react";
 import { Menu, type MenuEntry } from "@kiungo/ui/menu";
@@ -93,6 +94,7 @@ export function SessionPreview({ session, className }: { session: LabSession; cl
 }
 
 export function LabSessionCard({ session, projects, showProject = true }: { session: LabSession; projects: RoboticsProject[]; showProject?: boolean }) {
+  const router = useRouter();
   const analysis = useMemo(() => analyze(session.nodes, session.wires, session.inputs), [session.nodes, session.wires, session.inputs]);
   const errors = analysis.faults.filter((f) => f.severity === "error").length;
   const ready = Object.values(analysis.nodes).filter((r) => r.status === "ready").length;
@@ -100,7 +102,8 @@ export function LabSessionCard({ session, projects, showProject = true }: { sess
   const last = [...session.log].reverse().find((e) => e.kind !== "session" && e.kind !== "note") ?? session.log[session.log.length - 1];
 
   const menu: MenuEntry[] = [
-    { id: "open", label: "Open in lab", icon: <FlaskConical />, onSelect: () => (window.location.href = labHref(session.id)) },
+    // Inside the app, never a page load: signed out, the sessions live in this page's memory.
+    { id: "open", label: "Open in lab", icon: <FlaskConical />, onSelect: () => router.push(labHref(session.id)) },
     {
       id: "link",
       label: "Link to project",

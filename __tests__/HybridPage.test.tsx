@@ -1,9 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { HybridPanel, MODES } from "@/components/hybrid/hybrid-panel";
-import { api } from "@/lib/api-client";
+import { closeAccountDialog, useAccountDialog } from "@/lib/account-dialogs";
+import { ApiError, api } from "@/lib/api-client";
+import { useAuthStore } from "@/lib/auth-store";
 
-vi.mock("@/lib/api-client", () => ({
+vi.mock("@/lib/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api-client")>()),
   api: {
     createHybridExperiment: vi.fn(),
     startHybridExperiment: vi.fn(),
@@ -18,7 +21,11 @@ const hit = (component_id: string, name: string) => ({ component: { component_id
 const controllers = [{ controller_id: "esp32", name: "ESP32", family: "Espressif" } as never];
 const hits = [hit("dht22", "DHT22"), hit("led", "LED"), hit("relay", "Relay"), hit("pir", "PIR sensor")];
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Signed in unless a test says otherwise: creating and running an experiment is for an account.
+  useAuthStore.setState({ isAuthenticated: true, isLoading: false, user: { id: "u1", email: "ada@school.ac.ke", display_name: "Ada" } as never, accessToken: "t" });
+});
 
 describe("HybridPanel", () => {
   it("explains the four device modes and lays the work out in steps", () => {
@@ -65,6 +72,32 @@ describe("HybridPanel", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("The experiment couldn't be created. Check your connection and try again.");
     expect(alert.textContent).not.toMatch(/API|502|Gateway/);
+  });
+
+  it("signed out, the whole page works for planning and says up front that running an experiment needs an account", async () => {
+    useAuthStore.setState({ isAuthenticated: false, isLoading: false, user: null, accessToken: null });
+    vi.mocked(api.createHybridExperiment).mockRejectedValue(new ApiError("/hybrid/experiments", 401));
+    render(<HybridPanel controllers={controllers} componentHits={hits} />);
+    // Boards, parts and modes can all be chosen without an account.
+    fireEvent.click(screen.getByRole("checkbox", { name: "PIR sensor" }));
+    expect(screen.getByText("4 chosen:")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Create Hybrid Experiment/ })).toBeEnabled();
+    expect(screen.getByTestId("hybrid-sign-in")).toHaveTextContent("which needs an account");
+
+    // Creating one anyway says why it didn't happen, with the way to sign in beside it.
+    fireEvent.click(screen.getByRole("button", { name: /Create Hybrid Experiment/ }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Sign in to create and run one.");
+    expect(alert.textContent).not.toMatch(/API|401|server/i);
+    fireEvent.click(within(alert).getByRole("button", { name: "Sign in" }));
+    const { result } = renderHook(() => useAccountDialog());
+    expect(result.current).toEqual({ kind: "auth", mode: "login" });
+    act(() => closeAccountDialog());
+  });
+
+  it("signed in, there is no note about accounts", () => {
+    render(<HybridPanel controllers={controllers} componentHits={hits} />);
+    expect(screen.queryByTestId("hybrid-sign-in")).not.toBeInTheDocument();
   });
 
   it("says when the hardware service is unavailable and points to the Engineering Lab", () => {

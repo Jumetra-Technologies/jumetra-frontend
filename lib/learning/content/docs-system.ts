@@ -94,7 +94,7 @@ export const SYSTEM_OVERVIEW_ARTICLES: DocArticle[] = [
         type: "callout",
         tone: "note",
         title: "Where your data lives today",
-        text: "Projects and experiment records are stored with your signed-in account. Reports are generated as downloadable Markdown files. Lab sessions remain temporary and are not currently saved to your account.",
+        text: "Signed in, your projects, experiment records and lab sessions are stored with your account. Without signing in they work the same but aren't stored: they last until you close or reload the page. Reports are generated as downloadable Markdown files.",
       },
       {
         type: "link-card",
@@ -304,7 +304,7 @@ npm run dev                      # http://localhost:3000`,
         type: "callout",
         tone: "note",
         title: "Sign-in is optional for local work",
-        text: "In the current build the data endpoints are not gated behind sign-in, so you can develop and explore without configuring Google credentials.",
+        text: "The pages open and the API answers reads without signing in, so you can develop and explore without configuring Google credentials. Requests that change data need a signed-in user; to try those locally without sign-in, start the API with `HHIP_REQUIRE_AUTH=false`.",
       },
       { type: "h2", text: "Endpoint families" },
       {

@@ -127,15 +127,17 @@ A real Uno has one 5 V pin and three GND pins, and each header hole takes one ju
 - **Auto-wire.** Adding a breadboard to a build with a board wires the board's logic-level supply (Uno: 5V) to the Top + rail and a GND to the Top − rail, one wire each, from the end nearer the board. After that, auto-wired parts take VCC and GND from free rail holes when a rail already carries the voltage they need from the same board; signals still go straight to board pins. A 3.3 V part on a 5 V rail falls back to the board's 3.3V pin. The lab suggests a breadboard once two or more parts need 5 V.
 - **Canvas.** Drawn as itself in all three views (no 400-row card): 3D square-on with a 35° tilt so the 0.1" holes stay at least 8 px apart, 2D flat, and Trace as its strips. A strip lights in its net's color once wired (red supply, slate ground, blue signal), with moving dashes while current flows. The caption badge says what the rails carry ("5 V · GND"). The Inspector lists the strips in use instead of 400 pins.
 
-## 6. Saving lab sessions (v1.16.2)
+## 6. Saving lab sessions (v1.16.2, open to everyone since v1.41.0)
 
-The lab needs a signed-in account. Sessions are saved **per account** (`lib/lab/store.ts`):
+Nobody needs an account to use the lab (see "Using Kiungo without an account" in `docs/accounts-and-profile.md`). Signed in, sessions are saved **per account** (`packages/lab/src/store.ts`); signed out they are not saved at all:
 
 - **Where they're kept:** immediately in this browser under `kiungo.lab:v2:<account id>`, then synced for signed-in accounts to `users/{userId}/lab_sessions/{sessionId}` through the authenticated backend. The browser copy remains available when the API is offline.
 - **Switching accounts:** `components/lab/LabAccountSync.tsx` is mounted once in `app/layout.tsx` and calls `setLabOwner()` on sign-in, sign-out and account changes. Pending changes are saved to the account they belong to first. One account never sees another's sessions.
-- **Signed out:** sessions live in memory only, and the account's saved copy stays for its next sign-in.
+- **Signed out:** sessions live in this tab's memory only: nothing is written to the browser or sent to the server, and closing or reloading the page discards them (the browser asks first when a session has parts on it). The lab is otherwise complete. The mirror to Kiungo online and the scan for real boards are an account's, so signed out they aren't tried and the toolbar shows no status for them.
+- **Signing in:** `setLabOwner(accountId, { carry: true })` brings along what was built signed out. Every session with parts on it, or linked to a project, becomes the account's: it is written to the account's browser copy at once and uploaded by the first sync. The blank session the lab opens with is left behind. An account's saved copy is never replaced: carried sessions are added to it.
+- **Signing out:** the account's sessions leave the page (they stay in its browser copy and on the server for the next sign-in), and the lab starts a new, unsaved session so it is never left empty.
 - **The old shared key:** `hhip.lab:v1`, which every visitor of a browser shared, is cleared and never written again.
-- **Toolbar status:** "Saved to account" after cloud sync, "Syncing…" while a save is pending, "Sync failed" if the API refuses a save, or "Not saved" when signed out. A failed cloud save keeps the local copy.
+- **Toolbar status:** "Saved to account" after cloud sync, "Syncing…" while a save is pending, "Sync failed" if the API refuses a save. Signed out it is a button, "Not saved · Sign in to save", that opens sign-in. A failed cloud save keeps the local copy.
 
 ### Server storage
 

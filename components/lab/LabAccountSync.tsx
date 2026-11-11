@@ -17,11 +17,14 @@ function newerSession(a: LabSession, b: LabSession): LabSession {
 /**
  * Loads and synchronizes the signed-in account's lab sessions. Mounted once
  * for the whole app so the lab, Projects and "open in the lab" share state.
+ *
+ * Signed out, the lab works in memory. Signing in brings that work along:
+ * it becomes the account's, and the first sync below saves it there.
  */
 export function LabAccountSync() {
   const accountId = useAuthStore((s) => s.user?.id ?? null);
   useEffect(() => {
-    setLabOwner(accountId);
+    setLabOwner(accountId, { carry: true });
     if (!accountId) return;
 
     let active = true;

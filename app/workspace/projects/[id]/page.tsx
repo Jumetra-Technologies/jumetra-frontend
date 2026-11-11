@@ -12,7 +12,8 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  if (id.startsWith("user-project-")) {
+  // A person's own project: saved to their account, or unsaved and living in their browser tab. Both are read in the browser.
+  if (id.startsWith("user-project-") || id.startsWith("local-project-")) {
     return (
       <>
         <LocalProjectDetail projectId={id} />

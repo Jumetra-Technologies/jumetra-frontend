@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Download, FilePlus2, Pencil, Trash2 } from "lucide-react";
 import { exportExperiment } from "@/lib/reports";
@@ -10,12 +10,10 @@ import { Card } from "@/components/ui/card";
 import { ErrorNotice } from "@/components/ui/error-notice";
 import { Select } from "@/components/ui/input";
 import { ExperimentRecordDialog } from "@/components/experiments/ExperimentRecordDialog";
+import { SignInNotice } from "@/components/auth/SignInNotice";
 import { describeError } from "@/lib/errors";
-import { api } from "@/lib/api-client";
-import {
-  type ExperimentRecord,
-  type RoboticsProject,
-} from "@/lib/robotics-data";
+import { deleteRecord as removeRecord, listRecords, movedProjectId, saveRecord as storeRecord, useProjects } from "@/lib/projects/workspace";
+import type { ExperimentRecord } from "@/lib/robotics-data";
 import type { ExperimentSummary } from "@/lib/types";
 import { SkeletonRegion } from "@kiungo/ui/skeleton";
 import { ListSkeleton } from "@/components/ui/page-skeletons";
@@ -32,34 +30,41 @@ export function ExperimentJournal({
   const [creating, setCreating] = useState(Boolean(initialProjectId));
   const [editingRecord, setEditingRecord] = useState<ExperimentRecord | null>(null);
   const [filterProjectId, setFilterProjectId] = useState(initialProjectId ?? "all");
-  const [projects, setProjects] = useState<RoboticsProject[]>([]);
+  // Open to everyone: signed out, the projects and records are the unsaved ones in this tab.
+  const workspace = useProjects();
+  const signedIn = workspace?.signedIn ?? false;
+  const projects = useMemo(() => workspace?.projects ?? [], [workspace]);
+  const projectsReady = workspace?.ready ?? false;
+  const unsavedRecords = workspace?.unsavedRecords;
   const [records, setRecords] = useState<ExperimentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const loadError = workspace?.error ? describeError(workspace.error, "Your projects and experiment records couldn't be loaded.") : "";
 
   useEffect(() => {
+    if (!projectsReady) return;
     let active = true;
-    api.getMyProjects().then(async (savedProjects) => {
-      const projectRecords = await Promise.all(
-        savedProjects.map((project) => api.getMyProjectExperiments(project.id)),
-      );
+    Promise.all(projects.map((project) => listRecords(project.id))).then((projectRecords) => {
       if (active) {
-        setProjects(savedProjects);
         setRecords(projectRecords.flat());
         setError("");
       }
-    }).catch((loadError: unknown) => {
-      if (active) setError(describeError(loadError, "Your projects and experiment records couldn't be loaded."));
+    }).catch((recordsError: unknown) => {
+      if (active) setError(describeError(recordsError, "Your projects and experiment records couldn't be loaded."));
     }).finally(() => {
       if (active) setLoading(false);
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [projects, projectsReady, unsavedRecords]);
 
+  // Signing in saves an unsaved project to the account under a new id; a filter or link on the old id follows it.
+  const current = (id: string) => movedProjectId(id) ?? id;
+  const shownProjectId = current(filterProjectId);
+  // Only records of the projects listed now: none of an account that has signed out.
   const visibleRecords = records.filter(
-    (record) => filterProjectId === "all" || record.projectId === filterProjectId,
+    (record) => projects.some((project) => project.id === record.projectId) && (shownProjectId === "all" || record.projectId === shownProjectId),
   );
 
   function startCreate() {
@@ -80,7 +85,7 @@ export function ExperimentJournal({
   async function deleteRecord(record: ExperimentRecord) {
     if (!window.confirm(`Delete the experiment record “${record.title}”?`)) return;
     try {
-      await api.deleteMyProjectExperiment(record.projectId, record.id);
+      await removeRecord(record);
       setRecords((current) => current.filter((item) => item.id !== record.id));
       setError("");
     } catch (deleteError) {
@@ -92,14 +97,8 @@ export function ExperimentJournal({
     draft: Omit<ExperimentRecord, "id" | "createdAt" | "updatedAt">,
     existing?: ExperimentRecord,
   ) {
-    if (existing) {
-      await api.updateMyProjectExperiment(existing.projectId, existing.id, draft);
-    } else {
-      await api.createMyProjectExperiment(draft.projectId, draft);
-    }
-    const savedRecords = await Promise.all(
-      projects.map((project) => api.getMyProjectExperiments(project.id)),
-    );
+    await storeRecord(draft, existing);
+    const savedRecords = await Promise.all(projects.map((project) => listRecords(project.id)));
     setRecords(savedRecords.flat());
     setError("");
   }
@@ -119,17 +118,22 @@ export function ExperimentJournal({
         </Button>
       </div>
 
-      {error ? <ErrorNotice message={error} className="mb-4" /> : null}
+      {workspace && !signedIn ? (
+        <SignInNotice className="mb-4" testId="experiments-sign-in">
+          You&apos;re not signed in. You can record experiments for the projects you make here, but they aren&apos;t saved: they&apos;re gone when you close or reload this page.
+        </SignInNotice>
+      ) : null}
+      {error || loadError ? <ErrorNotice message={error || loadError} className="mb-4" /> : null}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
         <label className="flex items-center gap-2 text-sm">
           <span className="text-muted">Project</span>
-          <Select value={filterProjectId} onChange={(event) => setFilterProjectId(event.target.value)} className="h-8 w-auto min-w-44">
+          <Select value={shownProjectId} onChange={(event) => setFilterProjectId(event.target.value)} className="w-auto min-w-44">
             <option value="all">All projects</option>
             {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
           </Select>
         </label>
-        <span className="text-xs text-muted">Records are saved to your account</span>
+        <span className="text-xs text-muted">{signedIn ? "Records are saved to your account" : "Not saved"}</span>
       </div>
 
       {loading ? (
@@ -141,7 +145,7 @@ export function ExperimentJournal({
           <h3 className="font-medium">No experiment records yet</h3>
           <p className="mt-1 text-sm text-muted">Start with an objective, the hardware under test, and the procedure.</p>
           {projects.length === 0 ? (
-            <Link href="/workspace" className="mt-4 inline-flex text-sm text-primary hover:underline">Create a project first</Link>
+            <Link href="/workspace?new=1" className="mt-4 inline-flex text-sm text-primary hover:underline">Create a project first</Link>
           ) : null}
         </Card>
       ) : (
@@ -212,7 +216,7 @@ export function ExperimentJournal({
         <ExperimentRecordDialog
           key={editingRecord?.id ?? `new-${initialProjectId ?? "unassigned"}`}
           open
-          projectId={initialProjectId ?? projects[0]?.id ?? ""}
+          projectId={initialProjectId ? current(initialProjectId) : (projects[0]?.id ?? "")}
           projects={projects}
           record={editingRecord ?? undefined}
           onSave={saveRecord}

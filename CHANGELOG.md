@@ -10,6 +10,23 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.43.0] - 2026-11-11
+
+### Changed
+- **The Home page board is now a Blink scene with one big emerald-teal play/stop button.** The "Run Blink" switch and its description underneath are gone.
+- **Still:** the real Arduino Uno R3 model holds a fixed three-quarter view from the front left, with the USB and power jacks toward you and the headers behind.
+- **Play:**
+  - The USB lead slides in from the left and plugs into the USB-B socket. The ON LED lights.
+  - A 220 Ω resistor (red, red, brown, gold) pops in and stands in pin 13.
+  - A red LED pops in with its short leg in GND and its long leg twisted onto the resistor.
+  - Each connection flashes teal as it seats.
+  - The sketch uploads (TX, RX and L flicker), then the LED and the board's L LED blink together, on and off every half second.
+  - The camera moves in on the build and sways slowly while it blinks.
+- **Stop:** the parts leave and the camera returns to the still view.
+- **Reduced motion:** the parts appear in place without flying in, and the camera holds still.
+- **Without WebGL:** the board's top view shows instead, without the button.
+- **Screen readers:** the scene's description follows each step.
+
 ## [1.42.0] - 2026-11-11
 
 A cleaner desktop frame, notifications that tell you what's actually happening (with the button to act on it), a dashboard that knows the time of day, and desktop updates that publish themselves when a pull request is merged. The frame and notifications shipped in desktop 0.13.6 (#107); the greeting is desktop 0.13.7.
@@ -926,6 +943,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.43.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.42.0...v1.43.0
 [1.42.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.41.0...v1.42.0
 [1.41.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.40.0...v1.41.0
 [1.40.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.2...v1.40.0

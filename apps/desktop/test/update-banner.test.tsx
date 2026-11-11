@@ -9,7 +9,8 @@ const info = (state: UpdateState): UpdateInfo => ({ currentVersion: "0.12.0", ch
 function controls(state: UpdateState, extra: Partial<UpdateControls> = {}): UpdateControls {
   return {
     info: info(state),
-    asked: false,
+    // Most cards answer a check the person asked for (Settings → Check for updates).
+    asked: true,
     refused: null,
     later: null,
     check: vi.fn(),
@@ -69,12 +70,20 @@ describe("the update card in the corner", () => {
     expect(screen.queryByTestId("update-banner")).toBeNull();
   });
 
-  it("a check nobody asked for stays quiet unless it fails loudly; one the person asked for reports", () => {
-    const { rerender } = render(<UpdateBanner update={controls({ status: "checking", checkedAt: null })} />);
+  it("a check nobody asked for leaves the corner alone: what it finds goes to the notifications", () => {
+    const quiet = { asked: false };
+    const { rerender } = render(<UpdateBanner update={controls({ status: "checking", checkedAt: null }, quiet)} />);
     expect(screen.queryByTestId("update-banner")).toBeNull();
-    rerender(<UpdateBanner update={controls({ status: "error", message: "Couldn't reach the update server.", quiet: true, checkedAt: null })} />);
+    rerender(<UpdateBanner update={controls({ status: "downloading", version: "0.12.1", percent: 10, checkedAt: "x" }, quiet)} />);
     expect(screen.queryByTestId("update-banner")).toBeNull();
-    rerender(<UpdateBanner update={controls({ status: "error", message: "Couldn't reach the update server.", quiet: false, checkedAt: null })} />);
+    rerender(<UpdateBanner update={controls({ status: "ready", version: "0.12.1", checkedAt: "x" }, quiet)} />);
+    expect(screen.queryByTestId("update-banner")).toBeNull();
+    rerender(<UpdateBanner update={controls({ status: "error", message: "Couldn't reach the update server.", quiet: false, checkedAt: null }, quiet)} />);
+    expect(screen.queryByTestId("update-banner")).toBeNull();
+  });
+
+  it("a check the person asked for reports how it ended", () => {
+    const { rerender } = render(<UpdateBanner update={controls({ status: "error", message: "Couldn't reach the update server.", quiet: true, checkedAt: null })} />);
     expect(screen.getByTestId("update-banner")).toHaveTextContent("Couldn't reach the update server.");
     rerender(<UpdateBanner update={controls({ status: "up-to-date", checkedAt: "x" }, { asked: true })} />);
     expect(screen.getByTestId("update-banner")).toHaveTextContent("Kiungo 0.12.0 is the newest version");

@@ -10,6 +10,31 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.41.0] - 2026-11-11
+
+A cleaner desktop frame, and notifications that tell you what's actually happening, with the button to act on it. Desktop 0.13.6.
+
+### Added
+- **Notifications that mean something**, behind the bell in the top bar. They come from what's really true on your computer:
+  - **An update ready to install**, with **Update now** (saves your projects, restarts on the new version) and **What's new**.
+  - **An update downloading**, with its progress.
+  - **An update check that failed**, with **Try again**.
+  - **Firmware can't be compiled yet**, when the Arduino toolchain is missing, with **Set it up**.
+  - **You're offline**, when signed in without a connection.
+  - **Updated to Kiungo X**, once, after an update, with **What's new**.
+- **The bell shows how many** notifications there are (3, not just a dot), on a new liquid-glass button. Each notification can be dismissed; with none, it says you're all caught up.
+
+### Changed
+- **One title bar, not two.** The separate Windows/Linux title bar is gone. The sidebar and top bar run to the top edge of the window, the window buttons sit in the top bar and follow light and dark, and you drag the window by the top bar or the sidebar's name. On macOS the traffic lights sit at the top of the sidebar.
+- **One name.** The sidebar shows "Kiungo" once, as plain text: no logo, no 2.0 badge, and no "Platform" label.
+- **A quieter top bar:** only the notification bell. The breadcrumb ("Kiungo / Dashboard"), the search box (Ctrl+K still opens commands and search, as the footer says), the "Systems nominal" label and the light/dark toggle are gone. Light and dark live in **Settings → Appearance**.
+- **One way to Settings.** The sidebar's foot has the Settings row and, below it, Sign in or your account. The second settings button next to Sign in, and Settings in the account menu, are gone.
+- **The update card in the corner** now only answers a check you start in Settings. Updates found in the background go to the notifications, so they're never shown twice.
+- The footer shows the version number instead of "Kiungo 2.0".
+
+### Removed
+- The three sample notifications ("Firmware build passed for Line Follower" and others), which were placeholders, not real events.
+
 ## [1.40.0] - 2026-11-10
 
 The Component library, rebuilt: 88 parts where there were 38, every one redrawn from its real dimensions with the engineering data behind it, and a lab that understands batteries, motor drivers and heat. Desktop 0.13.5.
@@ -878,6 +903,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.41.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.40.0...v1.41.0
 [1.40.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.2...v1.40.0
 [1.39.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.1...v1.39.2
 [1.39.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.39.0...v1.39.1

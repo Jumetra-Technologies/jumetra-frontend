@@ -4,7 +4,7 @@
  * talks to this process only through the channels in @kiungo/api.
  */
 import { spawn } from "node:child_process";
-import { app, BrowserWindow, dialog, ipcMain, net, powerMonitor, protocol, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, powerMonitor, protocol, session, shell } from "electron";
 import { hostname } from "node:os";
 import { readFileSync } from "node:fs";
 import { readFile, rm, stat } from "node:fs/promises";
@@ -13,7 +13,7 @@ import { pathToFileURL } from "node:url";
 // The app icon, for the window on Linux and for a development copy (installed copies on Windows
 // and macOS get it from the installer: electron-builder.yml). electron-vite copies the file into out/main.
 import appIcon from "../../build/icon.png?asset";
-import { APPEARANCES, EMULATED_BOARDS, EXAMPLE_SKETCHES, INSTALLABLE_CORES, isInvokeChannel, ROLES, type AuthState, type Handlers, type Platform } from "@kiungo/api";
+import { APPEARANCES, type Appearance, EMULATED_BOARDS, EXAMPLE_SKETCHES, INSTALLABLE_CORES, isInvokeChannel, ROLES, type AuthState, type Handlers, type Platform } from "@kiungo/api";
 import { PROJECT_FILE } from "@kiungo/core/project";
 import { hardwareBoard, uploadTargetsFor } from "@kiungo/core/hardware/boards";
 import { VENDOR_HOSTS } from "@kiungo/core/parts/vendor-links";
@@ -590,6 +590,7 @@ const handlers: Handlers = {
   },
   "settings:set-appearance": (appearance) => {
     if (!(APPEARANCES as readonly string[]).includes(appearance)) throw new Error("Refused: that isn't a known appearance.");
+    applyAppearance(appearance);
     return projectService().setAppearance(appearance);
   },
   "settings:set-roles": (roles) => {
@@ -612,6 +613,25 @@ function registerIpc() {
   }
 }
 
+/** Height of Kiungo's own top row: the window buttons sit in it, so there is one bar, not two. */
+const TOP_BAR_HEIGHT = 48;
+
+/** The window buttons' colors, matched to the top bar in light and dark (the bar is --header in @kiungo/ui's theme.css). */
+function windowControls(): Electron.TitleBarOverlayOptions {
+  const dark = nativeTheme.shouldUseDarkColors;
+  return { color: dark ? "#1c1c1c" : "#ffffff", symbolColor: dark ? "#f5f5f5" : "#334155", height: TOP_BAR_HEIGHT };
+}
+
+/** Light, dark or the system's: the window buttons and the page's prefers-color-scheme follow it. */
+function applyAppearance(appearance: Appearance) {
+  nativeTheme.themeSource = appearance;
+}
+
+nativeTheme.on("updated", () => {
+  if (process.platform === "darwin") return;
+  for (const win of BrowserWindow.getAllWindows()) win.setTitleBarOverlay(windowControls());
+});
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -623,6 +643,9 @@ function createWindow() {
     icon: appIcon,
     backgroundColor: "#f6f8fb",
     autoHideMenuBar: true,
+    // No separate title bar: Kiungo's sidebar and top bar run to the window's edge. macOS keeps its
+    // traffic lights, inset into the sidebar; Windows and Linux draw their buttons over the top bar.
+    ...(process.platform === "darwin" ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 18, y: 17 } } : { titleBarStyle: "hidden" as const, titleBarOverlay: windowControls() }),
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       contextIsolation: true,
@@ -701,6 +724,10 @@ app.whenReady().then(() => {
   registerIpc();
   registerLinkScheme();
   createWindow();
+  // The saved appearance, so the window buttons match the app from the start.
+  void projectService()
+    .settings()
+    .then((s) => applyAppearance(s.appearance ?? "system"), () => undefined);
   updateService().start();
   activityReporter().start();
   void authService()

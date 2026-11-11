@@ -1,7 +1,6 @@
 import { Book, Cpu, FlaskConical, Folder, LayoutDashboard, Monitor, Settings, Sparkles, Store, Users } from "lucide-react";
 import type { AuthState, Role } from "@kiungo/api";
 import { cn } from "@kiungo/ui/cn";
-import { KiungoLogo } from "@kiungo/ui/KiungoMark";
 import { AccountMenu } from "../account/AccountMenu";
 import { NAV_ITEMS, type View } from "./types";
 
@@ -33,13 +32,14 @@ export function Sidebar({
   const items = NAV_ITEMS.filter((item) => !item.roles || item.roles.some((r) => roles.includes(r)));
   return (
     <aside className="flex w-[232px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground" data-sidebar data-testid="app-sidebar">
-      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-sidebar-border px-3.5">
-        <KiungoLogo className="h-6" />
-        <span className="rounded-[6px] bg-[color-mix(in_srgb,var(--kiungo-teal)_22%,transparent)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--kiungo-teal-text)]">2.0</span>
+      {/* The app's one name. Also the window's handle: drag here to move it (macOS's buttons sit at its left). */}
+      <div className="k-sidebar-top drag-region flex h-12 shrink-0 items-center border-b border-sidebar-border px-5">
+        <span className="text-[17px] font-semibold tracking-[-0.02em] text-sidebar-foreground" data-testid="app-name">
+          Kiungo
+        </span>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Platform">
-        <div className="mb-2 px-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-sidebar-muted">Platform</div>
+      <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Modules">
         {items.map((item) => {
           const Icon = ICONS[item.icon];
           const active = view === item.view;
@@ -73,8 +73,8 @@ export function Sidebar({
           <Settings className="size-4" aria-hidden />
           Settings
         </button>
-        <div className="mt-2 flex items-center rounded-[10px] bg-[color-mix(in_srgb,var(--sidebar-foreground)_4%,transparent)] px-1 py-1">
-          <AccountMenu state={auth} onSettings={onSettings} />
+        <div className="mt-1">
+          <AccountMenu state={auth} />
         </div>
       </div>
     </aside>

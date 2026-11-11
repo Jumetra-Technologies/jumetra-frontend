@@ -12,28 +12,15 @@ Versions before 1.2.0 were assigned after the fact to the pull requests already 
 
 ## [1.41.0] - 2026-11-11
 
-A cleaner desktop frame, and notifications that tell you what's actually happening, with the button to act on it. Desktop 0.13.6.
-
-### Added
-- **Notifications that mean something**, behind the bell in the top bar. They come from what's really true on your computer:
-  - **An update ready to install**, with **Update now** (saves your projects, restarts on the new version) and **What's new**.
-  - **An update downloading**, with its progress.
-  - **An update check that failed**, with **Try again**.
-  - **Firmware can't be compiled yet**, when the Arduino toolchain is missing, with **Set it up**.
-  - **You're offline**, when signed in without a connection.
-  - **Updated to Kiungo X**, once, after an update, with **What's new**.
-- **The bell shows how many** notifications there are (3, not just a dot), on a new liquid-glass button. Each notification can be dismissed; with none, it says you're all caught up.
-
 ### Changed
-- **One title bar, not two.** The separate Windows/Linux title bar is gone. The sidebar and top bar run to the top edge of the window, the window buttons sit in the top bar and follow light and dark, and you drag the window by the top bar or the sidebar's name. On macOS the traffic lights sit at the top of the sidebar.
-- **One name.** The sidebar shows "Kiungo" once, as plain text: no logo, no 2.0 badge, and no "Platform" label.
-- **A quieter top bar:** only the notification bell. The breadcrumb ("Kiungo / Dashboard"), the search box (Ctrl+K still opens commands and search, as the footer says), the "Systems nominal" label and the light/dark toggle are gone. Light and dark live in **Settings → Appearance**.
-- **One way to Settings.** The sidebar's foot has the Settings row and, below it, Sign in or your account. The second settings button next to Sign in, and Settings in the account menu, are gone.
-- **The update card in the corner** now only answers a check you start in Settings. Updates found in the background go to the notifications, so they're never shown twice.
-- The footer shows the version number instead of "Kiungo 2.0".
-
-### Removed
-- The three sample notifications ("Firmware build passed for Line Follower" and others), which were placeholders, not real events.
+- **A new site footer in the logo's emerald teal.**
+  - The page melts into a pale mint, which deepens through the logo teal (#077a7d) to near-black teal at the very bottom.
+  - A two-layer film grain sits on top. It's static.
+- **The fade starts from the exact color above the footer** (the page, a section or the app canvas), so there's no seam.
+- **Text starts at the logo teal**, where white text is 5.3:1.
+- **Dark themes use deeper teals for the fade**, so no pale band glows against black.
+- **The grain is hidden in Windows high-contrast mode.**
+- **The footer's dividing lines are white again.** The page's border color had been overriding them.
 
 ## [1.40.0] - 2026-11-10
 

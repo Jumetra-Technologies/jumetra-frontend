@@ -143,8 +143,8 @@ function LandingBody({ release }: { release: Release | null }) {
         </Beat>
       </main>
 
-      <DesktopRelease release={release} />
-      <SiteFooter />
+      <DesktopRelease release={release} className="border-b-0" />
+      <SiteFooter from="surface" />
       <ScrollToHash />
     </div>
   );

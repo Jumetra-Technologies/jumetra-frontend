@@ -67,7 +67,15 @@ describe("Home page", () => {
   it("closes with the brand footer, also on the Learning Center and Documentation", () => {
     render(<SiteFooter />);
     expect(screen.getByTestId("site-footer")).toHaveClass("kiungo-footer");
-    expect(css).toMatch(/\.kiungo-footer \{[\s\S]*linear-gradient\(160deg, #077a7d/);
+    expect(css).toMatch(/\.kiungo-footer \{[\s\S]*linear-gradient\(\s*to bottom,\s*var\(--footer-from\)[\s\S]*#011215 100%/);
+    expect(css).toMatch(/\.kiungo-footer::before \{[\s\S]*feTurbulence[\s\S]*mix-blend-mode: overlay/);
     expect(FOOTER_ROUTES).toEqual(["/learn", "/docs"]);
+  });
+
+  it("starts the footer's gradient from the color above it, so there's no seam", () => {
+    const { rerender } = render(<SiteFooter />);
+    expect(screen.getByTestId("site-footer").style.getPropertyValue("--footer-from")).toBe("var(--background)");
+    rerender(<SiteFooter from="surface" />);
+    expect(screen.getByTestId("site-footer").style.getPropertyValue("--footer-from")).toBe("var(--surface)");
   });
 });

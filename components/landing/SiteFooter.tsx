@@ -22,8 +22,8 @@ function FooterLink({ href, label }: { href: string; label: string }) {
 export type FooterFrom = "background" | "surface" | "canvas";
 
 /**
- * The site footer: the page above melts into light blue, deepening to dark
- * blue at the bottom, under a static grain (.kiungo-footer in the theme).
+ * The site footer: the page above melts into pale mint, deepening through
+ * the logo's emerald teal to near-black teal at the bottom, under a static grain (.kiungo-footer in the theme).
  * Shown on Home, the Learning Center and Documentation.
  */
 export function SiteFooter({ className, from = "background" }: { className?: string; from?: FooterFrom }) {

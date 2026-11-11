@@ -67,7 +67,7 @@ describe("Home page", () => {
   it("closes with the brand footer, also on the Learning Center and Documentation", () => {
     render(<SiteFooter />);
     expect(screen.getByTestId("site-footer")).toHaveClass("kiungo-footer");
-    expect(css).toMatch(/\.kiungo-footer \{[\s\S]*linear-gradient\(\s*to bottom,\s*var\(--footer-from\)[\s\S]*#0a2152 100%/);
+    expect(css).toMatch(/\.kiungo-footer \{[\s\S]*linear-gradient\(\s*to bottom,\s*var\(--footer-from\)[\s\S]*#011215 100%/);
     expect(css).toMatch(/\.kiungo-footer::before \{[\s\S]*feTurbulence[\s\S]*mix-blend-mode: overlay/);
     expect(FOOTER_ROUTES).toEqual(["/learn", "/docs"]);
   });

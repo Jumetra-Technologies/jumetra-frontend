@@ -13,11 +13,13 @@ Versions before 1.2.0 were assigned after the fact to the pull requests already 
 ## [1.41.0] - 2026-11-11
 
 ### Changed
-- **A new site footer.** The page now melts into light blue, which deepens to dark blue at the very bottom, under a fixed film grain.
-  - The fade starts from the exact color above the footer (the page, a section or the app canvas), so there's no seam.
-  - Text starts where the blue is dark enough for white.
-  - Dark themes use deeper blues for the fade, so no pale band glows against black.
-  - The grain is hidden in Windows high-contrast mode.
+- **A new site footer in the logo's emerald teal.**
+  - The page melts into a pale mint, which deepens through the logo teal (#077a7d) to near-black teal at the very bottom.
+  - A two-layer film grain sits on top. It's static.
+- **The fade starts from the exact color above the footer** (the page, a section or the app canvas), so there's no seam.
+- **Text starts at the logo teal**, where white text is 5.3:1.
+- **Dark themes use deeper teals for the fade**, so no pale band glows against black.
+- **The grain is hidden in Windows high-contrast mode.**
 - **The footer's dividing lines are white again.** The page's border color had been overriding them.
 
 ## [1.40.0] - 2026-11-10

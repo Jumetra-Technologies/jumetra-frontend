@@ -10,6 +10,32 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.46.0] - 2026-11-12
+
+A simpler lab top bar and the whole parts library in one place: **+ Add**. Desktop 0.13.10.
+
+### Changed
+- **The lab's top bar keeps only what you reach for.** Left to right:
+  - **+ Add**, the brand teal button;
+  - the session's name and its menu;
+  - **Run / Stop**, which says what it's doing: Building…, Powering…;
+  - the simulated time;
+  - **⋮**;
+  - the 3D / 2D / Trace switch, as icons, with each view's explanation in its tooltip;
+  - the host's own buttons (the desktop's Code) and the save status.
+
+  Emergency stop stays in the bar while a real board runs.
+- **Everything else is in ⋮:** step 100 ms, reset, speed, buzzer sound, undo, redo, fit to screen, the view, opening and saving a `.kiungo.json` file, and the connection status.
+- **Run** is navy in the brand palette, so it never looks like **+ Add**. Both pass WCAG AA contrast.
+- **+ Add (or /) opens "Add a part": the whole library in a window**, instead of a side panel.
+  - Search, the ten group filters, suggestions for your build, and the starter builds are all there.
+  - The header counts the parts from the catalog.
+  - Click or Enter adds a part at the center of the canvas and closes the window. **Shift-click** (or Shift+Enter) adds and keeps it open, and each next part lands 24 px further down and right. A new part never covers one that was already there.
+  - Escape closes the window, and focus returns to + Add.
+- **The components side panel and its toggle are gone.** Parts can still be dropped onto the canvas from elsewhere.
+- The modal on the native `<dialog>` that the desktop app used is now shared from `@kiungo/ui`. The lab uses it, and the desktop's dialogs are unchanged.
+- **Desktop 0.13.10:** all of the above, from the shared lab.
+
 ## [1.45.0] - 2026-11-12
 
 Every value you set on a part in the Engineering Lab is now a physical quantity in SI units. A resistor takes any value you type. Desktop 0.13.9.
@@ -993,6 +1019,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.46.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.45.0...v1.46.0
 [1.45.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.44.0...v1.45.0
 [1.44.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.43.0...v1.44.0
 [1.43.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.42.0...v1.43.0

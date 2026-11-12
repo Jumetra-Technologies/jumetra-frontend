@@ -413,6 +413,26 @@ export function nodeBox(partId: string): { w: number; h: number } {
 }
 
 /** A free spot: right of the board for peripherals, in rows; boards stack to the left. */
+/**
+ * Where a part asked for at `at` goes: there if it covers nothing, otherwise
+ * the first free spot 24 px further down and right (the cascade parts added
+ * one after another get), and after that wherever `placeNode` finds room.
+ */
+export function placeAt(partId: string, nodes: LabNode[], at: { x: number; y: number }): { x: number; y: number } {
+  const box = nodeBox(partId);
+  const covers = (x: number, y: number) =>
+    nodes.some((n) => {
+      const b = nodeBox(n.partId);
+      return x < n.x + b.w && x + box.w > n.x && y < n.y + b.h && y + box.h > n.y;
+    });
+  for (let k = 0; k < 40; k++) {
+    const x = Math.round(at.x + 24 * k);
+    const y = Math.round(at.y + 24 * k);
+    if (!covers(x, y)) return { x, y };
+  }
+  return placeNode(partId, nodes);
+}
+
 export function placeNode(partId: string, nodes: LabNode[], anchor?: LabNode | null): { x: number; y: number } {
   const box = nodeBox(partId);
   const overlaps = (x: number, y: number) =>

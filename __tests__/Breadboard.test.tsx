@@ -271,7 +271,7 @@ describe("In the Engineering Lab", () => {
     await screen.findByTestId("lab-empty");
     fireEvent.click(within(screen.getByTestId("lab-empty")).getByText("Blink an LED"));
     await screen.findAllByTestId("lab-node");
-    if (!screen.queryByTestId("lab-search")) fireEvent.click(screen.getByRole("button", { name: "Show components panel" }));
+    if (!screen.queryByTestId("lab-search")) fireEvent.click(screen.getByRole("button", { name: "Add" }));
     fireEvent.change(screen.getByTestId("lab-search"), { target: { value: "breadboard" } });
     await act(async () => {
       fireEvent.keyDown(screen.getByTestId("lab-search"), { key: "Enter" });

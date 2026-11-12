@@ -10,6 +10,29 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.47.0] - 2026-11-12
+
+A part's settings open beside the part when you click it, and the inspector panel is gone. Desktop 0.13.11.
+
+### Changed
+- **Click a part to see its properties**, in a small window beside it.
+  - It flips to the other side near the edge of the canvas and follows the part as you pan or move it. On a phone it is a sheet at the bottom of the screen.
+  - It doesn't open when you drag a part, Shift-click to pick several, or drag a selection box.
+  - Escape, a click on empty canvas, or picking more parts closes it. Clicking another part moves it there.
+  - **It never pauses the run:** turn a sensor's knob while the circuit runs and watch it react.
+- **What's in it:**
+  - The name, which you can edit, with Duplicate, Remove wires and Delete beside it.
+  - The part's settings, in SI units.
+  - **Runs on** (virtual, hybrid or physical), for boards only.
+  - **Now**: the live readings.
+  - **Pins and checks**, closed until you open it: each pin, what it's wired to, and this part's problems. The full list of problems stays in the Problems tab.
+  - The Component library link.
+  - A breadboard shows the strips in use.
+- **Click a wire for its own smaller window:** its two ends, a color (red, black, orange, yellow, green, blue, white, or Auto for the color of what it carries), the net, what it carries now, and Delete. A picked color is saved with the build and can be undone.
+- **The circuit overview is now ⋮ → Circuit summary**, in a window: ready, to wire, faults, problems, power and the legend.
+- **The inspector panel and its button are gone.** The three-view thumbnails went with it: the canvas already shows the part. Right-click → **Properties** opens a part's window. In the desktop app the command palette's "Show or hide the Inspector" is now **Show the selected part's properties**.
+- **Desktop 0.13.11:** all of the above, from the shared lab.
+
 ## [1.46.0] - 2026-11-12
 
 A simpler lab top bar and the whole parts library in one place: **+ Add**. Desktop 0.13.10.
@@ -1019,6 +1042,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.47.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.0...v1.47.0
 [1.46.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.45.0...v1.46.0
 [1.45.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.44.0...v1.45.0
 [1.44.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.43.0...v1.44.0

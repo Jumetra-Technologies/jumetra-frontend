@@ -20,9 +20,9 @@ export interface LabHost {
   renderPartLink?: (partId: string, children: ReactNode, className: string) => ReactNode;
   /** Go to a part's page (the canvas menu). */
   openPartPage?: (partId: string) => void;
-  /** The Inspector's "Real hardware" section. Omitted: the section is hidden. */
+  /** The circuit summary's "Real hardware" section. Omitted: the section is hidden. */
   realHardware?: ReactNode;
-  /** What the Inspector's Mode setting does in this app, under the setting. Omitted: the website's wording. */
+  /** What a board's Runs on setting does in this app, under the setting. Omitted: the website's wording. */
   modeNote?: (node: LabNode) => string;
   /** What becomes of the activity log, beside its filters. Omitted: it is saved with the project automatically. */
   activityNote?: string;

@@ -10,6 +10,22 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.48.0] - 2026-11-12
+
+In the desktop app, the code takes half the window. Desktop 0.13.12.
+
+### Changed
+- **Desktop: the code is an equal half beside the circuit.**
+  - It opens at 50 % of the width (it was 42 %).
+  - If your saved width was still the old default, it moves to 50 % once. A width you chose yourself stays.
+  - Dragging the divider or using the arrow keys on it still resizes it, from 25 % to 70 %.
+- **Desktop: Show or hide the code is also in ⋮.** The Code button in the top bar and ⌘E (Ctrl+E) stay.
+- **Desktop: hiding the code keeps the editor open behind the scenes.** Your open files and undo history are still there when you show it again.
+- **The lab's top bar fits the width it has, not the window's.** Beside the code it drops the simulated time first, then the view switch (still in ⋮ → View), then the + Add label. Run never moves or gets covered: checked at every lab width from 290 px up.
+
+### Fixed
+- **Desktop: moving a sketch file to the trash asks in the app's own dialog.** The system's confirm box blocked the whole window, Esc emergency stop for a running board included. **Keep it** is the default.
+
 ## [1.47.0] - 2026-11-12
 
 A part's settings open beside the part when you click it, and the inspector panel is gone. Desktop 0.13.11.
@@ -1042,6 +1058,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.48.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.47.0...v1.48.0
 [1.47.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.0...v1.47.0
 [1.46.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.45.0...v1.46.0
 [1.45.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.44.0...v1.45.0

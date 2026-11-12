@@ -66,12 +66,22 @@ describe("the lab's top bar (B1, B8.1–2)", () => {
     expect(screen.getByTestId("emergency-stop")).toBeInTheDocument();
   });
 
-  it("on a narrow screen the name shrinks, never + Add or Run (B1 mobile)", () => {
-    bar();
+  it("on a narrow bar the name shrinks and the end of the row clips, never + Add or Run (B1 mobile, C1)", () => {
+    bar({ trailing: <button type="button">Code</button> });
     const header = screen.getByTestId("lab-top-bar");
+    // The bar sizes to itself, not the window: the desktop's code pane can leave the lab 290 px wide.
+    expect(header).toHaveClass("@container/labbar", "overflow-hidden");
     const name = within(header).getByText("My lab").parentElement!;
     expect(name).toHaveClass("min-w-0", "flex-1");
-    expect(screen.getByTestId("run-toggle").parentElement).toHaveClass("shrink-0");
+    // Run comes first in the right-hand group, so anything clipped is after it.
+    const actions = screen.getByTestId("lab-top-bar-actions");
+    expect(actions).toHaveClass("min-w-0", "overflow-hidden");
+    expect(actions.firstElementChild).toBe(screen.getByTestId("run-toggle"));
+    // The time and the view switch go first as the bar narrows (the view is also in ⋮).
+    expect(screen.getByTestId("sim-time")).toHaveClass("hidden", "@xl/labbar:inline");
+    expect(within(header).getByRole("radiogroup", { name: "Canvas view" })).toHaveClass("hidden", "@3xl/labbar:inline-flex");
+    // + Add keeps its name for screen readers when only the + shows.
+    expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
   });
 
   it("names every icon-only control for screen readers (B8.9)", () => {

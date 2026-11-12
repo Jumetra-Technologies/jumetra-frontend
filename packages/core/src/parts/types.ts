@@ -365,6 +365,8 @@ export interface LabPin {
   accepts?: [number, number];
   /** Board pins that can only read (no output driver). */
   inputOnly?: boolean;
+  /** On a programming header (ICSP): never where auto-wire takes power from. */
+  programmingHeader?: boolean;
   /** Peripheral pins: what the far end should be. */
   role?: LabPinRole;
   /** Must be connected for the part to work. */

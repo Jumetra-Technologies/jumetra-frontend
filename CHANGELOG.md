@@ -10,6 +10,25 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.49.0] - 2026-11-12
+
+Board pins look like the real header, and auto-wire stops using the ICSP 5 V. Desktop 0.13.13.
+
+### Changed
+- **A board's pins are black female sockets**, as on the real header, instead of colored dots. The pin's role (power, ground, digital, PWM, analog, bus) is a thin colored ring round the socket. Once a wire is plugged in, the socket fills with that color.
+  - The ICSP header's male pins show only the ring.
+- **Pins are easier to hit and to reach by keyboard:**
+  - Each pin's target spans one pin spacing along its header and 24 px across it, so neighboring pins never overlap.
+  - Pins can be focused with Tab, with a visible outline and the pin's name shown.
+  - Screen readers hear the part, the pin and what it's wired to: "Arduino Uno D13 SCK pin, wired to LED Anode (+)".
+  - Pins on a part's card in Trace get the same.
+- The 2D drawing's header sockets are black openings with a rim, not gray squares.
+
+### Fixed
+- **Auto-wire never takes a part's power from the ICSP header.** An LDR, a display or a sensor on the Uno's right used to get its 5 V from `5V ICSP`. It now comes from the power header's 5V, wherever the part sits. The same goes for the Mega, and for a breadboard's + rail.
+  - Pins on a programming header are marked as such in the part data (`programmingHeader`).
+  - Builds that already use `5V ICSP` still open and work: it is still a real 5 V pin.
+
 ## [1.48.0] - 2026-11-12
 
 In the desktop app, the code takes half the window. Desktop 0.13.12.
@@ -1058,6 +1077,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.49.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.48.0...v1.49.0
 [1.48.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.47.0...v1.48.0
 [1.47.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.0...v1.47.0
 [1.46.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.45.0...v1.46.0

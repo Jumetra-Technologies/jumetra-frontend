@@ -1,4 +1,6 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { Position } from "@xyflow/react";
+import { pinHitBox, pinLabel } from "@kiungo/lab/PartNode";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { EngineeringLab } from "@/components/lab/EngineeringLab";
 import { boardGeometry, BOARD_SCALE, BOARD_VIEW } from "@kiungo/core/lab/board-geometry";
@@ -130,10 +132,21 @@ describe("In the Engineering Lab", () => {
     expect(board).toHaveAttribute("data-bare", "true");
     expect(led).not.toHaveAttribute("data-bare");
     expect(within(board).getByTestId("board-caption")).toHaveTextContent("Arduino Uno");
-    const d13 = within(board).getByLabelText("D13 SCK pin");
+    // Screen readers hear the part, the pin and where it's wired (WEB-016).
+    const d13 = within(board).getByLabelText(/^Arduino Uno D13 SCK pin, wired to LED/);
     expect(d13.style.left).not.toBe("");
     expect(d13.style.top).not.toBe("");
     expect(d13.getAttribute("title")).toMatch(/Wired to LED/);
+    // A black female socket with the role's color as a ring, not a colored dot (B6).
+    expect(d13).toHaveClass("hhip-pin-socket");
+    expect(d13).toHaveAttribute("data-wired");
+    expect(d13.querySelector(".hhip-socket")).not.toBeNull();
+    expect(d13.style.getPropertyValue("--pin-ring")).not.toBe("");
+    const unwired = within(board).getByLabelText(/^Arduino Uno A0 pin, not wired$/);
+    expect(unwired).not.toHaveAttribute("data-wired");
+    // Focusable, and at least 24 px across its header (the top header runs left to right).
+    expect(d13).toHaveAttribute("tabindex", "0");
+    expect(d13.style.height).toBe("24px");
     expect(within(board).getByTestId("usb-cable")).toHaveAttribute("data-anchored", "true");
     expect(within(board).getByTestId("usb-cable")).toHaveAttribute("data-connector", "usb-b");
     // The lead points into the jack from the left: rotated −90°.
@@ -150,5 +163,22 @@ describe("In the Engineering Lab", () => {
     const lead = (await screen.findAllByTestId("usb-cable"))[0];
     expect(lead).toHaveAttribute("data-state", "on");
     expect(screen.getByTestId("usb-tag")).toHaveTextContent("USB-B · 5 V");
+  });
+});
+
+describe("pin hotspots (B6)", () => {
+  it("are one pitch along the header and 24 px across it, so neighbors never overlap", () => {
+    expect(pinHitBox(Position.Top, 11.2)).toEqual({ width: 11, height: 24 });
+    expect(pinHitBox(Position.Bottom, 11.2)).toEqual({ width: 11, height: 24 });
+    expect(pinHitBox(Position.Left, 18)).toEqual({ width: 24, height: 18 });
+    // Never smaller than 6 px along the header, however far the canvas is zoomed out.
+    expect(pinHitBox(Position.Right, 2)).toEqual({ width: 24, height: 6 });
+  });
+
+  it("say the part, the pin and where it goes", () => {
+    const pin = { id: "D13", label: "D13 SCK", side: "right" as const };
+    expect(pinLabel("Arduino Uno", pin, "LED Anode (+)")).toBe("Arduino Uno D13 SCK pin, wired to LED Anode (+)");
+    expect(pinLabel("Arduino Uno", pin, null)).toBe("Arduino Uno D13 SCK pin, not wired");
+    expect(pinLabel("Arduino Uno", pin, null, true)).toBe("Arduino Uno D13 SCK pin, not wired, has a problem");
   });
 });

@@ -62,12 +62,13 @@ export function LabTopBar({
         <Plus className="size-4" aria-hidden strokeWidth={2.4} />
         Add
       </button>
-      <div className="flex min-w-0 items-center gap-1">
+      {/* The name gives way first on a narrow screen: + Add and Run never move. */}
+      <div className="flex min-w-0 flex-1 items-center gap-1 [&>*]:min-w-0">
         {title}
         {projectChip}
       </div>
 
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {emergencyStop ? (
           <button type="button" onClick={emergencyStop} title="Emergency stop: every output on the real board off at once (Esc)" className="inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-[#c81e1e] px-3 text-[12.5px] font-semibold text-white shadow-[0_0_0_3px_color-mix(in_srgb,#c81e1e_25%,transparent)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger" data-testid="emergency-stop">
             <OctagonX className="size-4" aria-hidden />

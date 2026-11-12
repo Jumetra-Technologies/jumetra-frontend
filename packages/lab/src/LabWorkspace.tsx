@@ -768,7 +768,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
                 className="h-9 w-56 rounded-[10px] border border-primary bg-surface px-2.5 text-sm font-semibold outline-none focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--primary)_22%,transparent)]"
               />
             ) : (
-              <Menu label={titleMenuLabel} items={sessionMenu} buttonClassName="flex h-9 max-w-[16rem] items-center gap-1.5 rounded-[10px] px-2.5 text-sm font-semibold text-foreground hover:bg-muted-bg" title={`${session.name}: ${titleMenuLabel.toLowerCase()}`}>
+              <Menu label={titleMenuLabel} items={sessionMenu} buttonClassName="flex h-9 min-w-0 max-w-[16rem] items-center gap-1.5 rounded-[10px] px-2.5 text-sm font-semibold text-foreground hover:bg-muted-bg" title={`${session.name}: ${titleMenuLabel.toLowerCase()}`}>
                 <span className="truncate" data-testid="session-name">
                   {session.name}
                 </span>

@@ -66,6 +66,14 @@ describe("the lab's top bar (B1, B8.1–2)", () => {
     expect(screen.getByTestId("emergency-stop")).toBeInTheDocument();
   });
 
+  it("on a narrow screen the name shrinks, never + Add or Run (B1 mobile)", () => {
+    bar();
+    const header = screen.getByTestId("lab-top-bar");
+    const name = within(header).getByText("My lab").parentElement!;
+    expect(name).toHaveClass("min-w-0", "flex-1");
+    expect(screen.getByTestId("run-toggle").parentElement).toHaveClass("shrink-0");
+  });
+
   it("names every icon-only control for screen readers (B8.9)", () => {
     bar();
     const header = screen.getByTestId("lab-top-bar");

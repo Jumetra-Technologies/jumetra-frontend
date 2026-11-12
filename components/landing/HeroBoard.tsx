@@ -141,7 +141,7 @@ export function HeroBoard() {
           aria-label={running ? "Stop the Blink test" : "Play the Blink test"}
           className={cn(
             "group relative mt-4 grid size-[72px] place-items-center rounded-full text-white transition-[transform,background-color,box-shadow] duration-200",
-            "bg-[#077a7d] shadow-[0_10px_28px_-10px_rgba(7,122,125,0.75),inset_0_1px_0_rgba(255,255,255,0.22)] hover:bg-[#06666a] active:scale-95",
+            "kiungo-grain-teal bg-[#077a7d] shadow-[0_10px_28px_-10px_rgba(7,122,125,0.75),inset_0_1px_0_rgba(255,255,255,0.22)] hover:bg-[#06666a] active:scale-95",
             "focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#077a7d] disabled:opacity-60",
           )}
           data-testid="hero-play"

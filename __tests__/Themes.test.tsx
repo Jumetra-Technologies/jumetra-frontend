@@ -72,6 +72,15 @@ describe("Home page", () => {
     expect(FOOTER_ROUTES).toEqual(["/learn", "/docs"]);
   });
 
+  it("puts the footer's grain on every brand-teal fill, and only where the fill is teal", () => {
+    expect(css).toMatch(/:root \{\s*--grain-noise: url\("data:image\/svg\+xml[^"]*feTurbulence[^"]*color-interpolation-filters='sRGB'|:root \{\s*--grain-noise: url\("data:image\/svg\+xml[^"]*color-interpolation-filters='sRGB'[^"]*feTurbulence/);
+    expect(css).toMatch(/\.bg-primary \{\s*background-image: var\(--teal-grain\);[\s\S]*?background-blend-mode: overlay;/);
+    expect(css).toMatch(/\.kiungo-grain-teal \{\s*background-image: var\(--grain-noise\);/);
+    // Palettes whose primary isn't the brand teal get no grain.
+    const off = css.match(/((?:\[data-theme="[a-z-]+"\],?\s*)+)\{\s*--teal-grain: none;/);
+    expect(off?.[1].match(/[a-z-]+(?="\])/g)?.sort()).toEqual(["blue", "dark", "dark-contrast", "green", "light-contrast", "red"]);
+  });
+
   it("starts the footer's gradient from the color above it, so there's no seam", () => {
     const { rerender } = render(<SiteFooter />);
     expect(screen.getByTestId("site-footer").style.getPropertyValue("--footer-from")).toBe("var(--background)");

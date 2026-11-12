@@ -10,6 +10,15 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.44.0] - 2026-11-12
+
+### Changed
+- **Every brand-teal fill now has the footer's grain.** That covers the main buttons, the chosen option in segmented controls and the sidebar, avatars, the progress fill on the download button, and the Home page's play button.
+  - The grain blends over the color, so the teal stays exactly #077a7d on average.
+  - It's static, and hidden in Windows high-contrast mode.
+  - It only appears where the color is teal: the blue, red, green, high-contrast and dark palettes, whose buttons aren't teal, stay smooth.
+- **Desktop 0.13.8:** the same grain, from the shared theme.
+
 ## [1.43.0] - 2026-11-11
 
 ### Changed
@@ -943,6 +952,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.44.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.43.0...v1.44.0
 [1.43.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.42.0...v1.43.0
 [1.42.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.41.0...v1.42.0
 [1.41.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.40.0...v1.41.0

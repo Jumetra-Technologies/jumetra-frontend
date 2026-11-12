@@ -10,6 +10,20 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.45.0] - 2026-11-12
+
+### Added
+- **The website's lab can run your own code (WP-D2).** A web program driver (`lib/lab/program.ts`), modeled on the desktop's, does the following when you press Run:
+  - It sends the session's sketch to Kiungo's compile service (`lib/lab/compile.ts`, `https://kiungo-compile.onrender.com`).
+  - It loads the Intel HEX into the shared emulator in a worker (`lib/lab/emulator-worker.ts`).
+  - It feeds the board's pins and serial to the lab.
+  - Builds come back in the desktop's `BuildResult` shape, with problems parsed by the shared `parseDiagnostics`.
+- **When the driver steps aside**, Run shows the built-in behavior and says why: there's no code, there's no Arduino Uno, or the Uno is marked Physical or Hybrid.
+- **If the compiler can't be reached or is busy**, Run falls back to the built-in behavior with a clear message instead of failing.
+- **A sketch the compiler refuses**, or one with mistakes, stops the run with its problems.
+- **The compile service is woken when the lab opens**, because its free plan sleeps.
+- **The shared lab: `ProgramDriver.start` can answer `{ ok: false, fallback: true }`**, and the lab then runs the built-in behavior and shows the message. Desktop 0.13.9 carries this change; its own runs never fall back.
+
 ## [1.44.0] - 2026-11-12
 
 ### Changed
@@ -952,6 +966,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.45.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.44.0...v1.45.0
 [1.44.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.43.0...v1.44.0
 [1.43.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.42.0...v1.43.0
 [1.42.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.41.0...v1.42.0

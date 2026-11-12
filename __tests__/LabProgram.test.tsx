@@ -30,7 +30,7 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 /** A driver that stands in for the emulator: the test pushes readings and serial text. */
-function fakeDriver(result: { ok: true; programBytes: number; real?: boolean } | { ok: false; message: string } = { ok: true, programBytes: 924 }) {
+function fakeDriver(result: { ok: true; programBytes: number; real?: boolean } | { ok: false; message: string; fallback?: boolean } = { ok: true, programBytes: 924 }) {
   const handlers: { readings?: (r: ProgramReadings) => void; serial?: (t: string) => void; ended?: (m: string) => void } = {};
   const driver: ProgramDriver & { started: string[]; stopped: number; inputs: unknown[]; emergencies: number } = {
     started: [],
@@ -160,6 +160,18 @@ describe("Run with the user's program (RUN-02, RUN-03)", () => {
     });
     await waitFor(() => expect(screen.getAllByText("Your code didn't build: 1 problem in Code problems.").length).toBeGreaterThan(0));
     expect(screen.getByTestId("run-toggle").textContent).toContain("Run");
+  });
+
+  it("when the build can't happen for a reason that isn't the code (the website's compiler is out of reach), Run falls back to the built-in behavior and says why", async () => {
+    const message = "Kiungo's compiler can't be reached (check your connection), so Run shows the built-in behavior.";
+    const { driver } = fakeDriver({ ok: false, message, fallback: true });
+    render(<LabWorkspace program={driver} titleMenu={titleMenu} />);
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId("run-toggle"));
+    });
+    // It runs (the built-in behavior), rather than stopping.
+    await waitFor(() => expect(screen.getByTestId("run-toggle").textContent).toContain("Stop"));
+    expect(screen.getAllByText(message).length).toBeGreaterThan(0);
   });
 
   it("with no board that runs the program, Run says why and runs the built-in behavior", async () => {

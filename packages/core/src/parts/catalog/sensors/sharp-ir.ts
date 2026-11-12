@@ -132,8 +132,8 @@ export default definePart({
   },
   sim: {
     kind: "sensor",
-    reads: [{ key: "distanceCm", label: "Distance", unit: "cm", min: 10, max: 80, step: 1, start: 30, sweep: [12, 75, 8], digits: 0 }],
-    analog: [{ pin: "VO", key: "distanceCm", invert: true }],
+    reads: [{ key: "distance", label: "Distance", unit: "cm", min: 10, max: 80, step: 1, start: 30, sweep: [12, 75, 8], digits: 0 }],
+    analog: [{ pin: "VO", key: "distance", invert: true }],
   },
   experiment: { title: "Fit the curve", idea: "Hold a book at 10, 20, 40 and 80 cm and note the voltage each time. Then plot distance against 1 divided by volts and see that it is nearly a straight line." },
   tags: ["sharp", "gp2y0a21yk0f", "ir", "infrared", "distance", "range", "analog", "proximity", "sensor"],

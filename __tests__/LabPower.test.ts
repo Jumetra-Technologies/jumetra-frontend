@@ -134,7 +134,7 @@ describe("a stepper on a stepper driver", () => {
     const live = frameAt(nodes, wires, analysis, 1, true).nodes[of("nema17").id];
     expect(live.readings.find((r) => r.label === "Current")!.value).toMatch(/^1\.00 A a winding, held by /);
     expect(live.readings.find((r) => r.label === "At its terminals")!.value).toBe("About 1.5 V, chopped down from 11.1 V");
-    expect(live.badge).toBe("60 rpm");
+    expect(live.badge).toBe("6.3 rad/s");
   });
 
   it("a plain H-bridge on the same supply and motor still warns: nothing holds the current", () => {
@@ -267,9 +267,9 @@ describe("parts described in data", () => {
     const panel = controlsFor(sensor, nodes, analysis);
     expect(panel.title).toBe("Surroundings");
     expect(panel.controls.map((c) => c.key)).toEqual([SOURCE_KEY, "reflect"]);
-    const dark = frameAt(nodes, wires, analysis, 1, true, { [sensor.id]: { [SOURCE_KEY]: SOURCE_SET, reflect: 10 } });
+    const dark = frameAt(nodes, wires, analysis, 1, true, { [sensor.id]: { [SOURCE_KEY]: SOURCE_SET, reflect: 0.1 } });
     expect(dark.nodes[sensor.id].readings[0]).toEqual({ label: "Light reflected", value: "10 %" });
-    const bright = frameAt(nodes, wires, analysis, 1, true, { [sensor.id]: { [SOURCE_KEY]: SOURCE_SET, reflect: 90 } });
+    const bright = frameAt(nodes, wires, analysis, 1, true, { [sensor.id]: { [SOURCE_KEY]: SOURCE_SET, reflect: 0.9 } });
     // Its analog pin is wired by default, and follows the reading upside down: more light, lower voltage.
     const pin = (frame: typeof dark) => frame.pins[`${of("arduino-uno").id}:${wires.find((w) => w.to.pin === "AO")!.from.pin}`];
     expect(pin(dark)).toBeGreaterThan(pin(bright));

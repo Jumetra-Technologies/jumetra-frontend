@@ -111,7 +111,7 @@ export default definePart({
   },
   sim: {
     kind: "sensor",
-    reads: [{ key: "headingDeg", label: "Heading", unit: "°", min: 0, max: 360, step: 1, start: 0, sweep: [0, 360, 24], digits: 0 }],
+    reads: [{ key: "heading", label: "Heading", unit: "°", min: 0, max: 360, step: 1, start: 0, sweep: [0, 360, 24], digits: 0 }],
   },
   experiment: { title: "Point to north", idea: "Work out the heading from X and Y, print it, then light one of four LEDs for N, E, S and W as you turn the board. Move a screwdriver near it and watch the heading jump." },
   tags: ["gy-271", "qmc5883l", "hmc5883l", "compass", "magnetometer", "heading", "i2c", "sensor"],

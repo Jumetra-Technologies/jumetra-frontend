@@ -136,11 +136,11 @@ export default definePart({
   sim: {
     kind: "sensor",
     reads: [
-      { key: "currentMa", label: "Load current", unit: "mA", min: 0, max: 3200, step: 10, start: 250, sweep: [40, 1800, 12], digits: 0 },
+      { key: "current", label: "Load current", unit: "mA", min: 0, max: 3200, step: 10, start: 250, sweep: [40, 1800, 12], digits: 0 },
       { key: "busV", label: "Bus voltage", unit: "V", min: 0, max: 26, step: 0.1, start: 5, sweep: [4.6, 5.2, 7], digits: 2 },
-      { key: "powerMw", label: "Power", unit: "mW", min: 0, max: 20000, step: 50, start: 1250, sweep: [200, 9000, 12], digits: 0 },
+      { key: "power", label: "Power", unit: "mW", min: 0, max: 20000, step: 50, start: 1250, sweep: [200, 9000, 12], digits: 0 },
     ],
-    badge: "currentMa",
+    badge: "current",
   },
   experiment: { title: "How hungry is my robot?", idea: "Wire the battery through VIN+ and VIN− to the motor driver. Print the current every second, then drive, turn and stall a wheel to see what each takes." },
   tags: ["ina219", "current sensor", "power monitor", "voltage", "current", "battery", "shunt", "i2c", "sensor"],

@@ -427,6 +427,32 @@ describe("lab store", () => {
     expect(useLab.getState().sessions.map((s) => s.name)).toEqual(["Bench"]);
   });
 
+  it("reads lab data saved before session code (version 1) as it was, and saves version 2 with each session's code (WP-D3)", () => {
+    // A fixture of version 1 data, as the website saved it before 1.46.0.
+    const v1 = { version: 1, sessions: [{ id: "old", name: "Old bench", projectId: null, createdAt: "2026-10-01T00:00:00.000Z", updatedAt: "2026-10-01T00:00:00.000Z", nodes: [], wires: [], log: [], view: "top", runMs: 1200, inputs: {} }], activeId: "old" };
+    window.localStorage.setItem(labKeyFor("acct-1"), JSON.stringify(v1));
+    useLab.setState({ hydrated: false, sessions: [], activeId: null });
+    useLab.getState().hydrate();
+    const [old] = useLab.getState().sessions;
+    expect(old).toMatchObject({ id: "old", name: "Old bench", runMs: 1200 });
+    expect(old.code).toBeUndefined();
+
+    useLab.getState().setCode("old", { active: "Blink.ino", files: [{ path: "Blink.ino", content: "void setup(){} void loop(){}" }] });
+    // Not an undo step: the editor has its own history.
+    expect(useLab.getState().past.length).toBe(0);
+    flushLab();
+    const saved = JSON.parse(window.localStorage.getItem(labKeyFor("acct-1")) ?? "{}");
+    expect(saved.version).toBe(2);
+    expect(saved.sessions[0].code).toEqual({ active: "Blink.ino", files: [{ path: "Blink.ino", content: "void setup(){} void loop(){}" }] });
+
+    // A bad name never reaches storage.
+    useLab.getState().setCode("old", { active: "x", files: [{ path: "../x.ino", content: "" }] });
+    expect(useLab.getState().sessions[0].code?.files[0].path).toBe("Blink.ino");
+    // Duplicating a session copies its code.
+    const copy = useLab.getState().duplicateSession("old");
+    expect(copy?.code).toEqual(useLab.getState().sessions.find((s) => s.id === "old")?.code);
+  });
+
   it("clears the old shared key", () => {
     window.localStorage.setItem(LAB_STORAGE_KEY, JSON.stringify({ version: 1, sessions: [], activeId: null }));
     readLabData();

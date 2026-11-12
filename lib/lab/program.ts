@@ -20,7 +20,7 @@ import { boardIsReal } from "@kiungo/core/hybrid/plan";
 import { EMULATED_PARTS } from "@kiungo/core/lab/program";
 import type { LabNode } from "@kiungo/core/lab/types";
 import type { ProgramDriver } from "@kiungo/lab/lab-context";
-import { compileSketch, CompileUnavailable, type SketchFile } from "./compile";
+import type { compileSketch, SketchFile } from "./compile";
 
 /** How long loading may take before the run gives up (a worker that never answers). */
 const LOAD_TIMEOUT_MS = 10_000;
@@ -33,9 +33,11 @@ export interface SketchSource {
 export interface WebProgramOptions {
   /** The code to build now (read at Run, so the latest edits count). */
   code: () => SketchSource | null;
-  /** Each build's result, for the code pane's problems and output. */
-  onBuild?: (result: BuildResult | null, refused?: string) => void;
-  /** The build step; the compile service by default. */
+  /** A build starts (the code pane shows it's compiling). */
+  onBuildStart?: () => void;
+  /** Each build's result, for the code pane's problems and output; null with why when no build happened. */
+  onBuild?: (result: BuildResult | null, problem?: { kind: "refused" | "unavailable"; message: string }) => void;
+  /** The build step; the compile service by default (loaded on the first Run, to keep it out of the lab's first load). */
   compile?: typeof compileSketch;
   /** A new emulator worker; the shared one by default. */
   createWorker?: () => Worker;
@@ -45,10 +47,18 @@ function defaultWorker(): Worker {
   return new Worker(new URL("./emulator-worker.ts", import.meta.url), { type: "module", name: "kiungo-emulator" });
 }
 
+const lazyCompile: typeof compileSketch = (...args) => import("./compile").then((m) => m.compileSketch(...args));
+
+/** A CompileUnavailable from ./compile, told apart without importing it. */
+const unavailableKind = (e: unknown): "refused" | "unavailable" | null => {
+  const kind = (e as { kind?: unknown } | null)?.kind;
+  return kind === "refused" || kind === "unavailable" ? kind : null;
+};
+
 const hasCode = (source: SketchSource | null) => !!source && source.files.some((f) => f.path.endsWith(".ino"));
 const unoOf = (nodes: LabNode[]) => nodes.find((n) => EMULATED_PARTS.has(n.partId));
 
-export function webProgramDriver({ code, onBuild, compile = compileSketch, createWorker = defaultWorker }: WebProgramOptions): ProgramDriver {
+export function webProgramDriver({ code, onBuildStart, onBuild, compile = lazyCompile, createWorker = defaultWorker }: WebProgramOptions): ProgramDriver {
   let worker: Worker | null = null;
   let run = 0;
   let aborter: AbortController | null = null;
@@ -90,6 +100,7 @@ export function webProgramDriver({ code, onBuild, compile = compileSketch, creat
       const source = code();
       if (!source || !hasCode(source)) return { ok: false, message: "There's no sketch to run. Open Code to write one.", fallback: true };
       on.stage("building");
+      onBuildStart?.();
       const controller = new AbortController();
       aborter = controller;
       let build: BuildResult;
@@ -97,12 +108,13 @@ export function webProgramDriver({ code, onBuild, compile = compileSketch, creat
         build = await compile("arduino-uno", source.files, { signal: controller.signal });
       } catch (e) {
         if (mine !== run) return { ok: false, message: "Stopped." };
-        if (e instanceof CompileUnavailable && e.kind === "refused") {
-          onBuild?.(null, e.message);
-          return { ok: false, message: e.message };
+        if (unavailableKind(e) === "refused") {
+          onBuild?.(null, { kind: "refused", message: (e as Error).message });
+          return { ok: false, message: (e as Error).message };
         }
-        onBuild?.(null);
-        return { ok: false, message: e instanceof Error ? e.message : "Kiungo's compiler isn't working right now, so Run shows the built-in behavior.", fallback: true };
+        const message = e instanceof Error ? e.message : "Kiungo's compiler isn't working right now, so Run shows the built-in behavior.";
+        onBuild?.(null, { kind: "unavailable", message });
+        return { ok: false, message, fallback: true };
       } finally {
         if (aborter === controller) aborter = null;
       }

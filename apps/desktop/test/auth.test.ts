@@ -286,3 +286,54 @@ describe("signing out (DSK-03)", () => {
     expect(onChange.mock.calls.map(([s]) => s.status)).toEqual(["waiting", "signed-out"]);
   });
 });
+
+describe("one refresh at a time (audit DESK-001)", () => {
+  function clocked() {
+    const backend = fakeBackend();
+    const store = memoryStore();
+    let clock = 1_000_000;
+    const auth = new AuthService({
+      apiBase: "https://api.kiungo.test/api",
+      device: { name: "Brad's ThinkPad", platform: "linux", appVersion: "0.13.10" },
+      store,
+      openBrowser: async () => undefined,
+      fetch: backend.fetch,
+      onChange: () => undefined,
+      pollSeconds: 0.01,
+      now: () => clock,
+    });
+    return { auth, backend, store, advance: (ms: number) => (clock += ms) };
+  }
+
+  async function signedIn() {
+    const t = clocked();
+    const waiting = await t.auth.signIn();
+    if (waiting.status !== "waiting") throw new Error("sign-in didn't start");
+    await t.auth.handleLink(t.backend.approve(codeIdOf(waiting.signInUrl)));
+    return t;
+  }
+
+  it("two calls that find the access token stale share one refresh, so the device isn't taken for a copied token", async () => {
+    const { auth, backend, advance } = await signedIn();
+    advance(16 * 60_000); // the 15-minute access token has run out
+    const refreshesBefore = backend.calls.filter((c) => c === "POST /auth/desktop/refresh").length;
+
+    const [a, b] = await Promise.all([auth.token(), auth.token()]);
+
+    expect(backend.calls.filter((c) => c === "POST /auth/desktop/refresh").length - refreshesBefore).toBe(1);
+    expect(a).toMatch(/^access-/);
+    expect(b).toBe(a);
+    expect(backend.revoked.size).toBe(0);
+    expect(auth.current()).toMatchObject({ status: "signed-in" });
+  });
+
+  it("signing out while a refresh is in flight stays signed out", async () => {
+    const { auth, store, advance } = await signedIn();
+    advance(16 * 60_000);
+    const pending = auth.token();
+    await auth.signOut();
+    await pending;
+    expect(auth.current()).toMatchObject({ status: "signed-out" });
+    expect(store.value).toBeNull();
+  });
+});

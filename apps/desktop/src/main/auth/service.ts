@@ -101,6 +101,8 @@ export class AuthService {
   private pending: { codeId: string; verifier: string; expiresAt: number } | null = null;
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
   private exchanging = false;
+  /** The refresh in progress: a refresh token can be spent once, so every caller waits for the same one. */
+  private refreshing: Promise<AuthState> | null = null;
   private readonly fetchImpl: typeof fetch;
   private readonly now: () => number;
 
@@ -166,14 +168,34 @@ export class AuthService {
     return this.state;
   }
 
-  /** Refresh (and rotate) the session. Offline keeps you signed in; a refusal signs you out. */
-  async refresh(): Promise<AuthState> {
-    if (!this.session) return this.state;
+  /**
+   * Refresh (and rotate) the session. Offline keeps you signed in; a refusal signs you out.
+   *
+   * Single-flight: the server lets a refresh token be used once and treats a second use as a
+   * copied token, ending this device's sign-in. So two callers that find the access token
+   * stale at the same moment (account import asks for two things at once) share one refresh.
+   */
+  refresh(): Promise<AuthState> {
+    if (!this.session) return Promise.resolve(this.state);
+    if (!this.refreshing) {
+      this.refreshing = this.rotate().finally(() => {
+        this.refreshing = null;
+      });
+    }
+    return this.refreshing;
+  }
+
+  private async rotate(): Promise<AuthState> {
+    const session = this.session;
+    if (!session) return this.state;
     try {
-      const tokens = await this.call<TokenResponse>("/auth/desktop/refresh", { method: "POST", body: { refresh_token: this.session.refreshToken } });
+      const tokens = await this.call<TokenResponse>("/auth/desktop/refresh", { method: "POST", body: { refresh_token: session.refreshToken } });
+      // Signed out (or in as someone else) while this was in flight: don't bring the old session back.
+      if (this.session !== session) return this.state;
       await this.keep(tokens);
       return this.signedIn(false);
     } catch (error) {
+      if (this.session !== session) return this.state;
       if (error instanceof ApiProblem && (error.status === 401 || error.status === 403)) {
         await this.forget();
         return this.set({ status: "signed-out", message: error.message || "Sign in again.", canSkip: false, skipped: false });

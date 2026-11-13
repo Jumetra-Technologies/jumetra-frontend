@@ -68,7 +68,7 @@ A part's settings open beside the part when you click it, and the inspector pane
 - **The inspector panel and its button are gone.** The three-view thumbnails went with it: the canvas already shows the part. Right-click → **Properties** opens a part's window. In the desktop app the command palette's "Show or hide the Inspector" is now **Show the selected part's properties**.
 - **Desktop 0.13.11:** all of the above, from the shared lab.
 
-## [1.46.0] - 2026-11-12
+## [1.46.3] - 2026-11-12
 
 A simpler lab top bar and the whole parts library in one place: **+ Add**. Desktop 0.13.10.
 
@@ -94,7 +94,19 @@ A simpler lab top bar and the whole parts library in one place: **+ Add**. Deskt
 - The modal on the native `<dialog>` that the desktop app used is now shared from `@kiungo/ui`. The lab uses it, and the desktop's dialogs are unchanged.
 - **Desktop 0.13.10:** all of the above, from the shared lab.
 
-## [1.45.0] - 2026-11-12
+## [1.46.2] - 2026-11-13
+
+### Fixed
+- **Desktop 0.13.11: two account requests at once no longer sign the app out (audit DESK-001).**
+  - When the access token had run out, each caller refreshed the session on its own with the same refresh token. Account import asks for two things at once, for example.
+  - A refresh token can only be used once, so the second refresh was refused. The backend is now gaining replay detection (jumetra-backend audit fix BE-1), and with it that second refresh would also end the device's sign-in.
+  - Now every caller waits for the same refresh.
+  - Signing out while a refresh is in flight stays signed out.
+- **Desktop 0.13.11: an Arduino CLI that can't be started no longer leaves things looking connected (DESK-007).**
+  - Before, a failed spawn of the serial monitor or the Hybrid link left the port shown as open with nothing behind it. A failed spawn of the board watcher stopped watching for good.
+  - Now they close and say why, or the watcher restarts.
+
+## [1.46.0] - 2026-11-12
 
 Every value you set on a part in the Engineering Lab is now a physical quantity in SI units. A resistor takes any value you type. Desktop 0.13.10.
 
@@ -1093,7 +1105,9 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 
 [1.49.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.48.0...v1.49.0
 [1.48.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.47.0...v1.48.0
-[1.47.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.0...v1.47.0
+[1.47.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.3...v1.47.0
+[1.46.3]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.2...v1.46.3
+[1.46.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.1...v1.46.2
 [1.46.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.45.0...v1.46.0
 [1.45.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.44.0...v1.45.0
 [1.44.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.43.0...v1.44.0

@@ -133,7 +133,8 @@ export class BoardWatcher {
       // Discovery is working: the next restart can be quick again.
       this.delay = this.options.restartDelayMs ?? 2000;
     });
-    child.on("error", () => undefined);
+    // A spawn that fails emits "error" and may never emit "exit": either one schedules the restart, once.
+    child.on("error", () => child.emit("exit", null, null));
     child.on("exit", () => {
       if (this.child !== child || this.stopped) return;
       this.child = null;

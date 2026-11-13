@@ -1,15 +1,22 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HeroBoard } from "@/components/landing/HeroBoard";
-import { TIMING } from "@/components/landing/blink-scene";
+import { BLINK_STEPS, TIMING } from "@/components/landing/blink-scene";
 
 // The real scene needs WebGL, which jsdom lacks: a stand-in records what the page asks of it.
 const calls: string[] = [];
 let lastPhase: ((phase: string) => void) | undefined;
+let lastScene: { onLed?: (on: boolean) => void; onStep?: (step: number) => void } | undefined;
 vi.mock("@/components/landing/blink-scene", async (original) => {
   const actual = await original<typeof import("@/components/landing/blink-scene")>();
   class BlinkScene {
     phase = "still";
+    onLed?: (on: boolean) => void;
+    onStep?: (step: number) => void;
+    constructor() {
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
+      lastScene = this;
+    }
     set onPhase(fn: (phase: string) => void) {
       lastPhase = fn;
     }
@@ -79,6 +86,27 @@ describe("Home page board", () => {
       expect(button).toHaveAccessibleName("Play the Blink test");
     });
 
+    it("shows the sketch beside the board and lights the running line in step with the LED", async () => {
+      render(<HeroBoard />);
+      const button = await screen.findByRole("button", { name: "Play the Blink test" });
+      await waitFor(() => expect(button).toBeEnabled());
+      const code = screen.getByTestId("hero-code");
+      expect(code).toHaveTextContent("digitalWrite(13, HIGH);");
+      expect(code).toHaveTextContent("Ready");
+
+      fireEvent.click(button);
+      act(() => lastScene?.onStep?.(2));
+      expect(code).toHaveTextContent("Wiring the board");
+
+      act(() => lastPhase?.("blinking"));
+      act(() => lastScene?.onLed?.(true));
+      expect(code).toHaveAttribute("data-led", "high");
+      expect(code).toHaveTextContent("pin 13 HIGH");
+      act(() => lastScene?.onLed?.(false));
+      expect(code).toHaveAttribute("data-led", "low");
+      expect(code).toHaveTextContent("pin 13 LOW");
+    });
+
     it("tells the scene when the visitor prefers reduced motion", async () => {
       vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("reduce"), media: query, addEventListener() {}, removeEventListener() {} }));
       render(<HeroBoard />);
@@ -96,5 +124,9 @@ describe("The Blink scene's timeline", () => {
     expect(TIMING.resistor[1]).toBeLessThan(TIMING.led[0]);
     expect(TIMING.led[1]).toBeLessThan(TIMING.upload[0]);
     expect(TIMING.blink).toBe(TIMING.upload[1]);
+  });
+
+  it("names the build's steps hardware first, then code", () => {
+    expect(BLINK_STEPS).toEqual(["USB", "220 Ω → 13", "LED → GND", "Upload", "Run"]);
   });
 });

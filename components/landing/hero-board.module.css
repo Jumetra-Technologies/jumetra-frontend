@@ -1,0 +1,81 @@
+/* The Home page board's motion: the fogged edge of the 3D stage, and the code card's choreography. */
+
+/* Every edge of the stage fades into the page, so the cable and the shadow dissolve rather than stop at a line. */
+.fog {
+  --fog-x: linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  --fog-y: linear-gradient(to bottom, transparent 0%, #000 11%, #000 74%, transparent 100%);
+  -webkit-mask-image: var(--fog-x), var(--fog-y);
+  -webkit-mask-composite: source-in;
+  mask-image: var(--fog-x), var(--fog-y);
+  mask-composite: intersect;
+}
+
+/* The card settles in once, on load. */
+.enter {
+  animation: enter 900ms cubic-bezier(0.22, 1, 0.36, 1) 250ms both;
+}
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+    filter: blur(4px);
+  }
+}
+
+/* Upload: a band of light passes down the sketch while it compiles and flashes. */
+.scan {
+  background: linear-gradient(to bottom, transparent, rgba(95, 224, 219, 0.16) 45%, rgba(95, 224, 219, 0.28) 50%, rgba(95, 224, 219, 0.16) 55%, transparent);
+  animation: scan 1.5s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+@keyframes scan {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+/* The upload bar along the top of the card. */
+.progress {
+  animation: progress 1.5s cubic-bezier(0.45, 0, 0.25, 1) both;
+}
+@keyframes progress {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* The signal trace from the running line to the LED: dashes flow towards the LED. */
+.flow {
+  stroke-dasharray: 2 6;
+  animation: flow 0.6s linear infinite;
+}
+@keyframes flow {
+  to {
+    stroke-dashoffset: -8;
+  }
+}
+
+/* A step that has just finished pops once. */
+.pop {
+  animation: pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes pop {
+  from {
+    transform: scale(0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter,
+  .scan,
+  .progress,
+  .flow,
+  .pop {
+    animation: none;
+  }
+  .scan {
+    opacity: 0;
+  }
+}

@@ -56,19 +56,20 @@ export function LabTopBar({
   saveStatus?: ReactNode;
 }) {
   return (
-    <header className="relative z-20 flex min-h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-2 py-2 sm:px-3" data-testid="lab-top-bar">
+    <header className="@container/labbar relative z-20 flex min-h-14 shrink-0 items-center gap-2 overflow-hidden border-b border-border bg-surface px-2 py-2 sm:px-3" data-testid="lab-top-bar">
       {leading}
       <button ref={addRef} type="button" onClick={onAdd} className="k-lab-add" aria-keyshortcuts="/" title="Add a part (/)" data-testid="add-part">
         <Plus className="size-4" aria-hidden strokeWidth={2.4} />
-        Add
+        <span className="@max-sm/labbar:sr-only">Add</span>
       </button>
       {/* The name gives way first on a narrow screen: + Add and Run never move. */}
-      <div className="flex min-w-0 flex-1 items-center gap-1 [&>*]:min-w-0">
+      <div className="flex min-w-0 flex-1 items-center gap-1 @max-xs/labbar:hidden [&>*]:min-w-0">
         {title}
         {projectChip}
       </div>
 
-      <div className="ml-auto flex shrink-0 items-center gap-1.5">
+      {/* Run is first here and never shrinks: if the bar is still too narrow (the desktop's code pane at its widest), what clips is the end of the row, never Run. */}
+      <div className="ml-auto flex min-w-0 items-center gap-1.5 overflow-hidden px-1 py-1" data-testid="lab-top-bar-actions">
         {emergencyStop ? (
           <button type="button" onClick={emergencyStop} title="Emergency stop: every output on the real board off at once (Esc)" className="inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-[#c81e1e] px-3 text-[12.5px] font-semibold text-white shadow-[0_0_0_3px_color-mix(in_srgb,#c81e1e_25%,transparent)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger" data-testid="emergency-stop">
             <OctagonX className="size-4" aria-hidden />
@@ -79,13 +80,13 @@ export function LabTopBar({
           {run.running ? <Pause className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden fill="currentColor" />}
           {run.label}
         </button>
-        <span className="hidden w-14 text-right font-mono text-xs tabular-nums text-muted sm:inline" data-testid="sim-time" aria-label={`Simulated time ${t.toFixed(1)} seconds`}>
+        <span className="hidden w-14 shrink-0 text-right font-mono text-xs tabular-nums text-muted @xl/labbar:inline" data-testid="sim-time" aria-label={`Simulated time ${t.toFixed(1)} seconds`}>
           {t.toFixed(1)} s
         </span>
         <Menu label="More lab actions" align="end" buttonClassName="flex size-10 items-center justify-center rounded-[10px] text-muted hover:bg-muted-bg hover:text-foreground" items={more}>
           <MoreHorizontal className="size-5" />
         </Menu>
-        <SegmentedControl value={view} onChange={onView} options={views} label="Canvas view" size="sm" iconOnly className="hidden md:inline-flex" />
+        <SegmentedControl value={view} onChange={onView} options={views} label="Canvas view" size="sm" iconOnly className="hidden shrink-0 @3xl/labbar:inline-flex" />
         {trailing}
         {saveStatus}
       </div>

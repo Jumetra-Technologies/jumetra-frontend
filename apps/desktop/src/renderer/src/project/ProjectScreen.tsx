@@ -17,6 +17,7 @@ import { createWorldFeed, WorldPane } from "../world/WorldPane";
 import type { WorldSpec } from "@kiungo/core/world/types";
 import { invoke, shortcut } from "../ipc";
 import { NO_PERSISTENCE, projectPersistence, type SaveState } from "./persistence";
+import { CODE_WIDTH, clampCodeWidth, readCodePref, writeCodePref } from "./code-pref";
 
 /** The desktop app has no Component library page to link parts to. */
 /** In the desktop app, Mode decides where Run runs the code (sprint 9). */
@@ -41,30 +42,12 @@ export interface ProjectScreenHandle extends LabWorkspaceHandle {
   toggleCode: () => void;
 }
 
-const CODE_PREF = "kiungo.desktop.code";
-/** Whether the code shows, and how wide: remembered on this computer. */
-function readCodePref(): { open: boolean; width: number } {
-  try {
-    const raw = JSON.parse(window.localStorage.getItem(CODE_PREF) ?? "null") as { open?: unknown; width?: unknown } | null;
-    return { open: raw?.open !== false, width: typeof raw?.width === "number" ? raw.width : 0.42 };
-  } catch {
-    return { open: true, width: 0.42 };
-  }
-}
-function writeCodePref(pref: { open: boolean; width: number }) {
-  try {
-    window.localStorage.setItem(CODE_PREF, JSON.stringify(pref));
-  } catch {
-    /* only a convenience */
-  }
-}
-
 /** An open project: the lab, saving into the project folder as you work. */
 export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>(function ProjectScreen({ project, onHome }, ref) {
   const [save, setSave] = useState<SaveState>({ kind: "saved", at: null });
   const [lab, setLab] = useState<LabWorkspaceHandle | null>(null);
   const [running, setRunning] = useState(false);
-  const [code, setCode] = useState(readCodePref);
+  const [code, setCode] = useState(() => readCodePref());
   const row = useRef<HTMLDivElement>(null);
   // The lab's Run runs the project's own code on an emulated board; the editor saves first and shows the build's problems.
   const editorBridge = useRef<EditorBridge | null>(null);
@@ -126,7 +109,7 @@ export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>
     if (!box) return;
     e.preventDefault();
     const move = (ev: PointerEvent) => {
-      const width = Math.min(0.7, Math.max(0.25, (box.right - ev.clientX) / box.width));
+      const width = clampCodeWidth((box.right - ev.clientX) / box.width);
       setCode((c) => ({ ...c, width }));
     };
     const up = () => {
@@ -227,6 +210,8 @@ export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>
           ref={setLab}
           onRunningChange={setRunning}
           program={program}
+          // The Code button stays in the bar (a primary action); ⋮ lists it too, beside the lab's own actions.
+          moreItems={[{ id: "code", label: code.open ? "Hide the code" : "Show the code", icon: <Code2 />, shortcut: shortcut("E"), onSelect: toggleCode }]}
           trailing={
             <button type="button" onClick={toggleCode} aria-pressed={code.open} aria-label={code.open ? "Hide the code" : "Show the code"} title={`Code (${shortcut("E")})`} className={cn("flex h-9 items-center gap-1.5 rounded-[10px] px-2.5 text-[12.5px] font-medium transition-colors", code.open ? "bg-muted-bg text-foreground" : "text-muted hover:bg-muted-bg")} data-testid="toggle-code">
               <Code2 className="size-4" aria-hidden />
@@ -248,31 +233,42 @@ export const ProjectScreen = forwardRef<ProjectScreenHandle, ProjectScreenProps>
         />
         </div>
         {code.open ? (
-          <>
-            <div role="separator" aria-orientation="vertical" aria-label="Resize the code" tabIndex={0} onPointerDown={startResize} onKeyDown={(e) => {
-              if (e.key === "ArrowLeft") setCode((c) => ({ ...c, width: Math.min(0.7, c.width + 0.03) }));
-              if (e.key === "ArrowRight") setCode((c) => ({ ...c, width: Math.max(0.25, c.width - 0.03) }));
-            }} className="w-1 shrink-0 cursor-col-resize bg-border transition-colors hover:bg-primary/40 focus-visible:bg-primary" />
-            <div className="flex min-h-0 shrink-0 flex-col" style={{ width: `${code.width * 100}%` }}>
-              <div className="flex h-9 shrink-0 items-stretch gap-1 border-b border-l border-border bg-background px-2" role="tablist" aria-label="Beside the circuit">
-                {(["code", "world"] as const).map((id) => (
-                  <button key={id} type="button" role="tab" aria-selected={pane === id} onClick={() => setPane(id)} className={cn("border-b-2 px-2.5 text-[12.5px] font-medium", pane === id ? "border-primary text-foreground" : "border-transparent text-muted hover:text-foreground")} data-testid={`pane-${id}`}>
-                    {id === "code" ? "Code" : "World"}
-                  </button>
-                ))}
-              </div>
-              {/* The editor stays mounted behind the World, so its files and undo history stay. */}
-              <div className={cn("min-h-0 flex-1", pane === "code" ? "block" : "hidden")}>
-                <EditorPane projectPath={project.path} board={`the ${boardName(project.meta.board)}`} boardPart={project.meta.board} bridge={editorBridge} running={running} onRun={() => lab?.run()} onStop={() => lab?.stop()} onClose={toggleCode} />
-              </div>
-              {pane === "world" ? (
-                <div className="min-h-0 flex-1 border-l border-border bg-surface">
-                  <WorldPane world={world} feed={feed} running={running} onChange={changeWorld} />
-                </div>
-              ) : null}
-            </div>
-          </>
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize the code"
+            aria-valuemin={Math.round(CODE_WIDTH.min * 100)}
+            aria-valuemax={Math.round(CODE_WIDTH.max * 100)}
+            aria-valuenow={Math.round(code.width * 100)}
+            tabIndex={0}
+            onPointerDown={startResize}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft") setCode((c) => ({ ...c, width: clampCodeWidth(c.width + CODE_WIDTH.step) }));
+              if (e.key === "ArrowRight") setCode((c) => ({ ...c, width: clampCodeWidth(c.width - CODE_WIDTH.step) }));
+            }}
+            className="w-1 shrink-0 cursor-col-resize bg-border transition-colors hover:bg-primary/40 focus-visible:bg-primary"
+            data-testid="code-divider"
+          />
         ) : null}
+        {/* Hidden, not unmounted, when the code is off: the editor keeps its open files and undo history. */}
+        <div className={cn("min-h-0 shrink-0 flex-col", code.open ? "flex" : "hidden")} style={{ width: `${code.width * 100}%` }} data-testid="code-pane" aria-hidden={!code.open || undefined}>
+          <div className="flex h-9 shrink-0 items-stretch gap-1 border-b border-l border-border bg-background px-2" role="tablist" aria-label="Beside the circuit">
+            {(["code", "world"] as const).map((id) => (
+              <button key={id} type="button" role="tab" aria-selected={pane === id} onClick={() => setPane(id)} className={cn("border-b-2 px-2.5 text-[12.5px] font-medium", pane === id ? "border-primary text-foreground" : "border-transparent text-muted hover:text-foreground")} data-testid={`pane-${id}`}>
+                {id === "code" ? "Code" : "World"}
+              </button>
+            ))}
+          </div>
+          {/* The editor stays mounted behind the World, so its files and undo history stay. */}
+          <div className={cn("min-h-0 flex-1", pane === "code" ? "block" : "hidden")}>
+            <EditorPane projectPath={project.path} board={`the ${boardName(project.meta.board)}`} boardPart={project.meta.board} bridge={editorBridge} running={running} onRun={() => lab?.run()} onStop={() => lab?.stop()} onClose={toggleCode} />
+          </div>
+          {pane === "world" ? (
+            <div className="min-h-0 flex-1 border-l border-border bg-surface">
+              <WorldPane world={world} feed={feed} running={running} onChange={changeWorld} />
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

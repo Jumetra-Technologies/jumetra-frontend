@@ -187,7 +187,7 @@ export default definePart({
     io("D52", "D52 SCK", "right", ["digital", "sck"]),
     io("D53", "D53 SS", "right", ["digital", "cs"]),
     ground("GND3", "right", "GND"),
-    rail("5V_ICSP", "5V ICSP", 5, "right", { note: "5 V on the ICSP header" }),
+    rail("5V_ICSP", "5V ICSP", 5, "right", { note: "5 V on the ICSP header", programmingHeader: true }),
   ],
   pinTable: [
     { name: "D0–D53", role: "digital", note: "54 digital pins at 5 V; 2–13 and 44–46 can output PWM (15 in all)" },

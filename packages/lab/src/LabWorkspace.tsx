@@ -125,6 +125,8 @@ export interface LabWorkspaceProps {
   saveStatus?: ReactNode;
   /** Before everything in the top bar (the desktop app's Home button). */
   leading?: ReactNode;
+  /** The host's own entries at the top of the ⋮ menu (the desktop app's Show the code). */
+  moreItems?: MenuEntry[];
   /** After everything in the top bar (the desktop app's code toggle). */
   trailing?: ReactNode;
   /** Told when a run starts or stops, so the host can show it (the desktop app's editor). */
@@ -138,7 +140,7 @@ export interface LabWorkspaceProps {
 }
 
 export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(function LabWorkspace(
-  { host, runtime, project = null, projectChip, onLinkProject, titleMenu, titleMenuLabel = "Session menu", saveStatus, leading, trailing, onRunningChange, program, generator = "Kiungo Engineering Lab", onOpenBuild },
+  { host, runtime, project = null, projectChip, onLinkProject, titleMenu, titleMenuLabel = "Session menu", saveStatus, leading, trailing, moreItems: hostMoreItems, onRunningChange, program, generator = "Kiungo Engineering Lab", onOpenBuild },
   ref,
 ) {
   const hydrated = useLab((s) => s.hydrated);
@@ -777,6 +779,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
 
   const stepOnce = () => setT((v) => Math.round((v + 0.1) * 10) / 10);
   const moreItems: MenuEntry[] = [
+    ...(hostMoreItems?.length ? [...hostMoreItems, { type: "separator" as const, id: "host-items" }] : []),
     ...(runtimePill ? [{ type: "label" as const, id: "connection", label: `${runtimePill.text}: ${runtimePill.title}` }] : []),
     { id: "step", label: "Step 100 ms", icon: <SkipForward />, disabled: running, onSelect: stepOnce },
     { id: "reset", label: "Reset to 0 s", icon: <RotateCcw />, onSelect: reset },

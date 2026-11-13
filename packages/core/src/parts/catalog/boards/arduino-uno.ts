@@ -270,7 +270,7 @@ export default definePart({
     io("D12", "D12 MISO", "right", ["digital", "miso"]),
     io("D13", "D13 SCK", "right", ["digital", "sck", "led"], { note: "Built-in LED L" }),
     ground("GND3", "right"),
-    rail("5V_ICSP", "5V ICSP", 5, "right", { note: "5 V on the ICSP header, beside the digital pins" }),
+    rail("5V_ICSP", "5V ICSP", 5, "right", { note: "5 V on the ICSP header, beside the digital pins", programmingHeader: true }),
   ],
   pinTable: UNO_PINS,
   pinAt: { ...topPins, ...top8Pins, ...powerPins, ...analogPins, "5V_ICSP": icspVcc },

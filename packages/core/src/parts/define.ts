@@ -40,6 +40,11 @@ export interface PinDef {
   at?: { x: number; y: number };
   /** Leave it out of the library's pin table (a second ground, a spare). */
   quiet?: boolean;
+  /**
+   * On a programming header (ICSP): the supply is real, but nobody takes a
+   * part's power from it on the bench, so auto-wire never picks it.
+   */
+  programmingHeader?: boolean;
 }
 
 /** The electrical facts the lab's wiring checks need. Left out, they come from `spec.power`. */
@@ -106,6 +111,7 @@ export function definePart(def: PartDef): PartEntry {
     if (pin.supplies !== undefined) out.supplies = pin.supplies;
     if (pin.accepts) out.accepts = pin.accepts;
     if (pin.inputOnly) out.inputOnly = true;
+    if (pin.programmingHeader) out.programmingHeader = true;
     if (pin.expects) {
       out.role = pin.expects;
       out.required = pin.required ?? (pin.expects !== "opt" && pin.expects !== "load");

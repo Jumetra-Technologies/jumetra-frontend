@@ -7,7 +7,7 @@ import { PartModel3D } from "./views/PartModel3D";
 import { PartPlanGraphic } from "./views/PartPlanView";
 import { getPart, hasScreen, withScreenText } from "@kiungo/core/parts";
 import { withResistorValue } from "@kiungo/core/parts/models/passives";
-import { ohmsOf } from "@kiungo/core/lab/controls";
+import { ohmsOf, toleranceOf } from "@kiungo/core/lab/controls";
 import { getPinout, pinTone, type LabPin, type PinTone } from "@kiungo/core/lab/pinout";
 import type { PowerState } from "./UsbCable";
 import { NODE, nodeLayout, pinY } from "@kiungo/core/lab/layout";
@@ -216,7 +216,8 @@ function PartNodeView({ id, data, selected }: NodeProps & { data: PartNodeData }
   const screen = !!part && hasScreen(part);
   const text = live?.text;
   const ohms = node.partId === "resistor" ? ohmsOf(session.inputs, node.id) : 0;
-  const shown = useMemo(() => (part && screen ? withScreenText(part, text ?? []) : part && ohms ? withResistorValue(part, ohms) : part), [part, screen, text, ohms]);
+  const tolerance = node.partId === "resistor" ? toleranceOf(session.inputs, node.id) : 5;
+  const shown = useMemo(() => (part && screen ? withScreenText(part, text ?? []) : part && ohms ? withResistorValue(part, ohms, tolerance) : part), [part, screen, text, ohms, tolerance]);
 
   if (layout.bare && part && pinout.passive) {
     return (

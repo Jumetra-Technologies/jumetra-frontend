@@ -262,7 +262,7 @@ export function buildServer(): McpServer {
     "set_inputs",
     {
       title: "Set inputs",
-      description: "Set a part's controls (keys from get_controls), e.g. {distanceCm: 12} on an HC-SR04, {angle: 45} on a servo, {warnCm: 25} on a board.",
+      description: "Set a part's controls (keys from get_controls). Numbers are in SI: metres, pascals, seconds, lux, ohms, radians, and ratios 0 to 1. A string with its unit also works. E.g. {distance: 0.12} or {distance: \"120 mm\"} on an HC-SR04, {angle: \"45°\"} on a servo, {ohms: \"4.7k\"} on a resistor, {warnDistance: 0.25} on a board.",
       inputSchema: { session_id: z.string(), node: z.string(), values: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])) },
     },
     ({ session_id, node, values }) =>

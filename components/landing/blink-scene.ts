@@ -44,6 +44,11 @@ export const TIMING = {
   leave: 0.75,
 } as const;
 
+/** The build, step by step, as the code card shows it: the hardware first, then the code. */
+export const BLINK_STEPS = ["USB", "220 Ω → 13", "LED → GND", "Upload", "Run"] as const;
+/** When each step but the last (Run) is done, in seconds from Play. */
+const BLINK_STEP_ENDS = [TIMING.usb[1], TIMING.resistor[1], TIMING.led[1], TIMING.upload[1]];
+
 const TEAL_FLASH = "#5fe0db";
 const LED_RED = "#e0252b";
 
@@ -220,7 +225,13 @@ export class BlinkScene {
   private closeUp = 0;
   private closeUpAtStop = 0;
   private reduce = false;
+  private ledLit = false;
+  private stepAt = -1;
   onPhase?: (phase: BlinkPhase) => void;
+  /** Called when the LED turns on or off (twice a second while Blink runs). */
+  onLed?: (on: boolean) => void;
+  /** Called when the build moves on a step (BLINK_STEPS); -1 when idle. */
+  onStep?: (step: number) => void;
 
   constructor(canvas: HTMLCanvasElement, uno: PartModel) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
@@ -348,6 +359,20 @@ export class BlinkScene {
     }
     this.closeUp = 0;
     this.light(false, false, false, false);
+    this.setStep(-1);
+  }
+
+  private setStep(step: number): void {
+    if (step === this.stepAt) return;
+    this.stepAt = step;
+    this.onStep?.(step);
+  }
+
+  /** Where the LED's glow sits on the canvas, from 0 to 1 across and down; null while the LED is not in place. */
+  ledScreen(): { x: number; y: number } | null {
+    if (!this.diode.group.visible || this.phase === "still" || this.phase === "leaving") return null;
+    const at = this.glow.getWorldPosition(new THREE.Vector3()).project(this.camera);
+    return { x: (at.x + 1) / 2, y: (1 - at.y) / 2 };
   }
 
   /** Camera: the still three-quarter view (k = 0) or the close-up on the build (k = 1), with a slow sway while it runs. */
@@ -383,6 +408,10 @@ export class BlinkScene {
     this.lens.opacity = on ? 0.97 : 0.9;
     (this.glow.material as THREE.SpriteMaterial).opacity = on ? 0.95 : 0;
     this.lamp.intensity = on ? 160 : 0;
+    if (on !== this.ledLit) {
+      this.ledLit = on;
+      this.onLed?.(on);
+    }
   }
 
   /** Advance to `now` (seconds) and draw. */
@@ -421,6 +450,7 @@ export class BlinkScene {
       this.light(powered, uploading ? fast : on, uploading && fast, uploading && !fast);
       this.setLed(on);
       this.setPhase(blinking ? "blinking" : uploading ? "uploading" : "plugging");
+      this.setStep(BLINK_STEP_ENDS.filter((end) => t >= end).length);
 
       for (const flash of this.flashes) {
         const f = (t - flash.at) / 0.45;

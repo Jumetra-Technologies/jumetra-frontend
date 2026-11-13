@@ -107,8 +107,8 @@ export default definePart({
   },
   sim: {
     kind: "sensor",
-    reads: [{ key: "distanceCm", label: "Distance to obstacle", unit: "cm", min: 1, max: 40, step: 1, start: 25, sweep: [35, 4, 6], digits: 0 }],
-    trips: [{ pin: "OUT", key: "distanceCm", when: "below", at: 15, activeLow: true }],
+    reads: [{ key: "distance", label: "Distance to obstacle", unit: "cm", min: 1, max: 40, step: 1, start: 25, sweep: [35, 4, 6], digits: 0 }],
+    trips: [{ pin: "OUT", key: "distance", when: "below", at: 15, activeLow: true }],
   },
   experiment: { title: "Bumper that sees", idea: "Wire OUT to a digital pin. When it reads low, stop the motors and back up. Turn the trimmer until your hand triggers it at 10 cm." },
   tags: ["fc-51", "ir", "infrared", "obstacle", "proximity", "avoidance", "hw-201", "sensor"],

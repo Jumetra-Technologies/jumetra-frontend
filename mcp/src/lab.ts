@@ -19,6 +19,7 @@ import { logEntry, makeId, newSession, nextLabel } from "@kiungo/core/lab/sessio
 import { parseSessionFile, sessionFileName, toSessionFile, type SessionFile } from "@kiungo/core/lab/session-file";
 import { getPart, PARTS, searchParts } from "@kiungo/core/parts";
 import type { LabNode, LabSession, LabWire, LogKind, PinRef } from "@kiungo/core/lab/types";
+import { formatQuantity, formatRange, parseQuantity } from "@kiungo/core/lab/units";
 
 export class LabError extends Error {}
 
@@ -262,7 +263,14 @@ export function moveRename(s: LabSession, nodeRef: string, patch: { x?: number; 
 export function listControls(s: LabSession, nodeRef: string) {
   const node = resolveNode(s, nodeRef);
   const c = controlsFor(node, s.nodes, analyze(s.nodes, s.wires));
-  return { node_id: node.id, label: node.label, title: c.title, note: c.note, controls: c.controls, current: s.inputs?.[node.id] ?? {} };
+  // Ranges in the units people read (a number control's own values are SI); how old sessions were converted is left out.
+  const controls = c.controls.map((control) => {
+    if (control.kind !== "number") return control;
+    const { legacy: _legacy, ...rest } = control;
+    void _legacy;
+    return { ...rest, range: formatRange(control.min, control.max, control.quantity), shownDefault: formatQuantity(control.default, control.quantity) };
+  });
+  return { node_id: node.id, label: node.label, title: c.title, note: c.note, controls, current: s.inputs?.[node.id] ?? {} };
 }
 
 export function setInputs(s: LabSession, nodeRef: string, values: Record<string, number | string | boolean>) {
@@ -276,7 +284,21 @@ export function setInputs(s: LabSession, nodeRef: string, values: Record<string,
       rejected.push(`${key}: not a control on ${node.label} (valid: ${allowed.map((c) => c.key).join(", ") || "none"})`);
       continue;
     }
-    const v = coerceInput(control, value);
+    // A number control also takes its value written with a unit: "120 mm", "4.7k", "45°".
+    let given: unknown = value;
+    if (control.kind === "number" && typeof value === "string") {
+      const parsed = parseQuantity(value, control.quantity);
+      if (!parsed.ok) {
+        rejected.push(`${key}: ${parsed.error}`);
+        continue;
+      }
+      if (parsed.value < control.min || parsed.value > control.max) {
+        rejected.push(`${key}: ${formatQuantity(parsed.value, control.quantity)} is outside ${formatRange(control.min, control.max, control.quantity)}`);
+        continue;
+      }
+      given = parsed.value;
+    }
+    const v = coerceInput(control, given);
     if (v === null) {
       rejected.push(`${key}: ${JSON.stringify(value)} is out of range or the wrong type`);
       continue;

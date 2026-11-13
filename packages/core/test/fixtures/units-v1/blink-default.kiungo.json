@@ -1,0 +1,88 @@
+{
+  "format": "kiungo-lab-session",
+  "version": 1,
+  "session": {
+    "id": "lab-blink-default",
+    "name": "blink-default",
+    "projectId": null,
+    "createdAt": "2026-11-01T09:00:00.000Z",
+    "updatedAt": "2026-11-01T09:00:00.000Z",
+    "nodes": [
+      {
+        "id": "n35",
+        "partId": "arduino-uno",
+        "label": "arduino-uno",
+        "x": 0,
+        "y": 0,
+        "mode": "virtual"
+      },
+      {
+        "id": "n36",
+        "partId": "led",
+        "label": "led",
+        "x": 600,
+        "y": 200,
+        "mode": "virtual"
+      },
+      {
+        "id": "n37",
+        "partId": "buzzer",
+        "label": "buzzer",
+        "x": 600,
+        "y": 400,
+        "mode": "virtual"
+      }
+    ],
+    "wires": [
+      {
+        "id": "w36-0",
+        "from": {
+          "node": "n35",
+          "pin": "D13"
+        },
+        "to": {
+          "node": "n36",
+          "pin": "A"
+        }
+      },
+      {
+        "id": "w36-1",
+        "from": {
+          "node": "n35",
+          "pin": "GND3"
+        },
+        "to": {
+          "node": "n36",
+          "pin": "C"
+        }
+      },
+      {
+        "id": "w37-0",
+        "from": {
+          "node": "n35",
+          "pin": "D2"
+        },
+        "to": {
+          "node": "n37",
+          "pin": "P"
+        }
+      },
+      {
+        "id": "w37-1",
+        "from": {
+          "node": "n35",
+          "pin": "GND3"
+        },
+        "to": {
+          "node": "n37",
+          "pin": "N"
+        }
+      }
+    ],
+    "log": [],
+    "view": "top",
+    "runMs": 0,
+    "inputs": {},
+    "runtime": null
+  }
+}

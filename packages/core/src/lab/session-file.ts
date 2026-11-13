@@ -18,6 +18,7 @@
  * server runs the same code.
  */
 
+import { sanitizeCode } from "./code";
 import { getPinout, hasPinout } from "./pinout";
 import { migrateSessionUnits } from "./session";
 import type { LabNode, LabSession, LabView, LabWire, LogEntry, LogKind, NodeInputs } from "./types";
@@ -170,6 +171,7 @@ export function parseSessionFile(input: string | unknown, opts: { keepId?: boole
     runMs: Math.max(0, num(s.runMs, 0)),
     inputs,
     ...(typeof s.units === "number" ? { units: s.units } : {}),
+    ...(sanitizeCode(s.code) ? { code: sanitizeCode(s.code) } : {}),
     runtime: null,
   };
   // A file saved before SI units is read in today's units.

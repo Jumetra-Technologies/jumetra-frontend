@@ -84,6 +84,16 @@ describe("desktop activity reporter", () => {
     expect(checks()).toBe(1);
   });
 
+  it("asks the account again right after the answer changes in Settings", async () => {
+    const { reporter, checks } = setup();
+    await reporter.tick();
+    await reporter.tick();
+    expect(checks()).toBe(1);
+    reporter.forgetConsent();
+    await reporter.tick();
+    expect(checks()).toBe(2);
+  });
+
   it("stopping says goodbye once", async () => {
     const { reporter, sent } = setup();
     await reporter.tick();

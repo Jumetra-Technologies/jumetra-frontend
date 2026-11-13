@@ -176,7 +176,7 @@ describe("the top bar", () => {
 
 describe("the sidebar's ends", () => {
   it("one name at the top, and one way to Settings at the bottom", () => {
-    render(<Sidebar view="dashboard" onView={vi.fn()} roles={[]} auth={signedOut} onSettings={vi.fn()} />);
+    render(<Sidebar view="dashboard" onView={vi.fn()} auth={signedOut} onSettings={vi.fn()} />);
     expect(screen.getByTestId("app-name")).toHaveTextContent("Kiungo");
     expect(screen.queryByRole("img")).toBeNull();
     expect(screen.getAllByRole("button", { name: /settings/i })).toHaveLength(1);

@@ -1,28 +1,25 @@
-import { Book, Cpu, FlaskConical, Plus, Sparkles, Users } from "lucide-react";
-import type { AuthState, RecentProject, Role } from "@kiungo/api";
+import { Plus, Sparkles } from "lucide-react";
+import type { AuthState, RecentProject } from "@kiungo/api";
 import { Button } from "@kiungo/ui/button";
 import { openedAgo } from "../ipc";
 import { CircuitThumbnail } from "../home/CircuitThumbnail";
-import { FocusPanel, Metric } from "../shell/widgets";
+import { Metric } from "../shell/widgets";
 import type { View } from "../shell/types";
 import { dateLine, greetingFor, useNow } from "./greeting";
 
 export function Dashboard({
   auth,
-  roles,
   recent,
   onView,
   onNewProject,
   onOpenRecent,
 }: {
   auth: AuthState | null;
-  roles: Role[];
   recent: RecentProject[] | null;
   onView: (view: View) => void;
   onNewProject: () => void;
   onOpenRecent: (project: RecentProject) => void;
 }) {
-  const visibleRoles = roles;
   const name = auth?.status === "signed-in" ? auth.user.name.split(" ")[0] : null;
   const projects = (recent ?? []).filter((p) => !p.missing).slice(0, 3);
   const attention = (recent ?? []).filter((p) => !p.missing).length;
@@ -51,9 +48,8 @@ export function Dashboard({
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Metric label="Projects on this computer" value={String((recent ?? []).filter((p) => !p.missing).length)} detail="Open any time from Projects" />
-        <Metric label="Roles active" value={String(roles.length)} detail={roles.length ? "Shaping your nav and dashboard" : "Add one in Settings"} tone="info" />
         <Metric label="Simulation" value="Ready" detail="3D, 2D, and trace views" tone="warn" />
       </div>
 
@@ -89,20 +85,6 @@ export function Dashboard({
             </div>
           )}
 
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {visibleRoles.includes("researcher") || visibleRoles.includes("university") ? (
-              <FocusPanel title="Research focus" icon={<FlaskConical className="size-4" aria-hidden />} items={["Active experiments live in Research", "Datasets and lab notes stay with the project", "Open Research from the sidebar"]} />
-            ) : null}
-            {visibleRoles.includes("embedded-engineer") || visibleRoles.includes("electrical-engineer") || visibleRoles.includes("hobbyist") ? (
-              <FocusPanel title="Engineering focus" icon={<Cpu className="size-4" aria-hidden />} items={["Firmware builds in the project workspace", "Hardware profiles live in Components", "Open Firmware from the sidebar"]} />
-            ) : null}
-            {visibleRoles.includes("student") ? (
-              <FocusPanel title="Continue learning" icon={<Book className="size-4" aria-hidden />} items={["Role-aware lessons live in Learning", "Tied to the simulation and firmware tools", "Open Learning from the sidebar"]} />
-            ) : null}
-            {visibleRoles.includes("stem-trainer") || visibleRoles.includes("university") ? (
-              <FocusPanel title="Teaching focus" icon={<Users className="size-4" aria-hidden />} items={["Classes and cohorts live in Collaboration", "Share a project with a learner's workspace", "Open Collaboration from the sidebar"]} />
-            ) : null}
-          </div>
         </section>
 
         <aside className="space-y-4">

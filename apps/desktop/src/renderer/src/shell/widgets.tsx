@@ -34,7 +34,7 @@ export function PageTitle({ title, detail, action, onAction }: { title: string; 
   );
 }
 
-/** A small card listing a few short facts, used by the role-aware Dashboard panels. */
+/** A small card listing a few short facts (Research, Learning). */
 export function FocusPanel({ title, icon, items }: { title: string; icon: ReactNode; items: string[] }) {
   return (
     <article className="rounded-[14px] border border-border bg-surface p-4">
@@ -53,40 +53,19 @@ export function FocusPanel({ title, icon, items }: { title: string; icon: ReactN
   );
 }
 
-/** One row in a Settings section: a label, a line about it, and a control. */
-export function SettingRow({ title, detail, children }: { title: string; detail: string; children: ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-t border-border py-3.5 first:border-0 first:pt-0">
-      <div className="min-w-0">
-        <div className="text-[13px] font-medium text-foreground">{title}</div>
-        <div className="text-[12px] text-muted">{detail}</div>
-      </div>
-      <div className="shrink-0">{children}</div>
-    </div>
-  );
-}
-
-/** A heading above a block of Settings fields. */
-export function SettingsHeading({ title, detail }: { title: string; detail: string }) {
-  return (
-    <div className="mb-5">
-      <h2 className="text-[15px] font-semibold text-foreground">{title}</h2>
-      <p className="mt-0.5 text-[12.5px] text-muted">{detail}</p>
-    </div>
-  );
-}
-
-/** A plain on/off switch, for settings rows that aren't backed by a real setting yet. */
-export function Toggle({ on, onChange }: { on: boolean; onChange?: (next: boolean) => void }) {
+/** A plain on/off switch. Name it (label) when nothing else on screen does. */
+export function Toggle({ on, onChange, label, disabled }: { on: boolean; onChange?: (next: boolean) => void; label?: string; disabled?: boolean }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
+      aria-label={label}
+      disabled={disabled}
       onClick={() => onChange?.(!on)}
-      className={cn("relative h-5 w-9 rounded-full transition-colors", on ? "bg-primary" : "bg-muted-bg")}
+      className={cn("relative h-5 w-9 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50", on ? "bg-primary" : "bg-[color-mix(in_srgb,var(--foreground)_24%,transparent)]")}
     >
-      <span className={cn("absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform", on ? "translate-x-[18px]" : "translate-x-0.5")} />
+      <span className={cn("absolute left-0 top-0.5 size-4 rounded-full bg-white shadow transition-transform", on ? "translate-x-[18px]" : "translate-x-0.5")} />
     </button>
   );
 }

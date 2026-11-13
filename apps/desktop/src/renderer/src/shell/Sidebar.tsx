@@ -1,5 +1,5 @@
 import { Book, Cpu, FlaskConical, Folder, LayoutDashboard, Monitor, Settings, Sparkles, Store, Users } from "lucide-react";
-import type { AuthState, Role } from "@kiungo/api";
+import type { AuthState } from "@kiungo/api";
 import { cn } from "@kiungo/ui/cn";
 import { AccountMenu } from "../account/AccountMenu";
 import { NAV_ITEMS, type View } from "./types";
@@ -19,17 +19,15 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
 export function Sidebar({
   view,
   onView,
-  roles,
   auth,
   onSettings,
 }: {
   view: View;
   onView: (view: View) => void;
-  roles: Role[];
   auth: AuthState;
   onSettings: () => void;
 }) {
-  const items = NAV_ITEMS.filter((item) => !item.roles || item.roles.some((r) => roles.includes(r)));
+  const items = NAV_ITEMS;
   return (
     <aside className="flex w-[232px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground" data-sidebar data-testid="app-sidebar">
       {/* The app's one name. Also the window's handle: drag here to move it (macOS's buttons sit at its left). */}

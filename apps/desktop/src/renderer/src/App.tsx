@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import { CloudDownload, Code2, FilePlus2, FolderOpen, LogIn, LogOut, Maximize, SlidersHorizontal, Play, Redo2, RefreshCw, Search, Settings, Stethoscope, Undo2, UserRound, X, Box, Grid2x2, Zap } from "lucide-react";
-import type { Appearance, AppInfo, OpenedProject, OpenResult, RecentProject, RemoteProject, Role } from "@kiungo/api";
+import type { Appearance, AppInfo, OpenedProject, OpenResult, RecentProject, RemoteProject } from "@kiungo/api";
 import { useAuth } from "./account/useAuth";
 import { SignInScreen } from "./account/SignInScreen";
 import { Assistant } from "./assistant/Assistant";
@@ -43,7 +43,6 @@ export function App() {
   const [importOpen, setImportOpen] = useState(false);
   const [syncOn, setSyncOn] = useState(false);
   const [appearance, setAppearance] = useState<Appearance>("system");
-  const [roles, setRoles] = useState<Role[]>([]);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [remote, setRemote] = useState<{ projects: RemoteProject[] | null; message: string | null }>({ projects: null, message: null });
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -53,17 +52,12 @@ export function App() {
     void invoke("projects:settings").then((s) => {
       setSyncOn(s.sync === true);
       setAppearance(s.appearance ?? "system");
-      setRoles(s.roles ?? []);
     });
     void invoke("app:info").then(setAppInfo);
   }, []);
   const changeAppearance = useCallback((next: Appearance) => {
     setAppearance(next); // Right away: no wait on the round trip to main.
     void invoke("settings:set-appearance", next);
-  }, []);
-  const changeRoles = useCallback((next: Role[]) => {
-    setRoles(next); // Right away: the sidebar and dashboard reflect it at once.
-    void invoke("settings:set-roles", next);
   }, []);
 
   // Projects on the account but not here, each time Dashboard or Projects shows with sync on.
@@ -212,7 +206,7 @@ export function App() {
       list.push({ id: "update-check", title: "Check for updates", detail, group: "Help", icon: <CloudDownload />, keywords: "update upgrade new version", run: update.check });
     }
     list.push(
-      { id: "settings", title: "Settings", group: "Help", icon: <Settings />, shortcut: shortcut(","), keywords: "appearance theme light dark version profile account roles", run: () => setView("settings") },
+      { id: "settings", title: "Settings", group: "Help", icon: <Settings />, shortcut: shortcut(","), keywords: "appearance theme light dark version update profile account sign out privacy usage", run: () => setView("settings") },
       { id: "foundations", title: "Check the toolchain and emulator", group: "Help", icon: <Stethoscope />, keywords: "diagnostics arduino cli compiler", run: () => void closeOpen().then(() => setFoundationsOpen(true)) },
     );
     return list;
@@ -247,7 +241,6 @@ export function App() {
       <AppShell
         view={view}
         onView={setView}
-        roles={roles}
         auth={auth}
         onSettings={() => setView("settings")}
         notices={notices}
@@ -255,7 +248,7 @@ export function App() {
         version={appInfo?.appVersion ?? null}
       >
         {view === "dashboard" ? (
-          <Dashboard auth={auth} roles={roles} recent={recent} onView={setView} onNewProject={() => newProject()} onOpenRecent={openRecent} />
+          <Dashboard auth={auth} recent={recent} onView={setView} onNewProject={() => newProject()} onOpenRecent={openRecent} />
         ) : view === "projects" ? (
           <ProjectsView
             recent={recent}
@@ -304,7 +297,7 @@ export function App() {
         ) : view === "assistant" ? (
           <Assistant onView={setView} />
         ) : (
-          <SettingsPage auth={auth} appearance={appearance} onAppearance={changeAppearance} roles={roles} onRoles={changeRoles} update={update} info={appInfo} />
+          <SettingsPage auth={auth} appearance={appearance} onAppearance={changeAppearance} update={update} info={appInfo} />
         )}
       </AppShell>
       <NewProjectDialog

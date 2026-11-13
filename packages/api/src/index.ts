@@ -157,8 +157,15 @@ export interface ProjectSettings {
   sync?: boolean;
   /** Light, dark, or the computer's own setting (the default). */
   appearance?: Appearance;
-  /** How this person works with Kiungo. Empty until they pick any in Settings. */
+  /** How this person works with Kiungo. No longer set from Settings (the modules show for everyone); kept so older settings files still read. */
   roles?: Role[];
+}
+
+/** The account's answer about usage counting (the website asks the same question): null if never asked. */
+export interface PrivacyChoices {
+  usage: boolean | null;
+  /** When it was last answered, ISO; null if never. */
+  decidedAt: string | null;
 }
 
 /** A project's sync with the account (DSK-14). */
@@ -334,6 +341,10 @@ export interface InvokeMap {
   "settings:set-appearance": { args: [appearance: Appearance]; result: ProjectSettings };
   /** Which roles this person works under. Replaces the whole list. */
   "settings:set-roles": { args: [roles: Role[]]; result: ProjectSettings };
+  /** The signed-in account's privacy choices. Throws while signed out or offline. */
+  "privacy:get": { args: []; result: PrivacyChoices };
+  /** Allow or stop usage counting on the account. Stopping deletes what was counted. */
+  "privacy:set-usage": { args: [allowed: boolean]; result: PrivacyChoices };
   "auth:state": { args: []; result: AuthState };
   /** Open the website's sign-in page in the browser and wait for it to send the app back. */
   "auth:sign-in": { args: []; result: AuthState };
@@ -471,6 +482,8 @@ export const INVOKE_CHANNELS = [
   "projects:choose-folder",
   "settings:set-appearance",
   "settings:set-roles",
+  "privacy:get",
+  "privacy:set-usage",
   "auth:state",
   "auth:sign-in",
   "auth:cancel",

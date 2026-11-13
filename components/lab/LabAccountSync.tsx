@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api-client";
 import { setLabOwner, useLab } from "@kiungo/lab/store";
+import { migrateSessionUnits } from "@kiungo/core/lab/session";
 import type { LabSession } from "@kiungo/core/lab/types";
 
 function snapshot(sessions: LabSession[]): Map<string, string> {
@@ -103,8 +104,10 @@ export function LabAccountSync() {
 
     useLab.setState({ cloudSaveState: "syncing" });
     void api.getMyLabSessions().then(
-      (remoteSessions) => {
+      (fetched) => {
         if (!active) return;
+        // Sessions the account saved before SI units are read in today's units.
+        const remoteSessions = fetched.map((session) => migrateSessionUnits(session));
         knownRemoteIds = new Set(remoteSessions.map((session) => session.id));
         // Read this browser's copy first. Merging into a store nobody has loaded
         // yet isn't saved, and the page that loads it later would swap the
@@ -125,7 +128,8 @@ export function LabAccountSync() {
           sessions,
           activeId: activeId && merged.has(activeId) ? activeId : (sessions[0]?.id ?? null),
         });
-        const remoteById = new Map(remoteSessions.map((session) => [session.id, JSON.stringify(session)]));
+        // Compared with what the account holds, so a session just brought into SI units is saved back in them.
+        const remoteById = new Map(fetched.map((session) => [session.id, JSON.stringify(session)]));
         const localById = new Map(localSessions.map((session) => [session.id, session]));
         const pending = sessions.filter((session) => {
           const local = localById.get(session.id);

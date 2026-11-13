@@ -5,6 +5,10 @@ import { ACTIVE_BUZZER_HZ, frameAt } from "@kiungo/core/lab/simulate";
 import { LabSound, edgesBetween, isHigh, type SoundState } from "@kiungo/core/lab/sound";
 import type { LabNode, LabWire } from "@kiungo/core/lab/types";
 
+// Inputs are stored in SI (lab/units.ts); these say what each value means.
+const cm = (v: number) => v / 100;
+const ms = (v: number) => v / 1000;
+
 /** A sound card you can read: records every gain change with its time. */
 class FakeParam {
   value = 0;
@@ -207,9 +211,9 @@ describe("What the simulation asks the buzzer to do", () => {
     const { uno, nodes, wires, analysis } = build("hc-sr04", "buzzer");
     const us = nodes.find((n) => n.partId === "hc-sr04")!.id;
     const bz = nodes.find((n) => n.partId === "buzzer")!.id;
-    const near = frameAt(nodes, wires, analysis, 1, true, { [us]: { source: "set", distanceCm: 5 }, [uno.id]: { warnCm: 20 } });
+    const near = frameAt(nodes, wires, analysis, 1, true, { [us]: { source: "set", distance: cm(5) }, [uno.id]: { warnDistance: cm(20) } });
     expect(near.nodes[bz].tone).toEqual({ hz: ACTIVE_BUZZER_HZ, pattern: { period: 0.3, duty: 0.5, phase: 0 } });
-    const far = frameAt(nodes, wires, analysis, 1, true, { [us]: { source: "set", distanceCm: 50 }, [uno.id]: { warnCm: 20 } });
+    const far = frameAt(nodes, wires, analysis, 1, true, { [us]: { source: "set", distance: cm(50) }, [uno.id]: { warnDistance: cm(20) } });
     expect(far.nodes[bz].tone).toBeNull();
     expect(frameAt(nodes, wires, analysis, 1, false).nodes[bz].tone ?? null).toBeNull();
   });
@@ -218,7 +222,7 @@ describe("What the simulation asks the buzzer to do", () => {
     const { uno, nodes, wires, analysis } = build("buzzer");
     const bz = nodes.find((n) => n.partId === "buzzer")!.id;
     expect(frameAt(nodes, wires, analysis, 1, true).nodes[bz].tone?.pattern).toMatchObject({ period: 1, duty: 0.15 });
-    expect(frameAt(nodes, wires, analysis, 1, true, { [uno.id]: { delayMs: 1000 } }).nodes[bz].tone?.pattern).toMatchObject({ period: 2 });
+    expect(frameAt(nodes, wires, analysis, 1, true, { [uno.id]: { delay: ms(1000) } }).nodes[bz].tone?.pattern).toMatchObject({ period: 2 });
   });
 });
 

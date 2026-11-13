@@ -53,7 +53,7 @@ try {
   expect("rejects a part the lab doesn't have", !!bad.isError);
 
   await call("set_inputs", { session_id: s.session_id, node: "Motion", values: { motion: true } });
-  await call("set_inputs", { session_id: s.session_id, node: "Uno", values: { gateOpen: 120 } });
+  await call("set_inputs", { session_id: s.session_id, node: "Uno", values: { gateOpen: "120°" } });
   const sim = await call<{ frames: Array<{ parts: Record<string, { angle?: number }> }> }>("simulate", { session_id: s.session_id, seconds: 2, samples: 2 });
   expect("simulation opens the gate on motion (120°)", sim.frames.at(-1)?.parts.Gate?.angle === 120);
 

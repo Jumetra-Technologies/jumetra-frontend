@@ -21,6 +21,7 @@ import { inputOf, isSet, isSensorPart, ohmsOf } from "./controls";
 import { getPinout } from "./pinout";
 import { boardSettings, describedPinLevel, displayLines, planBoard, sampleSensor, type BoardPlan, type Inputs, type SensorSample } from "./sketch";
 import type { LabNode, LabWire } from "./types";
+import { DC_MOTOR_MAX_RPM, LED_SERIES_OHMS, motorSpeedBadge, motorSpeedText } from "./constants";
 
 export interface Reading {
   label: string;
@@ -76,7 +77,7 @@ export interface Frame {
 /** 28BYJ-48 through its gearbox: steps per turn of the output shaft (full-step). */
 export const STEPPER_STEPS_PER_TURN = 2048;
 /** The TT gear motor's no-load speed at full duty. */
-export const DC_MOTOR_MAX_RPM = 140;
+export { DC_MOTOR_MAX_RPM } from "./constants";
 
 const square = (t: number, period: number, duty = 0.5, phase = 0) => (((t + phase) % period) + period) % period < period * duty ? 1 : 0;
 const fmt = (n: number, digits = 1) => n.toFixed(digits);
@@ -139,14 +140,14 @@ function boardFor(report: Analysis["nodes"][string] | undefined): string | null 
 /**
  * Where a commanded stepper is at time t, in steps of the output shaft,
  * accumulated since the position was last zeroed. A command moves from
- * `cmdFrom` to `cmdTarget` at `stepsPerSecond`, starting at `cmdAt`, then
+ * `cmdFrom` to `cmdTarget` at `stepRate` (Hz, steps per second), starting at `cmdAt`, then
  * holds. With no command the shaft holds at `cmdFrom` (0 by default).
  */
 export function stepperStepsAt(inputs: Inputs, nodeId: string, t: number): number {
   const from = inputOf(inputs, nodeId, "cmdFrom", 0);
   const target = inputOf(inputs, nodeId, "cmdTarget", from);
   const at = inputOf(inputs, nodeId, "cmdAt", 0);
-  const sps = Math.max(1, inputOf(inputs, nodeId, "stepsPerSecond", 256));
+  const sps = Math.max(1, inputOf(inputs, nodeId, "stepRate", 256));
   const distance = Math.abs(target - from);
   const traveled = Math.min(distance, Math.max(0, t - at) * sps);
   return Math.round(from + Math.sign(target - from) * traveled);
@@ -257,7 +258,7 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
         // The lab has no resistor part: an LED on a pin is modeled with the 220 Ω a real build needs (see the circuit check's tip).
         const pinV = onRail ? (report?.supplyV ?? 5) : boardLogicV(nodes, board);
         // A wired resistor sets the current; with none, the model assumes 220 Ω (the circuit check's tip says so).
-        const ohms = report?.seriesOhms || 220;
+        const ohms = report?.seriesOhms || LED_SERIES_OHMS;
         const current = level > 0 ? ledCurrentMa(pinV, ohms) : 0;
         live[node.id] = {
           on: level > 0,
@@ -301,7 +302,8 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
       case "servo": {
         // Gate policy when a PIR shares the board; otherwise the servo's own command.
         const gate = plan.motion !== null;
-        const commanded = gate ? (plan.motion ? plan.settings.gateOpen : plan.settings.gateRest) : held ? inputOf(inputs, node.id, "angle", 90) : null;
+        // The angle is set in radians (SI); the servo model works in degrees.
+        const commanded = gate ? (plan.motion ? plan.settings.gateOpen : plan.settings.gateRest) : held ? Number(((inputOf(inputs, node.id, "angle", Math.PI / 2) * 180) / Math.PI).toPrecision(12)) : null;
         const angle = !go ? (commanded ?? 90) : commanded !== null ? Math.min(180, Math.max(0, commanded)) : 90 + 75 * Math.sin(t * 1.2 + k);
         setLinks((role) => (role === "pwm" ? (go ? 0.05 + (angle / 180) * 0.05 + 0.4 : 0) : 0));
         const command = gate ? (plan.motion ? `Open (${plan.settings.gateOpen}°): motion seen` : `Rest (${plan.settings.gateRest}°): no motion`) : held ? `Hold ${Math.round(angle)}°` : "Sweep (simulated)";
@@ -316,7 +318,7 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
         let forward: boolean;
         let note: string | undefined;
         if (held) {
-          const speed = inputOf(inputs, node.id, "speed", 0) / 100;
+          const speed = inputOf(inputs, node.id, "speed", 0);
           forward = inputOf(inputs, node.id, "direction", "forward") !== "reverse";
           const dirPin = forward ? in1 : in2;
           if (!go) duty = 0;
@@ -338,12 +340,12 @@ export function frameAt(nodes: LabNode[], wires: LabWire[], analysis: Analysis, 
           level: duty,
           angle: ((((forward ? 1 : -1) * t * rpm * 6) % 360) + 360) % 360,
           readings: [
-            { label: "Speed", value: `${rpm} rpm` },
+            { label: "Speed", value: motorSpeedText(rpm) },
             { label: "Direction", value: rpm ? (forward ? "Forward" : "Reverse") : "Stopped" },
-            ...(go ? [{ label: "Command", value: held ? `${Math.round(inputOf(inputs, node.id, "speed", 0))} % ${forward ? "forward" : "reverse"}` : "Varying (simulated)" }] : []),
+            ...(go ? [{ label: "Command", value: held ? `${Math.round(inputOf(inputs, node.id, "speed", 0) * 100)} % ${forward ? "forward" : "reverse"}` : "Varying (simulated)" }] : []),
             ...(note ? [{ label: "Note", value: note }] : []),
           ],
-          badge: go ? (rpm ? `${rpm} rpm` : "Stopped") : "Stopped",
+          badge: go ? (rpm ? motorSpeedBadge(rpm) : "Stopped") : "Stopped",
         };
         break;
       }
@@ -484,12 +486,12 @@ function poweredPart(node: LabNode, nodes: LabNode[], analysis: Analysis, t: num
       level: duty,
       angle: (((t * rpm * 6) % 360) + 360) % 360,
       readings: [
-        ...(base ? [{ label: "Speed", value: `${rpm} rpm` }] : [{ label: "State", value: duty > 0 ? "Running" : "Stopped" }]),
+        ...(base ? [{ label: "Speed", value: motorSpeedText(rpm) }] : [{ label: "State", value: duty > 0 ? "Running" : "Stopped" }]),
         { label: "At its terminals", value: !turning ? "0 V" : held ? `About ${fmt(volts)} V, chopped down from ${report?.supplyV ?? 0} V` : `${fmt(volts)} V${drop > 0.05 ? ` (${fmt(drop)} V lost in the driver)` : ""}` },
         { label: "Current", value: !turning ? "0 mA" : held ? `${amps(winding * 1000)} a winding, held by ${driver?.label}` : amps((motor?.runMa ?? 0) * Math.max(0.3, duty)) },
         ...(driver ? [{ label: "Driven by", value: driver.label }] : []),
       ],
-      badge: turning ? (base ? `${rpm} rpm` : "Running") : "Stopped",
+      badge: turning ? (base ? motorSpeedBadge(rpm) : "Running") : "Stopped",
     };
   }
   if (heatLine.length && go) return { on: true, level: 1, readings: heatLine, badge: "Running" };

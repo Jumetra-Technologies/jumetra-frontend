@@ -4,7 +4,8 @@
  */
 
 import { getPart } from "../parts";
-import type { LabNode, LabSession, LabWire, LogEntry, LogKind } from "./types";
+import type { LabNode, LabSession, LabWire, LogEntry, LogKind, NodeInputs } from "./types";
+import { INPUT_UNITS, migrateNodeInputs } from "./controls";
 
 export function makeId(prefix: string): string {
   const rand = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10);
@@ -32,8 +33,25 @@ export function newSession(input: { name?: string; projectId?: string | null; no
     view: "top",
     runMs: 0,
     inputs: {},
+    units: INPUT_UNITS,
     runtime: null,
   };
+}
+
+/**
+ * A session in today's units. Sessions saved before SI units (no `units`, or
+ * 1) have their inputs converted, so they simulate exactly as before; a
+ * session already in SI is returned as it is. Safe to call on every load.
+ */
+export function migrateSessionUnits<S extends Pick<LabSession, "nodes" | "inputs" | "units">>(session: S): S {
+  if ((session.units ?? 1) >= INPUT_UNITS) return session;
+  const partOf = new Map(session.nodes.map((n) => [n.id, n.partId]));
+  const inputs: Record<string, NodeInputs> = {};
+  for (const [id, values] of Object.entries(session.inputs ?? {})) {
+    const partId = partOf.get(id);
+    inputs[id] = partId && values && typeof values === "object" ? migrateNodeInputs(partId, values) : values;
+  }
+  return { ...session, inputs, units: INPUT_UNITS };
 }
 
 /** Short names for the canvas; catalog names are written for the library. */

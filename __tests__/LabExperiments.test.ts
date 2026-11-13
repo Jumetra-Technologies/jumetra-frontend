@@ -3,6 +3,7 @@
  * clock. Every frame is sampled with frameAt(), a pure function, so nothing
  * here depends on real time or random values.
  */
+import { motorSpeedText } from "@kiungo/core/lab/constants";
 import { beforeEach, describe, expect, it } from "vitest";
 import { analyze, type Analysis } from "@kiungo/core/lab/circuit";
 import { planAutoWire } from "@kiungo/core/lab/autowire";
@@ -13,6 +14,12 @@ import { labKeyFor, readLabData, useLab } from "@kiungo/lab/store";
 import { freshLab } from "./helpers/lab";
 import type { LabNode, LabWire, NodeInputs } from "@kiungo/core/lab/types";
 import { getPart, hasScreen, withScreenText } from "@kiungo/core/parts";
+
+// Inputs are stored in SI (lab/units.ts); these say what each value means.
+const cm = (v: number) => v / 100;
+const pct = (v: number) => v / 100;
+const deg = (v: number) => (v * Math.PI) / 180;
+const ms = (v: number) => v / 1000;
 
 let seq = 0;
 const node = (partId: string, x = 0, y = 0, label?: string): LabNode => ({ id: `n${++seq}`, partId, label: label ?? partId, x, y, mode: "virtual" });
@@ -63,11 +70,11 @@ describe("Experiment 01: blinking LED", () => {
     expect(at(1.1).nodes[led].level).toBe(1);
     expect(blinks((t) => at(t), led, 0, 10)).toBe(10);
     // 250 ms → twice as fast; 1000 ms → half as fast.
-    expect(blinks((t) => at(t, { [board.id]: { delayMs: 250 } }), led, 0, 10)).toBe(20);
-    expect(blinks((t) => at(t, { [board.id]: { delayMs: 1000 } }), led, 0, 10)).toBe(5);
-    const slow = at(0.5, { [board.id]: { delayMs: 1000 } });
+    expect(blinks((t) => at(t, { [board.id]: { delay: ms(250) } }), led, 0, 10)).toBe(20);
+    expect(blinks((t) => at(t, { [board.id]: { delay: ms(1000) } }), led, 0, 10)).toBe(5);
+    const slow = at(0.5, { [board.id]: { delay: ms(1000) } });
     expect(slow.nodes[led].level).toBe(1);
-    expect(at(1.5, { [board.id]: { delayMs: 1000 } }).nodes[led].level).toBe(0);
+    expect(at(1.5, { [board.id]: { delay: ms(1000) } }).nodes[led].level).toBe(0);
     expect(slow.nodes[led].readings.find((r) => r.label === "Sketch")?.value).toBe("Blinking, 1000 ms");
     expect(slow.nodes[board.id].readings.find((r) => r.label === "Sketch")?.value).toBe("Blink, delay 1000 ms");
   });
@@ -77,16 +84,16 @@ describe("Experiment 01: blinking LED", () => {
     const l = `${board.id}:D13`;
     expect(at(0.2).pins[l]).toBe(1);
     expect(at(0.7).pins[l]).toBe(0);
-    expect(at(0.7, { [board.id]: { delayMs: 1000 } }).pins[l]).toBe(1);
+    expect(at(0.7, { [board.id]: { delay: ms(1000) } }).pins[l]).toBe(1);
     const stopped = at(0.2, undefined, false);
     expect(stopped.pins[l]).toBe(0);
     expect(Object.values(stopped.nodes).every((n) => n.level === 0)).toBe(true);
   });
 
   it("clamps a delay outside the sketch's range instead of accepting it", () => {
-    const control = findControl("arduino-uno", "delayMs")!;
-    expect(coerceInput(control, 10)).toBe(50);
-    expect(coerceInput(control, 99999)).toBe(5000);
+    const control = findControl("arduino-uno", "delay")!;
+    expect(coerceInput(control, ms(10))).toBe(ms(50));
+    expect(coerceInput(control, ms(99999))).toBe(ms(5000));
     expect(coerceInput(control, "abc")).toBeNull();
   });
 });
@@ -95,10 +102,10 @@ describe("Experiment 02: ultrasonic obstacle warning", () => {
   it("lets the obstacle be set, within the sensor's 2–400 cm range, and the reading follows it", () => {
     const { parts, at } = build("arduino-uno", "hc-sr04", "led", "buzzer");
     const us = parts["hc-sr04"].id;
-    expect(at(1, set(us, { distanceCm: 123 })).nodes[us].readings[0]).toEqual({ label: "Distance", value: "123.0 cm" });
-    const control = findControl("hc-sr04", "distanceCm")!;
-    expect(coerceInput(control, 1000)).toBe(400);
-    expect(coerceInput(control, -5)).toBe(2);
+    expect(at(1, set(us, { distance: cm(123) })).nodes[us].readings[0]).toEqual({ label: "Distance", value: "123.0 cm" });
+    const control = findControl("hc-sr04", "distance")!;
+    expect(coerceInput(control, cm(1000))).toBe(cm(400));
+    expect(coerceInput(control, cm(-5))).toBe(cm(2));
     expect(coerceInput(control, Number.NaN)).toBeNull();
   });
 
@@ -123,7 +130,7 @@ describe("Experiment 02: ultrasonic obstacle warning", () => {
     const buzzer = parts.buzzer.id;
     const warnCm = 20;
     const state = (distanceCm: number, t = 0.1) => {
-      const f = at(t, { ...set(us, { distanceCm }), [board.id]: { warnCm } });
+      const f = at(t, { ...set(us, { distance: cm(distanceCm) }), [board.id]: { warnCm } });
       return { distance: f.nodes[us].readings[0].value, led: f.nodes[led].level, buzzer: f.nodes[buzzer].badge, obstacle: f.nodes[us].readings[1].value };
     };
     expect(state(30)).toEqual({ distance: "30.0 cm", led: 0, buzzer: "Quiet", obstacle: "Clear" });
@@ -136,11 +143,11 @@ describe("Experiment 02: ultrasonic obstacle warning", () => {
     expect(state(30, 7.3).led).toBe(0);
     expect(state(10, 12).led).toBe(1);
     // The buzzer beeps rather than holding a tone: on and off within a cycle.
-    const beeping = { ...set(us, { distanceCm: 5 }), [board.id]: { warnCm } };
+    const beeping = { ...set(us, { distance: cm(5) }), [board.id]: { warnCm } };
     expect(at(0.1, beeping).nodes[buzzer].level).toBe(1);
     expect(at(0.2, beeping).nodes[buzzer].level).toBe(0);
     // A changed threshold moves the boundary.
-    expect(at(0.1, { ...set(us, { distanceCm: 30 }), [board.id]: { warnCm: 40 } }).nodes[led].level).toBe(1);
+    expect(at(0.1, { ...set(us, { distance: cm(30) }), [board.id]: { warnDistance: cm(40) } }).nodes[led].level).toBe(1);
   });
 });
 
@@ -155,7 +162,7 @@ describe("Experiment 03: DHT11 with an LCD 16×2", () => {
       [25, 71, ["Temp: 25.0 °C", "Hum: 71 %"]],
     ];
     for (const [temperatureC, humidity, lines] of cases) {
-      const f = at(2, set(dht, { temperatureC, humidity }));
+      const f = at(2, set(dht, { temperatureC, humidity: pct(humidity) }));
       // 1. the sensor, 2. what the display-writing path received, 3. the glass.
       expect(f.nodes[dht].readings.map((r) => r.value)).toEqual([`${temperatureC.toFixed(1)} °C`, `${humidity} %`]);
       expect(f.nodes[lcd].readings[0]).toEqual({ label: "Showing", value: lines.join(" · ") });
@@ -168,8 +175,8 @@ describe("Experiment 03: DHT11 with an LCD 16×2", () => {
     const { parts, at } = build("arduino-uno", "dht11", "lcd-16x2");
     const dht = parts.dht11.id;
     const lcd = parts["lcd-16x2"].id;
-    expect(at(5, set(dht, { temperatureC: 23.8, humidity: 60 })).nodes[lcd].text?.[0]).toBe("Temp: 23.8 °C");
-    expect(at(5.1, set(dht, { temperatureC: 24.9, humidity: 60 })).nodes[lcd].text?.[0]).toBe("Temp: 24.9 °C");
+    expect(at(5, set(dht, { temperatureC: 23.8, humidity: pct(60) })).nodes[lcd].text?.[0]).toBe("Temp: 23.8 °C");
+    expect(at(5.1, set(dht, { temperatureC: 24.9, humidity: pct(60) })).nodes[lcd].text?.[0]).toBe("Temp: 24.9 °C");
     const model = getPart("lcd-16x2")!;
     expect(hasScreen(model)).toBe(true);
     const written = withScreenText(model, ["Temp: 24.9 °C", "Hum: 60 %"]);
@@ -198,7 +205,7 @@ describe("Experiment 03: DHT11 with an LCD 16×2", () => {
 
   it("formats other displays to their own width and depth", () => {
     const dht = node("dht22", 0, 0, "DHT22");
-    const sample = sampleSensor(dht, 0, set(dht.id, { temperatureC: -3.5, humidity: 100 }), boardSettings(null, undefined));
+    const sample = sampleSensor(dht, 0, set(dht.id, { temperatureC: -3.5, humidity: pct(100) }), boardSettings(null, undefined));
     expect(displayLines("oled-ssd1306", [sample], 0)).toEqual(["Temp: -3.5 °C", "Hum: 100 %"]);
     expect(displayLines("lcd-16x2", [], 12)).toEqual(["Hello, Kiungo!", "Up 12 s"]);
   });
@@ -221,9 +228,9 @@ describe("Experiment 04: motion-activated gate", () => {
     expect(state(false, 3.5).angle).toBe(0);
     for (const t of [4, 5.5, 9, 30]) expect(state(true, t).angle).toBe(90);
     // Configured angles, within the servo's 0–180° travel.
-    expect(state(true, 1, { gateOpen: 120, gateRest: 10 }).angle).toBe(120);
-    expect(state(false, 1, { gateOpen: 120, gateRest: 10 }).angle).toBe(10);
-    expect(coerceInput(findControl("arduino-uno", "gateOpen")!, 500)).toBe(180);
+    expect(state(true, 1, { gateOpen: deg(120), gateRest: deg(10) }).angle).toBe(120);
+    expect(state(false, 1, { gateOpen: deg(120), gateRest: deg(10) }).angle).toBe(10);
+    expect(coerceInput(findControl("arduino-uno", "gateOpen")!, deg(500))).toBe(Number(Math.PI.toPrecision(12)));
   });
 
   it("5. stop → restart keeps the gate where the sketch last put it, and never sweeps by itself", () => {
@@ -244,8 +251,8 @@ describe("Experiment 04: motion-activated gate", () => {
   it("without a PIR, a servo holds the angle you set, or sweeps only in the simulated mode", () => {
     const { parts, at } = build("arduino-uno", "servo");
     const servo = parts.servo.id;
-    expect(at(1, set(servo, { angle: 45 })).nodes[servo].angle).toBe(45);
-    expect(at(7, set(servo, { angle: 45 })).nodes[servo].angle).toBe(45);
+    expect(at(1, set(servo, { angle: deg(45) })).nodes[servo].angle).toBe(45);
+    expect(at(7, set(servo, { angle: deg(45) })).nodes[servo].angle).toBe(45);
     expect(at(1).nodes[servo].readings[1].value).toBe("Sweep (simulated)");
   });
 
@@ -265,16 +272,16 @@ describe("Experiment 05: DC motor and stepper motor", () => {
     const pinsWired = Object.keys(at(0).pins).filter((k) => k.startsWith(m));
     expect(pinsWired).toEqual(expect.arrayContaining([`${m}:EN`, `${m}:IN1`, `${m}:IN2`]));
     const state = (speed: number, direction: "forward" | "reverse", t = 1) => {
-      const f = at(t, set(m, { speed, direction }));
+      const f = at(t, set(m, { speed: pct(speed), direction }));
       return { rpm: f.nodes[m].readings[0].value, dir: f.nodes[m].readings[1].value, in1: f.pins[`${m}:IN1`], in2: f.pins[`${m}:IN2`], en: f.pins[`${m}:EN`] };
     };
-    expect(state(0, "forward")).toEqual({ rpm: "0 rpm", dir: "Stopped", in1: 1, in2: 0, en: 0 });
-    expect(state(50, "forward")).toEqual({ rpm: `${Math.round(0.5 * DC_MOTOR_MAX_RPM)} rpm`, dir: "Forward", in1: 1, in2: 0, en: 0.5 });
-    expect(state(100, "forward").rpm).toBe(`${DC_MOTOR_MAX_RPM} rpm`);
-    expect(state(50, "reverse")).toEqual({ rpm: "70 rpm", dir: "Reverse", in1: 0, in2: 1, en: 0.5 });
+    expect(state(0, "forward")).toEqual({ rpm: "0.0 rad/s (0 rpm)", dir: "Stopped", in1: 1, in2: 0, en: 0 });
+    expect(state(50, "forward")).toEqual({ rpm: motorSpeedText(Math.round(0.5 * DC_MOTOR_MAX_RPM)), dir: "Forward", in1: 1, in2: 0, en: 0.5 });
+    expect(state(100, "forward").rpm).toBe("14.7 rad/s (140 rpm)");
+    expect(state(50, "reverse")).toEqual({ rpm: "7.3 rad/s (70 rpm)", dir: "Reverse", in1: 0, in2: 1, en: 0.5 });
     // Direction and speed hold over time; nothing alternates by itself.
     for (const t of [2, 9, 40]) expect(state(50, "reverse", t).dir).toBe("Reverse");
-    expect(coerceInput(findControl("dc-motor", "speed")!, 150)).toBe(100);
+    expect(coerceInput(findControl("dc-motor", "speed")!, pct(150))).toBe(1);
   });
 
   it("DC motor: without an EN wire it can only be full on or stopped, and says so", () => {
@@ -282,8 +289,8 @@ describe("Experiment 05: DC motor and stepper motor", () => {
     const m = parts["dc-motor"].id;
     const noEn = wires.filter((w) => !(w.from.node === m && w.from.pin === "EN") && !(w.to.node === m && w.to.pin === "EN"));
     const analysis = analyze(nodes, noEn);
-    const f = frameAt(nodes, noEn, analysis, 1, true, set(m, { speed: 40, direction: "forward" }));
-    expect(f.nodes[m].readings[0].value).toBe(`${DC_MOTOR_MAX_RPM} rpm`);
+    const f = frameAt(nodes, noEn, analysis, 1, true, set(m, { speed: pct(40), direction: "forward" }));
+    expect(f.nodes[m].readings[0].value).toBe(motorSpeedText(DC_MOTOR_MAX_RPM));
     expect(f.nodes[m].readings.find((r) => r.label === "Note")?.value).toMatch(/EN isn't wired/);
     expect(board.id).toBeTruthy();
   });
@@ -291,7 +298,7 @@ describe("Experiment 05: DC motor and stepper motor", () => {
   it("stepper: a commanded move runs at the set speed, stops at the target, reverses, and keeps a consistent step count", () => {
     const { parts, at } = build("arduino-uno", "stepper-motor");
     const s = parts["stepper-motor"].id;
-    const cmd = (from: number, target: number, at0: number, sps = 256): Record<string, NodeInputs> => set(s, { cmdFrom: from, cmdTarget: target, cmdAt: at0, stepsPerSecond: sps });
+    const cmd = (from: number, target: number, at0: number, sps = 256): Record<string, NodeInputs> => set(s, { cmdFrom: from, cmdTarget: target, cmdAt: at0, stepRate: sps });
     // 512 steps clockwise from rest at t=0 → a quarter turn, done after 2 s, then holding.
     expect(stepperStepsAt(cmd(0, 512, 0), s, 1)).toBe(256);
     const mid = at(1, cmd(0, 512, 0));
@@ -347,10 +354,10 @@ describe("Inputs in the session", () => {
     useLab.getState().addNode("arduino-uno");
     const us = useLab.getState().addNode("hc-sr04")!;
     const current = () => useLab.getState().sessions.find((s) => s.id === session.id)!;
-    useLab.getState().setInput(us.id, "distanceCm", 900);
-    expect(current().inputs?.[us.id]).toEqual({ source: "set", distanceCm: 400 });
-    useLab.getState().setInput(us.id, "distanceCm", Number.NaN);
-    expect(current().inputs?.[us.id]?.distanceCm).toBe(400);
+    useLab.getState().setInput(us.id, "distance", 9);
+    expect(current().inputs?.[us.id]).toEqual({ source: "set", distance: cm(400) });
+    useLab.getState().setInput(us.id, "distance", Number.NaN);
+    expect(current().inputs?.[us.id]?.distance).toBe(cm(400));
     useLab.getState().setInput(us.id, "source", "auto");
     expect(current().inputs?.[us.id]?.source).toBe("auto");
     useLab.getState().clearInputs(us.id);
@@ -373,11 +380,11 @@ describe("Inputs in the session", () => {
 
   it("shows a board only the sketch settings that apply to what is wired to it", () => {
     const plain = build("arduino-uno", "led");
-    expect(controlsFor(plain.board, plain.nodes, plain.analysis).controls.map((c) => c.key)).toEqual(["delayMs"]);
+    expect(controlsFor(plain.board, plain.nodes, plain.analysis).controls.map((c) => c.key)).toEqual(["delay"]);
     const radar = build("arduino-uno", "hc-sr04", "led");
-    expect(controlsFor(radar.board, radar.nodes, radar.analysis).controls.map((c) => c.key)).toEqual(["delayMs", "warnCm"]);
+    expect(controlsFor(radar.board, radar.nodes, radar.analysis).controls.map((c) => c.key)).toEqual(["delay", "warnDistance"]);
     const gate = build("arduino-uno", "pir", "servo");
-    expect(controlsFor(gate.board, gate.nodes, gate.analysis).controls.map((c) => c.key)).toEqual(["delayMs", "gateOpen", "gateRest"]);
+    expect(controlsFor(gate.board, gate.nodes, gate.analysis).controls.map((c) => c.key)).toEqual(["delay", "gateOpen", "gateRest"]);
     expect(controlsFor(radar.parts["hc-sr04"], radar.nodes, radar.analysis).title).toBe("Surroundings");
     expect(controlsFor(radar.parts.led, radar.nodes, radar.analysis).note).toMatch(/Driven by the sketch from the ultrasonic sensor/);
   });

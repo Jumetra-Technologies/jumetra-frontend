@@ -18,12 +18,18 @@
 
 import { getPart } from "../parts";
 import type { PartSim } from "../parts/types";
-import { ALERT_SENSORS, defaultOf, inputOf, isSet } from "./controls";
+import { ALERT_SENSORS, defaultOf, inputOf, isSet, ldrOhms, lightPercentFromLux, luxFromLightPercent, siOfPartUnit } from "./controls";
+import { formatQuantity } from "./units";
 import type { Reading } from "./simulate";
 import type { LabNode, NodeInputs } from "./types";
 
 export type Inputs = Record<string, NodeInputs> | undefined;
 
+/**
+ * A board's sketch settings in the units the sketch's rules compare with the
+ * sensors' readings (ms, cm, °, ppm, %). The person sets them in SI; this is
+ * the one place they are converted.
+ */
 export interface BoardSettings {
   delayMs: number;
   warnCm: number;
@@ -35,9 +41,21 @@ export interface BoardSettings {
 }
 
 export function boardSettings(boardId: string | null, inputs: Inputs): BoardSettings {
-  const n = (key: keyof BoardSettings) => inputOf(inputs, boardId ?? "", key, defaultOf("arduino-uno", key) as number);
-  return { delayMs: n("delayMs"), warnCm: n("warnCm"), gateOpen: n("gateOpen"), gateRest: n("gateRest"), gasPpm: n("gasPpm"), dryPct: n("dryPct"), darkPct: n("darkPct") };
+  const n = (key: string) => inputOf(inputs, boardId ?? "", key, defaultOf("arduino-uno", key) as number);
+  return {
+    delayMs: legacy(n("delay") * 1000),
+    warnCm: legacy(n("warnDistance") * 100),
+    gateOpen: legacy(n("gateOpen") / DEG),
+    gateRest: legacy(n("gateRest") / DEG),
+    gasPpm: legacy(n("gasAlarm") * 1e6),
+    dryPct: legacy(n("dryBelow") * 100),
+    darkPct: lightPercentFromLux(n("darkBelow")),
+  };
 }
+
+const DEG = Math.PI / 180;
+/** Back from SI to the sketch's unit, without float dust (0.7 s → 700 ms, not 700.0000000000001). */
+const legacy = (v: number) => Number(v.toPrecision(12));
 
 /** What a sensor measured this frame, as numbers the sketch can compare and lines a display can show. */
 export interface SensorSample {
@@ -86,6 +104,8 @@ export function describedPinLevel(sim: PartSim | undefined, pin: string, values:
 export function sampleSensor(node: LabNode, t: number, inputs: Inputs, settings: BoardSettings): SensorSample {
   const held = isSet(inputs, node.id);
   const get = (key: string, fallback: number) => (held ? inputOf(inputs, node.id, key, fallback) : fallback);
+  /** A value set in SI, in the unit the sketch works in: `factor` is that unit in SI (0.01 for cm). */
+  const getIn = (key: string, fallback: number, factor: number) => legacy(get(key, fallback * factor) / factor);
   const sample = (values: Record<string, number>, readings: Reading[], extra: { level: number; on: boolean; badge?: string }): SensorSample => ({ node, readings, values, held, ...extra });
 
   switch (node.partId) {
@@ -93,7 +113,7 @@ export function sampleSensor(node: LabNode, t: number, inputs: Inputs, settings:
     case "dht22":
     case "am2302": {
       const temperatureC = held ? get("temperatureC", 24) : 22 + 3 * Math.sin(t / 8);
-      const humidity = held ? get("humidity", 55) : 55 + 8 * Math.cos(t / 12);
+      const humidity = held ? getIn("humidity", 55, 0.01) : 55 + 8 * Math.cos(t / 12);
       return sample({ temperatureC, humidity }, [{ label: "Temperature", value: `${fmt(temperatureC)} °C` }, { label: "Humidity", value: `${fmt(humidity, 0)} %` }], { level: 0.5, on: true, badge: `${fmt(temperatureC)} °C` });
     }
     case "ds18b20": {
@@ -101,7 +121,7 @@ export function sampleSensor(node: LabNode, t: number, inputs: Inputs, settings:
       return sample({ temperatureC }, [{ label: "Temperature", value: `${fmt(temperatureC, 2)} °C` }], { level: 0.5, on: true, badge: `${fmt(temperatureC)} °C` });
     }
     case "hc-sr04": {
-      const distanceCm = held ? get("distanceCm", 30) : 30 + 20 * Math.abs(Math.sin(t / 5));
+      const distanceCm = held ? getIn("distance", 30, 0.01) : 30 + 20 * Math.abs(Math.sin(t / 5));
       const warn = distanceCm < settings.warnCm;
       return sample({ distanceCm }, [{ label: "Distance", value: `${fmt(distanceCm)} cm` }, { label: "Obstacle", value: warn ? `Closer than ${settings.warnCm} cm` : "Clear" }], { level: square(t, 0.1, 0.3), on: true, badge: `${fmt(distanceCm, 0)} cm` });
     }
@@ -110,24 +130,26 @@ export function sampleSensor(node: LabNode, t: number, inputs: Inputs, settings:
       return sample({ motion: motion ? 1 : 0 }, [{ label: "Motion", value: motion ? "Detected" : "None" }], { level: motion ? 1 : 0, on: motion, badge: motion ? "Motion" : "Clear" });
     }
     case "ldr": {
-      const light = held ? get("light", 60) : 50 + 40 * Math.sin(t / 4);
-      return sample({ light }, [{ label: "Light", value: `${fmt(light, 0)} %` }, { label: "Level", value: light < settings.darkPct ? "Dark" : "Lit" }], { level: light / 100, on: true, badge: `${fmt(light, 0)} %` });
+      // The sketch's light level is the log scale of the lux on the part (1 lx = 0 %, 100 000 lx = 100 %).
+      const light = held ? lightPercentFromLux(get("illuminance", luxFromLightPercent(60))) : 50 + 40 * Math.sin(t / 4);
+      const lux = luxFromLightPercent(light);
+      return sample({ light }, [{ label: "Light", value: formatQuantity(lux, "illuminance", 2) }, { label: "Resistance", value: `≈ ${formatQuantity(Number(ldrOhms(lux).toPrecision(2)), "resistance")}` }, { label: "Level", value: light < settings.darkPct ? "Dark" : "Lit" }], { level: light / 100, on: true, badge: formatQuantity(lux, "illuminance", 2) });
     }
     case "soil-moisture": {
-      const moisture = held ? get("moisture", 45) : 60 - ((t * 0.8) % 40);
+      const moisture = held ? getIn("moisture", 45, 0.01) : 60 - ((t * 0.8) % 40);
       return sample({ moisture }, [{ label: "Moisture", value: `${fmt(moisture, 0)} %` }, { label: "Threshold", value: moisture < settings.dryPct ? "Dry" : "Wet enough" }], { level: moisture / 100, on: true, badge: `${fmt(moisture, 0)} %` });
     }
     case "mq2": {
-      const gasPpm = held ? get("gasPpm", 300) : 300 + 250 * Math.max(0, Math.sin(t / 6)) ** 3;
+      const gasPpm = held ? getIn("gas", 300, 1e-6) : 300 + 250 * Math.max(0, Math.sin(t / 6)) ** 3;
       return sample({ gasPpm }, [{ label: "Gas", value: `${fmt(gasPpm, 0)} ppm` }, { label: "Alarm", value: gasPpm > settings.gasPpm ? "Over threshold" : "Normal" }], { level: Math.min(1, gasPpm / 600), on: true, badge: `${fmt(gasPpm, 0)} ppm` });
     }
     case "mpu6050": {
-      const pitch = held ? get("pitch", 0) : 25 * Math.sin(t / 2);
-      const roll = held ? get("roll", 0) : 15 * Math.cos(t / 3);
+      const pitch = held ? getIn("pitch", 0, DEG) : 25 * Math.sin(t / 2);
+      const roll = held ? getIn("roll", 0, DEG) : 15 * Math.cos(t / 3);
       return sample({ pitch, roll }, [{ label: "Pitch", value: `${fmt(pitch)}°` }, { label: "Roll", value: `${fmt(roll)}°` }, { label: "Accel Z", value: `${fmt(Math.cos((pitch * Math.PI) / 180), 2)} g` }], { level: 0.5, on: true, badge: `${fmt(pitch, 0)}° tilt` });
     }
     case "bmp280": {
-      const pressureHpa = held ? get("pressureHpa", 1013.2) : 1013.2 + 1.5 * Math.sin(t / 20);
+      const pressureHpa = held ? getIn("pressure", 1013.2, 100) : 1013.2 + 1.5 * Math.sin(t / 20);
       const temperatureC = held ? get("temperatureC", 23.1) : 23.1 + 0.4 * Math.sin(t / 9);
       return sample({ pressureHpa, temperatureC }, [{ label: "Pressure", value: `${fmt(pressureHpa)} hPa` }, { label: "Temperature", value: `${fmt(temperatureC)} °C` }, { label: "Altitude", value: `${fmt(44330 * (1 - (pressureHpa / 1013.25) ** 0.1903), 1)} m` }], { level: 0.5, on: true, badge: `${fmt(pressureHpa, 0)} hPa` });
     }
@@ -139,7 +161,8 @@ export function sampleSensor(node: LabNode, t: number, inputs: Inputs, settings:
       const readings: Reading[] = [];
       for (const q of sim.reads) {
         let v: number;
-        if (held) v = q.states ? (inputOf(inputs, node.id, q.key, q.start >= 0.5) ? 1 : 0) : get(q.key, q.start);
+        // Set in SI; the part's rules work in the unit its datasheet uses (cm, °, %).
+        if (held) v = q.states ? (inputOf(inputs, node.id, q.key, q.start >= 0.5) ? 1 : 0) : getIn(q.key, q.start, siOfPartUnit(q.unit ?? "").factor);
         else if (q.sweep) {
           const [from, to, period] = q.sweep;
           v = q.states ? (square(t, period) ? to : from) : from + (to - from) * ((1 - Math.cos((2 * Math.PI * t) / Math.max(0.1, period))) / 2);

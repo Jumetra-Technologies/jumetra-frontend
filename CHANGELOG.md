@@ -10,6 +10,30 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.50.0] - 2026-11-13
+
+Desktop Settings is one short page. Desktop 0.13.14.
+
+### Changed
+- **Desktop Settings is one page with four groups:** Account, Appearance, Privacy and About. It used to have fifteen sections.
+  - **Account:** your profile (name, photo, email) and how you're signed in, with Switch account and Sign out. Signed out, one Sign in button.
+  - **Appearance:** System, Light or Dark.
+  - **Privacy:** Count how I use Kiungo, plus a link to the privacy policy.
+  - **About:** the version, and Check for updates, or Update once one is downloaded.
+- **Pages removed:** Institution / Company, Notifications, AI Assistant, Firmware & Hardware, Simulation, Projects, Preferences and Roles & Workspaces.
+  - Collaboration and Marketplace went too. Like most of the removed pages, they only had switches that saved nothing.
+  - Settings you change while you work stay where you work: the lab's view, the code pane, a project's folder.
+- **Firmware, Research and Learning are always in the sidebar.** They used to show only if you picked a matching role in Settings, so a new install never showed them.
+  - The dashboard's "Roles active" tile and its role-based tips are gone with them.
+
+### Added
+- **Privacy → Count how I use Kiungo now saves your choice,** on your account. It's the same choice the website asks about, so it holds on every computer and in the browser.
+  - When on, Kiungo counts only which screen is open and for how long, never what's in it. Turning it off deletes what was counted.
+  - The desktop app follows a change from the next minute, instead of within ten minutes.
+
+### Fixed
+- Settings switches show clearly when they're off, with the knob on the left. It used to sit off-center.
+
 ## [1.49.0] - 2026-11-12
 
 Board pins look like the real header, and auto-wire stops using the ICSP 5 V. Desktop 0.13.13.
@@ -1091,6 +1115,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.50.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.49.0...v1.50.0
 [1.49.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.48.0...v1.49.0
 [1.48.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.47.0...v1.48.0
 [1.47.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.0...v1.47.0

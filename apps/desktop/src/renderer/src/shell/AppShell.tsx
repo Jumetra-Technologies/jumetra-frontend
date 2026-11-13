@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { AuthState, Role } from "@kiungo/api";
+import type { AuthState } from "@kiungo/api";
 import type { Notice } from "../notifications/useNotifications";
 import { Footer } from "./Footer";
 import { Header } from "./Header";
@@ -13,7 +13,6 @@ import type { View } from "./types";
 export function AppShell({
   view,
   onView,
-  roles,
   auth,
   onSettings,
   notices,
@@ -23,7 +22,6 @@ export function AppShell({
 }: {
   view: View;
   onView: (view: View) => void;
-  roles: Role[];
   auth: AuthState;
   onSettings: () => void;
   notices: Notice[];
@@ -33,7 +31,7 @@ export function AppShell({
 }) {
   return (
     <div className="flex h-full min-h-0 overflow-hidden bg-background text-foreground">
-      <Sidebar view={view} onView={onView} roles={roles} auth={auth} onSettings={onSettings} />
+      <Sidebar view={view} onView={onView} auth={auth} onSettings={onSettings} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header notices={notices} onDismiss={onDismiss} />
         <main className="min-h-0 flex-1 overflow-y-auto" data-testid={`view-${view}`}>

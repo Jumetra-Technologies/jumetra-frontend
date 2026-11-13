@@ -47,6 +47,11 @@ export class ActivityReporter {
     this.fetchImpl = opts.fetch ?? fetch;
   }
 
+  /** Ask the account again on the next beat: the person just changed their answer in Settings. */
+  forgetConsent(): void {
+    this.consent = null;
+  }
+
   start(): void {
     if (this.timer) return;
     this.timer = setInterval(() => void this.tick(), this.opts.intervalMs ?? BEAT_MS);

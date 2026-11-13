@@ -31,6 +31,7 @@ import { HybridService } from "./hybrid/service";
 import { HybridLink } from "./hybrid/link";
 import { HYBRID_BOARDS, parsePlan } from "@kiungo/core/hybrid/plan";
 import { AccountClient } from "./account/client";
+import { readPrivacy, setUsageCounting } from "./account/privacy";
 import { ActivityReporter } from "./activity/reporter";
 import { importFromAccount, importSessionText, listAccount } from "./account/import";
 import { SyncService } from "./sync/service";
@@ -596,6 +597,13 @@ const handlers: Handlers = {
   "settings:set-roles": (roles) => {
     if (!Array.isArray(roles) || roles.some((r) => !(ROLES as readonly string[]).includes(r))) throw new Error("Refused: that isn't a known set of roles.");
     return projectService().setRoles(roles);
+  },
+  "privacy:get": () => readPrivacy(accountClient()),
+  "privacy:set-usage": async (allowed) => {
+    const choices = await setUsageCounting(accountClient(), allowed);
+    // The reporter checks the answer every ten minutes; a change in Settings applies from the next beat.
+    activity?.forgetConsent();
+    return choices;
   },
 };
 

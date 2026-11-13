@@ -1,166 +1,112 @@
-import { useState } from "react";
-import type { AppInfo, Appearance, AuthState, Role } from "@kiungo/api";
-import { ROLE_LABELS, ROLES } from "@kiungo/api";
-import { Check, Moon, Sun, Monitor } from "lucide-react";
+import type { ReactNode } from "react";
+import type { AppInfo, Appearance, AuthState } from "@kiungo/api";
+import { LogIn } from "lucide-react";
+import { Button } from "@kiungo/ui/button";
 import { SegmentedControl } from "@kiungo/ui/segmented-control";
-import { AccountSummary, APPEARANCE_OPTIONS, PLATFORM_NAMES, UpdateRow } from "./SettingsDialog";
-import { PageTitle, SettingRow, SettingsHeading, Toggle } from "../shell/widgets";
+import { Avatar } from "../account/AccountMenu";
+import { invoke } from "../ipc";
+import { PageTitle } from "../shell/widgets";
 import type { UpdateControls } from "../update/useUpdate";
+import { APPEARANCE_OPTIONS, PLATFORM_NAMES, UpdateRow } from "./SettingsDialog";
+import { PrivacySettings } from "./PrivacySettings";
+import { Row } from "./Row";
 
-const SECTIONS = [
-  "Profile",
-  "Account & Security",
-  "Roles & Workspaces",
-  "Appearance",
-  "Preferences",
-  "Projects",
-  "Simulation",
-  "Firmware & Hardware",
-  "AI Assistant",
-  "Collaboration",
-  "Notifications",
-  "Marketplace",
-  "Institution / Company",
-  "Privacy",
-  "About",
-] as const;
-type Section = (typeof SECTIONS)[number];
+/**
+ * Settings: one column, four groups, only settings that do something (Apple:
+ * "minimize the number of settings"; Microsoft: at most four or five, short
+ * headers, About and updates at the bottom). Anything you change while you
+ * work (the lab's view, snapping, the code pane) stays where you do it.
+ */
+export const SETTINGS_GROUPS = ["Account", "Appearance", "Privacy", "About"] as const;
 
 export function SettingsPage({
   auth,
   appearance,
   onAppearance,
-  roles,
-  onRoles,
   update,
   info,
 }: {
   auth: AuthState | null;
   appearance: Appearance;
   onAppearance: (next: Appearance) => void;
-  roles: Role[];
-  onRoles: (next: Role[]) => void;
   update: UpdateControls | null;
   info: AppInfo | null;
 }) {
-  const [section, setSection] = useState<Section>("Profile");
-  const toggleRole = (role: Role) => onRoles(roles.includes(role) ? roles.filter((r) => r !== role) : [...roles, role]);
-
+  const signedIn = auth?.status === "signed-in" ? auth : null;
   return (
-    <div className="mx-auto max-w-[1180px] p-6" data-testid="settings-page">
-      <PageTitle title="Settings" detail="Your personal control center for identity, roles, workspaces, tools, and organizations." />
-      <div className="grid grid-cols-[210px_minmax(0,1fr)] gap-5">
-        <aside className="rounded-[14px] border border-border bg-surface p-2">
-          {SECTIONS.map((item) => (
-            <button key={item} type="button" onClick={() => setSection(item)} className={`w-full rounded-[10px] px-3 py-2 text-left text-[11.5px] ${section === item ? "bg-[color-mix(in_srgb,var(--primary)_14%,var(--surface))] font-semibold text-primary" : "text-muted hover:bg-muted-bg"}`}>
-              {item}
-            </button>
-          ))}
-        </aside>
-        <section className="rounded-[14px] border border-border bg-surface p-6">
-          {section === "Profile" ? (
+    <div className="mx-auto max-w-[720px] p-6" data-testid="settings-page">
+      <PageTitle title="Settings" detail="Your account, how Kiungo looks, your privacy, and updates." />
+      <div className="flex flex-col gap-7">
+        <Group id="account" title="Account">
+          {signedIn ? (
             <>
-              <SettingsHeading title="Professional profile" detail="Control how you appear across the Kiungo community." />
-              {auth ? <AccountSummary state={auth} /> : null}
-            </>
-          ) : null}
-
-          {section === "Account & Security" ? (
-            <>
-              <SettingsHeading title="Account & security" detail="Protect your Kiungo account and review connected access." />
-              {auth ? <AccountSummary state={auth} /> : null}
-            </>
-          ) : null}
-
-          {section === "Roles & Workspaces" ? (
-            <>
-              <SettingsHeading title="Roles & workspaces" detail="Roles unlock modules inside one Kiungo account. They never create separate profiles." />
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {ROLES.map((role) => {
-                  const on = roles.includes(role);
-                  return (
-                    <button
-                      key={role}
-                      type="button"
-                      onClick={() => toggleRole(role)}
-                      aria-pressed={on}
-                      data-testid={`role-${role}`}
-                      className={`flex items-center gap-3 rounded-[12px] border p-4 text-left ${on ? "border-primary/50 bg-[color-mix(in_srgb,var(--primary)_10%,var(--surface))]" : "border-border"}`}
-                    >
-                      <span className={`grid size-6 place-items-center rounded-[8px] ${on ? "bg-primary text-primary-foreground" : "bg-muted-bg text-transparent"}`}>
-                        <Check className="size-3.5" aria-hidden />
-                      </span>
-                      <span>
-                        <strong className="block text-xs text-foreground">{ROLE_LABELS[role]}</strong>
-                        <span className="text-[10.5px] text-muted">{on ? "Enabled · modules available" : "Add role to unlock modules"}</span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          ) : null}
-
-          {section === "Appearance" ? (
-            <>
-              <SettingsHeading title="Appearance" detail="Tune Kiungo for long engineering sessions and your display environment." />
-              <SettingRow title="Theme" detail="Light, dark, or your computer's own setting">
-                <SegmentedControl value={appearance} options={APPEARANCE_OPTIONS} onChange={onAppearance} label="Appearance" />
-              </SettingRow>
-              <SettingRow title="Quick preview" detail="How the theme looks right now">
-                <div className="flex gap-2 text-muted">
-                  <Monitor className="size-4" aria-hidden />
-                  <Sun className="size-4" aria-hidden />
-                  <Moon className="size-4" aria-hidden />
+              <Row title="Profile" detail="From the account you signed in with" testId="settings-profile">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar name={signedIn.user.name} photo={signedIn.user.photoUrl} className="size-9" />
+                  <div className="min-w-0 text-right">
+                    <p className="truncate text-[13.5px] font-semibold text-foreground">{signedIn.user.name}</p>
+                    <p className="truncate text-[12.5px] text-muted">{signedIn.user.email}</p>
+                  </div>
                 </div>
-              </SettingRow>
-            </>
-          ) : null}
-
-          {section === "Preferences" ? <PlaceholderSection title="Preferences" detail="Compact mode, interface animations, and other personal interface behavior." rows={["Compact mode", "Interface animations"]} /> : null}
-          {section === "Projects" ? <PlaceholderSection title="Projects" detail="Where new projects are made, and how often they're backed up." rows={["Autosave on close", "Warn before closing unsaved work"]} /> : null}
-          {section === "Simulation" ? <PlaceholderSection title="Simulation" detail="Defaults for the lab canvas: grid, snapping, and the view it opens in." rows={["Snap to grid", "Open in 3D by default"]} /> : null}
-          {section === "Firmware & Hardware" ? <PlaceholderSection title="Firmware & hardware" detail="Build tooling, board manager, and upload defaults." rows={["Verbose build output", "Confirm before uploading to a physical board"]} /> : null}
-          {section === "AI Assistant" ? <PlaceholderSection title="AI Assistant" detail="How much project context the assistant can read." rows={["Share the open project's circuit", "Share build and upload logs"]} /> : null}
-          {section === "Collaboration" ? <PlaceholderSection title="Collaboration" detail="Who can see your workspaces and shared projects." rows={["Allow workspace invitations", "Show my activity to teammates"]} /> : null}
-          {section === "Notifications" ? <PlaceholderSection title="Notifications" detail="What Kiungo tells you about, and how." rows={["Build and upload results", "Marketplace order updates"]} /> : null}
-          {section === "Marketplace" ? <PlaceholderSection title="Marketplace" detail="Purchasing method and default shipping details." rows={["Remember my purchasing method", "Email me order receipts"]} /> : null}
-          {section === "Institution / Company" ? <PlaceholderSection title="Institution / company" detail="The organization this account is affiliated with, if any." rows={["Share my activity with my institution"]} /> : null}
-          {section === "Privacy" ? <PlaceholderSection title="Privacy" detail="What Kiungo keeps, and for how long." rows={["Share anonymous usage statistics"]} /> : null}
-
-          {section === "About" ? (
-            <>
-              <SettingsHeading title="About" detail="The version you're running, and whether an update is ready." />
-              <div className="flex items-center justify-between gap-3 rounded-[12px] border border-border bg-background px-4 py-3.5">
-                <div>
-                  <p className="text-[14px] font-medium">
-                    Kiungo {info?.appVersion ?? update?.info?.currentVersion ?? "…"}
-                    {update?.info?.channel === "beta" ? " beta" : ""}
-                  </p>
-                  <p className="mt-0.5 text-[12px] text-muted">{info ? `${PLATFORM_NAMES[info.platform] ?? info.platform} · ${info.arch}` : "Checking…"}</p>
+              </Row>
+              <Row
+                title="Signed in"
+                detail={[
+                  `On ${signedIn.deviceName}`,
+                  signedIn.offline ? "Offline: checked again once this computer's back online" : null,
+                  !signedIn.secureStorage ? "No keychain on this computer: sign in again each time Kiungo opens" : null,
+                ]
+                  .filter(Boolean)
+                  .join(". ")}
+              >
+                <div className="flex gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => void invoke("auth:sign-out").then(() => invoke("auth:sign-in"))} data-testid="settings-switch-account">
+                    Switch account
+                  </Button>
+                  <Button size="sm" variant="danger" onClick={() => void invoke("auth:sign-out")} data-testid="settings-sign-out">
+                    Sign out
+                  </Button>
                 </div>
-                {update?.info ? <UpdateRow update={update} info={update.info} /> : null}
-              </div>
+              </Row>
             </>
-          ) : null}
-        </section>
+          ) : (
+            <Row title="Not signed in" detail="Everything works without an account. Sign in to sync projects and open them on another computer.">
+              <Button size="sm" onClick={() => void invoke("auth:sign-in")} data-testid="settings-sign-in">
+                <LogIn className="size-3.5" aria-hidden />
+                Sign in
+              </Button>
+            </Row>
+          )}
+        </Group>
+
+        <Group id="appearance" title="Appearance">
+          <Row title="Theme" detail="Light, dark, or your computer's own setting">
+            <SegmentedControl value={appearance} options={APPEARANCE_OPTIONS} onChange={onAppearance} label="Theme" />
+          </Row>
+        </Group>
+
+        <Group id="privacy" title="Privacy">
+          <PrivacySettings signedIn={!!signedIn} />
+        </Group>
+
+        <Group id="about" title="About">
+          <Row title={`Kiungo ${info?.appVersion ?? update?.info?.currentVersion ?? "…"}${update?.info?.channel === "beta" ? " beta" : ""}`} detail={info ? `${PLATFORM_NAMES[info.platform] ?? info.platform} · ${info.arch}` : "Checking…"} testId="settings-version">
+            {update?.info ? <UpdateRow update={update} info={update.info} /> : null}
+          </Row>
+        </Group>
       </div>
     </div>
   );
 }
 
-/** Sections the desktop app doesn't back with a real setting yet: described honestly, with a couple of local, non-persisted toggles. */
-function PlaceholderSection({ title, detail, rows }: { title: string; detail: string; rows: string[] }) {
-  const [on, setOn] = useState<Record<string, boolean>>({});
+/** A group of settings under a one-word header, in one card. */
+function Group({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
-    <>
-      <SettingsHeading title={title} detail={detail} />
-      <p className="mb-4 rounded-[10px] bg-muted-bg p-3 text-[11px] text-muted">These aren&apos;t wired to a real setting yet, so nothing here is saved between sessions.</p>
-      {rows.map((row) => (
-        <SettingRow key={row} title={row} detail="Not yet saved">
-          <Toggle on={on[row] ?? false} onChange={(next) => setOn((s) => ({ ...s, [row]: next }))} />
-        </SettingRow>
-      ))}
-    </>
+    <section aria-labelledby={`settings-${id}`} data-testid={`settings-group-${id}`}>
+      <h2 id={`settings-${id}`} className="mb-2 text-[13px] font-semibold text-muted">
+        {title}
+      </h2>
+      <div className="rounded-[14px] border border-border bg-surface px-4">{children}</div>
+    </section>
   );
 }

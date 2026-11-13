@@ -263,7 +263,7 @@ export function buildServer(): McpServer {
     {
       title: "Set inputs",
       description: "Set a part's controls (keys from get_controls), e.g. {distanceCm: 12} on an HC-SR04, {angle: 45} on a servo, {warnCm: 25} on a board.",
-      inputSchema: { session_id: z.string(), node: z.string(), values: z.record(z.union([z.number(), z.string(), z.boolean()])) },
+      inputSchema: { session_id: z.string(), node: z.string(), values: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])) },
     },
     ({ session_id, node, values }) =>
       run(() => {

@@ -17,7 +17,7 @@ const STATUS: Record<PartRunStatus, { label: string; tone: string }> = {
 
 /**
  * Parts (VER-01, VER-03): where each part lives in a run (Virtual, Real or
- * Hybrid, set by Mode in the Inspector), and what to have on the desk.
+ * Hybrid, set by Runs on in a board's properties), and what to have on the desk.
  */
 export function PartsPanel({ fileName }: { fileName: string }) {
   const { session, analysis, focusNode, select } = useLabContext();
@@ -70,7 +70,7 @@ export function PartsPanel({ fileName }: { fileName: string }) {
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-[11.5px] leading-4 text-muted">Change where a part runs with Mode in the Inspector.</p>
+          <p className="mt-2 text-[11.5px] leading-4 text-muted">Click a board and pick Runs on to change where it runs.</p>
         </section>
 
         <section aria-labelledby="parts-bom">

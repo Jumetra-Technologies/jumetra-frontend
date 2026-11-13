@@ -10,85 +10,16 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
-## [1.50.0] - 2026-11-13
+## [1.46.1] - 2026-11-13
 
-### Added
-- **Code beside the circuit on the website (WP-D3).** `/laboratory/workspace` opens the session's sketch next to the lab, at an even split.
-  - Drag the divider, or focus it and use the arrow keys, to resize between 25 % and 70 % (Home and End jump to the limits). The size and whether the code is open are remembered per session.
-  - The pane has a file tab bar: add a `.h` or `.cpp` file (names are checked), or delete one with a second click.
-  - It uses the Firmware page's editor (`CodeEditor`, loaded only when the pane shows) and build output, with a Problems tab.
-  - Ctrl/Cmd+Enter runs.
-  - Toggle the pane from the top bar's Code button, or from ⋮ → Code.
-  - On a phone, Circuit and Code are tabs.
-  - Closing the code gives the circuit the full width again.
-- **The code is stored in the session (`code`).** It is saved and synced with the account like the circuit, and it travels in `.kiungo.json` files and in duplicated sessions.
-- **A session without code keeps each board's built-in behavior.** The pane offers "Start with Blink" rather than planting a sketch, so sessions saved before this change run as before.
-- **Run builds the sketch through the compile service** and runs it on the emulated Uno (WP-D2). Checked in a production build: Blink compiles and the Uno's L LED blinks.
-
-### Changed
-- **Lab data is version 2** (`LAB_DATA_VERSION`). Version 1 data reads unchanged.
-- **The website puts Code in the ⋮ menu** through the shared lab's `moreItems` (from WP-1).
-- **`@kiungo/core` lists `src/emulator/worker.ts` under `sideEffects`.** The bundler had dropped the worker's code from the website's emulator worker, so the board never answered.
-- **Desktop 0.13.14** carries the shared changes.
-- **The lab's first-load JavaScript** grows by 5.9 KB gzipped (852,067 to 857,941 bytes); the editor and the compile client load only when used.
-
-## [1.49.0] - 2026-11-12
-
-Board pins look like the real header, and auto-wire stops using the ICSP 5 V. Desktop 0.13.13.
-
-### Changed
-- **A board's pins are black female sockets**, as on the real header, instead of colored dots. The pin's role (power, ground, digital, PWM, analog, bus) is a thin colored ring round the socket. Once a wire is plugged in, the socket fills with that color.
-  - The ICSP header's male pins show only the ring.
-- **Pins are easier to hit and to reach by keyboard:**
-  - Each pin's target spans one pin spacing along its header and 24 px across it, so neighboring pins never overlap.
-  - Pins can be focused with Tab, with a visible outline and the pin's name shown.
-  - Screen readers hear the part, the pin and what it's wired to: "Arduino Uno D13 SCK pin, wired to LED Anode (+)".
-  - Pins on a part's card in Trace get the same.
-- The 2D drawing's header sockets are black openings with a rim, not gray squares.
-
-### Fixed
-- **Auto-wire never takes a part's power from the ICSP header.** An LDR, a display or a sensor on the Uno's right used to get its 5 V from `5V ICSP`. It now comes from the power header's 5V, wherever the part sits. The same goes for the Mega, and for a breadboard's + rail.
-  - Pins on a programming header are marked as such in the part data (`programmingHeader`).
-  - Builds that already use `5V ICSP` still open and work: it is still a real 5 V pin.
-
-## [1.48.0] - 2026-11-12
-
-In the desktop app, the code takes half the window. Desktop 0.13.12.
-
-### Changed
-- **Desktop: the code is an equal half beside the circuit.**
-  - It opens at 50 % of the width (it was 42 %).
-  - If your saved width was still the old default, it moves to 50 % once. A width you chose yourself stays.
-  - Dragging the divider or using the arrow keys on it still resizes it, from 25 % to 70 %.
-- **Desktop: Show or hide the code is also in ⋮.** The Code button in the top bar and ⌘E (Ctrl+E) stay.
-- **Desktop: hiding the code keeps the editor open behind the scenes.** Your open files and undo history are still there when you show it again.
-- **The lab's top bar fits the width it has, not the window's.** Beside the code it drops the simulated time first, then the view switch (still in ⋮ → View), then the + Add label. Run never moves or gets covered: checked at every lab width from 290 px up.
-
-### Fixed
-- **Desktop: moving a sketch file to the trash asks in the app's own dialog.** The system's confirm box blocked the whole window, Esc emergency stop for a running board included. **Keep it** is the default.
-
-## [1.47.0] - 2026-11-12
-
-A part's settings open beside the part when you click it, and the inspector panel is gone. Desktop 0.13.11.
-
-### Changed
-- **Click a part to see its properties**, in a small window beside it.
-  - It flips to the other side near the edge of the canvas and follows the part as you pan or move it. On a phone it is a sheet at the bottom of the screen.
-  - It doesn't open when you drag a part, Shift-click to pick several, or drag a selection box.
-  - Escape, a click on empty canvas, or picking more parts closes it. Clicking another part moves it there.
-  - **It never pauses the run:** turn a sensor's knob while the circuit runs and watch it react.
-- **What's in it:**
-  - The name, which you can edit, with Duplicate, Remove wires and Delete beside it.
-  - The part's settings, in SI units.
-  - **Runs on** (virtual, hybrid or physical), for boards only.
-  - **Now**: the live readings.
-  - **Pins and checks**, closed until you open it: each pin, what it's wired to, and this part's problems. The full list of problems stays in the Problems tab.
-  - The Component library link.
-  - A breadboard shows the strips in use.
-- **Click a wire for its own smaller window:** its two ends, a color (red, black, orange, yellow, green, blue, white, or Auto for the color of what it carries), the net, what it carries now, and Delete. A picked color is saved with the build and can be undone.
-- **The circuit overview is now ⋮ → Circuit summary**, in a window: ready, to wire, faults, problems, power and the legend.
-- **The inspector panel and its button are gone.** The three-view thumbnails went with it: the canvas already shows the part. Right-click → **Properties** opens a part's window. In the desktop app the command palette's "Show or hide the Inspector" is now **Show the selected part's properties**.
-- **Desktop 0.13.11:** all of the above, from the shared lab.
+### Security
+- **Next.js 16.3.2 → 16.4.6, and `eslint-config-next` with it (audit OPS-001).** 16.3.2 carried a critical advisory (unauthenticated remote code execution through image optimization and `next/og`) and high ones for cache poisoning and SSRF. `sharp`, which image optimization uses, moves past its libheif and librsvg advisories.
+- **Sign-in uses `@firebase/app` and `@firebase/auth` instead of the `firebase` package (OPS-002).** The website only ever used those two. The full package also installed Firestore and gRPC, which carried four high advisories. The sign-in code and behavior are unchanged.
+- **The MCP server's `zod` 3.25 → 4.6 (OPS-006).** 3.x could be made to use unbounded memory by an oversized input, and the MCP server validates tool input with it. `set_inputs` now names its key type (`z.record(z.string(), …)`), as zod 4 requires.
+- **Patched versions of `source-map-js`, `undici`, `vite`, `zod` and `brace-expansion` deeper in the tree**, pinned with `overrides` in `package.json`, because `npm audit fix` stops with an npm error in this workspace.
+- After this change `npm audit --omit=dev` finds nothing, down from 1 critical and 7 high. In the development tools, 15 moderate advisories remain:
+  - `@vitest/mocker`'s is fixed only in Vitest 5.
+  - The rest, in `minimatch` via `typescript-eslint` and `electron-builder`, wait on those packages.
 
 ## [1.46.0] - 2026-11-12
 
@@ -1113,10 +1044,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
-[1.50.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.49.0...v1.50.0
-[1.49.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.48.0...v1.49.0
-[1.48.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.47.0...v1.48.0
-[1.47.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.0...v1.47.0
+[1.46.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.0...v1.46.1
 [1.46.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.45.0...v1.46.0
 [1.45.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.44.0...v1.45.0
 [1.44.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.43.0...v1.44.0

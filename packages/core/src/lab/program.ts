@@ -17,6 +17,7 @@ import { getPinout } from "./pinout";
 import { ACTIVE_BUZZER_HZ, wireFlows, type Frame, type NodeLive } from "./simulate";
 import { boardSettings, describedPinLevel, sampleSensor, type Inputs } from "./sketch";
 import type { LabNode, LabWire } from "./types";
+import { DC_MOTOR_MAX_RPM, SERVO_MAX_US, SERVO_MIN_US, motorSpeedBadge, motorSpeedText } from "./constants";
 
 /** What the emulated board reported last. */
 export interface ProgramReadings {
@@ -46,10 +47,7 @@ export function arduinoPinOf(boardPinId: string): number | null {
 
 /** Below this a toggling pin is a blink, not a sound. */
 const AUDIBLE_HZ = 20;
-/** The Servo library's pulse range: 544 µs is 0°, 2400 µs is 180°. */
-const SERVO_MIN_US = 544;
-const SERVO_MAX_US = 2400;
-
+ 
 export function servoAngle(pulseUs: number): number {
   return Math.max(0, Math.min(180, ((pulseUs - SERVO_MIN_US) / (SERVO_MAX_US - SERVO_MIN_US)) * 180));
 }
@@ -176,13 +174,13 @@ export function programFrame(base: Frame, nodes: LabNode[], wires: LabWire[], an
         const duty = in1 !== in2 ? en : 0;
         const forward = in1 && !in2;
         for (const p of ["EN", "IN1", "IN2"]) mirror(p, driven(at(p)));
-        const rpm = Math.round(duty * 140);
+        const rpm = Math.round(duty * DC_MOTOR_MAX_RPM);
         live[node.id] = {
           on: duty > 0,
           level: duty,
           angle: ((((forward ? 1 : -1) * t * rpm * 6) % 360) + 360) % 360,
-          readings: [{ label: "Speed", value: `${rpm} rpm` }, { label: "Direction", value: rpm ? (forward ? "Forward" : "Reverse") : "Stopped" }],
-          badge: rpm ? `${rpm} rpm` : "Stopped",
+          readings: [{ label: "Speed", value: motorSpeedText(rpm) }, { label: "Direction", value: rpm ? (forward ? "Forward" : "Reverse") : "Stopped" }],
+          badge: rpm ? motorSpeedBadge(rpm) : "Stopped",
         };
         break;
       }
@@ -255,11 +253,11 @@ function motorUnderProgram(node: LabNode, nodes: LabNode[], analysis: Analysis, 
     level: duty,
     angle: rpm ? ((turn % 360) + 360) % 360 : (before?.angle ?? 0),
     readings: [
-      ...(motor?.rpm || channel.inputs[0] === "STEP" ? [{ label: "Speed", value: `${rpm} rpm` }] : [{ label: "State", value: duty > 0.02 ? `Running${duty < 0.98 ? `, ${Math.round(duty * 100)} % (PWM)` : ""}` : "Stopped" }]),
+      ...(motor?.rpm || channel.inputs[0] === "STEP" ? [{ label: "Speed", value: motorSpeedText(rpm) }] : [{ label: "State", value: duty > 0.02 ? `Running${duty < 0.98 ? `, ${Math.round(duty * 100)} % (PWM)` : ""}` : "Stopped" }]),
       { label: "Direction", value: duty > 0.02 ? (forward ? "Forward" : "Reverse") : "Stopped" },
       { label: "Driven by", value: driver.label },
     ],
-    badge: duty > 0.02 ? (rpm ? `${rpm} rpm` : "Running") : "Stopped",
+    badge: duty > 0.02 ? (rpm ? motorSpeedBadge(rpm) : "Running") : "Stopped",
   };
 }
 

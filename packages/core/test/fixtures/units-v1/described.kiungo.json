@@ -1,0 +1,550 @@
+{
+  "format": "kiungo-lab-session",
+  "version": 1,
+  "session": {
+    "id": "lab-described",
+    "name": "described",
+    "projectId": null,
+    "createdAt": "2026-11-01T09:00:00.000Z",
+    "updatedAt": "2026-11-01T09:00:00.000Z",
+    "nodes": [
+      {
+        "id": "n21",
+        "partId": "arduino-uno",
+        "label": "arduino-uno",
+        "x": 0,
+        "y": 0,
+        "mode": "virtual"
+      },
+      {
+        "id": "n22",
+        "partId": "sharp-ir",
+        "label": "sharp-ir",
+        "x": 600,
+        "y": 200,
+        "mode": "virtual"
+      },
+      {
+        "id": "n23",
+        "partId": "vl53l0x",
+        "label": "vl53l0x",
+        "x": 600,
+        "y": 400,
+        "mode": "virtual"
+      },
+      {
+        "id": "n24",
+        "partId": "bno055",
+        "label": "bno055",
+        "x": 600,
+        "y": 600,
+        "mode": "virtual"
+      },
+      {
+        "id": "n25",
+        "partId": "ina219",
+        "label": "ina219",
+        "x": 600,
+        "y": 800,
+        "mode": "virtual"
+      },
+      {
+        "id": "n26",
+        "partId": "potentiometer",
+        "label": "potentiometer",
+        "x": 600,
+        "y": 1000,
+        "mode": "virtual"
+      },
+      {
+        "id": "n27",
+        "partId": "joystick",
+        "label": "joystick",
+        "x": 600,
+        "y": 1200,
+        "mode": "virtual"
+      },
+      {
+        "id": "n28",
+        "partId": "line-sensor",
+        "label": "line-sensor",
+        "x": 600,
+        "y": 1400,
+        "mode": "virtual"
+      },
+      {
+        "id": "n29",
+        "partId": "sound-sensor",
+        "label": "sound-sensor",
+        "x": 600,
+        "y": 1600,
+        "mode": "virtual"
+      },
+      {
+        "id": "n30",
+        "partId": "ir-obstacle",
+        "label": "ir-obstacle",
+        "x": 600,
+        "y": 1800,
+        "mode": "virtual"
+      },
+      {
+        "id": "n31",
+        "partId": "gy-271",
+        "label": "gy-271",
+        "x": 600,
+        "y": 2000,
+        "mode": "virtual"
+      }
+    ],
+    "wires": [
+      {
+        "id": "w22-0",
+        "from": {
+          "node": "n21",
+          "pin": "A0"
+        },
+        "to": {
+          "node": "n22",
+          "pin": "VO"
+        }
+      },
+      {
+        "id": "w22-1",
+        "from": {
+          "node": "n21",
+          "pin": "GND3"
+        },
+        "to": {
+          "node": "n22",
+          "pin": "GND"
+        }
+      },
+      {
+        "id": "w22-2",
+        "from": {
+          "node": "n21",
+          "pin": "5V_ICSP"
+        },
+        "to": {
+          "node": "n22",
+          "pin": "VCC"
+        }
+      },
+      {
+        "id": "w23-0",
+        "from": {
+          "node": "n21",
+          "pin": "5V_ICSP"
+        },
+        "to": {
+          "node": "n23",
+          "pin": "VIN"
+        }
+      },
+      {
+        "id": "w23-1",
+        "from": {
+          "node": "n21",
+          "pin": "GND3"
+        },
+        "to": {
+          "node": "n23",
+          "pin": "GND"
+        }
+      },
+      {
+        "id": "w23-2",
+        "from": {
+          "node": "n21",
+          "pin": "A5"
+        },
+        "to": {
+          "node": "n23",
+          "pin": "SCL"
+        }
+      },
+      {
+        "id": "w23-3",
+        "from": {
+          "node": "n21",
+          "pin": "A4"
+        },
+        "to": {
+          "node": "n23",
+          "pin": "SDA"
+        }
+      },
+      {
+        "id": "w24-0",
+        "from": {
+          "node": "n21",
+          "pin": "5V_ICSP"
+        },
+        "to": {
+          "node": "n24",
+          "pin": "VIN"
+        }
+      },
+      {
+        "id": "w24-1",
+        "from": {
+          "node": "n21",
+          "pin": "GND3"
+        },
+        "to": {
+          "node": "n24",
+          "pin": "GND"
+        }
+      },
+      {
+        "id": "w24-2",
+        "from": {
+          "node": "n21",
+          "pin": "A4"
+        },
+        "to": {
+          "node": "n24",
+          "pin": "SDA"
+        }
+      },
+      {
+        "id": "w24-3",
+        "from": {
+          "node": "n21",
+          "pin": "A5"
+        },
+        "to": {
+          "node": "n24",
+          "pin": "SCL"
+        }
+      },
+      {
+        "id": "w25-0",
+        "from": {
+          "node": "n21",
+          "pin": "5V_ICSP"
+        },
+        "to": {
+          "node": "n25",
+          "pin": "VIN"
+        }
+      },
+      {
+        "id": "w25-1",
+        "from": {
+          "node": "n21",
+          "pin": "GND3"
+        },
+        "to": {
+          "node": "n25",
+          "pin": "GND"
+        }
+      },
+      {
+        "id": "w25-2",
+        "from": {
+          "node": "n21",
+          "pin": "A5"
+        },
+        "to": {
+          "node": "n25",
+          "pin": "SCL"
+        }
+      },
+      {
+        "id": "w25-3",
+        "from": {
+          "node": "n21",
+          "pin": "A4"
+        },
+        "to": {
+          "node": "n25",
+          "pin": "SDA"
+        }
+      },
+      {
+        "id": "w26-0",
+        "from": {
+          "node": "n21",
+          "pin": "5V_ICSP"
+        },
+        "to": {
+          "node": "n26",
+          "pin": "VCC"
+        }
+      },
+      {
+        "id": "w26-1",
+        "from": {
+          "node": "n21",
+          "pin": "A1"
+        },
+        "to": {
+          "node": "n26",
+          "pin": "OUT"
+        }
+      },
+      {
+        "id": "w26-2",
+        "from": {
+          "node": "n21",
+          "pin": "GND3"
+        },
+        "to": {
+          "node": "n26",
+          "pin": "GND"
+        }
+      },
+      {
+        "id": "w27-0",
+        "from": {
+          "node": "n21",
+          "pin": "5V_ICSP"
+        },
+        "to": {
+          "node": "n27",
+          "pin": "VCC"
+        }
+      },
+      {
+        "id": "w27-1",
+        "from": {
+          "node": "n21",
+          "pin": "A2"
+        },
+        "to": {
+          "node": "n27",
+          "pin": "VRX"
+        }
+      },
+      {
+        "id": "w27-2",
+        "from": {
+          "node": "n21",
+          "pin": "A3"
+        },
+        "to": {
+          "node": "n27",
+          "pin": "VRY"
+        }
+      },
+      {
+        "id": "w27-3",
+        "from": {
+          "node": "n21",
+          "pin": "D2"
+        },
+        "to": {
+          "node": "n27",
+          "pin": "SW"
+        }
+      },
+      {
+        "id": "w27-4",
+        "from": {
+          "node": "n21",
+          "pin": "GND3"
+        },
+        "to": {
+          "node": "n27",
+          "pin": "GND"
+        }
+      },
+      {
+        "id": "w28-0",
+        "from": {
+          "node": "n21",
+          "pin": "5V_ICSP"
+        },
+        "to": {
+          "node": "n28",
+          "pin": "VCC"
+        }
+      },
+      {
+        "id": "w28-1",
+        "from": {
+          "node": "n21",
+          "pin": "GND3"
+        },
+        "to": {
+          "node": "n28",
+          "pin": "GND"
+        }
+      },
+      {
+        "id": "w28-2",
+        "from": {
+          "node": "n21",
+          "pin": "D3"
+        },
+        "to": {
+          "node": "n28",
+          "pin": "AO"
+        }
+      },
+      {
+        "id": "w29-0",
+        "from": {
+          "node": "n21",
+          "pin": "D4"
+        },
+        "to": {
+          "node": "n29",
+          "pin": "AO"
+        }
+      },
+      {
+        "id": "w29-1",
+        "from": {
+          "node": "n21",
+          "pin": "GND3"
+        },
+        "to": {
+          "node": "n29",
+          "pin": "GND"
+        }
+      },
+      {
+        "id": "w29-2",
+        "from": {
+          "node": "n21",
+          "pin": "5V_ICSP"
+        },
+        "to": {
+          "node": "n29",
+          "pin": "VCC"
+        }
+      },
+      {
+        "id": "w30-0",
+        "from": {
+          "node": "n21",
+          "pin": "D5"
+        },
+        "to": {
+          "node": "n30",
+          "pin": "OUT"
+        }
+      },
+      {
+        "id": "w30-1",
+        "from": {
+          "node": "n21",
+          "pin": "GND3"
+        },
+        "to": {
+          "node": "n30",
+          "pin": "GND"
+        }
+      },
+      {
+        "id": "w30-2",
+        "from": {
+          "node": "n21",
+          "pin": "5V_ICSP"
+        },
+        "to": {
+          "node": "n30",
+          "pin": "VCC"
+        }
+      },
+      {
+        "id": "w31-0",
+        "from": {
+          "node": "n21",
+          "pin": "5V_ICSP"
+        },
+        "to": {
+          "node": "n31",
+          "pin": "VCC"
+        }
+      },
+      {
+        "id": "w31-1",
+        "from": {
+          "node": "n21",
+          "pin": "GND3"
+        },
+        "to": {
+          "node": "n31",
+          "pin": "GND"
+        }
+      },
+      {
+        "id": "w31-2",
+        "from": {
+          "node": "n21",
+          "pin": "A5"
+        },
+        "to": {
+          "node": "n31",
+          "pin": "SCL"
+        }
+      },
+      {
+        "id": "w31-3",
+        "from": {
+          "node": "n21",
+          "pin": "A4"
+        },
+        "to": {
+          "node": "n31",
+          "pin": "SDA"
+        }
+      }
+    ],
+    "log": [],
+    "view": "top",
+    "runMs": 0,
+    "inputs": {
+      "n22": {
+        "source": "set",
+        "distanceCm": 41
+      },
+      "n23": {
+        "source": "set",
+        "distanceMm": 640
+      },
+      "n24": {
+        "source": "set",
+        "headingDeg": 210,
+        "pitchDeg": -8,
+        "rollDeg": 14
+      },
+      "n25": {
+        "source": "set",
+        "currentMa": 380,
+        "busV": 4.9,
+        "powerMw": 1862
+      },
+      "n26": {
+        "source": "set",
+        "position": 73
+      },
+      "n27": {
+        "source": "set",
+        "x": 20,
+        "y": 85
+      },
+      "n28": {
+        "source": "set",
+        "reflect": 12
+      },
+      "n29": {
+        "source": "set",
+        "soundLevel": 66
+      },
+      "n30": {
+        "source": "set",
+        "distanceCm": 9
+      },
+      "n31": {
+        "source": "set",
+        "headingDeg": 95
+      }
+    },
+    "runtime": null
+  }
+}

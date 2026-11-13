@@ -52,7 +52,7 @@ describe("described sensors and controls answering the program", () => {
     const knob = of("potentiometer");
     const p = on("potentiometer", "OUT");
     expect(p).toBeGreaterThanOrEqual(14);
-    const { inputs } = peripheralInputs(nodes, analysis, { [knob.id]: { source: "set", position: 25 } }, board.id, 0);
+    const { inputs } = peripheralInputs(nodes, analysis, { [knob.id]: { source: "set", position: 0.25 } }, board.id, 0);
     expect(inputs).toEqual([{ kind: "analog", id: `${knob.id}:OUT`, pin: p, volts: 1.25 }]);
   });
 
@@ -76,7 +76,7 @@ describe("described sensors and controls answering the program", () => {
     ]);
     expect(b.unsupported.map((u) => u.node.partId)).toEqual(["vl53l0x"]);
     expect(b.unsupported[0].why).toMatch(/Mark it Physical/);
-    const { inputs } = peripheralInputs(nodes, analysis, { [button.id]: { source: "set", pressed: true }, [knob.id]: { source: "set", position: 50 } }, nodes[0].id, 0);
+    const { inputs } = peripheralInputs(nodes, analysis, { [button.id]: { source: "set", pressed: true }, [knob.id]: { source: "set", position: 0.5 } }, nodes[0].id, 0);
     expect(hybridValues(b, inputs)).toEqual([
       [0, 0],
       [1, 512],
@@ -104,7 +104,7 @@ describe("motors under the program's control", () => {
     const step = on("a4988", "STEP");
     const dir = on("a4988", "DIR");
     const turning = frame([pin(step, { level: "high", duty: 0.5, hz: 400 }), pin(dir, { level: "high", duty: 1 })]).nodes[motor.id];
-    expect(turning).toMatchObject({ on: true, badge: "120 rpm" });
+    expect(turning).toMatchObject({ on: true, badge: "12.6 rad/s" });
     expect(frame([pin(step), pin(dir)]).nodes[motor.id].badge).toBe("Stopped");
   });
 

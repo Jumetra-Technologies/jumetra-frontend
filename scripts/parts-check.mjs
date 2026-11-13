@@ -25,7 +25,8 @@ function walk(dir) {
 }
 const files = new Map(
   walk(catalog)
-    .filter((path) => path.endsWith(".ts") && !path.endsWith("index.ts") && !/[\\/]_/.test(path))
+    // counts.ts is written by `npm run parts:index` (how many parts there are), not a part.
+    .filter((path) => path.endsWith(".ts") && !path.endsWith("index.ts") && !path.endsWith("counts.ts") && !/[\\/]_/.test(path))
     .map((path) => [path.replace(/\\/g, "/").split("/").pop().replace(/\.ts$/, ""), path]),
 );
 

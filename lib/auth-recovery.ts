@@ -27,7 +27,9 @@ export async function withSignIn<T>(action: string, call: () => Promise<T>): Pro
   try {
     return await call();
   } catch (error) {
-    if (!isAuthError(error)) throw error;
+    // Only 401 means the session is the problem. A 403 is "not allowed": refreshing and then
+    // signing the person out for lacking a permission was wrong (audit WEB-009).
+    if (!isAuthError(error) || error.status !== 401) throw error;
     const auth = useAuthStore.getState();
     if (!auth.isAuthenticated) throw new SignInNeeded("signed-out", action);
     await auth.refreshSession();
@@ -35,7 +37,7 @@ export async function withSignIn<T>(action: string, call: () => Promise<T>): Pro
     try {
       return await call();
     } catch (again) {
-      if (!isAuthError(again)) throw again;
+      if (!isAuthError(again) || again.status !== 401) throw again;
       useAuthStore.getState().logout();
       throw new SignInNeeded("expired", action);
     }

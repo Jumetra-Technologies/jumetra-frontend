@@ -10,6 +10,22 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.46.3] - 2026-11-13
+
+### Security
+- **Every page now sends security headers (audit WEB-002):**
+  - No other site may frame Kiungo (`frame-ancestors 'none'`, `X-Frame-Options: DENY`). Before, the desktop sign-in approval page could be clickjacked.
+  - Also `nosniff`, `Referrer-Policy`, HSTS, a `Permissions-Policy` that turns off the camera, microphone and payments, and a CSP that refuses plugins and `<base>`.
+  - Scripts and connections aren't restricted yet: Firebase sign-in, Monaco, the compile service and the admin server need to be listed and checked in a browser first.
+  - Geolocation (the welcome dialog) and Web Serial (the Firmware page) keep working.
+- **Signing out ends the session on the server too (N-6).** Before, only the browser forgot it, and its refresh token stayed valid for a month. The call runs in the background; signing out never waits for it.
+- **Desktop sign-in only ever opens the Kiungo app (WEB-007).** The address the server answers with must be `kiungo://`.
+
+### Fixed
+- **A corrupt saved sign-in no longer breaks every page (WEB-001).** It's forgotten, and you're signed out.
+- **A "not allowed" answer (403) no longer signs you out (WEB-009).** Only a 401 refreshes the session.
+- **The installer download gives up after 30 s with no answer from the host (WEB-003)** instead of hanging, and file names from the URL can't break its headers (WEB-005).
+
 ## [1.46.0] - 2026-11-12
 
 Every value you set on a part in the Engineering Lab is now a physical quantity in SI units. A resistor takes any value you type. Desktop 0.13.10.
@@ -1007,6 +1023,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.46.3]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.2...v1.46.3
 [1.46.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.45.0...v1.46.0
 [1.45.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.44.0...v1.45.0
 [1.44.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.43.0...v1.44.0

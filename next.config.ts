@@ -15,9 +15,33 @@ const localDevOrigins = Object.values(networkInterfaces()).flatMap((addresses) =
 );
 const localDevHostnames = localDevOrigins.flatMap((address) => [`${address}.nip.io`]);
 
+/**
+ * Security headers on every page (audit WEB-002, 13 Nov 2026).
+ *
+ * - No other site may frame Kiungo (`frame-ancestors 'none'`, and `X-Frame-Options` for old
+ *   browsers): the desktop sign-in approval page could otherwise be clickjacked.
+ * - The CSP stops there on purpose: plugins and `<base>` are refused, but scripts, styles and
+ *   connections aren't restricted yet, because Firebase sign-in, Monaco, the compile service and
+ *   the admin server each need theirs listed and checked in a browser first.
+ * - No Permissions-Policy for geolocation (the welcome dialog asks for it) or serial (the
+ *   Firmware page flashes over Web Serial); camera, microphone and payments are off.
+ * - No Cross-Origin-Opener-Policy: Firebase's sign-in popup talks back through its opener.
+ */
+export const SECURITY_HEADERS = [
+  { key: "Content-Security-Policy", value: "frame-ancestors 'none'; object-src 'none'; base-uri 'self'" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), payment=()" },
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   allowedDevOrigins: ["localhost", "127.0.0.1", ...localDevOrigins, ...localDevHostnames],
+  async headers() {
+    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+  },
   // Pages renamed in the Kiungo rebrand keep their old addresses working.
   async redirects() {
     return [

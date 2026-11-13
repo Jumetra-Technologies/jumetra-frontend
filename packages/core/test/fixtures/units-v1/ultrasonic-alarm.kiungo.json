@@ -1,0 +1,119 @@
+{
+  "format": "kiungo-lab-session",
+  "version": 1,
+  "session": {
+    "id": "lab-ultrasonic-alarm",
+    "name": "ultrasonic-alarm",
+    "projectId": null,
+    "createdAt": "2026-11-01T09:00:00.000Z",
+    "updatedAt": "2026-11-01T09:00:00.000Z",
+    "nodes": [
+      {
+        "id": "n1",
+        "partId": "arduino-uno",
+        "label": "arduino-uno",
+        "x": 0,
+        "y": 0,
+        "mode": "virtual"
+      },
+      {
+        "id": "n2",
+        "partId": "hc-sr04",
+        "label": "hc-sr04",
+        "x": 600,
+        "y": 200,
+        "mode": "virtual"
+      },
+      {
+        "id": "n3",
+        "partId": "led",
+        "label": "led",
+        "x": 600,
+        "y": 400,
+        "mode": "virtual"
+      }
+    ],
+    "wires": [
+      {
+        "id": "w2-0",
+        "from": {
+          "node": "n1",
+          "pin": "5V_ICSP"
+        },
+        "to": {
+          "node": "n2",
+          "pin": "VCC"
+        }
+      },
+      {
+        "id": "w2-1",
+        "from": {
+          "node": "n1",
+          "pin": "D2"
+        },
+        "to": {
+          "node": "n2",
+          "pin": "TRIG"
+        }
+      },
+      {
+        "id": "w2-2",
+        "from": {
+          "node": "n1",
+          "pin": "D3"
+        },
+        "to": {
+          "node": "n2",
+          "pin": "ECHO"
+        }
+      },
+      {
+        "id": "w2-3",
+        "from": {
+          "node": "n1",
+          "pin": "GND3"
+        },
+        "to": {
+          "node": "n2",
+          "pin": "GND"
+        }
+      },
+      {
+        "id": "w3-0",
+        "from": {
+          "node": "n1",
+          "pin": "D13"
+        },
+        "to": {
+          "node": "n3",
+          "pin": "A"
+        }
+      },
+      {
+        "id": "w3-1",
+        "from": {
+          "node": "n1",
+          "pin": "GND3"
+        },
+        "to": {
+          "node": "n3",
+          "pin": "C"
+        }
+      }
+    ],
+    "log": [],
+    "view": "top",
+    "runMs": 0,
+    "inputs": {
+      "n2": {
+        "source": "set",
+        "distanceCm": 12
+      },
+      "n1": {
+        "warnCm": 25,
+        "delayMs": 700
+      }
+    },
+    "runtime": null
+  }
+}

@@ -127,7 +127,7 @@ export default definePart({
   },
   sim: {
     kind: "sensor",
-    reads: [{ key: "distanceMm", label: "Distance", unit: "mm", min: 30, max: 1200, step: 10, start: 300, sweep: [60, 1100, 14], digits: 0 }],
+    reads: [{ key: "distance", label: "Distance", unit: "mm", min: 30, max: 1200, step: 10, start: 300, sweep: [60, 1100, 14], digits: 0 }],
   },
   experiment: { title: "Stop before the wall", idea: "Read the distance in millimeters ten times a second and drive a motor until the number drops under 150, then stop. Try a white wall and then a black one and watch how the range changes." },
   tags: ["vl53l0x", "gy-530", "time of flight", "tof", "laser", "distance", "range", "lidar", "i2c", "sensor"],

@@ -123,7 +123,8 @@ const OPPOSITE: Partial<Record<PinRole, string>> = { sda: "scl", scl: "sda" };
 
 /** A red 5 mm LED's forward voltage, and the series resistor the lab assumes (it has no resistor part). */
 export const LED_FORWARD_V = 2;
-export const LED_SERIES_OHMS = 220;
+export { LED_SERIES_OHMS } from "./constants";
+import { LED_SERIES_OHMS } from "./constants";
 
 /** An LED's current limit; above it the LED (and the pin) is overdriven. */
 export const LED_MAX_MA = 20;

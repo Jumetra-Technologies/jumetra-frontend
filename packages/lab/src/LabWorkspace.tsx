@@ -128,6 +128,8 @@ export interface LabWorkspaceProps {
   leading?: ReactNode;
   /** After everything in the top bar, beside the Inspector button (the desktop app's code toggle). */
   trailing?: ReactNode;
+  /** The host's own entries at the end of the ⋮ menu (the website's Code toggle). */
+  menuItems?: MenuEntry[];
   /** Told when a run starts or stops, so the host can show it (the desktop app's editor). */
   onRunningChange?: (running: boolean) => void;
   /** Runs the user's own program on an emulated board (the desktop app). Omitted: every board runs its built-in behavior. */
@@ -139,7 +141,7 @@ export interface LabWorkspaceProps {
 }
 
 export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(function LabWorkspace(
-  { host, runtime, project = null, projectChip, onLinkProject, titleMenu, titleMenuLabel = "Session menu", saveStatus, leading, trailing, onRunningChange, program, generator = "Kiungo Engineering Lab", onOpenBuild },
+  { host, runtime, project = null, projectChip, onLinkProject, titleMenu, titleMenuLabel = "Session menu", saveStatus, leading, trailing, menuItems, onRunningChange, program, generator = "Kiungo Engineering Lab", onOpenBuild },
   ref,
 ) {
   const hydrated = useLab((s) => s.hydrated);
@@ -842,13 +844,14 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
             <Menu
               label="More"
               align="end"
-              buttonClassName="flex size-8 items-center justify-center rounded-[8px] text-muted hover:bg-muted-bg hover:text-foreground md:hidden"
+              buttonClassName={cn("flex size-8 items-center justify-center rounded-[8px] text-muted hover:bg-muted-bg hover:text-foreground", !menuItems?.length && "md:hidden")}
               items={[
                 { id: "step", label: "Step 100 ms", icon: <SkipForward />, disabled: running, onSelect: () => setT((v) => Math.round((v + 0.1) * 10) / 10) },
                 { id: "reset", label: "Reset", icon: <RotateCcw />, onSelect: reset },
                 { id: "speed", label: `Speed ${speed}×`, items: SPEEDS.map((s) => ({ id: String(s), label: `${s}×`, checked: s === speed, onSelect: () => setSpeed(s) })) },
                 { id: "undo", label: "Undo", icon: <Undo2 />, disabled: !past, onSelect: () => store.getState().undo() },
                 { id: "redo", label: "Redo", icon: <Redo2 />, disabled: !future, onSelect: () => store.getState().redo() },
+                ...(menuItems?.length ? [{ type: "separator" as const, id: "host-sep" }, ...menuItems] : []),
               ]}
             >
               <MoreHorizontal className="size-4" />

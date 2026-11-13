@@ -13,6 +13,7 @@
  * server runs the same code.
  */
 
+import { sanitizeCode } from "./code";
 import { getPinout, hasPinout } from "./pinout";
 import type { LabNode, LabSession, LabView, LabWire, LogEntry, LogKind, NodeInputs } from "./types";
 
@@ -163,6 +164,7 @@ export function parseSessionFile(input: string | unknown, opts: { keepId?: boole
     view: (s.view === "reality" || s.view === "flow" ? s.view : "top") as LabView,
     runMs: Math.max(0, num(s.runMs, 0)),
     inputs,
+    ...(sanitizeCode(s.code) ? { code: sanitizeCode(s.code) } : {}),
     runtime: null,
   };
   return { session, warnings };

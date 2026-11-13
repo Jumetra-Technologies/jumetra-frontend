@@ -269,3 +269,44 @@ describe("uploading (BLD-06)", () => {
     expect(calls.map((c) => c[0])).toEqual(["compile"]);
   });
 });
+
+describe("a Arduino CLI that can't be started (audit DESK-007)", () => {
+  it("the serial monitor closes and says why when the spawn fails, so the port isn't shown open", () => {
+    const closed: Array<string | null> = [];
+    let child: FakeChild | null = null;
+    const m = new SerialMonitor({
+      cli: () => CLI,
+      spawn: (_c, args) => asChild((child = new FakeChild(args))),
+      onData: () => undefined,
+      onClosed: (_p, message) => closed.push(message),
+      batchMs: 5,
+    });
+    expect(m.start("/dev/ttyACM0", 9600)).toEqual({ ok: true });
+    child!.emit("error", Object.assign(new Error("spawn /fake/arduino-cli EACCES"), { code: "EACCES" }));
+    expect(closed).toEqual([expect.stringMatching(/couldn't start.*EACCES/)]);
+    expect(m.write("hi")).toBe(false);
+    // A later exit doesn't report it twice.
+    child!.emit("exit", 1);
+    expect(closed).toHaveLength(1);
+  });
+
+  it("the board watcher restarts after a failed spawn instead of stopping for good", async () => {
+    const children: FakeChild[] = [];
+    const watcher = new BoardWatcher({
+      cli: () => CLI,
+      run: async () => ({ code: 0, stdout: JSON.stringify({ detected_ports: [] }), stderr: "" }),
+      spawn: (_c, args) => {
+        const c = new FakeChild(args);
+        children.push(c);
+        return asChild(c);
+      },
+      onChange: () => undefined,
+      restartDelayMs: 5,
+    });
+    await watcher.start();
+    children[0].emit("error", new Error("spawn ENOENT"));
+    await tick(40);
+    expect(children.length).toBeGreaterThan(1);
+    watcher.stop();
+  });
+});

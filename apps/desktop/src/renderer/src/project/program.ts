@@ -5,7 +5,7 @@
  * the lab. The run state goes building → starting → running → stopped, or
  * stops at the build with its problems in the editor.
  *
- * A board marked Physical or Hybrid in the Inspector runs the code for real
+ * A board marked Physical or Hybrid in its properties ("Runs on") runs the code for real
  * (sprint 9): the sketch is built with Kiungo's Hybrid layer and uploaded to
  * the board picked in Upload to; virtual parts are played over the link and
  * the lab mirrors what the board drives.

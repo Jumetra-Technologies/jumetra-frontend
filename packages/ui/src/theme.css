@@ -944,6 +944,86 @@ pre {
   z-index: 3;
 }
 
+/*
+ * Pin hotspots (B6). The handle is the click target: one header pitch along
+ * the header and 24 px across it, transparent. What shows is inside it: a
+ * dot on a part's card (Trace), or on a bare board a black female socket
+ * whose thin ring is the pin's role color and which fills with that color
+ * when a wire is plugged in.
+ */
+.hhip-lab-canvas .react-flow__handle.hhip-pin-hit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+}
+.hhip-lab-canvas .react-flow__handle.hhip-pin-hit:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+  z-index: 4;
+}
+.hhip-pin-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  border: 2px solid;
+  pointer-events: none;
+  transition: transform 120ms ease;
+}
+.react-flow__handle.hhip-pin-hit:hover .hhip-pin-dot,
+.react-flow__handle.hhip-pin-hit:focus-visible .hhip-pin-dot {
+  transform: scale(1.4);
+}
+.hhip-socket {
+  position: relative;
+  width: var(--pin-socket, 8px);
+  height: var(--pin-socket, 8px);
+  border-radius: 1.5px;
+  background: #0b0b0c;
+  /* The plastic rim, then the role's ring. */
+  box-shadow:
+    inset 0 0 0 1px #2c2e33,
+    0 0 0 1.25px color-mix(in srgb, var(--pin-ring) 75%, transparent);
+  pointer-events: none;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.hhip-socket::after {
+  content: "";
+  position: absolute;
+  inset: 28%;
+  border-radius: 1px;
+  background: transparent;
+}
+.react-flow__handle.hhip-pin-socket[data-wired] .hhip-socket {
+  box-shadow:
+    inset 0 0 0 1px #2c2e33,
+    0 0 0 1.5px var(--pin-ring);
+}
+.react-flow__handle.hhip-pin-socket[data-wired] .hhip-socket::after {
+  background: var(--pin-ring);
+}
+.hhip-socket[data-live] {
+  box-shadow:
+    inset 0 0 0 1px #2c2e33,
+    0 0 0 1.5px var(--pin-ring),
+    0 0 0 4px color-mix(in srgb, var(--pin-ring) 35%, transparent);
+}
+.react-flow__handle.hhip-pin-socket:hover .hhip-socket,
+.react-flow__handle.hhip-pin-socket:focus-visible .hhip-socket,
+.react-flow__handle.hhip-pin-socket.connectingto .hhip-socket {
+  transform: scale(1.35);
+}
+.react-flow__handle.hhip-pin-socket[data-male] .hhip-socket {
+  background: transparent;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1.25px color-mix(in srgb, var(--pin-ring) 75%, transparent);
+}
+[data-bare] .react-flow__handle:focus-visible::after {
+  opacity: 1;
+}
+
 /* Breadboard holes (components/lab/BreadboardNode.tsx): invisible over the drawn hole until hovered, aimed at, or wired. */
 .react-flow__handle.hhip-bb-hole {
   width: 7px;
@@ -1162,5 +1242,98 @@ input[type="search"]::-webkit-search-decoration {
   .bg-primary,
   .kiungo-grain-teal {
     background-image: none;
+  }
+}
+
+/* The shared Dialog (dialog.tsx): its backdrop and entrance. */
+dialog.k-dialog::backdrop {
+  background: rgb(1 34 75 / 0.32);
+}
+[data-theme="dark"] dialog.k-dialog::backdrop {
+  background: rgb(0 0 0 / 0.55);
+}
+dialog.k-dialog[open] {
+  animation: hhip-dialog-pop 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.k-dialog[open] {
+    animation: none;
+  }
+}
+
+/*
+ * The lab's two big actions: + Add (brand teal, #077a7d for AA with white:
+ * 5.3:1) and Run. In the brand palette the primary color is that same teal,
+ * so Run is navy there (white on #01224b: 15.6:1); in every other palette
+ * Run keeps the palette's primary, which isn't teal.
+ */
+:root,
+[data-theme="light"] {
+  --lab-add: #077a7d;
+  --lab-add-foreground: #ffffff;
+  --lab-run: var(--kiungo-navy);
+  --lab-run-foreground: #ffffff;
+}
+[data-theme="dark"],
+[data-theme="dark-contrast"],
+[data-theme="light-contrast"],
+[data-theme="blue"],
+[data-theme="red"],
+[data-theme="green"] {
+  --lab-run: var(--primary);
+  --lab-run-foreground: var(--primary-foreground);
+}
+.k-lab-add,
+.k-lab-run {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 12px;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  /* + Add and Run never give way in the lab's bar: the name and the end of the row do. */
+  flex-shrink: 0;
+  transition:
+    filter 120ms ease,
+    transform 120ms ease;
+}
+.k-lab-add {
+  background-color: var(--lab-add);
+  background-image: var(--teal-grain);
+  background-size: 320px 320px;
+  background-blend-mode: overlay;
+  color: var(--lab-add-foreground);
+}
+.k-lab-run {
+  min-width: 6.5rem;
+  justify-content: center;
+  background-color: var(--lab-run);
+  color: var(--lab-run-foreground);
+}
+.k-lab-run[data-running="true"] {
+  background-color: var(--surface);
+  color: var(--foreground);
+  box-shadow: inset 0 0 0 1.5px var(--border);
+}
+.k-lab-add:hover,
+.k-lab-run:hover {
+  filter: brightness(1.08);
+}
+.k-lab-add:active,
+.k-lab-run:active {
+  transform: translateY(1px);
+}
+.k-lab-add:focus-visible,
+.k-lab-run:focus-visible {
+  outline: 2px solid var(--ring, var(--primary));
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-lab-add,
+  .k-lab-run {
+    transition: none;
   }
 }

@@ -24,6 +24,7 @@ export function SegmentedControl<T extends string>({
   label,
   size = "md",
   className,
+  iconOnly = false,
 }: {
   value: T;
   options: Array<SegmentOption<T>>;
@@ -31,6 +32,8 @@ export function SegmentedControl<T extends string>({
   label: string;
   size?: "sm" | "md";
   className?: string;
+  /** Show only each option's icon; its name stays as the accessible name and the tooltip. */
+  iconOnly?: boolean;
 }) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -56,24 +59,25 @@ export function SegmentedControl<T extends string>({
             type="button"
             role="radio"
             aria-checked={checked}
-            aria-label={option.description ? `${option.label}: ${option.description}` : undefined}
-            title={option.description}
+            aria-label={option.description ? `${option.label}: ${option.description}` : iconOnly ? option.label : undefined}
+            // Icon only, the tooltip carries everything the label and the "i" note did.
+            title={iconOnly ? [option.description ? `${option.label}: ${option.description}` : option.label, option.info].filter(Boolean).join("\n\n") : option.description}
             tabIndex={checked ? 0 : -1}
             onClick={() => onChange(option.id)}
             onKeyDown={(event) => move(event, index)}
             className={cn(
               "flex min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-[9px] font-medium [&>svg]:shrink-0 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]",
-              size === "sm" ? "px-2.5 py-1 text-xs" : "px-3.5 py-1.5 text-sm",
+              iconOnly ? "size-8 px-0" : size === "sm" ? "px-2.5 py-1 text-xs" : "px-3.5 py-1.5 text-sm",
               // Room for the "i" in the corner.
-              option.info && (size === "sm" ? "pr-4" : "pr-5"),
+              option.info && !iconOnly && (size === "sm" ? "pr-4" : "pr-5"),
               checked ? "bg-surface text-foreground shadow-[var(--shadow-sm)]" : "text-muted hover:text-foreground",
             )}
           >
             {option.icon}
-            {option.label}
+            {iconOnly ? null : option.label}
           </button>
         );
-        if (!option.info) return radio;
+        if (!option.info || iconOnly) return radio;
         return (
           <div key={option.id} className="relative flex flex-1">
             {radio}

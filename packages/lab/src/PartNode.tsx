@@ -47,6 +47,20 @@ const STATUS_DOT: Record<PartStatus, string> = {
   fault: "bg-danger",
 };
 
+/** The smallest target a pin gets across its header (WCAG 2.5.8); along it, one pitch, so neighbors never overlap. */
+export const PIN_HIT = 24;
+
+/** A pin's hit box: the header's pitch along it, at least 24 px across it. */
+export function pinHitBox(position: Position, pitch: number): { width: number; height: number } {
+  const along = Math.max(6, Math.round(pitch));
+  return position === Position.Top || position === Position.Bottom ? { width: along, height: PIN_HIT } : { width: PIN_HIT, height: along };
+}
+
+/** What a screen reader hears for a pin: the part, the pin, and where it's wired. */
+export function pinLabel(partLabel: string, pin: LabPin, connected: string | null, faulty = false): string {
+  return `${partLabel} ${pin.label} pin, ${connected ? `wired to ${connected}` : "not wired"}${faulty ? ", has a problem" : ""}`;
+}
+
 const GROUP_ICON = { boards: Cpu, power: BatteryMedium, prototyping: Grid3x3, controls: SlidersHorizontal, sensors: Thermometer, motors: Cog, drivers: ToggleRight, outputs: Lightbulb, displays: Monitor, radios: Radio } as const;
 
 function PinRow({ pin, index, side, nodeId, connected, faulty, live, w, partLabel }: { pin: LabPin; index: number; side: "left" | "right"; nodeId: string; connected: string | null; faulty: boolean; live: boolean; w: number; partLabel: string }) {
@@ -61,19 +75,24 @@ function PinRow({ pin, index, side, nodeId, connected, faulty, live, w, partLabe
         type="source"
         position={side === "left" ? Position.Left : Position.Right}
         title={title}
-        aria-label={`${pin.label} pin`}
+        role="img"
+        tabIndex={0}
+        aria-label={pinLabel(partLabel, pin, connected, faulty)}
         data-pin={pin.id}
         data-node={nodeId}
-        className={cn("!size-[11px] !rounded-full !border-2 transition-transform hover:!scale-150", faulty && "hhip-fault-pulse")}
-        style={{
-          top: y,
-          left: side === "left" ? 0 : undefined,
-          right: side === "right" ? 0 : undefined,
-          background: connected ? color : "var(--surface)",
-          borderColor: faulty ? "var(--lab-fault)" : color,
-          boxShadow: live ? `0 0 0 3px color-mix(in srgb, ${color} 30%, transparent)` : undefined,
-        }}
-      />
+        className="hhip-pin-hit"
+        style={{ top: y, left: side === "left" ? 0 : undefined, right: side === "right" ? 0 : undefined, ...pinHitBox(side === "left" ? Position.Left : Position.Right, NODE.row) }}
+      >
+        <span
+          aria-hidden
+          className={cn("hhip-pin-dot", faulty && "hhip-fault-pulse")}
+          style={{
+            background: connected ? color : "var(--surface)",
+            borderColor: faulty ? "var(--lab-fault)" : color,
+            boxShadow: live ? `0 0 0 3px color-mix(in srgb, ${color} 30%, transparent)` : undefined,
+          }}
+        />
+      </Handle>
       <span
         className={cn(
           "pointer-events-none absolute truncate font-mono text-[10px] leading-none",
@@ -407,6 +426,9 @@ function BareBoard({
   const pinout = getPinout(node.partId);
   const on = status === "ready" || lit;
   const connector = connectorFor(node.partId);
+  // Headers are 2.54 mm apart; the socket's opening is about 70 % of that, as on a real female header.
+  const pitch = 2.54 * geometry.scale;
+  const socket = Math.max(6, Math.min(14, Math.round(pitch * 0.7)));
   return (
     <div
       className={cn("group relative", flashed && "rounded-[14px] ring-4 ring-warning/60")}
@@ -457,21 +479,29 @@ function BareBoard({
             type="source"
             position={spot.position}
             title={title}
-            aria-label={`${pin.label} pin`}
+            role="img"
+            tabIndex={0}
+            aria-label={pinLabel(node.label, pin, connected, faulty)}
             data-pin={pin.id}
             data-node={id}
-            className={cn("!size-[9px] !rounded-full !border-2 !transition-transform hover:!scale-150", faulty && "hhip-fault-pulse")}
+            data-wired={connected ? "" : undefined}
+            // The ICSP header is male pins standing up: only the ring shows over it, no socket.
+            data-male={pin.programmingHeader ? "" : undefined}
+            className="hhip-pin-hit hhip-pin-socket"
             style={{
               top: spot.y,
               left: spot.x,
               transform: "translate(-50%, -50%)",
-              background: connected ? color : "color-mix(in srgb, var(--surface) 70%, transparent)",
-              borderColor: faulty ? "var(--lab-fault)" : color,
-              boxShadow: live ? `0 0 0 3px color-mix(in srgb, ${color} 35%, transparent)` : connected ? undefined : "0 0 0 1px rgba(0,0,0,0.25)",
+              ...pinHitBox(spot.position, pitch),
+              ["--pin-ring" as string]: faulty ? "var(--lab-fault)" : color,
+              ["--pin-socket" as string]: `${socket}px`,
               ["--pin-label" as string]: `"${pin.label.replace(/"/g, "")}"`,
               ["--pin-label-y" as string]: above ? "-16px" : "16px",
             }}
-          />
+          >
+            {/* A black female socket, as on the real header; the role's color is its ring, and a wire plugged in fills it. */}
+            <span aria-hidden className={cn("hhip-socket", faulty && "hhip-fault-pulse")} data-live={live || undefined} />
+          </Handle>
         );
       })}
     </div>

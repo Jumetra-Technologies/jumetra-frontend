@@ -8,6 +8,7 @@ import { cn } from "@kiungo/ui/cn";
 import { Menu } from "@kiungo/ui/menu";
 import { invoke, shortcut } from "../ipc";
 import { BoardHelp } from "../hardware/BoardHelp";
+import { ConfirmTrash } from "./ConfirmTrash";
 import { suggestTarget, UploadPicker, type UploadTarget } from "../hardware/UploadPicker";
 import { useBoards } from "../hardware/useBoards";
 import { BuildPanel, type BuildState, type BuildTab, type UploadState } from "./BuildPanel";
@@ -130,6 +131,8 @@ export function EditorPane({ projectPath, board, boardPart, bridge, running, onR
   const [target, setTarget] = useState<UploadTarget | null>(() => savedTarget(projectPath));
   const [upload, setUpload] = useState<UploadState>({ status: "idle", result: null, target: null });
   const [helpOpen, setHelpOpen] = useState(false);
+  /** The file waiting for "Move to trash" in the app's dialog (never a native confirm: it would block the Esc emergency stop). */
+  const [trashing, setTrashing] = useState<string | null>(null);
 
   const chooseTarget = useCallback(
     (next: UploadTarget) => {
@@ -478,7 +481,7 @@ export function EditorPane({ projectPath, board, boardPart, bridge, running, onR
   };
 
   const remove = async (name: string) => {
-    if (!window.confirm(`Move ${name} to the trash? You can get it back from there.`)) return;
+    setTrashing(null);
     const result = await invoke("sketch:delete", projectPath, name);
     if (!result.ok) return setProblem(result.message);
     const file = files.current.get(name);
@@ -574,7 +577,7 @@ export function EditorPane({ projectPath, board, boardPart, bridge, running, onR
               <Menu
                 label={`More for ${name}`}
                 items={[
-                  ...(!meta?.main ? [{ id: "rename", label: "Rename", onSelect: () => setNaming({ mode: "rename", from: name }) }, { id: "delete", label: "Move to trash", danger: true, onSelect: () => void remove(name) }] : []),
+                  ...(!meta?.main ? [{ id: "rename", label: "Rename", onSelect: () => setNaming({ mode: "rename", from: name }) }, { id: "delete", label: "Move to trash…", danger: true, onSelect: () => setTrashing(name) }] : []),
                   ...(tabs.length > 1 ? [{ id: "close", label: "Close tab", onSelect: () => closeTab(name) }] : []),
                 ]}
                 buttonClassName="flex size-6 items-center justify-center rounded-[6px] text-muted opacity-0 hover:bg-muted-bg group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
@@ -648,6 +651,7 @@ export function EditorPane({ projectPath, board, boardPart, bridge, running, onR
         </div>
       ) : null}
       <BoardHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <ConfirmTrash name={trashing} onConfirm={(name) => void remove(name)} onCancel={() => setTrashing(null)} />
     </section>
   );
 }

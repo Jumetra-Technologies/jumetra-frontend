@@ -11,6 +11,8 @@ export type WireEdgeData = {
   /** Particles run from target to source (current returning to the board, a sensor reporting). */
   reverse: boolean;
   label: string;
+  /** A color the person picked; otherwise the color of what it carries. */
+  color?: string;
 };
 
 const SPEED = { power: 1.6, ground: 1.6, signal: 1.1, data: 0.55, fault: 0, idle: 0 } as const;
@@ -24,7 +26,7 @@ function WireEdgeView({ id, sourceX, sourceY, targetX, targetY, sourcePosition, 
   const level = live?.level ?? 0;
   const tone = data?.tone ?? "digital";
   const fault = flow === "fault";
-  const color = fault ? "var(--lab-fault)" : TONE_VAR[tone];
+  const color = fault ? "var(--lab-fault)" : (data?.color ?? TONE_VAR[tone]);
   const flowView = view === "flow";
   const active = level > 0.05 && !fault;
   const dim = flowView && !active && !fault;

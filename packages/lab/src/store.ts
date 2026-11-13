@@ -15,7 +15,7 @@ import { create } from "zustand";
 import { SOURCE_KEY, SOURCE_SET, coerceInput, findControl, inputOf } from "@kiungo/core/lab/controls";
 import { getPinout } from "@kiungo/core/lab/pinout";
 import { getPart } from "@kiungo/core/parts";
-import { logEntry, makeId, newSession, nextLabel } from "@kiungo/core/lab/session";
+import { logEntry, makeId, migrateSessionUnits, newSession, nextLabel } from "@kiungo/core/lab/session";
 import { stepperStepsAt } from "@kiungo/core/lab/simulate";
 import type { DeviceMode, LabData, LabNode, LabSession, LabView, LabWire, LogKind, NodeInputs, PinRef } from "@kiungo/core/lab/types";
 
@@ -86,6 +86,8 @@ function sanitize(raw: unknown): LabData {
           runMs: Number(s.runMs) || 0,
           inputs: s.inputs && typeof s.inputs === "object" ? s.inputs : {},
         }))
+        // Sessions saved before SI units are read in today's units.
+        .map((s) => migrateSessionUnits(s))
     : [];
   return { version: 1, sessions, activeId: typeof data.activeId === "string" ? data.activeId : null };
 }
@@ -377,7 +379,7 @@ export const useLab = create<LabState>((set, get) => {
       // A stepper's move is worked out from where it started at what speed. Changing the speed mid-move
       // restarts the rest of the move from where the shaft is now, so the position doesn't jump.
       const reanchor: NodeInputs =
-        node.partId === "stepper-motor" && key === "stepsPerSecond" && t !== undefined && session.inputs?.[nodeId]?.[SOURCE_KEY] === SOURCE_SET
+        node.partId === "stepper-motor" && key === "stepRate" && t !== undefined && session.inputs?.[nodeId]?.[SOURCE_KEY] === SOURCE_SET
           ? { cmdFrom: stepperStepsAt(session.inputs, nodeId, t), cmdAt: t, cmdTarget: inputOf(session.inputs, nodeId, "cmdTarget", inputOf(session.inputs, nodeId, "cmdFrom", 0)) }
           : {};
       update((s) => ({ ...s, inputs: { ...(s.inputs ?? {}), [nodeId]: { ...(s.inputs?.[nodeId] ?? {}), ...takeOver, ...reanchor, [key]: next } } }));

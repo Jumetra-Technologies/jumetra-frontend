@@ -68,6 +68,12 @@ export interface LabSession {
   runMs: number;
   /** Inputs, commands and sketch settings by node id. Absent for sessions saved before 1.3. */
   inputs?: Record<string, NodeInputs>;
+  /**
+   * The units `inputs` are stored in: 2 is SI (lab/units.ts). Absent or 1 for
+   * sessions saved before SI units; they are converted when they're opened
+   * (`migrateSessionUnits`).
+   */
+  units?: number;
   /** Backend workspace mirroring this session, when one exists. */
   runtime?: { workspaceId: string; nodeIds: Record<string, string>; wireIds: Record<string, string> } | null;
 }

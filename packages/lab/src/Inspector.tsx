@@ -9,7 +9,7 @@ import { SegmentedControl } from "@kiungo/ui/segmented-control";
 import { Button } from "@kiungo/ui/button";
 import { getPart, hasScreen, withScreenText } from "@kiungo/core/parts";
 import { withResistorValue } from "@kiungo/core/parts/models/passives";
-import { ohmsOf } from "@kiungo/core/lab/controls";
+import { ohmsOf, toleranceOf } from "@kiungo/core/lab/controls";
 import { getPinout, pinTone } from "@kiungo/core/lab/pinout";
 import { breadboardUse } from "@kiungo/core/lab/breadboard";
 import { useLab } from "./store";
@@ -64,7 +64,7 @@ function NodeInspector({ id }: { id: string }) {
   // The preview is this part in the lab, not the library's: a display's glass shows what the sketch
   // wrote this frame (the same lines as on the canvas), or nothing. Never the library's sample text.
   // withScreenText caches per model and text, so this is cheap on every frame.
-  const shown = part && hasScreen(part) ? withScreenText(part, live?.text ?? []) : part && node?.partId === "resistor" ? withResistorValue(part, ohmsOf(session.inputs, node.id)) : part;
+  const shown = part && hasScreen(part) ? withScreenText(part, live?.text ?? []) : part && node?.partId === "resistor" ? withResistorValue(part, ohmsOf(session.inputs, node.id), toleranceOf(session.inputs, node.id)) : part;
   if (!node || !pinout) return null;
 
   const otherEnd = (pin: string) =>

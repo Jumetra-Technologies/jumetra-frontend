@@ -2,7 +2,7 @@
 
 import { describeError } from "@/lib/errors";
 import { API_BASE } from "@/lib/api-client";
-import { getApp, getApps, initializeApp } from "firebase/app";
+import { getApp, getApps, initializeApp } from "@firebase/app";
 import {
   GithubAuthProvider,
   GoogleAuthProvider,
@@ -10,7 +10,7 @@ import {
   linkWithPopup,
   signInWithPopup,
   type Auth,
-} from "firebase/auth";
+} from "@firebase/auth";
 
 type FirebaseWebConfig = {
   apiKey: string;

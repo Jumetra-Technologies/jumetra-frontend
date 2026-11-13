@@ -1,10 +1,16 @@
 // @vitest-environment node
+import { luxFromLightPercent } from "../src/lab/controls";
 import { describe, expect, it } from "vitest";
 import { analyze } from "../src/lab/circuit";
 import { arduinoPinOf, peripheralInputs, programFrame, servoAngle, type ProgramReadings } from "../src/lab/program";
 import { frameAt } from "../src/lab/simulate";
 import { buildStarter } from "../src/project";
 import type { PinReading } from "../src/emulator/pinstats";
+
+// Inputs are stored in SI (lab/units.ts); these say what each value means.
+const cm = (v: number) => v / 100;
+const pct = (v: number) => v / 100;
+const lux = (percent: number) => luxFromLightPercent(percent);
 
 const pin = (n: number, over: Partial<PinReading> = {}): PinReading => ({ pin: n, level: "low", duty: 0, hz: 0, pulseUs: null, ...over });
 
@@ -71,13 +77,13 @@ describe("the sensors answering the program (EMU-02, PCP-03)", () => {
   it("the distance starter's HC-SR04 on its wired pins, at the distance set", () => {
     const { session, analysis, board } = setup("distance");
     const sensor = session.nodes[1];
-    const inputs = { [sensor.id]: { source: "set", distanceCm: 42 } };
+    const inputs = { [sensor.id]: { source: "set", distance: cm(42) } };
     expect(peripheralInputs(session.nodes, analysis, inputs, board.id, 0).inputs).toEqual([{ kind: "hc-sr04", id: sensor.id, trig: 2, echo: 3, distanceCm: 42 }]);
   });
 
   it("a DHT11, a PIR and the night light's LDR", () => {
     const dht = setup("dht11");
-    expect(peripheralInputs(dht.session.nodes, dht.analysis, { [dht.session.nodes[1].id]: { source: "set", temperatureC: 23.4, humidity: 55 } }, dht.board.id, 0).inputs).toEqual([
+    expect(peripheralInputs(dht.session.nodes, dht.analysis, { [dht.session.nodes[1].id]: { source: "set", temperatureC: 23.4, humidity: pct(55) } }, dht.board.id, 0).inputs).toEqual([
       { kind: "dht", id: dht.session.nodes[1].id, pin: 2, model: 11, temperatureC: 23.4, humidity: 55 },
     ]);
     const alarm = setup("motion-alarm");
@@ -85,7 +91,7 @@ describe("the sensors answering the program (EMU-02, PCP-03)", () => {
     expect(peripheralInputs(alarm.session.nodes, alarm.analysis, { [pir.id]: { source: "set", motion: true } }, alarm.board.id, 0).inputs[0]).toMatchObject({ kind: "digital", high: true });
     const night = setup("night-light");
     const ldr = night.session.nodes.find((n) => n.partId === "ldr")!;
-    expect(peripheralInputs(night.session.nodes, night.analysis, { [ldr.id]: { source: "set", light: 20 } }, night.board.id, 0).inputs).toEqual([{ kind: "analog", id: ldr.id, pin: 14, volts: 1 }]);
+    expect(peripheralInputs(night.session.nodes, night.analysis, { [ldr.id]: { source: "set", illuminance: lux(20) } }, night.board.id, 0).inputs).toEqual([{ kind: "analog", id: ldr.id, pin: 14, volts: 1 }]);
   });
 
   it("without a set value, the lab's simulated sweep feeds the program", () => {

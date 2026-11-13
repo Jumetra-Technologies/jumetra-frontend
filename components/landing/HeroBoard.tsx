@@ -6,6 +6,8 @@ import { PartModel3D } from "@kiungo/lab/views/PartModel3D";
 import arduinoUno from "@kiungo/core/parts/catalog/boards/arduino-uno";
 import { cn } from "@/lib/utils";
 import type { BlinkPhase, BlinkScene } from "./blink-scene";
+import { BlinkCode } from "./BlinkCode";
+import styles from "./hero-board.module.css";
 
 /** The one part this page draws, taken from its own file so the page does not load the whole library. */
 const ARDUINO_UNO = arduinoUno.model;
@@ -19,14 +21,24 @@ const STATUS: Record<BlinkPhase, string> = {
 };
 
 const noSubscribe = () => () => undefined;
-/** Whether this browser can draw WebGL (null while rendering on the server). */
+/**
+ * Whether this browser can draw WebGL (null while rendering on the server).
+ * A yes is kept: React reads this on every render, and each probe opens a
+ * WebGL context, so probing again would soon make the browser drop the
+ * scene's own context (the board would vanish mid-Blink). A no opens nothing.
+ */
+let canWebgl = false;
 function webgl(): boolean {
+  if (canWebgl) return true;
   try {
     const canvas = document.createElement("canvas");
-    return !!(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+    const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+    canWebgl = !!gl;
+    (gl as WebGLRenderingContext | null)?.getExtension?.("WEBGL_lose_context")?.loseContext();
   } catch {
-    return false;
+    canWebgl = false;
   }
+  return canWebgl;
 }
 
 /**
@@ -44,7 +56,15 @@ export function HeroBoard() {
   const kick = useRef<() => void>(() => undefined);
   const [phase, setPhase] = useState<BlinkPhase>("still");
   const [ready, setReady] = useState(false);
+  const [step, setStep] = useState(-1);
+  const [led, setLed] = useState(false);
   const running = phase !== "still" && phase !== "leaving";
+  // The signal trace from the running line of code to the LED.
+  const stage = useRef<HTMLDivElement>(null);
+  const trace = useRef<SVGPathElement>(null);
+  const tip = useRef<SVGCircleElement>(null);
+  const highEnd = useRef<HTMLSpanElement>(null);
+  const lowEnd = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (!supported || !canvas.current || !host.current) return;
@@ -55,10 +75,36 @@ export function HeroBoard() {
     const el = host.current;
     const seconds = () => performance.now() / 1000;
 
+    /** Whether pin 13 is HIGH, kept here too so the trace knows which line to start from between renders. */
+    let high = false;
+    /** Draw the trace from the end of the line that is running to the LED, or hide it. */
+    const drawTrace = () => {
+      const path = trace.current;
+      const dot = tip.current;
+      const box = stage.current;
+      const at = instance?.ledScreen?.() ?? null;
+      const end = instance?.current === "blinking" ? (high ? highEnd.current : lowEnd.current) : null;
+      if (!path || !dot || !box || !at || !end) {
+        path?.setAttribute("d", "");
+        return;
+      }
+      const origin = box.getBoundingClientRect();
+      const view = el.getBoundingClientRect();
+      const from = end.getBoundingClientRect();
+      const ax = from.left - origin.left + 10;
+      const ay = from.top + from.height / 2 - origin.top;
+      const lx = view.left - origin.left + at.x * view.width;
+      const ly = view.top - origin.top + at.y * view.height + 12;
+      path.setAttribute("d", `M ${ax} ${ay} C ${ax + 56} ${ay}, ${lx} ${ly + (ay - ly) * 0.55}, ${lx} ${ly}`);
+      dot.setAttribute("cx", String(lx));
+      dot.setAttribute("cy", String(ly));
+    };
+
     const loop = () => {
       frame = 0;
       if (!instance || disposed) return;
       instance.frame(seconds());
+      drawTrace();
       if (instance.animating && visible) frame = requestAnimationFrame(loop);
     };
     kick.current = () => {
@@ -78,6 +124,11 @@ export function HeroBoard() {
         return;
       }
       instance.onPhase = (p) => setPhase(p);
+      instance.onStep = (n) => setStep(n);
+      instance.onLed = (on) => {
+        high = on;
+        setLed(on);
+      };
       scene.current = instance;
       resize();
       setReady(true);
@@ -117,8 +168,8 @@ export function HeroBoard() {
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <div ref={host} className="relative aspect-[5/4] w-full" data-testid="hero-board" data-phase={phase}>
+    <div ref={stage} className="relative flex flex-col items-center">
+      <div ref={host} className={cn("relative aspect-[5/4] w-full", styles.fog)} data-testid="hero-board" data-phase={phase}>
         {supported === false ? (
           <PartModel3D model={ARDUINO_UNO} powered={false} still={{ spin: -24, tilt: 50 }} className="!h-full !w-full" />
         ) : (
@@ -132,6 +183,17 @@ export function HeroBoard() {
         )}
       </div>
 
+      {/* The code half: docked into the stage's fogged lower edge. */}
+      <BlinkCode phase={phase} step={step} led={led} anchors={{ high: highEnd, low: lowEnd }} className="relative z-10 -mt-[7%] w-[94%]" />
+
+      {/* The signal trace: the line that runs, wired to the LED it drives. */}
+      <svg className="pointer-events-none absolute inset-0 z-20 size-full overflow-visible" aria-hidden>
+        <g className={cn("transition-opacity duration-150", phase === "blinking" ? (led ? "opacity-90" : "opacity-30") : "opacity-0")}>
+          <path ref={trace} className={styles.flow} fill="none" stroke={led ? "#ff4a3d" : "#5fe0db"} strokeWidth={1.5} strokeLinecap="round" />
+          <circle ref={tip} r={3} fill={led ? "#ff4a3d" : "#5fe0db"} />
+        </g>
+      </svg>
+
       {supported === false ? null : (
         <button
           type="button"
@@ -140,7 +202,7 @@ export function HeroBoard() {
           aria-pressed={running}
           aria-label={running ? "Stop the Blink test" : "Play the Blink test"}
           className={cn(
-            "group relative mt-4 grid size-[72px] place-items-center rounded-full text-white transition-[transform,background-color,box-shadow] duration-200",
+            "group relative mt-6 grid size-[72px] place-items-center rounded-full text-white transition-[transform,background-color,box-shadow] duration-200",
             "kiungo-grain-teal bg-[#077a7d] shadow-[0_10px_28px_-10px_rgba(7,122,125,0.75),inset_0_1px_0_rgba(255,255,255,0.22)] hover:bg-[#06666a] active:scale-95",
             "focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#077a7d] disabled:opacity-60",
           )}

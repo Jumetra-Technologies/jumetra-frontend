@@ -9,12 +9,20 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { analyze, ledCurrentMa } from "@kiungo/core/lab/circuit";
 import { planAutoWire } from "@kiungo/core/lab/autowire";
-import { coerceInput, findControl } from "@kiungo/core/lab/controls";
+import { coerceInput, findControl, luxFromLightPercent } from "@kiungo/core/lab/controls";
+import { motorSpeedText } from "@kiungo/core/lab/constants";
 import { DC_MOTOR_MAX_RPM, STEPPER_STEPS_PER_TURN, frameAt, stepperStepsAt } from "@kiungo/core/lab/simulate";
 import { boardSettings, planBoard, sampleSensor } from "@kiungo/core/lab/sketch";
 import { useLab } from "@kiungo/lab/store";
 import type { LabNode, LabWire, NodeInputs } from "@kiungo/core/lab/types";
 import { getPart, withScreenText } from "@kiungo/core/parts";
+
+// Inputs are stored in SI (lab/units.ts); these say what each value means.
+const cm = (v: number) => v / 100;
+const pct = (v: number) => v / 100;
+const deg = (v: number) => (v * Math.PI) / 180;
+const ms = (v: number) => v / 1000;
+const lux = (percent: number) => luxFromLightPercent(percent);
 
 let seq = 0;
 const node = (partId: string, x = 0, y = 0): LabNode => ({ id: `q${++seq}`, partId, label: partId === "dht11" ? "DHT11" : partId, x, y, mode: "virtual" });
@@ -59,10 +67,10 @@ describe("P0 · Experiment 03: DHT11 → sketch → LCD 16×2", () => {
         const { board, parts, at } = build("arduino-uno", "dht11", "lcd-16x2");
         const dht = parts.dht11;
         const lcd = parts["lcd-16x2"];
-        const inputs = set(dht.id, { temperatureC, humidity });
+        const inputs = set(dht.id, { temperatureC, humidity: pct(humidity) });
         // 1. The configured input (the store's coercion keeps it as given: it's in range and on the step).
         expect(coerceInput(findControl("dht11", "temperatureC")!, temperatureC)).toBe(temperatureC);
-        expect(coerceInput(findControl("dht11", "humidity")!, humidity)).toBe(humidity);
+        expect(coerceInput(findControl("dht11", "humidity")!, pct(humidity))).toBe(pct(humidity));
         // 2. The sensor's reading.
         const sample = sampleSensor(dht, 3, inputs, boardSettings(board.id, inputs));
         expect(sample.values).toEqual({ temperatureC, humidity });
@@ -85,23 +93,23 @@ describe("P0 · Experiment 03: DHT11 → sketch → LCD 16×2", () => {
   it("follows a change made mid-run on the next frame, without a reload", () => {
     const { parts, at } = build("arduino-uno", "dht11", "lcd-16x2");
     const { dht11: dht, "lcd-16x2": lcd } = parts;
-    expect(at(5, set(dht.id, { temperatureC: 10, humidity: 30 })).nodes[lcd.id].text).toEqual(["Temp: 10.0 °C", "Hum: 30 %"]);
-    expect(at(5.1, set(dht.id, { temperatureC: 50, humidity: 80 })).nodes[lcd.id].text).toEqual(["Temp: 50.0 °C", "Hum: 80 %"]);
-    expect(at(5.2, set(dht.id, { temperatureC: 0, humidity: 80 })).nodes[lcd.id].text).toEqual(["Temp: 0.0 °C", "Hum: 80 %"]);
+    expect(at(5, set(dht.id, { temperatureC: 10, humidity: pct(30) })).nodes[lcd.id].text).toEqual(["Temp: 10.0 °C", "Hum: 30 %"]);
+    expect(at(5.1, set(dht.id, { temperatureC: 50, humidity: pct(80) })).nodes[lcd.id].text).toEqual(["Temp: 50.0 °C", "Hum: 80 %"]);
+    expect(at(5.2, set(dht.id, { temperatureC: 0, humidity: pct(80) })).nodes[lcd.id].text).toEqual(["Temp: 0.0 °C", "Hum: 80 %"]);
   });
 
   it("isn't overwritten by other parts' updates", () => {
     const { board, parts, at } = build("arduino-uno", "dht11", "lcd-16x2", "led", "servo");
-    const dht = set(parts.dht11.id, { temperatureC: 35, humidity: 30 });
+    const dht = set(parts.dht11.id, { temperatureC: 35, humidity: pct(30) });
     const before = at(2, dht).nodes[parts["lcd-16x2"].id].text;
-    const after = at(2, merge(dht, set(parts.servo.id, { angle: 10 }), { [board.id]: { delayMs: 100 } })).nodes[parts["lcd-16x2"].id].text;
+    const after = at(2, merge(dht, set(parts.servo.id, { angle: deg(10) }), { [board.id]: { delay: ms(100) } })).nodes[parts["lcd-16x2"].id].text;
     expect(after).toEqual(before);
     expect(after).toEqual(["Temp: 35.0 °C", "Hum: 30 %"]);
   });
 
   it("rounds to the shown precision: one decimal for temperature, whole percent for humidity", () => {
     const { parts, at } = build("arduino-uno", "dht11", "lcd-16x2");
-    const f = at(1, set(parts.dht11.id, { temperatureC: 24.46, humidity: 55.6 }));
+    const f = at(1, set(parts.dht11.id, { temperatureC: 24.46, humidity: pct(55.6) }));
     expect(f.nodes[parts["lcd-16x2"].id].text).toEqual(["Temp: 24.5 °C", "Hum: 56 %"]);
   });
 
@@ -116,7 +124,7 @@ describe("P0 · Experiment 03: DHT11 → sketch → LCD 16×2", () => {
     // The DHT11 loses its ground: the sketch gets no reading, and the LCD says so.
     const gnd = wires.filter((w) => w.from.node === parts.dht11.id || w.to.node === parts.dht11.id).find((w) => [w.from.pin, w.to.pin].includes("GND"))!;
     const left = wires.filter((w) => w !== gnd);
-    const broken = frameAt(nodes, left, analyze(nodes, left), 4, true, set(parts.dht11.id, { temperatureC: 50, humidity: 80 }));
+    const broken = frameAt(nodes, left, analyze(nodes, left), 4, true, set(parts.dht11.id, { temperatureC: 50, humidity: pct(80) }));
     expect(broken.nodes[lcd].text).toEqual(["DHT11: no data", "Check its wiring"]);
     expect(reading(broken, lcd, "Source")).toBe("DHT11 (no data)");
   });
@@ -125,23 +133,23 @@ describe("P0 · Experiment 03: DHT11 → sketch → LCD 16×2", () => {
 describe("P1 · Experiment 01: LDR-controlled LED and the resistor tip", () => {
   it("the LED is on while light < Dark below (30 % by default): 29 on, 30 and 31 off; 0 and 100 at the ends", () => {
     const { parts, at } = build("arduino-uno", "ldr", "led");
-    const led = (light: number) => at(2, set(parts.ldr.id, { light })).nodes[parts.led.id].on;
+    const led = (light: number) => at(2, set(parts.ldr.id, { illuminance: lux(light) })).nodes[parts.led.id].on;
     expect([0, 29, 30, 31, 100].map(led)).toEqual([true, true, false, false, false]);
-    // Out of range is clamped to the slider's ends.
-    expect(coerceInput(findControl("ldr", "light")!, -5)).toBe(0);
-    expect(coerceInput(findControl("ldr", "light")!, 140)).toBe(100);
+    // The store keeps an out-of-range value within the part's 0 to 100 000 lx (the field itself refuses it with a message).
+    expect(coerceInput(findControl("ldr", "illuminance")!, -5)).toBe(0);
+    expect(coerceInput(findControl("ldr", "illuminance")!, 140_000)).toBe(100_000);
   });
 
   it("the threshold is the board's Dark below setting", () => {
     const { board, parts, at } = build("arduino-uno", "ldr", "led");
-    const inputs = merge(set(parts.ldr.id, { light: 45 }), { [board.id]: { darkPct: 50 } });
+    const inputs = merge(set(parts.ldr.id, { illuminance: lux(45) }), { [board.id]: { darkBelow: lux(50) } });
     expect(at(2, inputs).nodes[parts.led.id].on).toBe(true);
   });
 
   it("holds its state while the light doesn't change, and switches back and forth repeatably", () => {
     const { parts, at } = build("arduino-uno", "ldr", "led");
     for (const [light, on] of [[20, true], [40, false], [20, true], [40, false]] as const) {
-      for (let t = 1; t < 6; t += 0.5) expect(at(t, set(parts.ldr.id, { light })).nodes[parts.led.id].on).toBe(on);
+      for (let t = 1; t < 6; t += 0.5) expect(at(t, set(parts.ldr.id, { illuminance: lux(light) })).nodes[parts.led.id].on).toBe(on);
     }
   });
 
@@ -151,8 +159,8 @@ describe("P1 · Experiment 01: LDR-controlled LED and the resistor tip", () => {
     expect(tip.severity).toBe("tip");
     expect(tip.title).toBe("Assumed: 220 Ω resistor in series");
     expect(tip.detail).toMatch(/No resistor is wired.*220 Ω.*5 V pin.*13\.6 mA.*Add a Resistor part/);
-    expect(reading(at(2, set(parts.ldr.id, { light: 10 })), parts.led.id, "Current (modeled)")).toBe("13.6 mA via 220 Ω (assumed)");
-    expect(reading(at(2, set(parts.ldr.id, { light: 90 })), parts.led.id, "Current (modeled)")).toBe("0 mA");
+    expect(reading(at(2, set(parts.ldr.id, { illuminance: lux(10) })), parts.led.id, "Current (modeled)")).toBe("13.6 mA via 220 Ω (assumed)");
+    expect(reading(at(2, set(parts.ldr.id, { illuminance: lux(90) })), parts.led.id, "Current (modeled)")).toBe("0 mA");
     // On a 3.3 V board the same resistor gives less.
     const esp = build("esp32", "led");
     expect(esp.analysis.nodes[esp.parts.led.id].faults.find((f) => f.id.startsWith("resistor"))!.detail).toMatch(/3\.3 V pin.*5\.9 mA/);
@@ -170,7 +178,7 @@ describe("The resistor part", () => {
       side === "anode"
         ? [w("uno", "D13", "r1", "1", "w1"), w("r1", "2", "led", "A", "w2"), w("led", "C", "uno", "GND1", "w3")]
         : [w("uno", "D13", "led", "A", "w1"), w("led", "C", "r1", "1", "w2"), w("r1", "2", "uno", "GND1", "w3")];
-    const inputs: Record<string, NodeInputs> = ohms ? { r1: { ohms: String(ohms) } } : {};
+    const inputs: Record<string, NodeInputs> = ohms ? { r1: { ohms } } : {};
     const nodes = [uno, r, l];
     return { nodes, wires, inputs, analysis: analyze(nodes, wires, inputs) };
   };
@@ -221,7 +229,7 @@ describe("P1 · Experiment 02: ultrasonic warning", () => {
   it("19 cm warns; 20 cm (equal) and 21 cm don't: the rule is distance < Warning distance", () => {
     const { parts, at } = build("arduino-uno", "hc-sr04", "led", "buzzer");
     const state = (distanceCm: number) => {
-      const f = at(3, set(parts["hc-sr04"].id, { distanceCm }));
+      const f = at(3, set(parts["hc-sr04"].id, { distance: cm(distanceCm) }));
       return { shown: reading(f, parts["hc-sr04"].id, "Distance"), led: f.nodes[parts.led.id].on, beeping: !!f.nodes[parts.buzzer.id].tone };
     };
     expect(state(19)).toEqual({ shown: "19.0 cm", led: true, beeping: true });
@@ -230,28 +238,28 @@ describe("P1 · Experiment 02: ultrasonic warning", () => {
   });
 
   it("handles the range ends and rejects what isn't a number", () => {
-    const c = findControl("hc-sr04", "distanceCm")!;
-    expect([coerceInput(c, 2), coerceInput(c, 400), coerceInput(c, 0), coerceInput(c, 999)]).toEqual([2, 400, 2, 400]);
+    const c = findControl("hc-sr04", "distance")!;
+    expect([coerceInput(c, cm(2)), coerceInput(c, cm(400)), coerceInput(c, 0), coerceInput(c, cm(999))]).toEqual([cm(2), cm(400), cm(2), cm(400)]);
     expect(coerceInput(c, Number.NaN)).toBeNull();
     expect(coerceInput(c, "abc")).toBeNull();
     const { parts, at } = build("arduino-uno", "hc-sr04", "led");
-    expect(at(1, set(parts["hc-sr04"].id, { distanceCm: 2 })).nodes[parts.led.id].on).toBe(true);
-    expect(at(1, set(parts["hc-sr04"].id, { distanceCm: 400 })).nodes[parts.led.id].on).toBe(false);
+    expect(at(1, set(parts["hc-sr04"].id, { distance: cm(2) })).nodes[parts.led.id].on).toBe(true);
+    expect(at(1, set(parts["hc-sr04"].id, { distance: cm(400) })).nodes[parts.led.id].on).toBe(false);
   });
 
   it("the buzzer is an active buzzer beeping 150 ms on / 150 ms off while the warning holds; the LED stays steadily on", () => {
     const { parts, at } = build("arduino-uno", "hc-sr04", "led", "buzzer");
-    const near = set(parts["hc-sr04"].id, { distanceCm: 10 });
+    const near = set(parts["hc-sr04"].id, { distance: cm(10) });
     expect(at(1, near).nodes[parts.buzzer.id].tone).toEqual({ hz: 2300, pattern: { period: 0.3, duty: 0.5, phase: 0 } });
     for (let t = 1; t < 4; t += 0.05) expect(at(t, near).nodes[parts.led.id].on).toBe(true);
   });
 
   it("is steady while the input doesn't change, repeatable across the threshold, and clean after Stop → Run", () => {
     const { parts, at } = build("arduino-uno", "hc-sr04", "led", "buzzer");
-    const led = (t: number, distanceCm: number, running = true) => at(t, set(parts["hc-sr04"].id, { distanceCm }), running).nodes[parts.led.id].on;
+    const led = (t: number, distanceCm: number, running = true) => at(t, set(parts["hc-sr04"].id, { distance: cm(distanceCm) }), running).nodes[parts.led.id].on;
     for (const [d, on] of [[30, false], [10, true], [30, false], [10, true]] as const) for (let t = 0; t < 3; t += 0.25) expect(led(t, d)).toBe(on);
     expect(led(3, 10, false)).toBe(false);
-    expect(at(3, set(parts["hc-sr04"].id, { distanceCm: 10 }), false).nodes[parts.buzzer.id].tone).toBeNull();
+    expect(at(3, set(parts["hc-sr04"].id, { distance: cm(10) }), false).nodes[parts.buzzer.id].tone).toBeNull();
     expect(led(3.1, 10)).toBe(true);
   });
 });
@@ -283,7 +291,7 @@ describe("P1 · Experiment 04: PIR gate", () => {
 
   it("the servo stays within 0–180°, whatever the gate settings", () => {
     const c = findControl("arduino-uno", "gateOpen")!;
-    expect([coerceInput(c, -20), coerceInput(c, 270)]).toEqual([0, 180]);
+    expect([coerceInput(c, deg(-20)), coerceInput(c, deg(270))]).toEqual([0, Number(Math.PI.toPrecision(12))]);
   });
 });
 
@@ -300,8 +308,8 @@ describe("P1 · Experiment 05: DC motor", () => {
     it(`${id}: ${speed} % ${direction} → ${rpm} rpm, ${dir}`, () => {
       const { parts, at } = build("arduino-uno", "dc-motor");
       const m = parts["dc-motor"].id;
-      const f = at(2, set(m, { speed, direction }));
-      expect(reading(f, m, "Speed")).toBe(`${rpm} rpm`);
+      const f = at(2, set(m, { speed: pct(speed), direction }));
+      expect(reading(f, m, "Speed")).toBe(motorSpeedText(rpm));
       expect(reading(f, m, "Direction")).toBe(dir);
       expect(f.nodes[m].level).toBeCloseTo(speed / 100, 6);
       expect(f.pins[`${m}:EN`]).toBeCloseTo(speed / 100, 6);
@@ -312,8 +320,8 @@ describe("P1 · Experiment 05: DC motor", () => {
   it("DC-07: 50 % forward then reverse switches IN1/IN2 and turns the shaft the other way", () => {
     const { parts, at } = build("arduino-uno", "dc-motor");
     const m = parts["dc-motor"].id;
-    const fwd = (t: number) => at(t, set(m, { speed: 50, direction: "forward" }));
-    const rev = (t: number) => at(t, set(m, { speed: 50, direction: "reverse" }));
+    const fwd = (t: number) => at(t, set(m, { speed: pct(50), direction: "forward" }));
+    const rev = (t: number) => at(t, set(m, { speed: pct(50), direction: "reverse" }));
     expect([fwd(1).pins[`${m}:IN1`], fwd(1).pins[`${m}:IN2`]]).toEqual([1, 0]);
     expect([rev(1).pins[`${m}:IN1`], rev(1).pins[`${m}:IN2`]]).toEqual([0, 1]);
     const delta = (f: (t: number) => ReturnType<typeof frameAt>) => ((((f(1.01).nodes[m].angle! - f(1).nodes[m].angle!) % 360) + 540) % 360) - 180;
@@ -324,10 +332,10 @@ describe("P1 · Experiment 05: DC motor", () => {
   it("DC-08: speed 0, or Stop, halts it and it stays halted; the same setting gives the same speed on every run", () => {
     const { parts, at } = build("arduino-uno", "dc-motor");
     const m = parts["dc-motor"].id;
-    for (let t = 0; t < 10; t += 1) expect(reading(at(t, set(m, { speed: 0 })), m, "Speed")).toBe("0 rpm");
-    for (let t = 0; t < 10; t += 1) expect(at(t, set(m, { speed: 80 }), false).nodes[m].on).toBe(false);
-    const speeds = [1, 5, 50, 500].map((t) => reading(at(t, set(m, { speed: 60 })), m, "Speed"));
-    expect(new Set(speeds)).toEqual(new Set(["84 rpm"]));
+    for (let t = 0; t < 10; t += 1) expect(reading(at(t, set(m, { speed: pct(0) })), m, "Speed")).toBe("0.0 rad/s (0 rpm)");
+    for (let t = 0; t < 10; t += 1) expect(at(t, set(m, { speed: pct(80) }), false).nodes[m].on).toBe(false);
+    const speeds = [1, 5, 50, 500].map((t) => reading(at(t, set(m, { speed: pct(60) })), m, "Speed"));
+    expect(new Set(speeds)).toEqual(new Set(["8.8 rad/s (84 rpm)"]));
   });
 });
 
@@ -342,7 +350,7 @@ describe("P1 · Experiment 05: stepper", () => {
 
   it("100 steps at 100 steps/s, then 200: executed matches commanded, separately from position", () => {
     const { id, inputs, store } = start();
-    store.setInput(id, "stepsPerSecond", 100, 0);
+    store.setInput(id, "stepRate", 100, 0);
     store.commandStepper(id, 100, 0);
     expect(stepperStepsAt(inputs(), id, 0.5)).toBe(50);
     expect(stepperStepsAt(inputs(), id, 1)).toBe(100);
@@ -355,7 +363,7 @@ describe("P1 · Experiment 05: stepper", () => {
 
   it("reverse, Zero, and Stop partway: Stop holds and doesn't finish the move; a new move starts from there", () => {
     const { id, inputs, store } = start();
-    store.setInput(id, "stepsPerSecond", 100, 0);
+    store.setInput(id, "stepRate", 100, 0);
     store.commandStepper(id, -50, 0);
     expect(stepperStepsAt(inputs(), id, 1)).toBe(-50);
     store.zeroStepper(id, 1);
@@ -376,10 +384,10 @@ describe("P1 · Experiment 05: stepper", () => {
 
   it("changing the speed mid-move carries on from where the shaft is, with no jump", () => {
     const { id, inputs, store } = start();
-    store.setInput(id, "stepsPerSecond", 100, 0);
+    store.setInput(id, "stepRate", 100, 0);
     store.commandStepper(id, 1000, 0);
     expect(stepperStepsAt(inputs(), id, 2)).toBe(200);
-    store.setInput(id, "stepsPerSecond", 400, 2);
+    store.setInput(id, "stepRate", 400, 2);
     expect(stepperStepsAt(inputs(), id, 2)).toBe(200);
     expect(stepperStepsAt(inputs(), id, 3)).toBe(600);
     expect(stepperStepsAt(inputs(), id, 10)).toBe(1000);
@@ -389,14 +397,14 @@ describe("P1 · Experiment 05: stepper", () => {
   it("the Inspector shows position, the last move and how much of it is done as separate readings", () => {
     const { parts, at } = build("arduino-uno", "stepper-motor");
     const s = parts["stepper-motor"].id;
-    const f = at(1, set(s, { cmdStart: 0, cmdFrom: 0, cmdTarget: 200, cmdAt: 0, stepsPerSecond: 100 }));
+    const f = at(1, set(s, { cmdStart: 0, cmdFrom: 0, cmdTarget: 200, cmdAt: 0, stepRate: 100 }));
     expect(Object.fromEntries(f.nodes[s].readings.map((r) => [r.label, r.value]))).toEqual({ Position: "18°", "Position (steps)": "100", Command: "100 steps to go clockwise", "Last move": "+200 steps", Done: "100 of 200" });
   });
 
   it("long runs stay bounded: the angle wraps; 1000 turns don't overflow", () => {
     const { parts, at } = build("arduino-uno", "stepper-motor");
     const s = parts["stepper-motor"].id;
-    const f = at(1e6, set(s, { cmdFrom: 0, cmdTarget: 1000 * STEPPER_STEPS_PER_TURN, cmdAt: 0, stepsPerSecond: 1000 }));
+    const f = at(1e6, set(s, { cmdFrom: 0, cmdTarget: 1000 * STEPPER_STEPS_PER_TURN, cmdAt: 0, stepRate: 1000 }));
     expect(reading(f, s, "Position (steps)")).toBe(String(1000 * STEPPER_STEPS_PER_TURN));
     expect(f.nodes[s].angle).toBe(0);
   });

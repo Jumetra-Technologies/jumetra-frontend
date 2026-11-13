@@ -10,17 +10,58 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
-## [1.45.2] - 2026-11-13
+## [1.46.2] - 2026-11-13
 
 ### Fixed
-- **Desktop 0.13.10: two account requests at once no longer sign the app out (audit DESK-001).**
+- **Desktop 0.13.11: two account requests at once no longer sign the app out (audit DESK-001).**
   - When the access token had run out, each caller refreshed the session on its own with the same refresh token. Account import asks for two things at once, for example.
   - A refresh token can only be used once, so the second refresh was refused. The backend is now gaining replay detection (jumetra-backend audit fix BE-1), and with it that second refresh would also end the device's sign-in.
   - Now every caller waits for the same refresh.
   - Signing out while a refresh is in flight stays signed out.
-- **Desktop 0.13.10: an Arduino CLI that can't be started no longer leaves things looking connected (DESK-007).**
+- **Desktop 0.13.11: an Arduino CLI that can't be started no longer leaves things looking connected (DESK-007).**
   - Before, a failed spawn of the serial monitor or the Hybrid link left the port shown as open with nothing behind it. A failed spawn of the board watcher stopped watching for good.
   - Now they close and say why, or the watcher restarts.
+
+## [1.46.0] - 2026-11-12
+
+Every value you set on a part in the Engineering Lab is now a physical quantity in SI units. A resistor takes any value you type. Desktop 0.13.10.
+
+### Changed
+- **A resistor takes any value from 0.1 Ω to 10 MΩ.**
+  - Type it the way it's printed: `4.7k`, `4k7`, `4700`, `4.7 kΩ`, `330`, `1M`, `10M` or `4R7`.
+  - One click picks a common value: 220 Ω, 1 kΩ and 10 kΩ come first, then the E24 values of the decade you're in.
+  - A new **Tolerance** setting: ±5 % (the default) or ±1 %.
+  - The color bands are now right for every value: two digits, a multiplier (gold ×0.1 and silver ×0.01 below 10 Ω), then a tolerance band. 4.7 Ω is yellow, violet, gold.
+  - A value that isn't a standard E24 value is drawn as the nearest one ("Bands show 1.2 kΩ…"). The circuit still uses exactly what you typed.
+- **Every setting is stored in SI units and shown with an SI prefix:**
+
+  | Setting | Shown as |
+  |---|---|
+  | Distance | 300 mm |
+  | Pressure | 1013.2 hPa |
+  | Blink delay | 500 ms |
+  | Step rate | 256 Hz |
+  | Angle | 45° (radians are kept) |
+  | Humidity, moisture and motor duty | % (kept as a ratio) |
+  | Gas | ppm |
+
+  Temperature stays in °C (kelvins in its tooltip).
+- **The LDR is set in lux**, from 0 to 100 000 lx on a log slider, and shows the resistance that light gives it. The board's **Dark below** setting is in lux too.
+- **A potentiometer's knob** is its share of the track in %. It gets a **Track resistance** setting (10 kΩ by default) and shows the resistance from end A to the wiper.
+- **Typing a value works the same everywhere:**
+  - Enter keeps it, and Esc puts back the old value.
+  - A value that isn't a number, or is out of range, is refused with a message under the field instead of being clamped silently.
+  - The range is written under each field, each field has its own reset, and a slider sits beside it where a range is natural.
+- **A motor's speed** reads in rad/s with rpm after it: "14.7 rad/s (140 rpm)".
+- **The MCP server's `set_inputs`** takes SI numbers, or a value written with its unit: `{"distance": "120 mm"}`, `{"ohms": "4.7k"}`.
+- **Labs saved before this change open unchanged and simulate exactly as they did.** Their values are converted when they open (30 cm becomes 0.3 m, 1013 hPa becomes 101 300 Pa).
+  - Keys that named their unit get an SI name: `distanceCm` becomes `distance`, `delayMs` becomes `delay`, `pressureHpa` becomes `pressure`, `stepsPerSecond` becomes `stepRate`, and `warnCm`, `darkPct`, `dryPct` and the board's `gasPpm` become `warnDistance`, `darkBelow`, `dryBelow` and `gasAlarm`.
+  - Lab files are now written as version 2. An older Kiungo asks to be updated rather than misreading the values.
+- **Desktop 0.13.10:** all of the above, from the shared lab.
+
+### Fixed
+- **Resistor bands for values under 10 Ω, or with more than two significant digits, were wrong.** 4.7 Ω drew as 5 Ω, and 1234 Ω drew as 1.2 kΩ without saying so. The cache of recolored resistors is also now capped at 64.
+- **`npm run parts:check` failed on `main`:** it took the generated `catalog/counts.ts` for a part.
 
 ## [1.45.0] - 2026-11-12
 
@@ -978,7 +1019,8 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
-[1.45.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.45.1...v1.45.2
+[1.46.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.1...v1.46.2
+[1.46.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.45.0...v1.46.0
 [1.45.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.44.0...v1.45.0
 [1.44.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.43.0...v1.44.0
 [1.43.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.42.0...v1.43.0

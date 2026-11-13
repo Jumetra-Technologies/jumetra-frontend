@@ -3,7 +3,12 @@
  * shared, made by another tool (an AI model through the Kiungo MCP server,
  * say) and opened again in the Engineering Lab.
  *
- *   { "format": "kiungo-lab-session", "version": 1, "session": { …LabSession } }
+ *   { "format": "kiungo-lab-session", "version": 2, "session": { …LabSession } }
+ *
+ * Version 2 stores the parts' inputs in SI units (`session.units` 2: meters
+ * written as 0.3, not 30 cm). Version 1 files are still read, and converted;
+ * a lab that only knows version 1 refuses a version 2 file with "Update
+ * Kiungo" instead of misreading its values.
  *
  * Reading is strict about what the lab can draw and lenient about the rest:
  * parts the lab has no pinout for, wires to pins that don't exist and
@@ -14,12 +19,13 @@
  */
 
 import { getPinout, hasPinout } from "./pinout";
+import { migrateSessionUnits } from "./session";
 import type { LabNode, LabSession, LabView, LabWire, LogEntry, LogKind, NodeInputs } from "./types";
 
 const LOG_KINDS = new Set<LogKind>(["session", "build", "wire", "run", "state", "fault", "fix", "note"]);
 
 export const SESSION_FILE_FORMAT = "kiungo-lab-session";
-export const SESSION_FILE_VERSION = 1;
+export const SESSION_FILE_VERSION = 2;
 export const SESSION_FILE_EXTENSION = ".kiungo.json";
 
 export interface SessionFile {
@@ -163,7 +169,9 @@ export function parseSessionFile(input: string | unknown, opts: { keepId?: boole
     view: (s.view === "reality" || s.view === "flow" ? s.view : "top") as LabView,
     runMs: Math.max(0, num(s.runMs, 0)),
     inputs,
+    ...(typeof s.units === "number" ? { units: s.units } : {}),
     runtime: null,
   };
-  return { session, warnings };
+  // A file saved before SI units is read in today's units.
+  return { session: migrateSessionUnits(session), warnings };
 }

@@ -143,11 +143,11 @@ export default definePart({
   sim: {
     kind: "sensor",
     reads: [
-      { key: "headingDeg", label: "Heading", unit: "°", min: 0, max: 360, step: 1, start: 0, sweep: [0, 360, 20], digits: 0 },
-      { key: "pitchDeg", label: "Pitch", unit: "°", min: -90, max: 90, step: 1, start: 0, sweep: [-25, 25, 8], digits: 0 },
-      { key: "rollDeg", label: "Roll", unit: "°", min: -180, max: 180, step: 1, start: 0, sweep: [-40, 40, 11], digits: 0 },
+      { key: "heading", label: "Heading", unit: "°", min: 0, max: 360, step: 1, start: 0, sweep: [0, 360, 20], digits: 0 },
+      { key: "pitch", label: "Pitch", unit: "°", min: -90, max: 90, step: 1, start: 0, sweep: [-25, 25, 8], digits: 0 },
+      { key: "roll", label: "Roll", unit: "°", min: -180, max: 180, step: 1, start: 0, sweep: [-40, 40, 11], digits: 0 },
     ],
-    badge: "headingDeg",
+    badge: "heading",
   },
   experiment: { title: "Steer straight", idea: "Read the heading, note it as the goal, then make a two-wheel robot turn left or right until the heading matches it again. No filter code to write." },
   tags: ["bno055", "imu", "orientation", "heading", "compass", "gyro", "accelerometer", "9-dof", "i2c", "sensor"],

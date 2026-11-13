@@ -380,7 +380,7 @@ describe("Engineering Lab", () => {
     const [, dht, lcd] = useLab.getState().sessions[0].nodes;
     act(() => {
       useLab.getState().setInput(dht.id, "temperatureC", 50);
-      useLab.getState().setInput(dht.id, "humidity", 70);
+      useLab.getState().setInput(dht.id, "humidity", 0.7);
     });
     fireEvent.click(screen.getByTestId("run-toggle"));
     const card = (await screen.findAllByTestId("lab-node")).find((el) => el.getAttribute("data-part") === "lcd-16x2")!;

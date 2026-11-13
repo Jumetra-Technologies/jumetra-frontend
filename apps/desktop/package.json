@@ -1,7 +1,7 @@
 {
   "name": "@kiungo/desktop",
   "productName": "Kiungo",
-  "version": "0.13.10",
+  "version": "0.13.11",
   "private": true,
   "description": "Kiungo 2: the desktop app for building, coding and running robotics projects.",
   "author": "Kiungo Labs Technologies",

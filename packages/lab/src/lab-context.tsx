@@ -67,7 +67,16 @@ export interface ProgramDriver {
         /** The code runs on a real board: the lab shows the emergency stop. */
         real?: boolean;
       }
-    | { ok: false; message: string }
+    | {
+        ok: false;
+        message: string;
+        /**
+         * The program couldn't be built for a reason that isn't the code (the website's
+         * compiler can't be reached, it's busy): the lab runs the board's built-in
+         * behavior instead and shows the message, rather than not running at all.
+         */
+        fallback?: boolean;
+      }
   >;
   stop: () => void;
   /** What the board's sensors read now. */

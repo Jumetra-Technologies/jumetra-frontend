@@ -61,7 +61,7 @@ A simpler lab top bar and the whole parts library in one place: **+ Add**. Deskt
 
 ## [1.45.0] - 2026-11-12
 
-Every value you set on a part in the Engineering Lab is now a physical quantity in SI units. A resistor takes any value you type. Desktop 0.13.9.
+Every value you set on a part in the Engineering Lab is now a physical quantity in SI units. A resistor takes any value you type. Desktop 0.13.10.
 
 ### Changed
 - **A resistor takes any value from 0.1 Ω to 10 MΩ.**
@@ -94,11 +94,25 @@ Every value you set on a part in the Engineering Lab is now a physical quantity 
 - **Labs saved before this change open unchanged and simulate exactly as they did.** Their values are converted when they open (30 cm becomes 0.3 m, 1013 hPa becomes 101 300 Pa).
   - Keys that named their unit get an SI name: `distanceCm` becomes `distance`, `delayMs` becomes `delay`, `pressureHpa` becomes `pressure`, `stepsPerSecond` becomes `stepRate`, and `warnCm`, `darkPct`, `dryPct` and the board's `gasPpm` become `warnDistance`, `darkBelow`, `dryBelow` and `gasAlarm`.
   - Lab files are now written as version 2. An older Kiungo asks to be updated rather than misreading the values.
-- **Desktop 0.13.9:** all of the above, from the shared lab.
+- **Desktop 0.13.10:** all of the above, from the shared lab.
 
 ### Fixed
 - **Resistor bands for values under 10 Ω, or with more than two significant digits, were wrong.** 4.7 Ω drew as 5 Ω, and 1234 Ω drew as 1.2 kΩ without saying so. The cache of recolored resistors is also now capped at 64.
 - **`npm run parts:check` failed on `main`:** it took the generated `catalog/counts.ts` for a part.
+
+## [1.45.0] - 2026-11-12
+
+### Added
+- **The website's lab can run your own code (WP-D2).** A web program driver (`lib/lab/program.ts`), modeled on the desktop's, does the following when you press Run:
+  - It sends the session's sketch to Kiungo's compile service (`lib/lab/compile.ts`, `https://kiungo-compile.onrender.com`).
+  - It loads the Intel HEX into the shared emulator in a worker (`lib/lab/emulator-worker.ts`).
+  - It feeds the board's pins and serial to the lab.
+  - Builds come back in the desktop's `BuildResult` shape, with problems parsed by the shared `parseDiagnostics`.
+- **When the driver steps aside**, Run shows the built-in behavior and says why: there's no code, there's no Arduino Uno, or the Uno is marked Physical or Hybrid.
+- **If the compiler can't be reached or is busy**, Run falls back to the built-in behavior with a clear message instead of failing.
+- **A sketch the compiler refuses**, or one with mistakes, stops the run with its problems.
+- **The compile service is woken when the lab opens**, because its free plan sleeps.
+- **The shared lab: `ProgramDriver.start` can answer `{ ok: false, fallback: true }`**, and the lab then runs the built-in behavior and shows the message. Desktop 0.13.9 carries this change; its own runs never fall back.
 
 ## [1.44.0] - 2026-11-12
 

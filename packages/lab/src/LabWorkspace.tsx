@@ -369,9 +369,15 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
           if (!result.ok) {
             programBoardRef.current = null;
             setProgramRun(null);
+            setToast(result.message);
+            // Not the code's fault (the website's compiler is out of reach): run the built-in behavior instead.
+            if (result.fallback) {
+              store.getState().log("note", result.message);
+              begin();
+              return;
+            }
             setPower("off");
             store.getState().log("fault", `Run stopped: ${result.message}`);
-            setToast(result.message);
             return;
           }
           setSerial((lines) => (lines.length && lines[lines.length - 1] !== "" ? [...lines, ""] : lines));

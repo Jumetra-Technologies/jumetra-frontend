@@ -174,20 +174,21 @@ describe("Engineering Lab", () => {
     vi.useRealTimers();
   });
 
-  it("opens with only the canvas: the parts library waits behind + Add, the inspector behind its button", async () => {
+  it("opens with only the canvas: the parts library waits behind + Add, a part's properties behind a click on it", async () => {
     render(<EngineeringLab />);
     await screen.findByTestId("lab-empty");
     expect(screen.queryByTestId("lab-search")).not.toBeInTheDocument();
     // No side-panel toggle for parts any more (B8.1): + Add opens the library as a modal.
     expect(screen.queryByRole("button", { name: /components panel/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Show inspector" })).toHaveAttribute("aria-pressed", "false");
+    // No inspector panel or its toggle any more (B3): properties open from the part itself.
+    expect(screen.queryByRole("button", { name: /inspector/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("properties-popover")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
     expect(screen.getByTestId("lab-search")).toBeInTheDocument();
     // The X shows its press for a moment, then closes.
     fireEvent.click(within(screen.getByTestId("parts-modal")).getByRole("button", { name: "Close" }));
     await waitFor(() => expect(screen.queryByTestId("lab-search")).not.toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Show inspector" }));
-    expect(screen.getByRole("button", { name: "Hide inspector" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("complementary", { name: "Inspector" })).not.toBeInTheDocument();
   });
 
   it("Stop halts the clock and a rerun continues it at the same rate: no duplicate timers", async () => {
@@ -389,7 +390,7 @@ describe("Engineering Lab", () => {
     expect(screen.getByTestId("run-toggle")).toHaveTextContent("Stop");
   });
 
-  it("the Inspector's preview of an LCD shows what the sketch wrote, as the canvas does, never the library's sample text", async () => {
+  it("an LCD shows what the sketch wrote, never the library's sample text, and its properties stay live during the run", async () => {
     render(<EngineeringLab />);
     await screen.findByTestId("lab-empty");
     fireEvent.click(screen.getByTestId("quick-arduino-uno"));
@@ -408,14 +409,14 @@ describe("Engineering Lab", () => {
     fireEvent.click(screen.getByTestId("run-toggle"));
     const card = (await screen.findAllByTestId("lab-node")).find((el) => el.getAttribute("data-part") === "lcd-16x2")!;
     fireEvent.click(within(card).getByText(lcd.label));
-    fireEvent.click(screen.getByRole("button", { name: "Show inspector" }));
+    // The thumbnails are gone from the properties (B3): the canvas is where the glass shows.
     const inspector = await screen.findByTestId("node-inspector");
     const glassText = (root: HTMLElement) => [...root.querySelectorAll("svg text")].map((e) => e.textContent ?? "").filter((t) => /Temp|Hum|Hello|24\.5/.test(t));
-    await waitFor(() => expect(within(inspector).getAllByText("Temp: 50.0 °C").length).toBeGreaterThan(0));
-    expect(within(inspector).getAllByText("Hum: 70 %").length).toBeGreaterThan(0);
-    expect(within(inspector).queryByText("Temp: 24.5 C")).toBeNull();
-    expect(within(inspector).queryByText("Hello, Kiungo!")).toBeNull();
+    await waitFor(() => expect(glassText(card).join("|")).toMatch(/Temp: 50\.0 °C/));
+    expect(glassText(card).join("|")).toMatch(/Hum: 70 %/);
     expect(glassText(card).join("|")).not.toMatch(/24\.5 C|Hello/);
+    expect(within(inspector).queryByText("Hello, Kiungo!")).toBeNull();
+    expect(screen.getByTestId("run-toggle")).toHaveTextContent("Stop");
     fireEvent.click(screen.getByTestId("run-toggle"));
   });
 

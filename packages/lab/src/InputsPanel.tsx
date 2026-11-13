@@ -12,7 +12,7 @@ import { cn } from "@kiungo/ui/cn";
 import { useLabContext } from "./lab-context";
 
 /**
- * The part's inputs in the Inspector: a sensor's surroundings, an actuator's
+ * The part's inputs in its properties popover: a sensor's surroundings, an actuator's
  * command or a board's sketch settings. Values go to the session, so the
  * next frame of the simulation reads them, running or not.
  */

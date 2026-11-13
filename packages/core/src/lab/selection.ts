@@ -42,3 +42,40 @@ export function nextSelection(current: Selection, nodeChanges: readonly SelectCh
   const same = wire === current.wire && ids.length === current.nodes.length && ids.every((id, i) => id === current.nodes[i]);
   return same ? null : { nodes: ids, wire };
 }
+
+/** What the properties popover (B3) shows: one part, or one wire. */
+export type PropertiesTarget = { kind: "node"; id: string } | { kind: "wire"; id: string };
+
+/**
+ * Whether a click on the canvas opens the properties popover, and for what.
+ * Only a plain click does: Shift, Cmd or Ctrl add to a selection, and a click
+ * that ends a drag (or a marquee) only moves or picks things.
+ */
+export function propertiesOnClick(click: { kind: "node" | "wire"; id: string; shiftKey?: boolean; metaKey?: boolean; ctrlKey?: boolean; dragged?: boolean }): PropertiesTarget | null {
+  if (click.dragged || click.shiftKey || click.metaKey || click.ctrlKey) return null;
+  return { kind: click.kind, id: click.id };
+}
+
+/** Whether the popover's target is still what's selected; it closes when it isn't. */
+export function propertiesShown(target: PropertiesTarget | null, selection: Selection): boolean {
+  if (!target) return false;
+  if (target.kind === "node") return selection.nodes.length === 1 && selection.nodes[0] === target.id;
+  return !selection.nodes.length && selection.wire === target.id;
+}
+
+type Rect = { left: number; top: number; right: number; bottom: number };
+
+/**
+ * Where the popover goes: beside its anchor, on the right if it fits and
+ * flipped to the left if it doesn't (then whichever side has more room), its
+ * top level with the anchor's and kept inside the bounds.
+ */
+export function placePopover(anchor: Rect, size: { width: number; height: number }, bounds: Rect, gap = 12): { left: number; top: number; side: "right" | "left" } {
+  const roomRight = bounds.right - anchor.right - gap;
+  const roomLeft = anchor.left - bounds.left - gap;
+  const side = roomRight >= size.width || roomRight >= roomLeft ? "right" : "left";
+  const rawLeft = side === "right" ? anchor.right + gap : anchor.left - gap - size.width;
+  const left = Math.max(bounds.left + 8, Math.min(rawLeft, bounds.right - size.width - 8));
+  const top = Math.max(bounds.top + 8, Math.min(anchor.top, bounds.bottom - size.height - 8));
+  return { left: Math.round(left), top: Math.round(top), side };
+}

@@ -31,6 +31,15 @@ import { WireEdge, type WireEdgeData } from "./WireEdge";
 const nodeTypes = { part: PartNode };
 const edgeTypes = { wire: WireEdge };
 
+export interface LabCanvasProps {
+  onDropPart: (partId: string, at: { x: number; y: number }) => void;
+  onDropFile?: (file: File) => void;
+  /** A click on a part or a wire, not one that ends a drag: the lab decides whether properties open. */
+  onItemClick?: (click: { kind: "node" | "wire"; id: string; shiftKey: boolean; metaKey: boolean; ctrlKey: boolean; dragged: boolean; at: { x: number; y: number } }) => void;
+  /** The canvas started to pan or zoom. */
+  onViewportMove?: () => void;
+}
+
 export interface LabCanvasHandle {
   focus: (id: string) => void;
   /** Pan and zoom so these parts are all in view (no zooming in past 1). */
@@ -75,10 +84,10 @@ function wireMeta(wire: LabWire, nodes: LabNode[]): WireEdgeData {
   const intoPart = role === "vcc" || role === "drive" || role === "pwm" || role === "rx" || role === "mosi" || role === "sck" || role === "cs" || role === "scl" || role === undefined;
   const forward = boardIsSource ? intoPart : !intoPart;
   const label = `${nodeOf(wire.from.node)?.label ?? ""} ${a?.label ?? wire.from.pin} → ${nodeOf(wire.to.node)?.label ?? ""} ${b?.label ?? wire.to.pin}`;
-  return { tone, reverse: !forward, label };
+  return { tone, reverse: !forward, label, ...(wire.color ? { color: wire.color } : {}) };
 }
 
-const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x: number; y: number }) => void; onDropFile?: (file: File) => void }>(function Inner({ onDropPart, onDropFile }, ref) {
+const Inner = forwardRef<LabCanvasHandle, LabCanvasProps>(function Inner({ onDropPart, onDropFile, onItemClick, onViewportMove }, ref) {
   const { session, selectedNodes, selectedWire, select, openContextMenu, view } = useLabContext();
   const moveNode = useLab((s) => s.moveNode);
   const addWire = useLab((s) => s.addWire);
@@ -87,6 +96,8 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
   const flow = useReactFlow();
   const wrapper = useRef<HTMLDivElement>(null);
   const fittedFor = useRef<string | null>(null);
+  // Set while a part is being dragged, so the click that ends the drag doesn't open its properties.
+  const dragging = useRef(false);
 
   const [nodes, setNodes, onNodesChangeBase] = useNodesState<Node<PartNodeData>>(session.nodes.map((n) => toFlowNode(n, selectedNodes.includes(n.id), session.nodes, view)));
 
@@ -243,11 +254,23 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
         connectionRadius={22}
         // While the canvas pans or zooms it moves as one layer, so the parts aren't redrawn every
         // frame (DSK-21); the attribute goes when it stops, so the parts redraw sharp at the new zoom.
-        onMoveStart={() => wrapper.current?.setAttribute("data-moving", "")}
+        onMoveStart={() => {
+          wrapper.current?.setAttribute("data-moving", "");
+          onViewportMove?.();
+        }}
         onMoveEnd={() => wrapper.current?.removeAttribute("data-moving")}
+        onNodeDragStart={() => {
+          dragging.current = true;
+        }}
         onNodeDragStop={(_, node, dragged) => {
           for (const n of dragged?.length ? dragged : [node]) moveNode(n.id, n.position.x, n.position.y);
+          // The click that ends the drag comes after this; let it through first, then forget the drag.
+          window.setTimeout(() => {
+            dragging.current = false;
+          }, 0);
         }}
+        onNodeClick={(e, node) => onItemClick?.({ kind: "node", id: node.id, shiftKey: e.shiftKey, metaKey: e.metaKey, ctrlKey: e.ctrlKey, dragged: dragging.current, at: { x: e.clientX, y: e.clientY } })}
+        onEdgeClick={(e, edge) => onItemClick?.({ kind: "wire", id: edge.id, shiftKey: e.shiftKey, metaKey: e.metaKey, ctrlKey: e.ctrlKey, dragged: false, at: { x: e.clientX, y: e.clientY } })}
         onNodesDelete={(ns) => removeNodes(ns.map((n) => n.id))}
         onEdgesDelete={(es) => removeWires(es.map((e) => e.id))}
         deleteKeyCode={["Delete", "Backspace"]}
@@ -284,7 +307,7 @@ const Inner = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x
   );
 });
 
-export const LabCanvas = forwardRef<LabCanvasHandle, { onDropPart: (partId: string, at: { x: number; y: number }) => void; onDropFile?: (file: File) => void }>(function LabCanvas(props, ref) {
+export const LabCanvas = forwardRef<LabCanvasHandle, LabCanvasProps>(function LabCanvas(props, ref) {
   return (
     <ReactFlowProvider>
       <Inner {...props} ref={ref} />

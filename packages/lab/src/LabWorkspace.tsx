@@ -10,7 +10,8 @@ import {
   Cpu,
   Grid2x2,
   Maximize,
-  PanelRight,
+  ClipboardList,
+  SlidersHorizontal,
   Plus,
   Redo2,
   RotateCcw,
@@ -43,7 +44,10 @@ import { VIEW_COPY } from "@kiungo/ui/views";
 import { cn } from "@kiungo/ui/cn";
 import { PartsModal, TEMPLATES, nextCascade, placeFromModal, type Cascade } from "./PartsModal";
 import { LabTopBar } from "./LabTopBar";
-import { Inspector } from "./Inspector";
+import { CircuitSummary, PartProperties, WireProperties } from "./Inspector";
+import { PropertiesPopover } from "./PropertiesPopover";
+import { Dialog } from "@kiungo/ui/dialog";
+import { propertiesOnClick, propertiesShown, type PropertiesTarget } from "@kiungo/core/lab/selection";
 import { LabCanvas, type LabCanvasHandle } from "./LabCanvas";
 import { LabContext, LabHostContext, type LabContextValue, type LabHost, type ProgramDriver, type RuntimeStatus } from "./lab-context";
 import { LabDock, type DockTab } from "./LabDock";
@@ -94,7 +98,8 @@ export interface LabWorkspaceHandle {
   run: () => void;
   stop: () => void;
   focusSearch: () => void;
-  toggleInspector: () => void;
+  /** Open the properties popover for a part (or what is selected); with nothing selected, the circuit summary. */
+  openProperties: (nodeId?: string) => void;
   fit: () => void;
   setView: (view: LabView) => void;
   undo: () => void;
@@ -120,7 +125,7 @@ export interface LabWorkspaceProps {
   saveStatus?: ReactNode;
   /** Before everything in the top bar (the desktop app's Home button). */
   leading?: ReactNode;
-  /** After everything in the top bar, beside the Inspector button (the desktop app's code toggle). */
+  /** After everything in the top bar (the desktop app's code toggle). */
   trailing?: ReactNode;
   /** Told when a run starts or stops, so the host can show it (the desktop app's editor). */
   onRunningChange?: (running: boolean) => void;
@@ -142,16 +147,19 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
   const future = useLab((s) => s.future.length);
   const session = useActiveSession();
   const store = useLab;
-  const xl = useIsWide("(min-width: 1280px)");
+  // Under 768 px the properties popover is a bottom sheet.
+  const wide = useIsWide("(min-width: 768px)");
 
   // Panels
   // Panels start open where there's room for them beside the canvas.
   const fits = (query: string) => typeof window === "undefined" || typeof window.matchMedia !== "function" || window.matchMedia(query).matches;
-  // The canvas gets the whole screen when a session opens; the parts panel
-  // and the inspector wait behind their buttons in the top bar (and "/" or
-  // right-click → Search parts / Inspect).
+  // The canvas gets the whole screen: the parts library is a modal behind
+  // + Add (or "/"), and a part's properties open beside it when it's clicked.
   const [partsOpen, setPartsOpen] = useState(false);
-  const [rightOpen, setRightOpen] = useState(false);
+  // The properties popover (B3): what it's for, and for a wire where it was clicked.
+  const [properties, setProperties] = useState<{ target: PropertiesTarget; at?: { x: number; y: number } } | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const canvasArea = useRef<HTMLElement>(null);
   const [dockOpen, setDockOpen] = useState(() => fits("(min-height: 720px) and (min-width: 768px)"));
   const [dockTab, setDockTab] = useState<DockTab>("activity");
   const [dockHeight, setDockHeight] = useState(200);
@@ -179,7 +187,6 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
   const [serial, setSerial] = useState<string[]>([]);
   const recorder = useRef<RunRecorder | null>(null);
 
-  const showRight = rightOpen;
   // The + Add button, for focus to come back to when the parts modal closes.
   const addButton = useRef<HTMLButtonElement>(null);
   // Parts added while the modal stays open (Shift-click) cascade from where the first one went.
@@ -502,7 +509,43 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
   const select = useCallback((ids: string[], wire: string | null = null) => {
     setSelectedNodes(ids);
     setSelectedWire(wire);
+    // The properties popover goes when what it's for is no longer the selection, so it can't come back on its own later.
+    setProperties((p) => (p && propertiesShown(p.target, { nodes: ids, wire }) ? p : null));
   }, []);
+
+  // ----- properties popover (B3) ------------------------------------------------
+  // It shows while what it's for is still the selection (and still exists):
+  // Shift-picking more, clicking the pane, or dragging another part closes it
+  // (see select). Nothing here touches the run, so knobs work while it runs.
+  const propertiesTargetExists = !properties || (properties.target.kind === "node" ? !!session?.nodes.some((n) => n.id === properties.target.id) : !!session?.wires.some((w) => w.id === properties.target.id));
+  const propertiesOpen = propertiesTargetExists && propertiesShown(properties?.target ?? null, { nodes: selectedNodes, wire: selectedWire });
+  const closeProperties = useCallback(() => setProperties(null), []);
+  const openProperties = useCallback(
+    (nodeId?: string) => {
+      if (nodeId) {
+        select([nodeId], null);
+        setProperties({ target: { kind: "node", id: nodeId } });
+      } else if (selectedNodes.length === 1) setProperties({ target: { kind: "node", id: selectedNodes[0] } });
+      else if (selectedWire && !selectedNodes.length) setProperties({ target: { kind: "wire", id: selectedWire } });
+      else setSummaryOpen(true);
+    },
+    [select, selectedNodes, selectedWire],
+  );
+  const onItemClick = useCallback((click: Parameters<typeof propertiesOnClick>[0] & { at: { x: number; y: number } }) => {
+    const target = propertiesOnClick(click);
+    setProperties(target ? { target, at: click.at } : null);
+  }, []);
+  /** Where the popover points: the part's card, or the spot on the wire that was clicked. */
+  const propertiesAnchor = useCallback(() => {
+    if (!properties) return null;
+    const root = canvasArea.current;
+    if (properties.target.kind === "node") {
+      const el = root?.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(properties.target.id)}"]`);
+      return el?.getBoundingClientRect() ?? null;
+    }
+    if (properties.at) return { left: properties.at.x, right: properties.at.x, top: properties.at.y - 16, bottom: properties.at.y + 16 };
+    return root?.querySelector<SVGElement>(`.react-flow__edge[data-id="${CSS.escape(properties.target.id)}"]`)?.getBoundingClientRect() ?? null;
+  }, [properties]);
 
   const focusNode = useCallback(
     (id: string) => {
@@ -650,7 +693,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
       run: () => startRun(),
       stop: () => stopRun(),
       focusSearch: openParts,
-      toggleInspector: () => setRightOpen((v) => !v),
+      openProperties,
       fit: () => canvasApi?.fit(),
       setView: (view) => store.getState().setView(view),
       undo: () => store.getState().undo(),
@@ -658,7 +701,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
       openFile: chooseFile,
       exportJson,
     }),
-    [running, power, stopRun, startRun, openParts, setRightOpen, canvasApi, store, exportJson, chooseFile],
+    [running, power, stopRun, startRun, openParts, openProperties, canvasApi, store, exportJson, chooseFile],
   );
 
   if (!hydrated || !session || !ctx) return <LabSkeleton />;
@@ -679,7 +722,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
       const targets = selectedNodes.includes(nodeId) ? selectedNodes : [nodeId];
       return [
         { type: "label", id: "l", label: node.label },
-        { id: "inspect", label: "Inspect", icon: <PanelRight />, onSelect: () => (select([nodeId]), setRightOpen(true)) },
+        { id: "inspect", label: "Properties", icon: <SlidersHorizontal />, onSelect: () => openProperties(nodeId) },
         ...(!isBoard ? [{ id: "autowire", label: "Auto-wire to board", icon: <Wand2 />, onSelect: () => autowireNode(nodeId) }] : []),
         ...(nodeWires.length ? [{ id: "unwire", label: `Remove ${nodeWires.length} wire${nodeWires.length === 1 ? "" : "s"}`, icon: <Scissors />, onSelect: () => store.getState().removeWires(nodeWires.map((w) => w.id)) }] : []),
         { id: "dup", label: targets.length > 1 ? `Duplicate ${targets.length} parts` : "Duplicate", icon: <Copy />, shortcut: "⌘D", onSelect: () => select(store.getState().duplicateNodes(targets).map((n) => n.id)) },
@@ -690,7 +733,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
     }
     if (wireId) {
       return [
-        { id: "inspect", label: "Inspect wire", icon: <PanelRight />, onSelect: () => (select([], wireId), setRightOpen(true)) },
+        { id: "inspect", label: "Wire properties", icon: <SlidersHorizontal />, onSelect: () => (select([], wireId), setProperties({ target: { kind: "wire", id: wireId }, at: menu.at })) },
         { id: "delete", label: "Delete wire", icon: <Trash2 />, shortcut: "⌫", danger: true, onSelect: () => store.getState().removeWires([wireId]) },
       ];
     }
@@ -737,6 +780,7 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
     { id: "undo", label: "Undo", icon: <Undo2 />, shortcut: "⌘Z", disabled: !past, onSelect: () => store.getState().undo() },
     { id: "redo", label: "Redo", icon: <Redo2 />, shortcut: "⇧⌘Z", disabled: !future, onSelect: () => store.getState().redo() },
     { id: "fit", label: "Fit to screen", icon: <Maximize />, onSelect: () => canvasApi?.fit() },
+    { id: "summary", label: "Circuit summary", icon: <ClipboardList />, onSelect: () => setSummaryOpen(true) },
     { id: "view", label: "View", items: VIEW_OPTIONS.map((o) => ({ id: o.id, label: o.label, checked: session.view === o.id, onSelect: () => store.getState().setView(o.id) })) },
     { type: "separator", id: "s2" },
     { id: "open", label: `Open a ${SESSION_FILE_EXTENSION} file…`, onSelect: chooseFile },
@@ -790,21 +834,21 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
           view={session.view}
           views={VIEW_OPTIONS}
           onView={(v) => store.getState().setView(v)}
-          trailing={
-            <>
-              {trailing}
-              <button type="button" onClick={() => setRightOpen(!showRight)} aria-pressed={showRight} aria-label={showRight ? "Hide inspector" : "Show inspector"} title="Inspector" className={cn("flex size-9 items-center justify-center rounded-[10px] transition-colors", showRight ? "bg-muted-bg text-foreground" : "text-muted hover:bg-muted-bg")}>
-                <PanelRight className="size-4" />
-              </button>
-            </>
-          }
+          trailing={trailing}
           saveStatus={saveStatus}
         />
 
         <div className="relative flex min-h-0 flex-1">
           {/* Canvas */}
-          <main className="relative min-h-0 min-w-0 flex-1 bg-canvas" aria-label="Circuit canvas">
-            <LabCanvas ref={setCanvasApi} onDropPart={(partId, at) => addPart(partId, { at, autowire })} onDropFile={(file) => void openFile(file)} />
+          <main ref={canvasArea} className="relative min-h-0 min-w-0 flex-1 bg-canvas" aria-label="Circuit canvas">
+            <LabCanvas
+              ref={setCanvasApi}
+              onDropPart={(partId, at) => addPart(partId, { at, autowire })}
+              onDropFile={(file) => void openFile(file)}
+              onItemClick={onItemClick}
+              // A wire's popover points at where it was clicked, which pans away with the canvas.
+              onViewportMove={() => setProperties((p) => (p?.target.kind === "wire" ? null : p))}
+            />
             <input
               ref={setFileInput}
               type="file"
@@ -869,14 +913,17 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
             ) : null}
           </main>
 
-          {/* Right: inspector */}
-          {showRight ? (
-            <>
-              {!xl ? <button type="button" aria-label="Close inspector" onClick={() => setRightOpen(false)} className="absolute inset-0 z-30 bg-black/20 xl:hidden" /> : null}
-              <aside className={cn("hhip-scroll w-[320px] max-w-[88vw] shrink-0 overflow-y-auto border-l border-border bg-surface", !xl && "absolute inset-y-0 right-0 z-40 shadow-[var(--shadow-md)]")} aria-label="Inspector">
-                <Inspector />
-              </aside>
-            </>
+          {properties && propertiesOpen ? (
+            <PropertiesPopover
+              key={`${properties.target.kind}:${properties.target.id}`}
+              anchor={propertiesAnchor}
+              bounds={canvasArea}
+              sheet={!wide}
+              label={properties.target.kind === "node" ? `Properties: ${session.nodes.find((n) => n.id === properties.target.id)?.label ?? "part"}` : "Wire properties"}
+              onClose={closeProperties}
+            >
+              {properties.target.kind === "node" ? <PartProperties id={properties.target.id} onClose={closeProperties} /> : <WireProperties id={properties.target.id} onClose={closeProperties} />}
+            </PropertiesPopover>
           ) : null}
         </div>
 
@@ -930,6 +977,10 @@ export const LabWorkspace = forwardRef<LabWorkspaceHandle, LabWorkspaceProps>(fu
           }
           returnFocus={() => addButton.current}
         />
+
+        <Dialog open={summaryOpen} onClose={() => setSummaryOpen(false)} title="Circuit summary" testId="circuit-summary" className="max-w-md">
+          <CircuitSummary />
+        </Dialog>
 
         <ContextMenu at={menu?.at ?? null} items={contextItems} onClose={() => setMenu(null)} />
       </div>

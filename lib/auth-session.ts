@@ -52,8 +52,9 @@ export function getStoredAuthSession(): AuthSession | null {
       return session as AuthSession;
     }
   } catch (error) {
+    // Unreadable (cut off, or edited by hand): forget it and carry on signed out. Throwing here
+    // broke every page, since the app reads the session on each load and each request (audit WEB-001).
     console.error("Could not read the saved sign-in session.", error);
-    throw error;
   }
   window.localStorage.removeItem(AUTH_STORAGE_KEY);
   return null;

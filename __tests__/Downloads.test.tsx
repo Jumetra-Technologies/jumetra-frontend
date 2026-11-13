@@ -216,7 +216,7 @@ describe("the download route", () => {
     expect(sent.get("range")).toBe("bytes=0-2");
     expect(res.status).toBe(206);
     expect(res.headers.get("content-range")).toBe("bytes 0-2/10");
-    expect(res.headers.get("content-disposition")).toBe('attachment; filename="Kiungo-0.11.0-win-x64.exe"');
+    expect(res.headers.get("content-disposition")).toBe("attachment; filename=\"Kiungo-0.11.0-win-x64.exe\"; filename*=UTF-8''Kiungo-0.11.0-win-x64.exe");
     expect(res.headers.get("cache-control")).toBe("no-store");
     expect(new Uint8Array(await res.arrayBuffer())).toHaveLength(3);
   });

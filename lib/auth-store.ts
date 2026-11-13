@@ -113,6 +113,26 @@ const initialState: AuthState = {
 
 let refreshInFlight: Promise<void> | null = null;
 
+/**
+ * Tell the server this session is over, so its refresh token stops working too; forgetting it in
+ * the browser alone left it valid for a month (audit N-6). Best effort, in the background:
+ * signing out never waits on the network or fails because of it.
+ */
+function endServerSession(session: AuthSession | null): void {
+  if (!session || typeof fetch !== "function") return;
+  try {
+    void fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ refresh_token: session.refresh_token ?? null }),
+      credentials: "include",
+      keepalive: true,
+    }).catch(() => undefined);
+  } catch {
+    // No network API here (tests, old browsers): the browser side is still cleared.
+  }
+}
+
 export const useAuthStore = create<AuthStore>((set, get) => ({
   ...initialState,
   setSession: (session) => {
@@ -132,6 +152,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     });
   },
   logout: () => {
+    endServerSession(getStoredAuthSession());
     clearStoredAuthSession();
     set({ user: null, accessToken: null, isAuthenticated: false, error: null, isLoading: false });
   },

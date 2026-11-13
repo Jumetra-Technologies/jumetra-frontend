@@ -23,6 +23,15 @@ const PLATFORM: Record<DesktopSignInDetails["device"]["platform"], string> = { w
 type Step = { kind: "loading" } | { kind: "ask"; details: DesktopSignInDetails } | { kind: "working"; details: DesktopSignInDetails } | { kind: "approved"; details: DesktopSignInDetails; link: string } | { kind: "denied"; details: DesktopSignInDetails } | { kind: "problem"; message: string };
 
 /** The backend's own sentences for these are already written for people ("Start again from the app"). */
+/** A link that opens the Kiungo desktop app (kiungo://), and nothing else. */
+export function isAppLink(link: string): boolean {
+  try {
+    return new URL(link).protocol === "kiungo:";
+  } catch {
+    return false;
+  }
+}
+
 function explain(err: unknown, whatFailed: string): string {
   if (err instanceof ApiError && (err.status === 404 || err.status === 409) && err.detail) return err.detail;
   return describeError(err, whatFailed);
@@ -81,6 +90,9 @@ export function DesktopSignIn({ codeId }: { codeId: string | null }) {
     setStep({ kind: "working", details });
     try {
       const { redirect_url } = await api.approveDesktopSignIn(details.code_id);
+      // Only ever hand the browser to the app: a server answer naming any other address
+      // (https://, javascript:) is refused (audit WEB-007).
+      if (!isAppLink(redirect_url)) throw new Error("The sign-in answer didn't point back to the Kiungo app.");
       setStep({ kind: "approved", details, link: redirect_url });
       // Hand the code to the app. If the browser asks first, the button below does the same.
       window.location.href = redirect_url;
@@ -165,7 +177,9 @@ export function DesktopSignIn({ codeId }: { codeId: string | null }) {
         </span>
         <h1 className="mt-5 text-xl font-semibold">You&apos;re signed in on {details.device.name}</h1>
         <p className="mt-2 text-sm leading-6 text-muted">Go back to Kiungo; it carries on by itself. You can close this tab.</p>
-        <Button variant="secondary" className="mt-6" onClick={() => (window.location.href = step.link)} data-testid="desktop-sign-in-open-app">
+        <Button variant="secondary" className="mt-6" onClick={() => {
+          if (isAppLink(step.link)) window.location.href = step.link;
+        }} data-testid="desktop-sign-in-open-app">
           Open Kiungo
         </Button>
       </Frame>

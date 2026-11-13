@@ -302,3 +302,15 @@ export function isReleaseFileUrl(url: string, extra: readonly string[] = []): bo
 export function downloadHref(file: Pick<ReleaseFile, "url">, mode: DownloadMode): string {
   return mode === "page" ? `${DOWNLOAD_ROUTE}?url=${encodeURIComponent(file.url)}` : file.url;
 }
+
+
+/**
+ * The download's Content-Disposition, safe for any name taken from a URL: control characters
+ * (a CR/LF made `Headers.set` throw, audit WEB-005), quotes and backslashes are removed from the
+ * plain `filename`, which also drops anything outside ASCII; `filename*` keeps the full name.
+ */
+export function contentDisposition(name: string): string {
+  const clean = name.replace(/[\u0000-\u001f\u007f]/g, "");
+  const ascii = clean.replace(/[^\x20-\x7e]/g, "").replace(/["\\]/g, "") || "download";
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(clean)}`;
+}

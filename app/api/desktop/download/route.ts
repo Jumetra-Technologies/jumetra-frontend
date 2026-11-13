@@ -12,12 +12,14 @@
  * well inside a function's time limit and can resume where a connection dropped.
  * The body is streamed, never buffered, so size isn't limited.
  */
-import { fileName, isReleaseFileUrl } from "@/lib/releases";
+import { contentDisposition, fileName, isReleaseFileUrl } from "@/lib/releases";
 
 export const dynamic = "force-dynamic";
 
 /** Request headers worth passing to the asset host. */
 const FORWARD_REQUEST = ["range", "if-range"] as const;
+/** How long the installer's host has to start answering. */
+const UPSTREAM_ANSWER_MS = 30_000;
 /** Response headers the page needs: how big, which part, and whether pieces are allowed. */
 const FORWARD_RESPONSE = ["content-type", "content-length", "content-range", "accept-ranges", "etag", "last-modified"] as const;
 
@@ -41,12 +43,18 @@ export async function GET(request: Request): Promise<Response> {
     if (value) headers.set(name, value);
   }
 
+  // The host has 30 s to start answering (audit WEB-003); the download itself can take as long as
+  // it needs, so the timer stops once the headers arrive.
+  const answer = new AbortController();
+  const timer = setTimeout(() => answer.abort(new DOMException("No answer in time", "TimeoutError")), UPSTREAM_ANSWER_MS);
   let upstream: Response;
   try {
-    upstream = await fetch(url, { headers, redirect: "follow", cache: "no-store", signal: request.signal });
+    upstream = await fetch(url, { headers, redirect: "follow", cache: "no-store", signal: AbortSignal.any([request.signal, answer.signal]) });
   } catch (error) {
     if (request.signal.aborted) return problem("cancelled", 499);
-    return problem(error instanceof Error && error.name === "TimeoutError" ? "timeout" : "unreachable", 502);
+    return problem(answer.signal.aborted || (error instanceof Error && error.name === "TimeoutError") ? "timeout" : "unreachable", 502);
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!upstream.ok) {
@@ -64,7 +72,7 @@ export async function GET(request: Request): Promise<Response> {
   // A body fetch decodes on the way in: a declared compressed length would then be wrong.
   if (upstream.headers.get("content-encoding")) out.delete("content-length");
   if (!out.has("content-type")) out.set("content-type", "application/octet-stream");
-  out.set("content-disposition", `attachment; filename="${fileName({ url }).replace(/["\\]/g, "")}"`);
+  out.set("content-disposition", contentDisposition(fileName({ url })));
   out.set("cache-control", "no-store");
   out.set("x-content-type-options", "nosniff");
   return new Response(upstream.body, { status: upstream.status, headers: out });

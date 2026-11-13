@@ -80,10 +80,12 @@ describe("Engineering Lab", () => {
     fireEvent.click(screen.getByTestId("quick-arduino-uno"));
     await waitFor(() => expect(useLab.getState().sessions[0].nodes).toHaveLength(1));
 
-    fireEvent.click(screen.getByRole("button", { name: "Show components panel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
     const search = screen.getByTestId("lab-search");
     fireEvent.change(search, { target: { value: "led" } });
     fireEvent.keyDown(search, { key: "Enter" });
+    // Enter adds the part and closes the library.
+    expect(screen.queryByTestId("lab-search")).not.toBeInTheDocument();
     const session = useLab.getState().sessions[0];
     expect(session.nodes.map((n) => n.partId)).toEqual(["arduino-uno", "led"]);
     expect(session.wires).toHaveLength(2);
@@ -124,7 +126,13 @@ describe("Engineering Lab", () => {
     useLab.setState({ cloudSaveState: "saved" });
     render(<EngineeringLab />);
     expect(await screen.findByTestId("lab-empty")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId("runtime-status")).toHaveAttribute("aria-label", "Offline mode"));
+    // The connection status is the first line of the ⋮ menu (the top bar keeps only the main actions).
+    await new Promise((r) => setTimeout(r, 50));
+    await waitFor(() => {
+      fireEvent.click(screen.getByRole("button", { name: "More lab actions" }));
+      expect(within(screen.getByRole("menu")).getByText(/^Offline mode: /)).toBeInTheDocument();
+    });
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
     expect(screen.getByTestId("save-status").tagName).toBe("SPAN");
     fireEvent.click(screen.getByRole("tab", { name: /Activity/ }));
     expect(screen.getByTestId("activity-note")).toHaveTextContent("Saved to the project automatically");
@@ -166,18 +174,21 @@ describe("Engineering Lab", () => {
     vi.useRealTimers();
   });
 
-  it("opens with only the canvas: the parts panel and the inspector wait behind their buttons", async () => {
+  it("opens with only the canvas: the parts library waits behind + Add, a part's properties behind a click on it", async () => {
     render(<EngineeringLab />);
     await screen.findByTestId("lab-empty");
     expect(screen.queryByTestId("lab-search")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Show components panel" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: "Show inspector" })).toHaveAttribute("aria-pressed", "false");
-    fireEvent.click(screen.getByRole("button", { name: "Show components panel" }));
+    // No side-panel toggle for parts any more (B8.1): + Add opens the library as a modal.
+    expect(screen.queryByRole("button", { name: /components panel/ })).not.toBeInTheDocument();
+    // No inspector panel or its toggle any more (B3): properties open from the part itself.
+    expect(screen.queryByRole("button", { name: /inspector/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("properties-popover")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
     expect(screen.getByTestId("lab-search")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Hide components panel" }));
-    expect(screen.queryByTestId("lab-search")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Show inspector" }));
-    expect(screen.getByRole("button", { name: "Hide inspector" })).toHaveAttribute("aria-pressed", "true");
+    // The X shows its press for a moment, then closes.
+    fireEvent.click(within(screen.getByTestId("parts-modal")).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByTestId("lab-search")).not.toBeInTheDocument());
+    expect(screen.queryByRole("complementary", { name: "Inspector" })).not.toBeInTheDocument();
   });
 
   it("Stop halts the clock and a rerun continues it at the same rate: no duplicate timers", async () => {
@@ -208,21 +219,33 @@ describe("Engineering Lab", () => {
     vi.useRealTimers();
   });
 
-  it("explains each view from a small i button, one at a time", async () => {
+  it("“/” opens the parts library; Shift-adds cascade 24 px apart; Escape closes it and focus returns to + Add", async () => {
+    render(<EngineeringLab />);
+    await screen.findByTestId("lab-empty");
+    fireEvent.keyDown(document.body, { key: "/" });
+    const search = screen.getByTestId("lab-search");
+    expect(search).toHaveFocus();
+    for (const q of ["led", "led"]) {
+      fireEvent.change(search, { target: { value: q } });
+      fireEvent.keyDown(search, { key: "Enter", shiftKey: true });
+    }
+    const [a, b] = useLab.getState().sessions[0].nodes;
+    expect([b.x - a.x, b.y - a.y]).toEqual([24, 24]);
+    fireEvent(screen.getByTestId("parts-modal"), new Event("cancel", { cancelable: true }));
+    expect(screen.queryByTestId("lab-search")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add" })).toHaveFocus();
+  });
+
+  it("explains each view in its tooltip, now that the switch is icons only (D-1)", async () => {
     render(<EngineeringLab />);
     await screen.findByTestId("lab-empty");
     const views = screen.getByRole("radiogroup", { name: "Canvas view" });
-    for (const name of ["3D", "2D", "Trace"]) expect(within(views).getByRole("button", { name: `About ${name}` })).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(within(views).getByRole("button", { name: "About Trace" }));
-    expect(screen.getByRole("note")).toHaveTextContent(/Where the flow stops is where the circuit is broken/);
-    // The i doesn't change the view.
+    // No "i" buttons inside an icon-only switch: what they said is in each view's tooltip.
+    expect(within(views).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(views).getByRole("radio", { name: /^Trace/ }).title).toMatch(/Where the flow stops is where the circuit is broken/);
+    expect(within(views).getByRole("radio", { name: /^2D/ }).title).toMatch(/every pin, port and LED labeled/);
+    // Reading the tooltip doesn't change the view.
     expect(useLab.getState().sessions[0].view).toBe("top");
-    fireEvent.keyDown(document, { key: "Escape" });
-    expect(screen.queryByRole("note")).not.toBeInTheDocument();
-    fireEvent.click(within(views).getByRole("button", { name: "About 2D" }));
-    expect(screen.getByRole("note")).toHaveTextContent(/every pin, port and LED labeled/);
-    fireEvent.pointerDown(document.body);
-    expect(screen.queryByRole("note")).not.toBeInTheDocument();
   });
 
   it("leaves keys typed in a code editor beside it alone: / and digits are code there", async () => {
@@ -250,7 +273,8 @@ describe("Engineering Lab", () => {
     render(<EngineeringLab />);
     await screen.findByTestId("lab-empty");
     const views = screen.getByRole("radiogroup", { name: "Canvas view" });
-    expect(within(views).getAllByRole("radio").map((r) => r.textContent)).toEqual(["3D", "2D", "Trace"]);
+    // Icon only (D-1): each view is named by its accessible name and tooltip.
+    expect(within(views).getAllByRole("radio").map((r) => r.getAttribute("aria-label")?.split(":")[0])).toEqual(["3D", "2D", "Trace"]);
     fireEvent.click(within(views).getByRole("radio", { name: /^Trace/ }));
     expect(useLab.getState().sessions[0].view).toBe("flow");
   });
@@ -261,10 +285,10 @@ describe("Engineering Lab", () => {
     await screen.findByTestId("lab-empty");
     const session = useLab.getState().sessions[0];
     expect(session).toMatchObject({ name: "Smart greenhouse lab", projectId: "local-project-gh" });
-    fireEvent.click(screen.getByRole("button", { name: "Show components panel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
     expect(screen.getByText("Suggested for this project")).toBeInTheDocument();
-    const rows = screen.getAllByTestId("lab-add-row").map((r) => r.textContent ?? "");
-    expect(rows.some((t) => t.includes("Soil moisture sensor") && t.includes("hardware list"))).toBe(true);
+    const suggested = within(screen.getByRole("region", { name: "Suggested" })).getAllByRole("button");
+    expect(suggested.some((b) => b.textContent?.includes("Soil moisture sensor") && b.title.includes("hardware list"))).toBe(true);
   });
 
   it("checks the circuit and lists problems with their parts", async () => {
@@ -303,15 +327,14 @@ describe("Engineering Lab", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
   });
 
-  it("has a sound button that mutes the buzzers and remembers the choice", async () => {
+  it("mutes the buzzers from the ⋮ menu and remembers the choice", async () => {
     render(<EngineeringLab />);
     await screen.findByTestId("lab-empty");
-    const button = screen.getByTestId("sound-toggle");
-    expect(button).toHaveAttribute("aria-pressed", "true");
-    fireEvent.click(button);
-    expect(screen.getByTestId("sound-toggle")).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByTestId("sound-toggle")).toHaveAccessibleName("Turn buzzer sound on");
+    fireEvent.click(screen.getByRole("button", { name: "More lab actions" }));
+    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Mute buzzers" }));
     expect(window.localStorage.getItem("hhip-lab-sound")).toBe("off");
+    fireEvent.click(screen.getByRole("button", { name: "More lab actions" }));
+    expect(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Turn buzzer sound on" })).toBeInTheDocument();
   });
 
   it("plugs a USB lead into the board on Run, then starts; unplugs on Stop", async () => {
@@ -367,15 +390,16 @@ describe("Engineering Lab", () => {
     expect(screen.getByTestId("run-toggle")).toHaveTextContent("Stop");
   });
 
-  it("the Inspector's preview of an LCD shows what the sketch wrote, as the canvas does, never the library's sample text", async () => {
+  it("an LCD shows what the sketch wrote, never the library's sample text, and its properties stay live during the run", async () => {
     render(<EngineeringLab />);
     await screen.findByTestId("lab-empty");
     fireEvent.click(screen.getByTestId("quick-arduino-uno"));
-    fireEvent.click(screen.getByRole("button", { name: "Show components panel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
     for (const q of ["dht11", "lcd"]) {
       const search = screen.getByTestId("lab-search");
       fireEvent.change(search, { target: { value: q } });
-      fireEvent.keyDown(search, { key: "Enter" });
+      // Shift+Enter adds and keeps the library open for the next part.
+      fireEvent.keyDown(search, { key: "Enter", shiftKey: true });
     }
     const [, dht, lcd] = useLab.getState().sessions[0].nodes;
     act(() => {
@@ -385,14 +409,14 @@ describe("Engineering Lab", () => {
     fireEvent.click(screen.getByTestId("run-toggle"));
     const card = (await screen.findAllByTestId("lab-node")).find((el) => el.getAttribute("data-part") === "lcd-16x2")!;
     fireEvent.click(within(card).getByText(lcd.label));
-    fireEvent.click(screen.getByRole("button", { name: "Show inspector" }));
+    // The thumbnails are gone from the properties (B3): the canvas is where the glass shows.
     const inspector = await screen.findByTestId("node-inspector");
     const glassText = (root: HTMLElement) => [...root.querySelectorAll("svg text")].map((e) => e.textContent ?? "").filter((t) => /Temp|Hum|Hello|24\.5/.test(t));
-    await waitFor(() => expect(within(inspector).getAllByText("Temp: 50.0 °C").length).toBeGreaterThan(0));
-    expect(within(inspector).getAllByText("Hum: 70 %").length).toBeGreaterThan(0);
-    expect(within(inspector).queryByText("Temp: 24.5 C")).toBeNull();
-    expect(within(inspector).queryByText("Hello, Kiungo!")).toBeNull();
+    await waitFor(() => expect(glassText(card).join("|")).toMatch(/Temp: 50\.0 °C/));
+    expect(glassText(card).join("|")).toMatch(/Hum: 70 %/);
     expect(glassText(card).join("|")).not.toMatch(/24\.5 C|Hello/);
+    expect(within(inspector).queryByText("Hello, Kiungo!")).toBeNull();
+    expect(screen.getByTestId("run-toggle")).toHaveTextContent("Stop");
     fireEvent.click(screen.getByTestId("run-toggle"));
   });
 

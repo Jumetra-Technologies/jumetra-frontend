@@ -271,7 +271,7 @@ describe("In the Engineering Lab", () => {
     await screen.findByTestId("lab-empty");
     fireEvent.click(within(screen.getByTestId("lab-empty")).getByText("Blink an LED"));
     await screen.findAllByTestId("lab-node");
-    if (!screen.queryByTestId("lab-search")) fireEvent.click(screen.getByRole("button", { name: "Show components panel" }));
+    if (!screen.queryByTestId("lab-search")) fireEvent.click(screen.getByRole("button", { name: "Add" }));
     fireEvent.change(screen.getByTestId("lab-search"), { target: { value: "breadboard" } });
     await act(async () => {
       fireEvent.keyDown(screen.getByTestId("lab-search"), { key: "Enter" });
@@ -283,10 +283,14 @@ describe("In the Engineering Lab", () => {
     expect(within(board).getByLabelText("Top + 1 hole").getAttribute("title")).toMatch(/Wired to Arduino Uno 5V/);
     // Both top rails light up in their net's color.
     expect(board.querySelectorAll('[data-lit="true"]')).toHaveLength(2);
-    fireEvent.click(screen.getByRole("button", { name: "Show inspector" }));
-    expect(within(await screen.findByTestId("strip-table")).getByText("Top + rail")).toBeInTheDocument();
+    // Clicking the breadboard opens its properties: the strips in use (B3).
+    fireEvent.click(within(board).getByTestId("board-caption"));
+    const popover = await screen.findByTestId("properties-popover");
+    expect(within(popover).getByTestId("strip-table")).toHaveTextContent("Top + rail");
+    expect(within(popover).queryByTestId("runs-on")).not.toBeInTheDocument();
     // Trace: still the breadboard, drawn as its strips.
-    fireEvent.click(screen.getByRole("button", { name: "Hide inspector" }));
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByTestId("properties-popover")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: /^Trace/ }));
     const traced = (await screen.findAllByTestId("lab-node")).find((n) => n.getAttribute("data-part") === "breadboard")!;
     expect(traced).toHaveAttribute("data-breadboard", "true");

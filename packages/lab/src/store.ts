@@ -17,6 +17,8 @@ import { getPinout } from "@kiungo/core/lab/pinout";
 import { getPart } from "@kiungo/core/parts";
 import { logEntry, makeId, migrateSessionUnits, newSession, nextLabel } from "@kiungo/core/lab/session";
 import { stepperStepsAt } from "@kiungo/core/lab/simulate";
+import { LAB_DATA_VERSION } from "@kiungo/core/lab/types";
+import { sanitizeCode, type SessionCode } from "@kiungo/core/lab/code";
 import type { DeviceMode, LabData, LabNode, LabSession, LabView, LabWire, LogKind, NodeInputs, PinRef } from "@kiungo/core/lab/types";
 
 export { logEntry, makeId, newSession, nextLabel, shortName } from "@kiungo/core/lab/session";
@@ -28,7 +30,7 @@ export const LAB_ACCOUNT_KEY_PREFIX = "kiungo.lab:v2:";
 export const labKeyFor = (accountId: string) => `${LAB_ACCOUNT_KEY_PREFIX}${accountId}`;
 const MAX_LOG = 400;
 const MAX_HISTORY = 60;
-let labData: LabData = { version: 1, sessions: [], activeId: null };
+let labData: LabData = { version: LAB_DATA_VERSION, sessions: [], activeId: null };
 /** The signed-in account whose sessions are open, or null (memory only). */
 let owner: string | null = null;
 
@@ -69,7 +71,7 @@ export interface LabPersistence {
 }
 
 function sanitize(raw: unknown): LabData {
-  const empty: LabData = { version: 1, sessions: [], activeId: null };
+  const empty: LabData = { version: LAB_DATA_VERSION, sessions: [], activeId: null };
   if (!raw || typeof raw !== "object") return empty;
   const data = raw as Partial<LabData>;
   const sessions = Array.isArray(data.sessions)
@@ -85,11 +87,12 @@ function sanitize(raw: unknown): LabData {
           view: (s.view === "reality" || s.view === "flow" ? s.view : "top") as LabView,
           runMs: Number(s.runMs) || 0,
           inputs: s.inputs && typeof s.inputs === "object" ? s.inputs : {},
+          code: sanitizeCode(s.code),
         }))
         // Sessions saved before SI units are read in today's units.
         .map((s) => migrateSessionUnits(s))
     : [];
-  return { version: 1, sessions, activeId: typeof data.activeId === "string" ? data.activeId : null };
+  return { version: LAB_DATA_VERSION, sessions, activeId: typeof data.activeId === "string" ? data.activeId : null };
 }
 
 function readBrowserLabData(): LabData {
@@ -97,7 +100,7 @@ function readBrowserLabData(): LabData {
   if (owner && typeof window !== "undefined") {
     try {
       const raw = window.localStorage.getItem(labKeyFor(owner));
-      labData = raw ? sanitize(JSON.parse(raw)) : { version: 1, sessions: [], activeId: null };
+      labData = raw ? sanitize(JSON.parse(raw)) : { version: LAB_DATA_VERSION, sessions: [], activeId: null };
     } catch {
       /* unreadable: keep what's in memory */
     }
@@ -164,6 +167,8 @@ export interface LabState {
   createSession: (input?: Parameters<typeof newSession>[0]) => LabSession;
   openSession: (id: string) => void;
   renameSession: (id: string, name: string) => void;
+  /** A session's code (the website's code pane). Not an undo step: the editor keeps its own history. */
+  setCode: (id: string, code: SessionCode) => void;
   linkProject: (id: string, projectId: string | null, projectName?: string) => void;
   duplicateSession: (id: string) => LabSession | null;
   /** Open a session read from a `.kiungo.json` file (see `session-file.ts`) as a new session. */
@@ -182,6 +187,8 @@ export interface LabState {
   /** Add wires in one undo step; `replace` lists wires to take out in the same step (a resistor going in series). */
   addWires: (wires: Array<{ from: PinRef; to: PinRef }>, summary?: string, replace?: string[]) => LabWire[];
   removeWires: (ids: string[]) => void;
+  /** A color the person picked for a wire; undefined goes back to the color of what it carries. */
+  setWireColor: (id: string, color: string | undefined) => void;
   undo: () => void;
   redo: () => void;
   log: (kind: LogKind, text: string, nodes?: string[]) => void;
@@ -258,13 +265,19 @@ export const useLab = create<LabState>((set, get) => {
       updateById(id, (s) => (s.name === clean ? s : { ...s, name: clean, log: [...s.log, logEntry("note", `Renamed to “${clean}”`)] }));
     },
 
+    setCode: (id, code) => {
+      const clean = sanitizeCode(code);
+      if (!clean) return;
+      updateById(id, (s) => (JSON.stringify(s.code) === JSON.stringify(clean) ? s : { ...s, code: clean }));
+    },
+
     linkProject: (id, projectId, projectName) =>
       updateById(id, (s) => ({ ...s, projectId, log: [...s.log, logEntry("note", projectId ? `Linked to project “${projectName ?? "project"}”` : "Unlinked from its project")] })),
 
     duplicateSession: (id) => {
       const source = get().sessions.find((s) => s.id === id);
       if (!source) return null;
-      const copy: LabSession = { ...newSession({ name: `${source.name} (copy)`, projectId: source.projectId }), nodes: source.nodes.map((n) => ({ ...n })), wires: source.wires.map((w) => ({ ...w })), view: source.view };
+      const copy: LabSession = { ...newSession({ name: `${source.name} (copy)`, projectId: source.projectId }), nodes: source.nodes.map((n) => ({ ...n })), wires: source.wires.map((w) => ({ ...w })), view: source.view, ...(source.code ? { code: { active: source.code.active, files: source.code.files.map((f) => ({ ...f })) } } : {}) };
       set((state) => ({ sessions: [copy, ...state.sessions], activeId: copy.id, past: [], future: [] }));
       return copy;
     },
@@ -447,6 +460,13 @@ export const useLab = create<LabState>((set, get) => {
       update((s) => ({ ...s, wires: s.wires.filter((w) => !ids.includes(w.id)), log: [...s.log, logEntry("wire", count === 1 ? "Removed a wire" : `Removed ${count} wires`)] }), { history: true });
     },
 
+    setWireColor: (id, color) => {
+      const session = active();
+      const wire = session?.wires.find((w) => w.id === id);
+      if (!wire || wire.color === color) return;
+      update((s) => ({ ...s, wires: s.wires.map((w) => (w.id !== id ? w : color ? { ...w, color } : { id: w.id, from: w.from, to: w.to })) }), { history: true });
+    },
+
     undo: () => {
       const { past, future } = get();
       const current = active();
@@ -483,7 +503,7 @@ export const useLab = create<LabState>((set, get) => {
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 function save(): void {
   const state = useLab.getState();
-  const ok = writeLabData({ version: 1, sessions: state.sessions, activeId: state.activeId });
+  const ok = writeLabData({ version: LAB_DATA_VERSION, sessions: state.sessions, activeId: state.activeId });
   if (ok === useLab.getState().saveError) useLab.setState({ saveError: !ok });
 }
 
@@ -549,13 +569,13 @@ export function setLabOwner(accountId: string | null, options: { carry?: boolean
   const carried = options.carry && owner === null && accountId ? labData.sessions.filter((s) => s.nodes.length > 0 || s.projectId) : [];
   const carriedActive = carried.some((s) => s.id === labData.activeId) ? labData.activeId : null;
   owner = accountId;
-  labData = { version: 1, sessions: [], activeId: null };
+  labData = { version: LAB_DATA_VERSION, sessions: [], activeId: null };
   if (accountId) labData = readBrowserLabData();
   let stored = true;
   if (carried.length) {
     const ids = new Set(carried.map((s) => s.id));
     // Kept in this browser for the account straight away, so a page that loads the lab later reads them back.
-    stored = writeBrowserLabData({ version: 1, sessions: [...carried, ...labData.sessions.filter((s) => !ids.has(s.id))], activeId: carriedActive ?? labData.activeId });
+    stored = writeBrowserLabData({ version: LAB_DATA_VERSION, sessions: [...carried, ...labData.sessions.filter((s) => !ids.has(s.id))], activeId: carriedActive ?? labData.activeId });
   }
   if (useLab.getState().hydrated) {
     const data = labData;

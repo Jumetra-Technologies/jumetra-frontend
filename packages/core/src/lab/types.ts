@@ -6,6 +6,7 @@
  * browser so the lab opens instantly and keeps working without the backend;
  * when the backend is reachable a session is mirrored to it as a runtime.
  */
+import type { SessionCode } from "./code";
 
 export type LabView = "reality" | "top" | "flow";
 
@@ -74,12 +75,20 @@ export interface LabSession {
    * (`migrateSessionUnits`).
    */
   units?: number;
+  /** The session's own sketch (the website's lab runs it). Absent until the code pane is first opened, and in lab data before version 2. */
+  code?: SessionCode;
   /** Backend workspace mirroring this session, when one exists. */
   runtime?: { workspaceId: string; nodeIds: Record<string, string>; wireIds: Record<string, string> } | null;
 }
 
+/**
+ * The lab data's version. 2 (website 1.46.0) adds each session's `code`;
+ * version 1 data reads as it is (its sessions have no code yet).
+ */
+export const LAB_DATA_VERSION = 2;
+
 export interface LabData {
-  version: 1;
+  version: 1 | typeof LAB_DATA_VERSION;
   sessions: LabSession[];
   activeId: string | null;
 }

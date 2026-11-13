@@ -196,3 +196,13 @@ default_profile: kiungo
     expect(out).toContain('- dir: "/res/hybrid/KiungoHybrid"');
   });
 });
+
+describe("a link that can't start (audit DESK-007)", () => {
+  it("closes and says why when the spawn fails", () => {
+    const { l, children, events } = link();
+    expect(l.start("/dev/ttyACM0")).toEqual({ ok: true });
+    children[0].emit("error", new Error("spawn /fake/arduino-cli ENOENT"));
+    expect(events.filter((e) => e.closed)).toEqual([expect.objectContaining({ port: "/dev/ttyACM0", closed: expect.stringMatching(/couldn't start.*ENOENT/) })]);
+    l.stop();
+  });
+});

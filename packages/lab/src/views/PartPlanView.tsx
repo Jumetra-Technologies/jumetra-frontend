@@ -93,7 +93,8 @@ function SolidShape({ solid, powered, lit, index, uid = "plan" }: { solid: Solid
                 const pitchAcross = (horizontal ? solid.h : solid.w) / rows;
                 const cx = horizontal ? solid.x + (along + 0.5) * pitchAlong : solid.x + (across + 0.5) * pitchAcross;
                 const cy = horizontal ? solid.y + (across + 0.5) * pitchAcross : solid.y + (along + 0.5) * pitchAlong;
-                return <rect key={i} x={cx - 0.45} y={cy - 0.45} width={0.9} height={0.9} fill="#3b3d42" stroke="#000" strokeWidth={0.1} />;
+                // A female socket's square opening: black, with the plastic's rim round it.
+                return <rect key={i} x={cx - 0.5} y={cy - 0.5} width={1} height={1} rx={0.08} fill="#0b0b0c" stroke="#2c2e33" strokeWidth={0.12} data-socket />;
               })
             : null}
           {label ? (

@@ -79,7 +79,9 @@ function planBreadboard(breadboard: LabNode, nodes: LabNode[], wires: LabWire[],
   const fromRight = board.x > breadboard.x;
   const planned: PlannedWire[] = [];
   const skipped: string[] = [];
-  const supply = bp.pins.find((p) => p.supplies === bp.logic && p.id !== "VIN") ?? bp.pins.find((p) => p.supplies);
+  // Never a programming header's supply (5V ICSP): the power header's, as on the bench.
+  const rails = bp.pins.filter((p) => p.supplies && !p.programmingHeader);
+  const supply = rails.find((p) => p.supplies === bp.logic && p.id !== "VIN") ?? rails[0];
   const ground = bp.pins.find((p) => p.fns?.includes("ground"));
   for (const [rail, pin] of [["TP", supply], ["TN", ground]] as const) {
     const holes = railHoles(spec, rail, fromRight);
@@ -264,7 +266,8 @@ export function planAutoWire(part: LabNode, nodes: LabNode[], wires: LabWire[], 
   const supplyPin = (pin: LabPin): LabPin | undefined => {
     const [min, max] = pin.accepts ?? pinout.supply ?? [3, 5.5];
     // Rails on the side facing the part first, so wires don't wrap round the board.
-    const rails = bp.pins.filter((p) => p.supplies).sort((a, b) => Number(b.side === facing) - Number(a.side === facing));
+    // A programming header's supply (the Uno's 5V ICSP) is real, but not where a part takes its power from: never picked.
+    const rails = bp.pins.filter((p) => p.supplies && !p.programmingHeader).sort((a, b) => Number(b.side === facing) - Number(a.side === facing));
     const fits = rails.filter((p) => p.supplies! >= min - 0.2 && p.supplies! <= max + 0.25);
     // A motor's supply goes on VIN: on the bench that's the barrel jack's battery, not the board's regulator or USB.
     if (part.partId === "dc-motor" || (sim?.kind === "driver" && pin.id === sim.supply)) {

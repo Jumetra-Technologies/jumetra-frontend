@@ -10,6 +10,18 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.45.2] - 2026-11-13
+
+### Fixed
+- **Desktop 0.13.10: two account requests at once no longer sign the app out (audit DESK-001).**
+  - When the access token had run out, each caller refreshed the session on its own with the same refresh token. Account import asks for two things at once, for example.
+  - A refresh token can only be used once, so the second refresh was refused. The backend is now gaining replay detection (jumetra-backend audit fix BE-1), and with it that second refresh would also end the device's sign-in.
+  - Now every caller waits for the same refresh.
+  - Signing out while a refresh is in flight stays signed out.
+- **Desktop 0.13.10: an Arduino CLI that can't be started no longer leaves things looking connected (DESK-007).**
+  - Before, a failed spawn of the serial monitor or the Hybrid link left the port shown as open with nothing behind it. A failed spawn of the board watcher stopped watching for good.
+  - Now they close and say why, or the watcher restarts.
+
 ## [1.45.0] - 2026-11-12
 
 ### Added
@@ -966,6 +978,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.45.2]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.45.1...v1.45.2
 [1.45.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.44.0...v1.45.0
 [1.44.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.43.0...v1.44.0
 [1.43.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.42.0...v1.43.0

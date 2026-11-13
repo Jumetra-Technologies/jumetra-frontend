@@ -1214,6 +1214,8 @@ dialog.k-dialog[open] {
   font-size: 0.875rem;
   font-weight: 600;
   white-space: nowrap;
+  /* + Add and Run never give way in the lab's bar: the name and the end of the row do. */
+  flex-shrink: 0;
   transition:
     filter 120ms ease,
     transform 120ms ease;

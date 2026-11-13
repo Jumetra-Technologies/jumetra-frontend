@@ -10,6 +10,28 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.50.0] - 2026-11-13
+
+### Added
+- **Code beside the circuit on the website (WP-D3).** `/laboratory/workspace` opens the session's sketch next to the lab, at an even split.
+  - Drag the divider, or focus it and use the arrow keys, to resize between 25 % and 70 % (Home and End jump to the limits). The size and whether the code is open are remembered per session.
+  - The pane has a file tab bar: add a `.h` or `.cpp` file (names are checked), or delete one with a second click.
+  - It uses the Firmware page's editor (`CodeEditor`, loaded only when the pane shows) and build output, with a Problems tab.
+  - Ctrl/Cmd+Enter runs.
+  - Toggle the pane from the top bar's Code button, or from ⋮ → Code.
+  - On a phone, Circuit and Code are tabs.
+  - Closing the code gives the circuit the full width again.
+- **The code is stored in the session (`code`).** It is saved and synced with the account like the circuit, and it travels in `.kiungo.json` files and in duplicated sessions.
+- **A session without code keeps each board's built-in behavior.** The pane offers "Start with Blink" rather than planting a sketch, so sessions saved before this change run as before.
+- **Run builds the sketch through the compile service** and runs it on the emulated Uno (WP-D2). Checked in a production build: Blink compiles and the Uno's L LED blinks.
+
+### Changed
+- **Lab data is version 2** (`LAB_DATA_VERSION`). Version 1 data reads unchanged.
+- **The website puts Code in the ⋮ menu** through the shared lab's `moreItems` (from WP-1).
+- **`@kiungo/core` lists `src/emulator/worker.ts` under `sideEffects`.** The bundler had dropped the worker's code from the website's emulator worker, so the board never answered.
+- **Desktop 0.13.14** carries the shared changes.
+- **The lab's first-load JavaScript** grows by 5.9 KB gzipped (852,067 to 857,941 bytes); the editor and the compile client load only when used.
+
 ## [1.49.0] - 2026-11-12
 
 Board pins look like the real header, and auto-wire stops using the ICSP 5 V. Desktop 0.13.13.
@@ -1091,6 +1113,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.50.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.49.0...v1.50.0
 [1.49.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.48.0...v1.49.0
 [1.48.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.47.0...v1.48.0
 [1.47.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.0...v1.47.0

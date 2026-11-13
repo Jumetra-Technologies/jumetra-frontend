@@ -86,7 +86,7 @@ describe("the website's program driver (WP-D2)", () => {
     const driver = webProgramDriver({ code: () => BLINK, onBuild, compile: async () => { throw new CompileUnavailable("refused", "Blink.ino line 1: #include a library or a file of this sketch by name."); } });
     const result = await driver.start("u1", [], circuit, handlers());
     expect(result).toEqual({ ok: false, message: "Blink.ino line 1: #include a library or a file of this sketch by name." });
-    expect(onBuild).toHaveBeenCalledWith(null, "Blink.ino line 1: #include a library or a file of this sketch by name.");
+    expect(onBuild).toHaveBeenCalledWith(null, { kind: "refused", message: "Blink.ino line 1: #include a library or a file of this sketch by name." });
   });
 
   it("Stop during the build cancels it", async () => {

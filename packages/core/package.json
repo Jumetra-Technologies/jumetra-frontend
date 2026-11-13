@@ -4,7 +4,9 @@
   "private": true,
   "description": "The Kiungo engine shared by the website and the desktop app: parts, the lab model, firmware files and the board emulator.",
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./src/emulator/worker.ts"
+  ],
   "exports": {
     "./parts": "./src/parts/index.ts",
     "./parts/*": "./src/parts/*.ts",

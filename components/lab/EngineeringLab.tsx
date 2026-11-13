@@ -12,23 +12,83 @@
  * boards, which the server only does for an account.
  */
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, CloudOff, Copy, Download, FilePlus2, FileUp, FolderKanban, FolderOpen, Link2, Monitor, Pencil, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
+import { Check, CloudOff, Code2, Copy, Download, FilePlus2, FileUp, FolderKanban, FolderOpen, Link2, Monitor, Pencil, Plus, Trash2 } from "lucide-react";
+import type { SessionCode } from "@kiungo/core/lab/code";
 import { partHref } from "@kiungo/core/parts";
 import { SESSION_FILE_EXTENSION } from "@kiungo/core/lab/session-file";
 import type { LabSession } from "@kiungo/core/lab/types";
 import type { MenuEntry } from "@kiungo/ui/menu";
 import { cn } from "@kiungo/ui/cn";
 import type { LabHost, RuntimeStatus } from "@kiungo/lab/lab-context";
-import { LabWorkspace, type TitleMenuApi } from "@kiungo/lab/LabWorkspace";
+import { LabWorkspace, type LabWorkspaceHandle, type TitleMenuApi } from "@kiungo/lab/LabWorkspace";
 import { useActiveSession, useLab } from "@kiungo/lab/store";
 import { openAuth } from "@/lib/account-dialogs";
 import { useAuthStore } from "@/lib/auth-store";
+import { CodeSkeleton } from "@/components/ui/page-skeletons";
+import { clampRatio, CODE_RATIO_STEP, MAX_CODE_RATIO, MIN_CODE_RATIO, readCodeLayout, writeCodeLayout, type CodeLayout } from "@/lib/lab/code-layout";
+import { webProgramDriver } from "@/lib/lab/program";
 import { backendReachable, reconcile } from "@/lib/lab/runtime";
+import type { CodeBuildState } from "./CodePane";
 import { useProjects } from "@/lib/projects/workspace";
 import { RealHardware } from "./RealHardware";
+
+/** The code pane, loaded only when it is shown: the editor's JavaScript stays out of the lab's first load. */
+const CodePane = dynamic(() => import("./CodePane").then((m) => m.CodePane), { ssr: false, loading: () => <CodeSkeleton /> });
+
+const WIDE = "(min-width: 768px)";
+function useWide(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      if (typeof window.matchMedia !== "function") return () => undefined;
+      const mq = window.matchMedia(WIDE);
+      mq.addEventListener("change", cb);
+      return () => mq.removeEventListener("change", cb);
+    },
+    () => (typeof window.matchMedia === "function" ? window.matchMedia(WIDE).matches : true),
+    () => true,
+  );
+}
+
+/**
+ * The session's code (WP-D3): edited here at once, written to the session a
+ * moment later (it saves and syncs with the account like the circuit), and
+ * read by Run straight from the latest edit.
+ */
+function useSessionCode(sessionId: string | null, saved: SessionCode | undefined) {
+  const [draft, setDraft] = useState<SessionCode | undefined>(saved);
+  const latest = useRef<SessionCode | undefined>(saved);
+  const pending = useRef<number | null>(null);
+  const flush = useCallback(() => {
+    if (pending.current === null) return;
+    window.clearTimeout(pending.current);
+    pending.current = null;
+    if (sessionId && latest.current) useLab.getState().setCode(sessionId, latest.current);
+  }, [sessionId]);
+  // Another session opened, or the account brought a newer copy while nothing was being typed.
+  useEffect(() => {
+    if (pending.current !== null) return;
+    latest.current = saved;
+    setDraft(saved);
+  }, [sessionId, saved]);
+  useEffect(() => flush, [flush]);
+  const change = useCallback(
+    (code: SessionCode) => {
+      latest.current = code;
+      setDraft(code);
+      if (pending.current !== null) window.clearTimeout(pending.current);
+      pending.current = window.setTimeout(() => {
+        pending.current = null;
+        if (sessionId) useLab.getState().setCode(sessionId, code);
+      }, 400);
+    },
+    [sessionId],
+  );
+  return { draft, latest, change, flush };
+}
 
 function relative(iso: string) {
   const s = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -167,6 +227,55 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
 
   const project = session ? (projects.find((p) => p.id === session.projectId) ?? null) : null;
 
+  // ----- Code beside the circuit (WP-D3) -----
+  const lab = useRef<LabWorkspaceHandle>(null);
+  const wide = useWide();
+  const activeId = session?.id ?? null;
+  const { draft: code, latest: latestCode, change: changeCode, flush: flushCode } = useSessionCode(activeId, session?.code);
+  // The layout and the last build belong to the open session: switching sessions starts from that session's.
+  const [perSession, setPerSession] = useState<{ id: string | null; layout: CodeLayout; build: CodeBuildState }>(() => ({ id: activeId, layout: activeId ? readCodeLayout(activeId) : { open: true, ratio: 0.5 }, build: { busy: false, result: null } }));
+  if (perSession.id !== activeId) setPerSession({ id: activeId, layout: activeId ? readCodeLayout(activeId) : { open: true, ratio: 0.5 }, build: { busy: false, result: null } });
+  const { layout, build } = perSession;
+  const setLayout = useCallback(
+    (next: CodeLayout) => {
+      setPerSession((p) => ({ ...p, layout: next }));
+      if (activeId) writeCodeLayout(activeId, next);
+    },
+    [activeId],
+  );
+  const setBuild = useCallback((next: CodeBuildState) => setPerSession((p) => ({ ...p, build: next })), []);
+  const [mobileTab, setMobileTab] = useState<"circuit" | "code">("circuit");
+  const [labRunning, setLabRunning] = useState(false);
+  // A new driver when the session gains or loses code, so the lab asks again which board runs it.
+  const hasCode = !!code?.files.some((f) => f.path.endsWith(".ino"));
+  const program = useMemo(
+    () =>
+      webProgramDriver({
+        code: () => (latestCode.current ? { files: latestCode.current.files } : null),
+        onBuildStart: () => setBuild({ busy: true, result: null }),
+        onBuild: (result, problem) => setBuild(result ? { busy: false, result } : { busy: false, result: null, [problem?.kind ?? "unavailable"]: problem?.message }),
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hasCode: see above
+    [latestCode, hasCode, setBuild],
+  );
+  // The compile service's free plan sleeps: wake it once there's code to build.
+  useEffect(() => {
+    if (hasCode) void import("@/lib/lab/compile").then((m) => m.wakeCompiler());
+  }, [hasCode]);
+  const runCode = useCallback(() => {
+    flushCode();
+    if (labRunning) {
+      lab.current?.stop();
+      window.setTimeout(() => lab.current?.run(), 0);
+    } else lab.current?.run();
+  }, [flushCode, labRunning]);
+  const codeOpen = layout.open;
+  const toggleCode = useCallback(() => {
+    const open = !layout.open;
+    setLayout({ ...layout, open });
+    if (open && !wide) setMobileTab("code");
+  }, [layout, setLayout, wide]);
+
   const titleMenu = ({ session: current, sessions, rename, openFile, exportJson }: TitleMenuApi): MenuEntry[] => [
     { id: "new", label: "New lab session", icon: <FilePlus2 />, onSelect: () => useLab.getState().createSession({ name: "Untitled lab", projectId: current.projectId }) },
     {
@@ -238,9 +347,9 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
     </button>
   );
 
-  // The website's lab is the preview (SIM-12): your own code, real boards and robot worlds run in the desktop app.
+  // Real boards and robot worlds run in the desktop app (SIM-12); your own code runs here too (WP-D2).
   const desktopChip = (
-    <Link href="/#desktop" className="hidden items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-medium text-muted hover:bg-muted-bg hover:text-foreground xl:inline-flex" title="Run your own code, use real boards and drive robots in the desktop app" data-testid="desktop-chip">
+    <Link href="/#desktop" className="hidden items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-medium text-muted hover:bg-muted-bg hover:text-foreground xl:inline-flex" title="Use real boards and drive robots in the desktop app" data-testid="desktop-chip">
       <Monitor className="size-3 shrink-0" aria-hidden />
       Desktop app
     </Link>
@@ -253,8 +362,28 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
     </Link>
   ) : null;
 
-  return (
+  const codeButton = (
+    <button
+      type="button"
+      onClick={toggleCode}
+      aria-pressed={codeOpen}
+      aria-label={codeOpen ? "Hide the code" : "Show the code"}
+      title={codeOpen ? "Hide the code" : "Code: write the sketch the Uno runs"}
+      className={cn("flex h-9 items-center gap-1.5 rounded-[10px] px-2.5 text-[12.5px] font-medium transition-colors", codeOpen ? "bg-muted-bg text-foreground" : "text-muted hover:bg-muted-bg")}
+      data-testid="code-toggle"
+    >
+      <Code2 className="size-4" aria-hidden />
+      <span className="hidden lg:inline">Code</span>
+    </button>
+  );
+
+  const labView = (
     <LabWorkspace
+      ref={lab}
+      program={program}
+      onRunningChange={setLabRunning}
+      trailing={codeButton}
+      moreItems={[{ id: "code", label: codeOpen ? "Hide code" : "Code", icon: <Code2 />, onSelect: toggleCode }]}
       host={host}
       runtime={runtime}
       project={project ? { id: project.id, name: project.name, description: project.description, objectives: project.objectives, hardware: project.hardware, category: project.category } : null}
@@ -270,6 +399,79 @@ export function EngineeringLab({ sessionId, newForProject }: { sessionId?: strin
       }}
       titleMenu={titleMenu}
       saveStatus={saveStatus}
+    />
+  );
+
+  if (!codeOpen) return <div className="flex h-full min-h-0 w-full" data-testid="lab-split" data-code="closed">{labView}</div>;
+
+  const pane = <CodePane code={code} onChange={changeCode} build={build} onRun={runCode} onClose={toggleCode} />;
+
+  // Phones: the code is a tab beside the circuit, not a split.
+  if (!wide) {
+    return (
+      <div className="flex h-full min-h-0 w-full flex-col" data-testid="lab-split" data-code="tab">
+        <div className="flex h-9 shrink-0 items-stretch gap-1 border-b border-border bg-surface px-2" role="tablist" aria-label="Circuit or code">
+          {(["circuit", "code"] as const).map((id) => (
+            <button key={id} type="button" role="tab" aria-selected={mobileTab === id} onClick={() => setMobileTab(id)} className={cn("border-b-2 px-3 text-[12.5px] font-medium", mobileTab === id ? "border-primary text-foreground" : "border-transparent text-muted")} data-testid={`lab-tab-${id}`}>
+              {id === "circuit" ? "Circuit" : "Code"}
+            </button>
+          ))}
+        </div>
+        <div className={cn("min-h-0 flex-1", mobileTab !== "circuit" && "hidden")}>{labView}</div>
+        <div className={cn("min-h-0 flex-1", mobileTab !== "code" && "hidden")}>{pane}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full min-h-0 w-full" data-testid="lab-split" data-code="open">
+      {/* overflow-hidden: at half width the lab's top bar can't spill over the code. */}
+      <div className="h-full min-w-0 overflow-hidden" style={{ width: `${(1 - layout.ratio) * 100}%` }}>
+        {labView}
+      </div>
+      <SplitHandle ratio={layout.ratio} onChange={(ratio) => setLayout({ ...layout, ratio })} />
+      <div className="h-full min-w-0 border-l border-border" style={{ width: `${layout.ratio * 100}%` }}>
+        {pane}
+      </div>
+    </div>
+  );
+}
+
+/** The divider between the circuit and the code: drag it, or focus it and use the arrow keys (Home and End for the limits). */
+function SplitHandle({ ratio, onChange }: { ratio: number; onChange: (ratio: number) => void }) {
+  const start = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const parent = e.currentTarget.parentElement;
+    if (!parent) return;
+    e.preventDefault();
+    const box = parent.getBoundingClientRect();
+    const move = (ev: PointerEvent) => onChange(clampRatio((box.right - ev.clientX) / box.width));
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      document.body.style.removeProperty("cursor");
+    };
+    document.body.style.cursor = "col-resize";
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize the code"
+      aria-valuemin={Math.round(MIN_CODE_RATIO * 100)}
+      aria-valuemax={Math.round(MAX_CODE_RATIO * 100)}
+      aria-valuenow={Math.round(ratio * 100)}
+      tabIndex={0}
+      onPointerDown={start}
+      onKeyDown={(e) => {
+        const next = e.key === "ArrowLeft" ? ratio + CODE_RATIO_STEP : e.key === "ArrowRight" ? ratio - CODE_RATIO_STEP : e.key === "Home" ? MAX_CODE_RATIO : e.key === "End" ? MIN_CODE_RATIO : null;
+        if (next === null) return;
+        e.preventDefault();
+        onChange(clampRatio(next));
+      }}
+      className="w-1.5 shrink-0 cursor-col-resize bg-border/40 transition-colors hover:bg-primary/40 focus-visible:bg-primary/60 focus-visible:outline-none"
+      data-testid="code-divider"
     />
   );
 }

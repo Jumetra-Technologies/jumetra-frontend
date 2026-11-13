@@ -187,6 +187,8 @@ export interface LabState {
   /** Add wires in one undo step; `replace` lists wires to take out in the same step (a resistor going in series). */
   addWires: (wires: Array<{ from: PinRef; to: PinRef }>, summary?: string, replace?: string[]) => LabWire[];
   removeWires: (ids: string[]) => void;
+  /** A color the person picked for a wire; undefined goes back to the color of what it carries. */
+  setWireColor: (id: string, color: string | undefined) => void;
   undo: () => void;
   redo: () => void;
   log: (kind: LogKind, text: string, nodes?: string[]) => void;
@@ -456,6 +458,13 @@ export const useLab = create<LabState>((set, get) => {
       const count = session.wires.filter((w) => ids.includes(w.id)).length;
       if (!count) return;
       update((s) => ({ ...s, wires: s.wires.filter((w) => !ids.includes(w.id)), log: [...s.log, logEntry("wire", count === 1 ? "Removed a wire" : `Removed ${count} wires`)] }), { history: true });
+    },
+
+    setWireColor: (id, color) => {
+      const session = active();
+      const wire = session?.wires.find((w) => w.id === id);
+      if (!wire || wire.color === color) return;
+      update((s) => ({ ...s, wires: s.wires.map((w) => (w.id !== id ? w : color ? { ...w, color } : { id: w.id, from: w.from, to: w.to })) }), { history: true });
     },
 
     undo: () => {

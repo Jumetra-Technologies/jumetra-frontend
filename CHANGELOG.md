@@ -10,29 +10,56 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
-## [1.47.0] - 2026-11-13
+## [1.47.0] - 2026-11-12
 
-### Added
-- **Code beside the circuit on the website (WP-D3).** `/laboratory/workspace` opens the session's sketch next to the lab, at an even split.
-  - Drag the divider, or focus it and use the arrow keys, to resize between 25 % and 70 % (Home and End jump to the limits). The size and whether the code is open are remembered per session.
-  - The pane has a file tab bar: add a `.h` or `.cpp` file (names are checked), or delete one with a second click.
-  - It uses the Firmware page's editor (`CodeEditor`, loaded only when the pane shows) and build output, with a Problems tab.
-  - Ctrl/Cmd+Enter runs.
-  - Toggle the pane from the top bar's Code button, or from ⋮ → Code.
-  - On a phone, Circuit and Code are tabs.
-  - Closing the code gives the circuit the full width again.
-- **The code is stored in the session (`code`).** It is saved and synced with the account like the circuit, and it travels in `.kiungo.json` files and in duplicated sessions.
-- **A session without code keeps each board's built-in behavior.** The pane offers "Start with Blink" rather than planting a sketch, so sessions saved before this change run as before.
-- **Run builds the sketch through the compile service** and runs it on the emulated Uno (WP-D2). Checked in a production build: Blink compiles and the Uno's L LED blinks.
+A part's settings open beside the part when you click it, and the inspector panel is gone. Desktop 0.13.11.
 
 ### Changed
-- **Lab data is version 2** (`LAB_DATA_VERSION`). Version 1 data reads unchanged.
-- **The shared lab takes `menuItems`** for the host's entries in the ⋮ menu. The ⋮ button shows on wide screens when there are any.
-- **`@kiungo/core` lists `src/emulator/worker.ts` under `sideEffects`.** The bundler had dropped the worker's code from the website's emulator worker, so the board never answered.
-- **Desktop 0.13.11** carries the shared changes.
-- **The lab's first-load JavaScript** grows by 5.9 KB gzipped (852,067 to 857,941 bytes); the editor and the compile client load only when used.
+- **Click a part to see its properties**, in a small window beside it.
+  - It flips to the other side near the edge of the canvas and follows the part as you pan or move it. On a phone it is a sheet at the bottom of the screen.
+  - It doesn't open when you drag a part, Shift-click to pick several, or drag a selection box.
+  - Escape, a click on empty canvas, or picking more parts closes it. Clicking another part moves it there.
+  - **It never pauses the run:** turn a sensor's knob while the circuit runs and watch it react.
+- **What's in it:**
+  - The name, which you can edit, with Duplicate, Remove wires and Delete beside it.
+  - The part's settings, in SI units.
+  - **Runs on** (virtual, hybrid or physical), for boards only.
+  - **Now**: the live readings.
+  - **Pins and checks**, closed until you open it: each pin, what it's wired to, and this part's problems. The full list of problems stays in the Problems tab.
+  - The Component library link.
+  - A breadboard shows the strips in use.
+- **Click a wire for its own smaller window:** its two ends, a color (red, black, orange, yellow, green, blue, white, or Auto for the color of what it carries), the net, what it carries now, and Delete. A picked color is saved with the build and can be undone.
+- **The circuit overview is now ⋮ → Circuit summary**, in a window: ready, to wire, faults, problems, power and the legend.
+- **The inspector panel and its button are gone.** The three-view thumbnails went with it: the canvas already shows the part. Right-click → **Properties** opens a part's window. In the desktop app the command palette's "Show or hide the Inspector" is now **Show the selected part's properties**.
+- **Desktop 0.13.11:** all of the above, from the shared lab.
 
 ## [1.46.0] - 2026-11-12
+
+A simpler lab top bar and the whole parts library in one place: **+ Add**. Desktop 0.13.10.
+
+### Changed
+- **The lab's top bar keeps only what you reach for.** Left to right:
+  - **+ Add**, the brand teal button;
+  - the session's name and its menu;
+  - **Run / Stop**, which says what it's doing: Building…, Powering…;
+  - the simulated time;
+  - **⋮**;
+  - the 3D / 2D / Trace switch, as icons, with each view's explanation in its tooltip;
+  - the host's own buttons (the desktop's Code) and the save status.
+
+  Emergency stop stays in the bar while a real board runs.
+- **Everything else is in ⋮:** step 100 ms, reset, speed, buzzer sound, undo, redo, fit to screen, the view, opening and saving a `.kiungo.json` file, and the connection status.
+- **Run** is navy in the brand palette, so it never looks like **+ Add**. Both pass WCAG AA contrast.
+- **+ Add (or /) opens "Add a part": the whole library in a window**, instead of a side panel.
+  - Search, the ten group filters, suggestions for your build, and the starter builds are all there.
+  - The header counts the parts from the catalog.
+  - Click or Enter adds a part at the center of the canvas and closes the window. **Shift-click** (or Shift+Enter) adds and keeps it open, and each next part lands 24 px further down and right. A new part never covers one that was already there.
+  - Escape closes the window, and focus returns to + Add.
+- **The components side panel and its toggle are gone.** Parts can still be dropped onto the canvas from elsewhere.
+- The modal on the native `<dialog>` that the desktop app used is now shared from `@kiungo/ui`. The lab uses it, and the desktop's dialogs are unchanged.
+- **Desktop 0.13.10:** all of the above, from the shared lab.
+
+## [1.45.0] - 2026-11-12
 
 Every value you set on a part in the Engineering Lab is now a physical quantity in SI units. A resistor takes any value you type. Desktop 0.13.10.
 

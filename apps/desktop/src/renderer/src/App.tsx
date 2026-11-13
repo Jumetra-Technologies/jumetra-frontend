@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
-import { CloudDownload, Code2, FilePlus2, FolderOpen, LogIn, LogOut, Maximize, PanelRight, Play, Redo2, RefreshCw, Search, Settings, Stethoscope, Undo2, UserRound, X, Box, Grid2x2, Zap } from "lucide-react";
+import { CloudDownload, Code2, FilePlus2, FolderOpen, LogIn, LogOut, Maximize, SlidersHorizontal, Play, Redo2, RefreshCw, Search, Settings, Stethoscope, Undo2, UserRound, X, Box, Grid2x2, Zap } from "lucide-react";
 import type { Appearance, AppInfo, OpenedProject, OpenResult, RecentProject, RemoteProject, Role } from "@kiungo/api";
 import { useAuth } from "./account/useAuth";
 import { SignInScreen } from "./account/SignInScreen";
@@ -162,7 +162,7 @@ export function App() {
         { id: "code", title: "Show or hide the code", group: g, icon: <Code2 />, shortcut: shortcut("E"), keywords: "editor sketch ino", run: call((l) => l.toggleCode()) },
         { id: "run", title: "Run or stop", group: g, icon: <Play />, shortcut: shortcut("↵"), keywords: "start simulate", run: call((l) => l.toggleRun()) },
         { id: "parts", title: "Search parts", group: g, icon: <Search />, shortcut: "/", keywords: "add component sensor", run: call((l) => l.focusSearch()) },
-        { id: "inspector", title: "Show or hide the Inspector", group: g, icon: <PanelRight />, keywords: "details pins", run: call((l) => l.toggleInspector()) },
+        { id: "properties", title: "Show the selected part's properties", group: g, icon: <SlidersHorizontal />, keywords: "inspector details pins settings attributes circuit summary", run: call((l) => l.openProperties()) },
         { id: "fit", title: "Fit the circuit to the screen", group: g, icon: <Maximize />, keywords: "zoom", run: call((l) => l.fit()) },
         { id: "view-3d", title: "View in 3D", group: g, icon: <Box />, shortcut: "1", run: call((l) => l.setView("reality")) },
         { id: "view-2d", title: "View in 2D", group: g, icon: <Grid2x2 />, shortcut: "2", run: call((l) => l.setView("top")) },

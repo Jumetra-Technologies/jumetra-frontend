@@ -67,12 +67,14 @@ export class HybridLink {
     child.stderr?.on("data", (chunk: Buffer) => {
       this.errors = (this.errors + chunk.toString("utf8")).slice(-2000);
     });
-    child.on("error", () => undefined);
-    child.on("exit", () => {
+    // A spawn that fails emits "error" and may never emit "exit": both close the link, once.
+    const closed = (error?: Error) => {
       if (this.child !== child) return;
       this.cleanup();
-      this.options.onEvent(port, { lines: [], closed: monitorMessage(this.errors) ?? "The link to the board closed." });
-    });
+      this.options.onEvent(port, { lines: [], closed: monitorMessage(this.errors) ?? (error ? `The link to the board couldn't start: ${error.message}` : "The link to the board closed.") });
+    };
+    child.on("error", (error: Error) => closed(error));
+    child.on("exit", () => closed());
     // The board restarts when the port opens: give its bootloader a moment, then say hello.
     setTimeout(() => this.send(encodeHello()), this.options.helloMs ?? 1800);
     this.ping = setInterval(() => this.send(encodePing(this.seq++)), this.options.pingMs ?? 100);

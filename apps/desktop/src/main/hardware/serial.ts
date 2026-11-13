@@ -50,14 +50,17 @@ export class SerialMonitor {
     child.stderr?.on("data", (chunk: string) => {
       this.errors = (this.errors + chunk).slice(-2000);
     });
-    child.on("error", () => undefined);
-    child.on("exit", () => {
+    // A spawn that fails (missing or blocked CLI) emits "error" and may never emit "exit":
+    // both end the monitor, once, so the port isn't left looking open.
+    const closed = (error?: Error) => {
       if (this.child !== child) return;
       this.flush(port);
       this.child = null;
       this.current = null;
-      this.options.onClosed(port, monitorMessage(this.errors));
-    });
+      this.options.onClosed(port, monitorMessage(this.errors) ?? (error ? `The serial monitor couldn't start: ${error.message}` : null));
+    };
+    child.on("error", (error: Error) => closed(error));
+    child.on("exit", () => closed());
     return { ok: true };
   }
 

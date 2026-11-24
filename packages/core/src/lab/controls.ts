@@ -119,7 +119,11 @@ export function ldrOhms(lux: number): number {
 
 /** Sensor surroundings. The ranges are the parts' documented measuring ranges, in SI. */
 const SENSOR_CONTROLS: Record<string, Control[]> = {
-  "hc-sr04": [source("Simulated sweep (0.30–0.50 m)", "Obstacle set by you"), num("distance", "Obstacle distance", "length", 0.02, 4, 0.001, 0.3, { help: "HC-SR04 range: 20 mm to 4 m", legacy: cm("distanceCm") })],
+  "hc-sr04": [
+    source("Simulated sweep (0.30–0.50 m)", "Obstacle set by you"),
+    num("distance", "Obstacle distance", "length", 0.02, 4, 0.001, 0.3, { help: "HC-SR04 range: 20 mm to 4 m", legacy: cm("distanceCm") }),
+    num("offset", "Obstacle to the side", "length", -1, 1, 0.001, 0, { help: "From the beam's center line; + is to the sensor's left. The beam is about 15° wide, so an obstacle past its edge gives no echo." }),
+  ],
   pir: [source("Simulated (motion every 8 s)", "Set by you"), { key: "motion", kind: "toggle", label: "Motion", on: "Detected", off: "None", default: false }],
   dht11: [source("Simulated sweep"), num("temperatureC", "Temperature", "temperature", 0, 50, 0.1, 24, { help: "DHT11 range: 0–50 °C" }), num("humidity", "Humidity", "ratio", 0.2, 0.9, 0.01, 0.55, { help: "DHT11 range: 20–90 %", legacy: pct() })],
   dht22: [source("Simulated sweep"), num("temperatureC", "Temperature", "temperature", -40, 80, 0.1, 24), num("humidity", "Humidity", "ratio", 0, 1, 0.01, 0.55, { legacy: pct() })],

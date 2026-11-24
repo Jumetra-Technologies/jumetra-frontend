@@ -10,6 +10,7 @@ import { useLab } from "./store";
 import type { LabNode, NodeInputs } from "@kiungo/core/lab/types";
 import { cn } from "@kiungo/ui/cn";
 import { useLabContext } from "./lab-context";
+import { ObstacleTest } from "./ObstacleTest";
 
 /**
  * The part's inputs in the Inspector: a sensor's surroundings, an actuator's
@@ -45,6 +46,7 @@ export function InputsPanel({ node }: { node: LabNode }) {
         ))}
         {node.partId === "stepper-motor" ? <StepperCommands nodeId={node.id} t={frame.t} /> : null}
       </div>
+      {node.partId === "hc-sr04" ? <ObstacleTest node={node} /> : null}
       <Readouts partId={node.partId} values={values} />
       {hasSource && !held ? <p className="mt-2 text-[11px] leading-4 text-muted">Showing the lab&apos;s simulated signal. Change a value to take over.</p> : null}
     </section>

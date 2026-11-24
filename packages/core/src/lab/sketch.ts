@@ -20,6 +20,7 @@ import { getPart } from "../parts";
 import type { PartSim } from "../parts/types";
 import { ALERT_SENSORS, defaultOf, inputOf, isSet, ldrOhms, lightPercentFromLux, luxFromLightPercent, siOfPartUnit } from "./controls";
 import { formatQuantity } from "./units";
+import { HC_SR04_BEAM, NO_ECHO_CM, OBSTACLE_WIDTH, echoOff, type Obstacle } from "./obstacle";
 import type { Reading } from "./simulate";
 import type { LabNode, NodeInputs } from "./types";
 
@@ -75,10 +76,6 @@ const fmt = (n: number, digits = 1) => n.toFixed(digits);
 const square = (t: number, period: number, duty = 0.5, phase = 0) => (((t + phase) % period) + period) % period < period * duty ? 1 : 0;
 
 /**
- * A sensor's reading at time t: the value the person set, or the lab's
- * simulated sweep. Alarm-type lines use the board's setting.
- */
-/**
  * The level a sensor described in data puts on one of its output pins, 0 to
  * 1, from what it reads now: an analog pin follows its quantity across its
  * range, a digital pin is on while its quantity is past a level. Null for a
@@ -101,6 +98,24 @@ export function describedPinLevel(sim: PartSim | undefined, pin: string, values:
   return tripped !== !!trip.activeLow ? 1 : 0;
 }
 
+/**
+ * Where the obstacle in front of an HC-SR04 is: where you put it (its
+ * distance and how far to the side), or the simulated sweep's, moving
+ * between 30 and 50 cm straight ahead.
+ */
+export function hcSr04Obstacle(nodeId: string, t: number, inputs: Inputs): Obstacle {
+  if (!isSet(inputs, nodeId)) return { distance: (30 + 20 * Math.abs(Math.sin(t / 5))) / 100, offset: 0, width: OBSTACLE_WIDTH };
+  return {
+    distance: inputOf(inputs, nodeId, "distance", defaultOf("hc-sr04", "distance") as number),
+    offset: inputOf(inputs, nodeId, "offset", 0),
+    width: OBSTACLE_WIDTH,
+  };
+}
+
+/**
+ * A sensor's reading at time t: the value the person set, or the lab's
+ * simulated sweep. Alarm-type lines use the board's setting.
+ */
 export function sampleSensor(node: LabNode, t: number, inputs: Inputs, settings: BoardSettings): SensorSample {
   const held = isSet(inputs, node.id);
   const get = (key: string, fallback: number) => (held ? inputOf(inputs, node.id, key, fallback) : fallback);
@@ -121,9 +136,12 @@ export function sampleSensor(node: LabNode, t: number, inputs: Inputs, settings:
       return sample({ temperatureC }, [{ label: "Temperature", value: `${fmt(temperatureC, 2)} °C` }], { level: 0.5, on: true, badge: `${fmt(temperatureC)} °C` });
     }
     case "hc-sr04": {
-      const distanceCm = held ? getIn("distance", 30, 0.01) : 30 + 20 * Math.abs(Math.sin(t / 5));
+      // What it hears off the obstacle in front of it: the one you placed, or the sweep's, straight ahead.
+      const echo = echoOff(HC_SR04_BEAM, hcSr04Obstacle(node.id, t, inputs));
+      const distanceCm = echo ? legacy(echo.distance * 100) : NO_ECHO_CM;
       const warn = distanceCm < settings.warnCm;
-      return sample({ distanceCm }, [{ label: "Distance", value: `${fmt(distanceCm)} cm` }, { label: "Obstacle", value: warn ? `Closer than ${settings.warnCm} cm` : "Clear" }], { level: square(t, 0.1, 0.3), on: true, badge: `${fmt(distanceCm, 0)} cm` });
+      const distance = echo ? `${fmt(distanceCm)} cm` : "No echo";
+      return sample({ distanceCm }, [{ label: "Distance", value: distance }, { label: "Obstacle", value: warn ? `Closer than ${settings.warnCm} cm` : "Clear" }], { level: square(t, 0.1, 0.3), on: true, badge: echo ? `${fmt(distanceCm, 0)} cm` : distance });
     }
     case "pir": {
       const motion = held ? inputOf(inputs, node.id, "motion", false) : square(t, 8, 0.375) === 1;

@@ -10,6 +10,22 @@ Every pull request that changes the app bumps the version (`npm run release:patc
 
 Versions before 1.2.0 were assigned after the fact to the pull requests already merged.
 
+## [1.51.0] - 2026-11-24
+
+The obstacle test (Phase Two, Stage 0): an HC-SR04 in the Engineering Lab now measures an obstacle you move in front of it, and the reading follows. Desktop 0.13.15.
+
+### Added
+- **An obstacle test in the HC-SR04's surroundings.** Select the sensor: under its inputs, its beam is drawn from above with a 10 cm board in front of it.
+  - Drag the board, or select it and use the arrow keys (a centimeter a step, ten with Shift). Left and right move it nearer and farther; up and down move it to the side.
+  - The dashed line is the echo the sensor hears, and the line under the drawing says what the sensor reads: "Sensor reads 25.0 cm".
+  - Moved out of the beam (about 15° wide), or past 4 m along the beam, there is no echo: the sensor says "No echo", a sketch's `pulseIn()` times out ("Nothing in range" in the Distance starter) and the warning outputs go off.
+  - **1 m** and **4 m** show the first meter or the whole range.
+  - In the simulated sweep the board moves between 30 and 50 cm by itself. Dragging it takes over, as changing any input does.
+- **A new input, Obstacle to the side** (−1 m to 1 m), beside **Obstacle distance**. Sessions saved before it read as they always did: the obstacle straight ahead.
+
+### Changed
+- The HC-SR04's reading comes from the obstacle's place (`lab/obstacle.ts`): the nearest point of its face inside the sensor's cone. Straight ahead that is exactly the distance set, so the lab, the sketch rules and the emulated module read what they read before.
+
 ## [1.46.1] - 2026-11-13
 
 ### Security
@@ -1018,6 +1034,7 @@ Engineering Lab QA cycle 2. Root causes, acceptance matrix and retest steps are 
 ### Added
 - First complete release: Learning Center and Documentation (#1), System Architecture Explorer (#2), elastic scrollbars (#3), sidebar brand (#4), Settings modal (#6), landing page (#7), Component library with 34 parts in three views (#8), Engineering Lab with saved sessions, three views and circuit checks (#9), Google sign-in and account display (#10). Production API on Firebase.
 
+[1.51.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.1...v1.51.0
 [1.46.1]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.46.0...v1.46.1
 [1.46.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.45.0...v1.46.0
 [1.45.0]: https://github.com/Jumetra-Technologies/jumetra-frontend/compare/v1.44.0...v1.45.0
